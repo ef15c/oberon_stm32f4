@@ -9,8 +9,6 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
     KTabAdr, KTabAdrAlt: INTEGER;  (*keyboard code translation tables*)
     MW, MH, MX, MY: INTEGER; (*mouse limits and coords*)
     MK: SET; (*mouse keys*)
-    
-    SecCh: CHAR;
 
 (*FIFO implemented in hardware, because every read must be handled,
   including tracking the state of the Shift and Ctrl keys*)
@@ -40,23 +38,13 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   PROCEDURE Read*(VAR ch: CHAR);
   VAR tmp: INTEGER;
   BEGIN
-    IF SecCh # 0X THEN ch := SecCh; SecCh := 0X;
+    WHILE ~Recd DO Peek() END;
+    IF AltGr THEN SYSTEM.GET(KTabAdrAlt + kbdCode, ch)
     ELSE
-      WHILE ~Recd DO Peek() END;
-      IF AltGr THEN SYSTEM.GET(KTabAdrAlt + kbdCode, ch)
-      ELSE
-        IF Shift OR Ctrl THEN INC(kbdCode, 80H) END; (*ctrl implies shift*)
-      (* ch := kbdTab[kbdCode]; *)
-        SYSTEM.GET(KTabAdr + kbdCode, ch);
-        IF (ORD(ch) = 0) OR (ORD(ch) > 127) THEN
-          tmp := kbdCode MOD 16;
-          IF tmp < 10 THEN SecCh := CHR(tmp + ORD("0")) ELSE SecCh := CHR(tmp + ORD("A")-10) END;
-          tmp := kbdCode DIV 16;
-          IF tmp < 10 THEN ch := CHR(tmp + ORD("0")) ELSE ch := CHR(tmp + ORD("A")-10) END
-        ELSE
-          IF Ctrl THEN ch := CHR(ORD(ch) MOD 20H) END
-        END
-      END
+      IF Shift OR Ctrl THEN INC(kbdCode, 80H) END; (*ctrl implies shift*)
+    (* ch := kbdTab[kbdCode]; *)
+      SYSTEM.GET(KTabAdr + kbdCode, ch);
+      IF Ctrl THEN ch := CHR(ORD(ch) MOD 20H) END
     END;
     Recd := FALSE
   END Read;
@@ -115,7 +103,7 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
         
        M -> ?  < -> .  > -> /  ? -> §
        *)$
-      00 00 00 00 00 1A 00 00  00 00 00 00 00 09 60 00
+      00 00 00 00 00 1A 00 00  00 00 00 00 00 09 B2 00
       00 00 00 00 00 61 26 00  00 00 77 73 71 7A E9 00
       00 63 78 64 65 27 22 00  00 20 76 66 74 72 28 00
       00 6E 62 68 67 79 2D 00  00 00 2C 6A 75 E8 5F 00
@@ -136,18 +124,22 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   (*
     AltGr controlled keys
     
-    AltGr+2 -> ~  AltGr+3 -> #
+    AltGr+é -> ~  AltGr+" -> #  AltGr+' -> {  AltGr+( -> [  
+    AltGr+- -> |  AltGr+è -> `  AltGr+_ -> \  AltGr+ç -> ^  
+    AltGr+à -> @  AltGr+) -> ]  AltGr+= -> }
+    
+    AltGr+e -> ¤
   *)
     KTabAdrAlt := SYSTEM.ADR($
       00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
       00 00 00 00 00 00 00 00  00 00 00 00 00 00 7E 00
-      00 00 00 00 00 00 23 00  00 00 00 00 00 00 00 00
-      00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
-      00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
-      00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
+      00 00 00 00 A4 7B 23 00  00 00 00 00 00 00 5B 00
+      00 00 00 00 00 00 7C 00  00 00 00 00 00 60 5C 00
+      00 00 00 00 00 40 5E 00  00 00 00 00 00 00 5D 00
+      00 00 00 00 00 7D 00 00  00 00 00 00 00 00 00 00
       00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
       00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00$)
   END Init;
 
-BEGIN SecCh := 0X; Init
+BEGIN Init
 END Input.
