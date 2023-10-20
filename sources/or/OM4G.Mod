@@ -1,11 +1,12 @@
-MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code generator for RISC*)
+MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; 
+  C. Schoffit 19/10/2023 code generator for Cortex M4*)
   IMPORT SYSTEM, Files, OM4S, OM4B;
-  (*Code generator for Oberon compiler for RISC processor.
-     Procedural interface to Parser OSAP; result in array "code".
+  (*Code generator for Oberon compiler for Cortex M4 processor.
+     Procedural interface to Parser OM4P; result in array "code".
      Procedure Close writes code-files*)
 
   CONST WordSize* = 4;
-    StkOM4G0 = -64; VarOM4G0 = 0;  (*for RISC-0 only*)
+    StkORG0 = -64; VarORG0 = 0;  (*for RISC-0 only*)
     MT = 12; SP = 14; LNK = 15;   (*dedicated registers*)
     maxCode = 8000; maxStrx = 2400; maxTD = 160; C24 = 1000000H;
     Reg = 10; RegI = 11; Cond = 12;  (*internal item modes*)
@@ -40,7 +41,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code
     entry: LONGINT;   (*main entry point*)
     RH: LONGINT;  (*available registers R[0] ... R[H-1]*)
     frame: LONGINT;  (*frame offset changed in SaveRegs and RestoreRegs*)
-    fixOM4GP, fixOM4GD, fixOM4GT: LONGINT;   (*origins of lists of locations to be fixed up by loader*)
+    fixORGP, fixORGD, fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by loader*)
     check: BOOLEAN;  (*emit run-time checks*)
     version: INTEGER;  (* 0 = RISC-0, 1 = RISC-5 *)
     
@@ -146,8 +147,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code
 
   PROCEDURE GetSB(base: LONGINT);
   BEGIN
-    IF version = 0 THEN Put1(Mov, RH, 0, VarOM4G0)
-    ELSE Put2(Ldr, RH, -base, pc-fixOM4GD); fixOM4GD := pc-1
+    IF version = 0 THEN Put1(Mov, RH, 0, VarORG0)
+    ELSE Put2(Ldr, RH, -base, pc-fixORGD); fixORGD := pc-1
     END
   END GetSB;
 
@@ -319,8 +320,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code
   PROCEDURE Q(T: OM4B.Type; VAR dcw: LONGINT);
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
-      Q(T.base, dcw); data[dcw] := (T.mno*1000H + T.len) * 1000H + dcw - fixOM4GT;
-      fixOM4GT := dcw; INC(dcw)
+      Q(T.base, dcw); data[dcw] := (T.mno*1000H + T.len) * 1000H + dcw - fixORGT;
+      fixORGT := dcw; INC(dcw)
     END
   END Q;
 
@@ -773,8 +774,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code
     IF x.mode = OM4B.Const THEN
       IF x.r >= 0 THEN Put3(BL, 7, (x.a DIV 4)-pc-1)
       ELSE (*imported*)
-        IF pc - fixOM4GP < 1000H THEN
-          Put3(BL, 7, ((-x.r) * 100H + x.a) * 1000H + pc-fixOM4GP); fixOM4GP := pc-1
+        IF pc - fixORGP < 1000H THEN
+          Put3(BL, 7, ((-x.r) * 100H + x.a) * 1000H + pc-fixORGP); fixORGP := pc-1
         ELSE OM4S.Mark("fixup impossible")
         END
       END
@@ -1000,7 +1001,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code
   END Condition;
 
   PROCEDURE Open*(v: INTEGER);
-  BEGIN pc := 0; tdx := 0; strx := 0; RH := 0; fixOM4GP := 0; fixOM4GD := 0; fixOM4GT := 0; check := v # 0; version := v;
+  BEGIN pc := 0; tdx := 0; strx := 0; RH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
     IF v = 0 THEN pc := 1;
       REPEAT code[pc] := 0; INC(pc) UNTIL pc = 8
     END
@@ -1012,7 +1013,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code
 
   PROCEDURE Header*;
   BEGIN entry := pc*4;
-    IF version = 0 THEN code[0] := 0E7000000H-1 + pc;  Put1a(Mov, SP, 0, StkOM4G0)  (*RISC-0*)
+    IF version = 0 THEN code[0] := 0E7000000H-1 + pc;  Put1a(Mov, SP, 0, StkORG0)  (*RISC-0*)
     ELSE Put1(Sub, SP, SP, 4); Put2(Str, LNK, SP, 0)
     END
   END Header;
@@ -1112,7 +1113,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code
       obj := obj.next
     END ;
     Files.WriteInt(R, -1);
-    Files.WriteInt(R, fixOM4GP); Files.WriteInt(R, fixOM4GD); Files.WriteInt(R, fixOM4GT); Files.WriteInt(R, entry);
+    Files.WriteInt(R, fixORGP); Files.WriteInt(R, fixORGD); Files.WriteInt(R, fixORGT); Files.WriteInt(R, entry);
     Files.Write(R, "O"); Files.Register(F)
   END Close;
 
