@@ -1,23 +1,29 @@
 MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; 
-  C. Schoffit 19/10/2023 code generator for Cortex M4*)
+  C. Schoffit 19/10/2023 code generator for Cortex M4 STM32I-DISCO*)
   IMPORT SYSTEM, Files, OM4S, OM4B;
   (*Code generator for Oberon compiler for Cortex M4 processor.
      Procedural interface to Parser OM4P; result in array "code".
      Procedure Close writes code-files*)
 
   CONST WordSize* = 4;
-    StkORG0 = -64; VarORG0 = 0;  (*for RISC-0 only*)
-    MT = 12; SP = 14; LNK = 15;   (*dedicated registers*)
-    maxCode = 8000; maxStrx = 2400; maxTD = 160; C24 = 1000000H;
+(* Non applicable for STM32I-DISCO with C initialization code
+     StkORG0 = -64; VarORG0 = 0;  (*for RISC-0 only*) *)
+    MT = 12; SP = 13; LNK = 14;   (*dedicated registers*)
+    maxCode = 8000*4; maxStrx = 2400; maxTD = 160; (* C24 = 1000000H; *)
     Reg = 10; RegI = 11; Cond = 12;  (*internal item modes*)
 
-  (*frequently used opcodes*)  U = 2000H; V = 1000H;
+  (*frequently used opcodes*)
+    CoP = 0EDH; (*Coprocessor instruction*)
+    IT  = 0BFH; (*If-Then major byte*)
+     (*U = 2000H; V = 1000H;
     Mov = 0; Lsl = 1; Asr = 2; Ror= 3; And = 4; Ann = 5; Ior = 6; Xor = 7;
     Add = 8; Sub = 9; Cmp = 9; Mul = 10; Div = 11;
     Fad = 12; Fsb = 13; Fml = 14; Fdv = 15;
     Ldr = 8; Str = 10;
     BR = 0; BLR = 1; BC = 2; BL = 3;
-    MI = 0; PL = 8; EQ = 1; NE = 9; LT = 5; GE = 13; LE = 6; GT = 14;
+    MI = 0; PL = 8; EQ = 1; NE = 9; LT = 5; GE = 13; LE = 6; GT = 14;*)
+    MI = 4; PL = 5; EQ = 0; NE = 1; LT = 11; GE = 10; LE = 13; GT = 12;
+    CC = 3; AL = 14; NV=15;
 
     TYPE Item* = RECORD
       mode*: INTEGER;
@@ -28,35 +34,31 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* Item forms and meaning of fields:
     mode    r      a       b
-    --------------------------------
-    Const   -     value (proc adr)  (immediate value)
-    Var     base   off     -               (direct adr)
-    Par      -     off0     off1         (indirect adr)
-    Reg    regno
-    RegI   regno   off     -
-    Cond  cond   Fchain  Tchain  *)
+    ---------------------------------
+    Const   -      value   (proc adr)  (immediate value)
+    Var     base   off     -           (direct adr)
+    Par      -     off0    off1        (indirect adr)
+    Reg     regno
+    RegI    regno  off     -
+    Cond    cond   Fchain  Tchain  *)
 
   VAR pc*, varsize: LONGINT;   (*program counter, data index*)
     tdx, strx: LONGINT;
     entry: LONGINT;   (*main entry point*)
-    RH: LONGINT;  (*available registers R[0] ... R[H-1]*)
-    frame: LONGINT;  (*frame offset changed in SaveRegs and RestoreRegs*)
+    RH: LONGINT;      (*available registers R[0] ... R[H-1]*)
+    frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
     fixORGP, fixORGD, fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by loader*)
-    check: BOOLEAN;  (*emit run-time checks*)
-    version: INTEGER;  (* 0 = RISC-0, 1 = RISC-5 *)
+    check: BOOLEAN;   (*emit run-time checks*)
+    version: INTEGER; (*0 = bare metal program, 1 = oberon system module*)
     
-    relmap: ARRAY 6 OF INTEGER;  (*condition codes for relations*)
-    code: ARRAY maxCode OF LONGINT;
+    relmap: ARRAY 6 OF INTEGER;    (*condition codes for relations*)
+    code: ARRAY maxCode OF BYTE;   (*Cortex M4 thumb uses 16bit half-words, but half-word does not exists in Oberon*)
     data: ARRAY maxTD OF LONGINT;  (*type descriptors*)
     str: ARRAY maxStrx OF CHAR;
 
   (*instruction assemblers according to formats*)
 
-  PROCEDURE Put0(op, a, b, c: LONGINT);
-  BEGIN (*emit format-0 instruction*)
-    code[pc] := ((a*10H + b) * 10H + op) * 10000H + c; INC(pc)
-  END Put0;
-
+(* TODO
   PROCEDURE Put1(op, a, b, im: LONGINT);
   BEGIN (*emit format-1 instruction,  -10000H <= im < 10000H*)
     IF im < 0 THEN INC(op, V) END ;
@@ -81,6 +83,25 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN (*emit branch instruction*)
     code[pc] := ((op+12) * 10H + cond) * 1000000H + (off MOD 1000000H); INC(pc)
   END Put3;
+*)
+
+  PROCEDURE Put0(op: BYTE, p: LONGINT);
+  BEGIN (*emit format-0 instruction (32bit)
+         format: op8:p24 *)
+    code[pc+1] := op;
+    code[pc]   := (p DIV 10000H) MOD 100H;
+    code[pc+3] := (p DIV 100H) MOD 100H;
+    code[pc+2] := p MOD 100H;
+    INC(pc, 4)
+  END Put0;
+
+  PROCEDURE Put1(op: LONGINT);
+  BEGIN (*emit format-1 instruction (16bit)
+         format: op8:p24 *)
+    code[pc+1] := op DIV 100H;
+    code[pc]   := op MOD 100H;
+    INC(pc, 2)
+  END Put1;
 
   PROCEDURE incR;
   BEGIN
@@ -98,15 +119,45 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN x.mode := Cond; x.a := 0; x.b := 0; x.r := n
   END SetCC;
 
+  (* Cond definition 
+    0000 MI negative (minus)    N       1000 PL positive (plus)     ~N
+    0001 EQ equal (zero)        Z       1001 NE not equal (#zero)   ~Z
+    0010 CS carry set           C       1010 CC carry clear         ~C
+    0011 VS overflow set        V       1011 VC overflow clear      ~V
+    0100 LS less or same      ~C|Z      1100 HI high             ~(~C|Z)
+    0101 LT less than          N#V      1101 GE greater or equal  ~(N#V)
+    0110 LE less or equal    (N#V)|Z    1110 GT greater than  ~((N#V)|Z)
+    0111 true                   T       1111 false                   F
+ *)
+ 
   PROCEDURE Trap(cond, num: LONGINT);
-  BEGIN Put3(BLR, cond, OM4S.Pos()*100H + num*10H + MT)
+  (*
+  * Trap is implemented as an coprocessor instruction targeting a
+  * non existing coprocessor, i.e. not CP10 or CP11 assocatied to FPU.
+  * The encoding is 111x11xxxxxxxxxxxxxx0xxxxxxxxxxx, that leaves 26 bits
+  * for describing the trap number.
+  * 
+  * In this implementation, 24 bits will be used, like RISC-5
+  * 1110110ppppppppppppp0pppppppnnnn
+  * This generate an exception trapped by the usage fault handler 
+  * implemented as the trap procedure in the System module.
+  *)
+  VAR pos : LONGINT;
+  BEGIN 
+    ASSERT(cond # 15);
+    (*IT<cond> encoding if needed*)
+    IF cond # 7 THEN Put1(IT*100H + cond*10H + 8H (*IT*) END;
+    pos := OM4S.Pos();
+    Put0(CoP + pos DIV 800000H, 
+        ((pos DIV 80H MOD 4000H*100H) + pos MOD 80H)*10H + num)
   END Trap;
 
   (*handling of forward reference, fixups of branch addresses and constant tables*)
 
   PROCEDURE negated(cond: LONGINT): LONGINT;
   BEGIN
-    IF cond < 8 THEN cond := cond+8 ELSE cond := cond-8 END ;
+(*    IF cond < 8 THEN cond := cond+8 ELSE cond := cond-8 END ; *)
+    IF ODD(cond) THEN DEC(cond) ELSE INC(cond);
     RETURN cond
   END negated;
 
@@ -208,7 +259,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE loadCond(VAR x: Item);
   BEGIN
     IF x.type.form = OM4B.Bool THEN
-      IF x.mode = OM4B.Const THEN x.r := 15 - x.a*8
+      IF x.mode = OM4B.Const THEN IF x.a = 0 THEN x.r := NV else x.r := AL END
       ELSE load(x);
         IF code[pc-1] DIV 40000000H # -2 THEN Put1(Cmp, x.r, x.r, 0) END ;
         x.r := NE; DEC(RH)
@@ -285,7 +336,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSE OM4S.Mark("error in Index")
           END
         END ;
-        Trap(10, 1)  (*BCC*)
+        Trap(CC, 1)  (*BCC*)
       END ;
       IF s = 4 THEN Put1(Lsl, y.r, y.r, 2) ELSIF s > 1 THEN Put1a(Mul, y.r, y.r, s) END ;
       IF x.mode = OM4B.Var THEN
@@ -359,7 +410,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF T = NIL THEN
       IF x.mode >= Reg THEN DEC(RH) END ;
-      SetCC(x, 7)
+      SetCC(x, AL)
     ELSE (*fetch tag into RH*)
       IF varpar THEN Put2(Ldr, RH, SP, x.a+4+frame)
       ELSE load(x);
@@ -852,13 +903,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
     IF x.a = 0 THEN cond := negated(x.r)
-    ELSE Put3(BC, x.r, x.b); FixLink(x.a); x.b := pc-1; cond := 7
+    ELSE Put3(BC, x.r, x.b); FixLink(x.a); x.b := pc-1; cond := AL
     END ;
     Trap(cond, 7); FixLink(x.b)
   END Assert; 
 
   PROCEDURE New*(VAR x: Item);
-  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Trap(7, 0); RH := 0
+  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Trap(AL, 0); RH := 0
   END New;
 
   PROCEDURE Pack*(VAR x, y: Item);
@@ -1117,5 +1168,5 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     Files.Write(R, "O"); Files.Register(F)
   END Close;
 
-BEGIN relmap[0] := 1; relmap[1] := 9; relmap[2] := 5; relmap[3] := 6; relmap[4] := 14; relmap[5] := 13;
+BEGIN relmap[0] := EQ; relmap[1] := NE; relmap[2] := LT; relmap[3] := LE; relmap[4] := GT; relmap[5] := GE;
 END OM4G.
