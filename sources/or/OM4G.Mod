@@ -7,24 +7,47 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   CONST WordSize* = 4;
 (* Non applicable for STM32I-DISCO with C initialization code
-     StkORG0 = -64; VarORG0 = 0;  (*for RISC-0 only*) *)
-    MT = 12; SP = 13; LNK = 14;   (*dedicated registers*)
-    maxCode = 8000*4; maxStrx = 2400; maxTD = 160; (* C24 = 1000000H; *)
+     StkORG0 = -64; *)
+    MT = 12; SP = 13; LNK = 14; PC = 15; (*dedicated registers*)
+    VarORG0 = 0D0201000H;  (*for bare metal program only, 
+    0D0200400H is the end address of VGA buffers*)
+    maxCode = 8000*4; maxStrx = 2400; maxTD = 160;
+    
+    (* Powers of two *)
+    C28=10000000H;
+    C27=8000000H; C26=4000000H; C24=1000000H; C23=800000H; C22=400000H; 
+    C21=200000H; C20=100000H; C16=10000H; C13=2000H; C12=1000H; C11=800H; 
+    C10=400H; C8=100H; C7=80H; C6=40H; C4=10H; C3=8; C1=2;
+    
     Reg = 10; RegI = 11; Cond = 12;  (*internal item modes*)
 
-  (*frequently used opcodes*)
-    CoP = 0EDH; (*Coprocessor instruction*)
-    IT  = 0BFH; (*If-Then major byte*)
-     (*U = 2000H; V = 1000H;
-    Mov = 0; Lsl = 1; Asr = 2; Ror= 3; And = 4; Ann = 5; Ior = 6; Xor = 7;
-    Add = 8; Sub = 9; Cmp = 9; Mul = 10; Div = 11;
-    Fad = 12; Fsb = 13; Fml = 14; Fdv = 15;
-    Ldr = 8; Str = 10;
-    BR = 0; BLR = 1; BC = 2; BL = 3;
-    MI = 0; PL = 8; EQ = 1; NE = 9; LT = 5; GE = 13; LE = 6; GT = 14;*)
     MI = 4; PL = 5; EQ = 0; NE = 1; LT = 11; GE = 10; LE = 13; GT = 12;
     CC = 3; AL = 14; NV=15;
+    
+    IT  = 0BFH; (*If-Then major byte*)
+    
+    CoP     = 0ED000000H; (*Coprocessor instruction*)
+    
+    BW      = 0F0009000H; (* A voir si j'ai besoin de BCW = 0F0008000; *)
+    (*|11110S   imm10  10J1J   imm11   |
+      |                  1 2           |*)
+    BLW     = 0F000C000H;
+    (*|11110S   imm10  11J1J   imm11   |
+      |                  1 2           |*)
+      
+    MOVW    = 0F2400000H;
+    MOVN    = 2000H;
+    MOVT    = 0F2C00000H;
+    
+    LDRIT3  = 0F8D00000H;
+    LDRBIT2 = 0F8900000H;
+    
+    BRSIG   = 1EH;
+    LDRSIG* = 0FH;
 
+    (* Arithmetic operations *)
+    SUB=0; ADD=1;
+    
     TYPE Item* = RECORD
       mode*: INTEGER;
       type*: OM4B.Type;
@@ -55,54 +78,115 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     code: ARRAY maxCode OF BYTE;   (*Cortex M4 thumb uses 16bit half-words, but half-word does not exists in Oberon*)
     data: ARRAY maxTD OF LONGINT;  (*type descriptors*)
     str: ARRAY maxStrx OF CHAR;
+    
+    imm3map: ARRAY 5 OF LONGINT;
+    imm8map: ARRAY 5 OF LONGINT;
+    imm12map: ARRAY 5 OF LONGINT;
+    
+    reg3map: ARRAY 5 OF LONGINT;
+    reg4map: ARRAY 5 OF LONGINT;
 
   (*instruction assemblers according to formats*)
 
-(* TODO
-  PROCEDURE Put1(op, a, b, im: LONGINT);
-  BEGIN (*emit format-1 instruction,  -10000H <= im < 10000H*)
-    IF im < 0 THEN INC(op, V) END ;
-    code[pc] := (((a+40H) * 10H + b) * 10H + op) * 10000H + (im MOD 10000H); INC(pc)
-  END Put1;
+  PROCEDURE modify(at: LONGINT; with: LONGINT);
+  BEGIN
+    code[at+1] := with DIV C24;
+    code[at]   := with DIV C16 MOD C8;
+    code[at+3] := with DIV C8 MOD C8;
+    code[at+2] := with MOD C8;
+  END modify;
 
-  PROCEDURE Put1a(op, a, b, im: LONGINT);
-  BEGIN (*same as Put1, but with range test  -10000H <= im < 10000H*)
-    IF (im >= -10000H) & (im <= 0FFFFH) THEN Put1(op, a, b, im)
-    ELSE Put1(Mov+U, RH, 0, im DIV 10000H);
-      IF im MOD 10000H # 0 THEN Put1(Ior, RH, RH, im MOD 10000H) END ;
-      Put0(op, a, b, RH)
-    END
-  END Put1a;
-
-  PROCEDURE Put2(op, a, b, off: LONGINT);
-  BEGIN (*emit load/store instruction*)
-    code[pc] := ((op * 10H + a) * 10H + b) * 100000H + (off MOD 100000H); INC(pc)
-  END Put2;
-
-  PROCEDURE Put3(op, cond, off: LONGINT);
-  BEGIN (*emit branch instruction*)
-    code[pc] := ((op+12) * 10H + cond) * 1000000H + (off MOD 1000000H); INC(pc)
-  END Put3;
-*)
-
-  PROCEDURE Put0(op: BYTE, p: LONGINT);
+  PROCEDURE load24(at: LONGINT): LONGINT;
+    VAR res: LONGINT;
+  BEGIN
+    res := (code[at+3]*C8+code[at+2])*C8+code[at+1];
+    RETURN res
+  END load24;
+  
+  PROCEDURE Put0(op: LONGINT);
   BEGIN (*emit format-0 instruction (32bit)
          format: op8:p24 *)
-    code[pc+1] := op;
-    code[pc]   := (p DIV 10000H) MOD 100H;
-    code[pc+3] := (p DIV 100H) MOD 100H;
-    code[pc+2] := p MOD 100H;
+    modify(pc, op);
     INC(pc, 4)
   END Put0;
 
   PROCEDURE Put1(op: LONGINT);
-  BEGIN (*emit format-1 instruction (16bit)
-         format: op8:p24 *)
-    code[pc+1] := op DIV 100H;
-    code[pc]   := op MOD 100H;
+  BEGIN (*emit format-1 instruction (16bit)*)
+    code[pc+1] := op DIV C8 MOD C8;
+    code[pc]   := op MOD C8;
     INC(pc, 2)
   END Put1;
 
+  PROCEDURE encEvenImm25(disp: LONGINT): LONGINT;
+  (* |00000S   imm10  00J0J   imm11   |
+     |                  1 2
+     I1 = NOT(J1 EOR S); I2 = NOT(J2 EOR S); imm32 = SignExtend(S:I1:I2:imm10:imm11:'0', 32);
+  *) 
+  VAR res: LONGINT;
+    S, J1, J2: BYTE;
+    imm10, imm11: LONGINT;
+  BEGIN
+    ASSERT(~ODD(disp));
+    IF (disp < -16777216) OR (disp >= 16777216) THEN OM4S.Mark("jump too far") END;
+    disp := disp DIV 2;
+    S := disp DIV C23 MOD C1;
+    disp := disp MOD C23;
+    (*J1 = NOT(I1) EOR S
+     J2 = NOT(I2) EOR S*)
+    J1 := disp DIV C22 MOD C1;
+    disp := disp MOD C22;
+    J2 := disp DIV C21 MOD C1;
+    disp := disp MOD C21;
+    IF S=0 THEN
+      J1 := 1-J1;
+      J2 := 1-J2;
+    END;
+    imm10 := disp DIV C11 MOD C10;
+    imm11 := disp MOD C11;
+ 
+    RETURN imm11 + S*C26 + imm10*C16+J1*C13+J2*C11
+  END encEvenImm25;
+  
+  PROCEDURE encMovImm(reg: BYTE; val: LONGINT);
+  VAR hw: LONGINT;
+  
+    PROCEDURE encRegImm(reg: BYTE; val: LONGINT): LONGINT;
+    (*|xxxxxixxxxxximm4ximm reg  imm8  |
+      |                   3            |
+      val = imm4:i:imm3:imm8*)
+    BEGIN
+      RETURN val DIV C12 MOD C4*C16 + val DIV C11 MOD C1*C26 + 
+             val DIV C8 MOD C3*C12 + reg*C8 + val MOD C8
+    END encRegImm;
+
+  BEGIN
+    ASSERT(reg < 16);
+    hw := val MOD C16;
+    IF (reg < 8) & (hw < C8) THEN Put1(MOVN + reg*C8 + hw)
+    ELSE Put0(MOVW + encRegImm(reg, val)) END;
+    hw := val DIV C16 MOD C16;
+    IF hw # 0 THEN Put0(MOVT + encRegImm(reg, val)) END
+  END encMovImm;
+
+  PROCEDURE encDPImm32(op, a, b: BYTE; imm: LONGINT);
+  BEGIN
+    ASSERT (op < 1);
+    ASSERT (a < 16);
+    ASSERT (b < 16);
+    IF (imm >= 0) & (imm < 8) & (a < 8) & (b < 8) THEN
+      Put1(imm3map[op] + imm*C6 + b*C3 + a)
+    ELSIF (imm >= 0) & (imm < 256) & (a < 8) & (a = b) THEN
+      Put1(imm8map[op] + a*C8 + imm)
+    ELSIF (imm >= 0) & (imm < 4096) THEN
+      Put0(imm12map[op] + imm DIV C11 MOD C1 + b*C16 +
+        imm DIV C8 MOD C3*C12 + imm MOD C8)
+    ELSE
+      encMovImm(RH, imm);
+      IF (a < 8) & (b < 8) & (RH < 8) THEN Put1(reg3map[0] + RH*C6 + b*C3 + a)
+      ELSE Put0(reg4map[0] + b*C16 + a*C8 + RH) END
+    END
+  END encDPImm32;
+  
   PROCEDURE incR;
   BEGIN
     IF RH < MT-1 THEN INC(RH) ELSE OM4S.Mark("register stack overflow") END
@@ -132,55 +216,69 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
  
   PROCEDURE Trap(cond, num: LONGINT);
   (*
-  * Trap is implemented as an coprocessor instruction targeting a
-  * non existing coprocessor, i.e. not CP10 or CP11 assocatied to FPU.
-  * The encoding is 111x11xxxxxxxxxxxxxx0xxxxxxxxxxx, that leaves 26 bits
-  * for describing the trap number.
-  * 
-  * In this implementation, 24 bits will be used, like RISC-5
-  * 1110110ppppppppppppp0pppppppnnnn
-  * This generate an exception trapped by the usage fault handler 
-  * implemented as the trap procedure in the System module.
+    Trap is implemented as a coprocessor instruction targeting a
+    non existing coprocessor, i.e. not CP10 or CP11 assocatied to FPU.
+    The encoding is 111x11xxxxxxxxxxxxxx0xxxxxxxxxxx, that leaves 26 bits
+    for describing the trap number and file position.
+    
+    In this implementation, 24 bits will be used, like in RISC-5 code
+    1110110ppppppppppppp0pppppppnnnn
+    This will generate an exception trapped by the usage fault handler 
+    implemented as the trap procedure of the System module.
   *)
-  VAR pos : LONGINT;
+  VAR pos: LONGINT;
   BEGIN 
-    ASSERT(cond # 15);
+    ASSERT(cond # NV);
     (*IT<cond> encoding if needed*)
-    IF cond # 7 THEN Put1(IT*100H + cond*10H + 8H (*IT*) END;
+    IF cond # AL THEN Put1(IT*C8 + cond*C4 + 8H (*IT*)) END;
     pos := OM4S.Pos();
-    Put0(CoP + pos DIV 800000H, 
-        ((pos DIV 80H MOD 4000H*100H) + pos MOD 80H)*10H + num)
+    ASSERT(pos < C20);
+    ASSERT(num < C4);
+    Put0(CoP + pos DIV C7*C12 + pos MOD C7*C4 + num)
   END Trap;
 
   (*handling of forward reference, fixups of branch addresses and constant tables*)
 
   PROCEDURE negated(cond: LONGINT): LONGINT;
   BEGIN
-(*    IF cond < 8 THEN cond := cond+8 ELSE cond := cond-8 END ; *)
-    IF ODD(cond) THEN DEC(cond) ELSE INC(cond);
+    IF ODD(cond) THEN DEC(cond) ELSE INC(cond) END;
     RETURN cond
   END negated;
 
+(*  Format of forward jump (B):
+
+    The bits encoding displacement are scattered in ARM thumb B and B<c> instructions.
+    FJump and CFJump generate 32bit pseudo branch instructions with this format:
+    11110ddddddddddddddddddddddddddd
+    
+    11110: branch signature
+    d: link descriptor (27 bits)
+*)
+
   PROCEDURE fix(at, with: LONGINT);
-  BEGIN code[at] := code[at] DIV C24 * C24 + (with MOD C24)
+  (*The statement must be a wide jump with immediate offset (B.W <Label>).*)
+  BEGIN
+    ASSERT(code[at] DIV C3 = BRSIG); (*Check branch signature*)
+    IF with >= C24 THEN OM4S.Mark("forward jump too far")
+    ELSE modify(at, BW + encEvenImm25(with)) END
   END fix;
 
   PROCEDURE FixOne*(at: LONGINT);
-  BEGIN fix(at, pc-at-1)
+  BEGIN fix(at, pc-at-4)
   END FixOne;
 
   PROCEDURE FixLink*(L: LONGINT);
     VAR L1: LONGINT;
   BEGIN
-    WHILE L # 0 DO L1 := code[L] MOD 40000H; fix(L, pc-L-1); L := L1 END
+    WHILE L # 0 DO L1 := load24(L); fix(L, pc-L-4); L := L1 END
   END FixLink;
 
   PROCEDURE FixLinkWith(L0, dst: LONGINT);
     VAR L1: LONGINT;
   BEGIN
     WHILE L0 # 0 DO
-      L1 := code[L0] MOD C24;
-      code[L0] := code[L0] DIV C24 * C24 + ((dst - L0 - 1) MOD C24); L0 := L1
+      L1 := load24(L0) MOD C24;
+      modify(L0, dst-L0-4); L0 := L1
     END
   END FixLinkWith;
 
@@ -188,18 +286,36 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR L2, L3: LONGINT;
   BEGIN 
     IF L0 # 0 THEN L3 := L0;
-      REPEAT L2 := L3; L3 := code[L2] MOD 40000H UNTIL L3 = 0;
-      code[L2] := code[L2] + L1; L1 := L0
+      REPEAT L2 := L3; ASSERT(code[L2] DIV C3 = BRSIG); (*Check branch signature*)
+        L3 := load24(L2) UNTIL L3 = 0;
+      modify(L2, L2 DIV C27 * C27 + L1); L1 := L0
     END ;
     RETURN L1
   END merged;
 
   (* loading of operands and addresses into registers *)
 
+(*  Format of static load (LDR immediate) for GetSB:
+
+    The size of the offset is limited to 12 bits, that is 1K words.
+    This is too short to implement the fixup link. We'll use a pseudo
+    LDR instruction with the following format:
+    1111ddddbbbbdddddddddddddddddddd
+    
+    1111: branch signature
+    bbbb: no of module
+    d: offset of next op to fix
+    
+*)
+
   PROCEDURE GetSB(base: LONGINT);
   BEGIN
-    IF version = 0 THEN Put1(Mov, RH, 0, VarORG0)
-    ELSE Put2(Ldr, RH, -base, pc-fixORGD); fixORGD := pc-1
+    IF version = 0 THEN encMovImm(RH, VarORG0)
+    ELSE
+      IF pc-fixORGD > C20 THEN 
+        OM4S.Mark("too many instruction between static access") END;
+      Put0(LDRIT3 DIV C28*C28 + RH*C24 + (-base)*C20 + pc-fixORGD);
+      fixORGD := pc-4
     END
   END GetSB;
 
@@ -210,18 +326,18 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE load(VAR x: Item);
     VAR op: LONGINT;
   BEGIN
-    IF x.type.size = 1 THEN op := Ldr+1 ELSE op := Ldr END ;
+    IF x.type.size = 1 THEN op := LDRBIT2 ELSE op := LDRIT3 END ;
     IF x.mode # Reg THEN
       IF x.mode = OM4B.Const THEN
         IF x.type.form = OM4B.Proc THEN
           IF x.r > 0 THEN OM4S.Mark("not allowed")
-          ELSIF x.r = 0 THEN Put3(BL, 7, 0); Put1a(Sub, RH, LNK, pc*4 - x.a)
-          ELSE GetSB(x.r); Put1(Add, RH, RH, x.a + 100H) (*mark as progbase-relative*)
+          ELSIF x.r = 0 THEN
+            Put0(BLW + encEvenImm25(0));  (* Put address of next statement in LR *)
+            encDPImm32(SUB, RH, LNK, pc - x.a)
+          ELSE GetSB(x.r); encDPImm32(ADD, RH, RH, x.a + C8) (*mark as progbase-relative*)
           END
-        ELSIF (x.a <= 0FFFFH) & (x.a >= -10000H) THEN Put1(Mov, RH, 0, x.a)
-        ELSE Put1(Mov+U, RH, 0, x.a DIV 10000H MOD 10000H);
-          IF x.a MOD 10000H # 0 THEN Put1(Ior, RH, RH, x.a MOD 10000H) END
-        END ;
+        ELSE encMovImm(RH, x.a) END;
+(* TODO: j'en suis là *)
         x.r := RH; incR
       ELSIF x.mode = OM4B.Var THEN
         IF x.r > 0 THEN (*local*) Put2(op, RH, SP, x.a + frame)
@@ -826,7 +942,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.r >= 0 THEN Put3(BL, 7, (x.a DIV 4)-pc-1)
       ELSE (*imported*)
         IF pc - fixORGP < 1000H THEN
-          Put3(BL, 7, ((-x.r) * 100H + x.a) * 1000H + pc-fixORGP); fixORGP := pc-1
+          Put3(BL, 7, ((-x.r) * C8 + x.a) * 1000H + pc-fixORGP); fixORGP := pc-1
         ELSE OM4S.Mark("fixup impossible")
         END
       END
@@ -848,7 +964,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR a, r: LONGINT;
   BEGIN frame := 0;
     IF ~int THEN (*procedure prolog*)
-      IF locblksize >= 10000H THEN OM4S.Mark("too many locals") END ;
+      IF locblksize >= C16 THEN OM4S.Mark("too many locals") END ;
       a := 4; r := 0;
       Put1(Sub, SP, SP, locblksize); Put2(Str, LNK, SP, 0);
       WHILE a < parblksize DO Put2(Str, r, SP, a); INC(r); INC(a, 4) END
@@ -865,7 +981,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       Put2(Ldr, LNK, SP, 0); Put1(Add, SP, SP, size); Put3(BR, 7, LNK)
     ELSE (*interrupt return, restore R2, R1, R0*)
       Put2(Ldr, 2, SP, 8); Put2(Ldr, 1, SP, 4); Put2(Ldr, 0, SP, 0); Put1(Add, SP, SP, size);
-      Put3(BR, 7, 10H) (*RTI*)
+      Put3(BR, 7, C4) (*RTI*)
     END ;
     RH := 0
   END Return;
@@ -1009,15 +1125,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Shift;
 
   PROCEDURE ADC*(VAR x, y: Item);
-  BEGIN load(x); load(y); Put0(Add+2000H, x.r, x.r, y.r); DEC(RH)
+  BEGIN load(x); load(y); Put0(Add+C13, x.r, x.r, y.r); DEC(RH)
   END ADC;
 
   PROCEDURE SBC*(VAR x, y: Item);
-  BEGIN load(x); load(y); Put0(Sub+2000H, x.r, x.r, y.r); DEC(RH)
+  BEGIN load(x); load(y); Put0(Sub+C13, x.r, x.r, y.r); DEC(RH)
   END SBC;
 
   PROCEDURE UML*(VAR x, y: Item);
-  BEGIN load(x); load(y); Put0(Mul+2000H, x.r, x.r, y.r); DEC(RH)
+  BEGIN load(x); load(y); Put0(Mul+C13, x.r, x.r, y.r); DEC(RH)
   END UML;
 
   PROCEDURE Bit*(VAR x, y: Item);
@@ -1030,7 +1146,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Register*(VAR x: Item);
   BEGIN (*x.mode = Const*)
-    Put0(Mov, RH, 0, x.a MOD 10H); x.mode := Reg; x.r := RH; incR
+    Put0(Mov, RH, 0, x.a MOD C4); x.mode := Reg; x.r := RH; incR
   END Register;
 
   PROCEDURE H*(VAR x: Item);
@@ -1117,7 +1233,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     size := varsize + strx + comsize + (pc + nofimps + nofent + nofptrs + 1)*4;  (*varsize includes type descriptors*)
     
-    OM4B.MakeFileName(name, modid, ".rsc"); (*write code file*)
+    OM4B.MakeFileName(name, modid, ".m4c"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.Write(R, CHR(version));
     Files.WriteInt(R, size);
     obj := OM4B.topScope.next;
@@ -1150,9 +1266,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF (obj.class = OM4B.Const) & (obj.type.form = OM4B.Proc) OR (obj.class = OM4B.Var) THEN
           Files.WriteInt(R, obj.val);
         ELSIF obj.class = OM4B.Typ THEN
-          IF obj.type.form = OM4B.Record THEN Files.WriteInt(R,  obj.type.len MOD 10000H)
+          IF obj.type.form = OM4B.Record THEN Files.WriteInt(R,  obj.type.len MOD C16)
           ELSIF (obj.type.form = OM4B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
-            Files.WriteInt(R,  obj.type.base.len MOD 10000H)
+            Files.WriteInt(R,  obj.type.base.len MOD C16)
           END
         END
       END ;
@@ -1169,4 +1285,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Close;
 
 BEGIN relmap[0] := EQ; relmap[1] := NE; relmap[2] := LT; relmap[3] := LE; relmap[4] := GT; relmap[5] := GE;
+  imm3map[SUB] := 1E00H; imm8map[SUB] := 3800H; imm12map[SUB] := 0F2A00000H; reg3map[SUB] := 1A00H; reg4map[SUB] := 0EBA00000H;
+  imm3map[ADD] := 1C00H; imm8map[ADD] := 3000H; imm12map[ADD] := 0F2000000H; reg3map[ADD] := 1800H; reg4map[ADD] := 0EB000000H;
 END OM4G.
