@@ -87,10 +87,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     CMPRT2  = 4500H;
     
     (* Arithmetic and logical operations *)
-    SUB=0; ADD=1; RSB=2; EOR=3;
+    SUB=0; ADD=1; RSB=2; EOR=3; AND=4; BIC=5; ORR=6;
 
     (* Shift operations *)
-    LSl=0; ASR=1; LSR=2;
+    LSl=0; ASR=1; LSR=2; ROR=3;
 
     MULN  = 4340H;
     MULW  = 0FB00F000H;
@@ -164,16 +164,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     data: ARRAY maxTD OF LONGINT;  (*type descriptors*)
     str: ARRAY maxStrx OF CHAR;
     
-    imm3map: ARRAY 5 OF LONGINT;
-    imm8map: ARRAY 5 OF LONGINT;
-    imm12map: ARRAY 5 OF LONGINT;
+    imm3map: ARRAY 10 OF LONGINT;
+    imm8map: ARRAY 10 OF LONGINT;
+    imm12map: ARRAY 10 OF LONGINT;
     
-    reg3map: ARRAY 5 OF LONGINT;
-    reg4map: ARRAY 5 OF LONGINT;
-    reg4shmap: ARRAY 5 OF LONGINT;
+    reg3map: ARRAY 10 OF LONGINT;
+    reg4map: ARRAY 10 OF LONGINT;
+    reg4shmap: ARRAY 10 OF LONGINT;
 
     shimm5map: ARRAY 5 OF LONGINT;
     shimm5wmap: ARRAY 5 OF LONGINT;
+
+    shreg3map: ARRAY 5 OF LONGINT;
+    shreg4map: ARRAY 5 OF LONGINT;
 
     lastInstrSetFlags: BOOLEAN; (*TRUE if last instructions set flags according to RH*)
     nbRmnITBlockInsts: LONGINT; (*Number of remaining instructions in current IT block*)
@@ -294,7 +297,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE encDPImm32(op, a, b: BYTE; imm: LONGINT);
   BEGIN
-    ASSERT (op <= EOR);
+    ASSERT (op <= ORR);
     ASSERT ((a < C4) & (b < C4));
     IF (imm >= 0) & (imm < C3) & (a < C3) & (b < C3) & (imm3map[op] # 0) THEN
       (*|   op  immbbbaaa|
@@ -310,7 +313,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         RSB (immediate) T2*) 
       Put0(imm12map[op] + imm DIV C11 MOD C1*C20 + b*C16 +
         imm DIV C8 MOD C3*C12 + a*C8 + imm MOD C8);
-      lastInstrSetFlags := ODD(reg4shmap[op] DIV C20);
+      lastInstrSetFlags := ODD(imm12map[op] DIV C20);
     ELSE
       ASSERT(nbRmnITBlockInsts = 0);
       encMovImm32(RH, imm);
@@ -325,7 +328,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE encDPReg(op, a, b, c: BYTE; shift: LONGINT);
   BEGIN
-    ASSERT (op <= EOR);
+    ASSERT (op <= ORR);
     ASSERT ((a < C4) & (b < C4) & (c < C4));
     IF (a < C3) & (b < C3) & (c < C3) & (shift = 0) & (reg3map[op] # 0) THEN
       (*ADD/SUB (Register) T1*)
@@ -342,14 +345,26 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE encShiftImm5(op, a, b: BYTE; shift: LONGINT);
   BEGIN
-    ASSERT (op <= ASR);
-    ASSERT ((a < C4) & (b < C4) & (shift < C5));
-    IF (a < C3) & (b < C3) THEN Put1(shimm5map[op] + shift*C6 + b*C3 + a);
+    ASSERT (op <= ROR);
+    ASSERT ((a < 15) & (b < C4) & (shift < C5));
+    IF (a < C3) & (b < C3) & (shimm5map[op] # 0FFFFH) THEN Put1(shimm5map[op] + shift*C6 + b*C3 + a);
       lastInstrSetFlags := nbRmnITBlockInsts = 0; (* not in IT block *)
     ELSE Put0(shimm5wmap[op] + a*C8 + b + formatShiftImm5(shift));
-      lastInstrSetFlags := ODD(reg4shmap[op] DIV C20)
+      lastInstrSetFlags := ODD(shimm5wmap[op] DIV C20)
     END
   END encShiftImm5;
+  
+  PROCEDURE encShiftReg(op, a, b, c: BYTE);
+  BEGIN
+    ASSERT (op <= ROR);
+    ASSERT((a < 15) & (a # 13) & (b < 15) & (b # 13) & (c < 15) & (c # 13));
+    IF (a < C3) & (a = b) THEN Put1(shreg3map[op] + c*C3 + a);
+      lastInstrSetFlags := nbRmnITBlockInsts = 0; (* not in IT block *)
+    ELSE
+      Put0(shreg4map[op] + format3Reg4(a, b, c));
+      lastInstrSetFlags := ODD(shreg4map[op] DIV C20)
+    END
+  END encShiftReg;
   
   PROCEDURE encCMPImm8(a, imm: LONGINT);
   BEGIN
@@ -945,12 +960,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* Code generation for set operators *)
 
-(* TODO: j'en suis là *)
-
   PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
   BEGIN
-    IF x.mode = OM4B.Const THEN x.a := LSL(1, x.a) 
-    ELSE load(x); Put1(Mov, RH, 0, 1); Put0(Lsl, x.r, RH,  x.r)
+    IF x.mode = OM4B.Const THEN x.a := LSL(1, x.a)
+    ELSE load(x); encMovImm32(RH, 1); encShiftReg(LSl, x.r, RH,  x.r)
     END
   END Singleton;
 
@@ -959,24 +972,20 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF (x.mode = OM4B.Const) & ( y.mode = OM4B.Const) THEN
       IF x.a <= y.a THEN x.a := LSL(2, y.a) - LSL(1, x.a) ELSE x.a := 0 END
     ELSE
-      IF (x.mode = OM4B.Const) & (x.a <= 16) THEN x.a := LSL(-1, x.a)
-      ELSE load(x); Put1(Mov, RH, 0, -1); Put0(Lsl, x.r, RH, x.r)
-      END ;
-      IF (y.mode = OM4B.Const) & (y.a < 16) THEN Put1(Mov, RH, 0, LSL(-2, y.a)); y.mode := Reg; y.r := RH; incR
-      ELSE load(y); Put1(Mov, RH, 0, -2); Put0(Lsl, y.r, RH, y.r)
-      END ;
+      load(x); encMovImm32(RH, -1); encShiftReg(LSl, x.r, RH, x.r);
+      load(y); encMovImm32(RH, -2); encShiftReg(LSl, y.r, RH, y.r);
       IF x.mode = OM4B.Const THEN
-        IF x.a # 0 THEN Put1(Xor, y.r, y.r, -1); Put1a(And, RH-1, y.r, x.a) END ;
-        x.mode := Reg; x.r := RH-1
-      ELSE DEC(RH); Put0(Ann, RH-1, x.r, y.r)
+        IF x.a # 0 THEN encDPImm32(EOR, y.r, y.r, -1); encDPImm32(AND, RH-1, y.r, x.a) END ;
+        x.mode := Reg; x.r := RH-1 (*TODO Vérifier s'il ne maque pas des DEC(RH)*)
+      ELSE DEC(RH); encDPReg(BIC, RH-1, x.r, y.r, 0)
       END
     END
   END Set;
 
   PROCEDURE In*(VAR x, y: Item);  (* x := x IN y *)
   BEGIN load(y);
-    IF x.mode = OM4B.Const THEN Put1(Ror, y.r, y.r, (x.a + 1) MOD 20H); DEC(RH)
-    ELSE load(x); Put1(Add, x.r, x.r, 1); Put0(Ror, y.r, y.r, x.r); DEC(RH, 2)
+    IF x.mode = OM4B.Const THEN encShiftImm5(ROR, y.r, y.r, (x.a + 1) MOD 20H); DEC(RH)
+    ELSE load(x); encDPReg(ADD, x.r, x.r, 1, 0); encShiftReg(ROR, y.r, y.r, x.r); DEC(RH, 2)
     END ;
     SetCC(x, MI)
   END In;
@@ -994,22 +1003,24 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       x.a := SYSTEM.VAL(LONGINT, xset)
     ELSIF y.mode = OM4B.Const THEN
       load(x);
-      IF op = OM4S.plus THEN Put1a(Ior, x.r, x.r, y.a)
-      ELSIF op = OM4S.minus THEN Put1a(Ann, x.r, x.r, y.a)
-      ELSIF op = OM4S.times THEN Put1a(And, x.r, x.r, y.a)
-      ELSIF op = OM4S.rdiv THEN Put1a(Xor, x.r, x.r, y.a)
+      IF op = OM4S.plus THEN encDPImm32(ORR, x.r, x.r, y.a)
+      ELSIF op = OM4S.minus THEN encDPImm32(BIC, x.r, x.r, y.a)
+      ELSIF op = OM4S.times THEN encDPImm32(AND, x.r, x.r, y.a)
+      ELSIF op = OM4S.rdiv THEN encDPImm32(EOR, x.r, x.r, y.a)
       END ;
     ELSE load(x); load(y);
-      IF op = OM4S.plus THEN Put0(Ior, RH-2, x.r, y.r)
-      ELSIF op = OM4S.minus THEN Put0(Ann, RH-2, x.r, y.r)
-      ELSIF op = OM4S.times THEN Put0(And, RH-2, x.r, y.r)
-      ELSIF op = OM4S.rdiv THEN Put0(Xor, RH-2, x.r, y.r)
+      IF op = OM4S.plus THEN encDPImm32(ORR, RH-2, x.r, y.r)
+      ELSIF op = OM4S.minus THEN encDPImm32(BIC, RH-2, x.r, y.r)
+      ELSIF op = OM4S.times THEN encDPImm32(AND, RH-2, x.r, y.r)
+      ELSIF op = OM4S.rdiv THEN encDPImm32(EOR, RH-2, x.r, y.r)
       END ;
       DEC(RH); x.r := RH-1
     END 
   END SetOp;
 
   (* Code generation for relations *)
+
+(* TODO: j'en suis là *)
 
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN
@@ -1564,10 +1575,14 @@ BEGIN relmap[0] := EQ; relmap[1] := NE; relmap[2] := LT; relmap[3] := LE; relmap
   imm3map[ADD] := 1C00H; imm8map[ADD] := 3000H; imm12map[ADD] := 0F2000000H; reg3map[ADD] := 1800H; reg4map[ADD] = 4400H; reg4shmap[ADD] := 0EB100000H;
   imm3map[RSB] := 4240H; imm8map[RSB] := 0H;    imm12map[RSB] := 0H;         reg3map[RSB] := 0H;    reg4map[RSB] = 0H;    reg4shmap[RSB] := 0EBD00000H;
   imm3map[EOR] := 0H;    imm8map[EOR] := 0H;    imm12map[EOR] := 0H;         reg3map[EOR] := 4040H; reg4map[EOR] = 0H;    reg4shmap[EOR] := 0EA900000H;
+  imm3map[AND] := 0H;    imm8map[AND] := 0H;    imm12map[AND] := 0H;         reg3map[AND] := 4000H; reg4map[AND] = 0H;    reg4shmap[AND] := 0EA100000H;
+  imm3map[BIC] := 0H;    imm8map[BIC] := 0H;    imm12map[BIC] := 0H;         reg3map[BIC] := 4380H; reg4map[BIC] = 0H;    reg4shmap[BIC] := 0EA300000H;
+  imm3map[ORR] := 0H;    imm8map[ORR] := 0H;    imm12map[ORR] := 0H;         reg3map[ORR] := 4300H; reg4map[ORR] = 0H;    reg4shmap[ORR] := 0EA500000H;
   
-  shimm5map[LSl] := 0000H; shimm5wmap[LS1] := 0EA5F0000H;
-  shimm5map[ASR] := 1000H; shimm5wmap[ASR] := 0EA5F0020H;
-  shimm5map[LSR] := 0800H; shimm5wmap[ASR] := 0EA5F0010H;
+  shimm5map[LSl] :=  0000H; shimm5wmap[LS1] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
+  shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
+  shimm5map[LSR] :=  0800H; shimm5wmap[LSR] := 0EA5F0010H; shreg3map[LSR] := 40C0H; shreg4map[LSR] := 0FA30F000H;
+  shimm5map[ROR] := 0FFFFH; shimm5wmap[ROR] := 0EA5F0030H; shreg3map[ROR] := 41C0H; shreg4map[ROR] := 0FA70F000H;
   
   lastInstrSetFlags := FALSE; nbRmnITBlockInsts := 0
 END OM4G.
