@@ -63,6 +63,18 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VNEG    = 0EEB10A40H;
     (*|1110 1110 1D11 0001  Vd  101s 01M0  Vm |
       VNEG<c>.F32 <Sd>, <Sm>*)
+    VADD    = 0EE300A00H;
+    (*|1110 1110 0D11  Vn   Vd  101s N0M0  Vm |
+      VADD<c>.F32 <Sd>, <Sn>, <Sm>*)
+    VSUB    = 0EE300A40H;
+    (*|1110 1110 0D11  Vn   Vd  101s N1M0  Vm |
+      VSUB<c>.F32 <Sd>, <Sn>, <Sm>*)
+    VMUL    = 0EE200A00H;
+    (*|1110 1110 0D10  Vn   Vd  101s N0M0  Vm |
+      VMUL<c>.F32 <Sd>, <Sn>, <Sm>*)
+    VDIV    = 0EE800A00H;
+    (*|1110 1110 1D00  Vn   Vd  101s N0M0  Vm |
+      VDIV<c>.F32 <Sd>, <Sn>, <Sm>*)
     
     LDRIT3  = 0F8D00000H;
     LDRBIT2 = 0F8900000H;
@@ -919,21 +931,21 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END DivOp;
 
-(* TODO: j'en suis là *)
-
   (* Code generation for REAL operators *)
 
   PROCEDURE RealOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
   BEGIN load(x); load(y);
-    IF op = OM4S.plus THEN Put0(Fad, RH-2, x.r, y.r)
-    ELSIF op = OM4S.minus THEN Put0(Fsb, RH-2, x.r, y.r)
-    ELSIF op = OM4S.times THEN Put0(Fml, RH-2, x.r, y.r)
-    ELSIF op = OM4S.rdiv THEN Put0(Fdv, RH-2, x.r, y.r)
-    END ;
-    DEC(RH); x.r := RH-1
+    IF op = OM4S.plus THEN encFPOpReg(VADD, SH-2, x.r, y.r)
+    ELSIF op = OM4S.minus THEN encFPOpReg(VSUB, SH-2, x.r, y.r)
+    ELSIF op = OM4S.times THEN encFPOpReg(VMUL, SH-2, x.r, y.r)
+    ELSIF op = OM4S.rdiv THEN encFPOpReg(VDIV, SH-2, x.r, y.r)
+    END;
+    DEC(SH); x.r := SH-1
   END RealOp;
 
   (* Code generation for set operators *)
+
+(* TODO: j'en suis là *)
 
   PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
   BEGIN
