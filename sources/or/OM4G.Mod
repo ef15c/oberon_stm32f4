@@ -11,7 +11,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     NBS = 32; (* Number of single float registers in the FPU bank *)
     VarORG0 = 0D0201000H;  (*for bare metal program only, 
     0D0200400H is the end address of VGA buffers*)
-    maxCode = 8000*4; maxStrx = 2400; maxTD = 160;
+    maxCode = 16000*4; maxStrx = 2400; maxTD = 160;
     
     (*Powers of two*)
     C30=40000000H; C28=10000000H; C27=8000000H; C26=4000000H;
@@ -39,7 +39,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       |                  1 2           |
       BL.W *)
 
-    BT1=0D000H;
+    BCT1=0D000H;
     (*|1101cond  imm8  |
       B T1*) 
 
@@ -59,6 +59,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       VMOV<c>.F32 <Sd>, <Sm>*)
       
     VLDR    = 0ED900A00H;
+    (*|1110 1101 UD01   Rn  Vd  1010   imm8   |
+      VLDR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
+    VSTR    = 0ED800A00H;
+    (*|1110 1101 UD00  Rn   Vd  1010   imm8   |
+      VSTR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
     
     VNEG    = 0EEB10A40H;
     (*|1110 1110 1D11 0001  Vd  101s 01M0  Vm |
@@ -86,6 +91,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       VMRS<c> <Rt>, FPSCR*)
     
     LDRIT3  = 0F8D00000H;
+    (*|1111 1000 1101  Rn   Rt      imm12     |
+      LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
     LDRBIT2 = 0F8900000H;
     (*|1111 1000 1001  Rn   Rt      imm12     |
       LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
@@ -94,6 +101,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       LDRB<c> <Rt>,[<Rn>,#-<imm8>]
       LDRB<c> <Rt>,[<Rn>],#+/-<imm8>
       LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
+    
+    STRIT3 = 0F8C000000H;
+    (*|1111 1000 1100  Rn   Rt     imm12      |
+      STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
+    STRBIT2 = 0F8800000H;
+    (*|1111 1000 1000  Rn   Rt      imm12     |
+      STRB<c>.W <Rt>,[<Rn>,#<imm12>]*)
     
     BRSIG   = 1EH;
 
@@ -140,13 +154,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     p:    program based variable
     vvvv: number of the variable
     
-
-    ADD:
-    10aaaabbbb00000000000000000pvvvv
 *)
     EXTLDR* =0; EXTSTR* =2; EXTADD* =4;
     EXTLDRB*=1; EXTSTRB*=3; EXTADDB*=5;
-    EXTVLDR*=6;
+    EXTVLDR*=6; EXTVSTR*=7;
 
   TYPE Item* = RECORD
     mode*: INTEGER;
@@ -243,7 +254,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     ASSERT(~ODD(disp));
     IF (disp < -16777216) OR (disp >= 16777216) THEN OM4S.Mark("jump too far") END;
-    disp := disp DIV 2;
+    disp := disp DIV C1;
     S := disp DIV C23 MOD C1;
     disp := disp MOD C23;
     (*J1 = NOT(I1) EOR S
@@ -306,7 +317,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END encMovImm32;
 
-  PROCEDURE encLdrImm12(op, a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
+  PROCEDURE encMemImm12(op, a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
   BEGIN
   (*|111110001101 Rn  Rt   imm12     |
      F   8   D LDR (immediate) T3
@@ -315,7 +326,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      F   8   9 LDRB (immediate) T2*)
     IF imm >= C12 THEN OM4S.Mark(msg) END;
     Put0(op + a*C12 + b*C16 + imm);
-  END encLdrImm12;
+  END encMemImm12;
   
   PROCEDURE encDPImm32(op, a, b: BYTE; imm: LONGINT);
   BEGIN
@@ -516,7 +527,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE fix8(at, with: LONGINT);
   (*The statement must be a narrow jump with immediate offset (B.N <Label>).*)
   BEGIN
-    ASSERT(code[at+1] DIV C4*C4 = BT1); (*Check op code*)
+    ASSERT(code[at+1] DIV C4*C4 = BCT1); (*Check op code*)
     ASSERT (~ODD(with)); with := with DIV C1;
     IF (with < -C7) OR (with >= C7) THEN OM4S.Mark("narrow jump too far");
     with := with MOD C8;
@@ -560,35 +571,38 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF version = 0 THEN encMovImm32(RH, VarORG0)
     ELSE
       IF pc-fixORGD > C25 THEN OM4S.Mark("too many instruction between static access") END;
-      Put0(RH*C28 + (-base)*C24 + (pc-fixORGD) DIV 2);
+      Put0(RH*C28 + (-base)*C24 + (pc-fixORGD) DIV C1);
       fixORGD := pc-4
     END
   END GetSB;
 
-  PROCEDURE encStaticAccess(base, op, ope, par: LONGINT);
+  PROCEDURE encStaticAccess(base, op, ope, a, b: BYTE; par: LONGINT);
   BEGIN
     ASSERT(base <= 0);
+    ASSERT((a < C4) & (b < C4));
     IF base=0 THEN (*static variable in current module*)
       IF par >= C12 THEN OM4S.Mark("static var too far") END;
-      Put0(op + RH*C12 + RH*C16 + par)
+      Put0(op + a*C12 + b*C16 + par)
     ELSE
       ASSERT(ope < C4);
       ASSERT(par < C4);
-      Put0(ope*C28 + RH*C24 + RH*C20 + par)
+      Put0(ope*C28 + a*C24 + b*C20 + par)
     END
   END encStaticAccess;
   
-  PROCEDURE encStaticRealAccess(base, op, ope, par: LONGINT);
+  PROCEDURE encStaticRealAccess(base, op, ope, s, r: BYTE; par: LONGINT);
   BEGIN
     ASSERT(base <= 0);
+    ASSERT((r < C4) & (s < C5));
     IF base=0 THEN (*static real variable in current module*)
       ASSERT(par MOD C2 = 0);
       IF par >= C10 THEN OM4S.Mark("static real var too far") END;
-      Put0(op + 1*C23 + SH MOD C1*C22 + RH*C16 + SH DIV C1*C12 + par DIV C2)
+      Put0(op + 1*C23 + s MOD C1*C22 + r*C16 + s DIV C1*C12 + par DIV C2)
     ELSE
       ASSERT(ope < C4);
       ASSERT(par < C4);
-      Put0(ope*C28 + RH*C24 + RH*C20 + par)
+      IF s >= C4 THEN OM4S.Mark("extern real var access not implemented for registers above 15") END;
+      Put0(ope*C28 + s*C24 + r*C20 + par)
     END
   END encStaticRealAccess;
   
@@ -619,31 +633,45 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           END
         END;
       ELSIF x.mode = OM4B.Var THEN
-        IF x.type.form = OM4B.Int THEN
-          IF x.r > 0 THEN (*local*) encLdrImm12(op, RH, SP, x.a + frame, "local var too far");
-          ELSE GetSB(x.r); encStaticAccess(x.r, op, opext, x.a) END;
-          x.r := RH; incR
-        ELSE ASSERT(x.type.form = OM4B.Real);
-          IF x.r > 0 THEN (*local*)
-            (*|11101101UD01 Rn  Vd 1010  imm8  |
-             VLDR{<c>}{<q>}{.32} <Sd>, [<Rn> {, #+/-<imm>}]*)
-            ASSERT((x.a + frame) MOD C2 = 0);
-            IF x.a + frame > C10 THEN OM4S.Mark("local real var too far") END;
+        IF x.r > 0 THEN (*local*) 
+          IF x.type.form = OM4B.Real THEN ASSERT((x.a + frame) MOD C2 = 0);
+            IF x.a + frame >= C10 THEN OM4S.Mark("local real var too far") 
+            END;
             Put0(VLDR + 1*C23 + SH MOD C1*C22 + SP*C16 + SH DIV C1*C12 + (x.a + frame) DIV C2);
-          ELSE GetSB(x.r); 
-            encStaticRealAccess(x.r, VLDR, EXTVLDR, x.a)
-          END;
-          x.r := SH; incS
-        END;
+            x.r := SH; incS
+          ELSE encMemImm12(op, RH, SP, x.a + frame, "local var too far");
+            x.r := RH; incR
+          END
+        ELSE GetSB(x.r);
+          IF x.type.form = OM4B.Real THEN encStaticRealAccess(x.r, VLDR, EXTVLDR, SH, RH, x.a);
+            x.r := SH; incS
+          ELSE encStaticAccess(x.r, op, opext, RH, RH, x.a);
+            x.r := RH; incR
+          END
+        END
       ELSIF x.mode = OM4B.Par THEN
-        encLdrImm12(LDRIT3, RH, SP, x.a + frame, "param offset 0 too far");
-        encLdrImm12(op, RH, RH, x.b, "param offset 1 too far");
-        x.r := RH; incR
-      ELSIF x.mode = RegI THEN encLdrImm12(op, x.r, x.r, x.a, "RegI too far")
+        encMemImm12(LDRIT3, RH, SP, x.a + frame, "param offset 0 too far");
+        IF x.type.form = OM4B.Real THEN ASSERT((x.b + frame) MOD C2 = 0);
+          IF x.b + frame >= C10 THEN OM4S.Mark("real param offset 1 too far") 
+          END;
+          Put0(VLDR + 1*C23 + SH MOD C1*C22 + RH*C16 + SH DIV C1*C12 + (x.b + frame) DIV C2);
+          x.r := SH; incS
+        ELSE  encMemImm12(op, RH, RH, x.b, "param offset 1 too far");
+          x.r := RH; incR
+        END
+      ELSIF x.mode = RegI THEN 
+        IF x.type.form = OM4B.Real THEN ASSERT((x.a + frame) MOD C2 = 0);
+          IF x.a + frame >= C10 THEN OM4S.Mark("real RegI too far") 
+          END;
+          Put0(VLDR + 1*C23 + SH MOD C1*C22 + x.r*C16 + SH DIV C1*C12 + (x.a + frame) DIV C2);
+          x.r := SH; incS; DEC(RH)
+        ELSE  encMemImm12(op, x.r, x.r, x.a, "RegI too far")          
+        END
       ELSIF x.mode = Cond THEN
         Put1(IT + x.r*C4 + negated(x.r) MOD C1*C3 + C2); (* ITE cond *) nbRmnITBlockInsts := 2;
         encMovImm32(RH, 1);
         encMovImm32(RH, 0);
+        x.r := RH; incR
       END ;
       x.mode := Reg
     END
@@ -653,9 +681,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode = OM4B.Var THEN
       IF x.r > 0 THEN (*local*) encDPImm32(ADD, RH, SP, x.a + frame)
-      ELSE GetSB(x.r); encStaticAccess(x.r, ADD, EXTADD, x.a) END;
+      ELSE GetSB(x.r); encStaticAccess(x.r, ADD, EXTADD, RH, RH, x.a) END;
       x.r := RH; incR
-    ELSIF x.mode = OM4B.Par THEN encLdrImm12(LDRIT3, RH, SP, x.a + frame, "param too far");
+    ELSIF x.mode = OM4B.Par THEN encMemImm12(LDRIT3, RH, SP, x.a + frame, "param too far");
       IF x.b # 0 THEN encDPImm32(ADD, RH, RH, x.b) END;
       x.r := RH; incR
     ELSIF x.mode = RegI THEN
@@ -753,7 +781,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF lim >= 0 THEN encCMPImm8(y.r, lim)
         ELSE (*open array*)
           IF x.mode IN {OM4B.Var, OM4B.Par} THEN
-            encLdrImm12(LDRIT3, RH, SP, x.a + 4 + frame, "array too big"); encCMPReg(y.r, RH)
+            encMemImm12(LDRIT3, RH, SP, x.a + 4 + frame, "array too big"); encCMPReg(y.r, RH)
           ELSE OM4S.Mark("error in Index")
           END
         END ;
@@ -770,7 +798,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END ;
         x.r := y.r; x.mode := RegI
       ELSIF x.mode = OM4B.Par THEN
-        encLdrImm12(LDRIT3, RH, SP, x.a + frame, "param too far");
+        encMemImm12(LDRIT3, RH, SP, x.a + frame, "param too far");
         encDPReg(ADD, y.r, RH, y.r, p2); x.mode := RegI; x.r := y.r; x.a := x.b
       ELSIF x.mode = RegI THEN
         encDPReg(ADD, x.r, x.r, y.r, p2); DEC(RH)
@@ -781,13 +809,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
     IF x.mode = OM4B.Var THEN
-      IF x.r > 0 THEN (*local*) encLdrImm12(LDRIT3, RH, SP, x.a + frame, "local ref too far")
-      ELSE GetSB(x.r); encStaticAccess(x.r, LDRIT3, EXTLDR, x.a) END;
+      IF x.r > 0 THEN (*local*) encMemImm12(LDRIT3, RH, SP, x.a + frame, "local ref too far")
+      ELSE GetSB(x.r); encStaticAccess(x.r, LDRIT3, EXTLDR, RH, RH, x.a) END;
       NilCheck; x.r := RH; incR
     ELSIF x.mode = OM4B.Par THEN
-      encLdrImm12(LDRIT3, RH, SP, x.a + frame, "par1 ref too far");
-      encLdrImm12(LDRIT3, RH, RH, x.b, "par2 ref too far"); NilCheck; x.r := RH; incR
-    ELSIF x.mode = RegI THEN encLdrImm12(LDRIT3, x.r, x.r, x.a, "RegI ref too far"); NilCheck
+      encMemImm12(LDRIT3, RH, SP, x.a + frame, "par1 ref too far");
+      encMemImm12(LDRIT3, RH, RH, x.b, "par2 ref too far"); NilCheck; x.r := RH; incR
+    ELSIF x.mode = RegI THEN encMemImm12(LDRIT3, x.r, x.r, x.a, "RegI ref too far"); NilCheck
     ELSIF x.mode # Reg THEN OM4S.Mark("bad mode in DeRef")
     END ;
     x.mode := RegI; x.a := 0; x.b := 0
@@ -837,12 +865,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.mode >= Reg THEN DEC(RH) END ;
       SetCC(x, AL)
     ELSE (*fetch tag into RH*)
-      IF varpar THEN encLdrImm12(LDRIT3, RH, SP, x.a+4+frame, "tag too far")
+      IF varpar THEN encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "tag too far")
       ELSE load(x);
-        pc0 := pc; Put1(BT1 + EQ*C8);  (*NIL belongs to every pointer type*)
-        encLdrImm12(LDRIT3, RH, x.r, -8, "")
+        pc0 := pc; Put1(BCT1 + EQ*C8);  (*NIL belongs to every pointer type*)
+        encMemImm12(LDRIT3, RH, x.r, -8, "")
       END ;
-      encLdrImm12(LDRIT3, RH, RH, T.nofpar*4, "T.nofpar too big"); incR;
+      encMemImm12(LDRIT3, RH, RH, T.nofpar*4, "T.nofpar too big"); incR;
       loadTypTagAdr(T);  (*tag of T*)
       encCMPReg(RH-1, RH-2); DEC(RH, 2);
       IF ~varpar THEN fix8(pc0, pc - pc0 - 4) END ;
@@ -1075,85 +1103,116 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.type.form = OM4B.String THEN loadStringAdr(x) ELSE loadAdr(x) END ;
     IF y.type.form = OM4B.String THEN loadStringAdr(y) ELSE loadAdr(y) END ;
-    pc0 := pc;
-  (*Compare:*)
-    encLdrImm12(LDRBIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 1), "");
-    encLdrImm12(LDRBIT3, RH+1, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 1), "");
-    encCMPReg(RH, RH+1); tbf0 := pc; Put1(BT1 + NE*C8); (*BC NE Fin*)
-    encCMPImm8(RH, 0); Put1(BT1 + NE*C8 + (pc0-(pc+4)) DIV 2); (*BC NE Compare*)
+  (*Compare:*) pc0 := pc;
+    encMemImm12(LDRBIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 1), "");
+    encMemImm12(LDRBIT3, RH+1, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 1), "");
+    encCMPReg(RH, RH+1); tbf0 := pc; Put1(BCT1 + NE*C8); (*BC NE Fin*)
+    encCMPImm8(RH, 0); Put1(BCT1 + NE*C8 + (pc0-(pc+4)) DIV C1 MOD C8); (*BC NE Compare*)
   (* Fin: *) fix8(tbf0, pc - tbf0 - 4);
     DEC(RH, 2); SetCC(x, relmap[op - OM4S.eql])
   END StringRelation;
 
   (* Code generation of Assignments *)
 
-(* TODO: j'en suis là *)
-
   PROCEDURE StrToChar*(VAR x: Item);
   BEGIN x.type := OM4B.charType; DEC(strx, 4); x.a := ORD(str[x.a])
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
-    VAR op: LONGINT;
+    VAR op, opext: LONGINT;
   BEGIN  load(y);
-    IF x.type.size = 1 THEN op := Str+1 ELSE op := Str END ;
+    IF x.type.size = 1 THEN op := STRBIT2; opext := EXTSTRB
+    ELSE op := STRIT3; opext := EXTSTR END ;
     IF x.mode = OM4B.Var THEN
-      IF x.r > 0 THEN (*local*) Put2(op, y.r, SP, x.a + frame)
-      ELSE GetSB(x.r); Put2(op, y.r, RH, x.a)
+      IF x.r > 0 THEN (*local*)
+        IF y.type.form = OM4B.Real THEN ASSERT((x.a + frame) MOD C2 = 0);
+          IF x.a + frame >= C10 THEN OM4S.Mark("local real var too far")
+          END;
+          Put0(VSTR + 1*C23 + SH MOD C1*C22 + SP*C16 + SH DIV C1*C12 + (x.a + frame) DIV C2)
+        ELSE encMemImm12(op, y.r, SP, x.a + frame, "local var too far")
+        END
+      ELSE GetSB(x.r);
+        IF y.type.form = OM4B.Real THEN encStaticRealAccess(x.r, VSTR, EXTVSTR, y.r, RH, x.a)
+        ELSE encStaticAccess(x.r, op, opext, y.r, RH, x.a)
+        END
+      END    
+    ELSIF x.mode = OM4B.Par THEN
+      encMemImm12(LDRIT3, RH, SP, x.a + frame, "param offset 0 too far"); 
+      IF y.type.form = OM4B.Real THEN ASSERT((x.b) MOD C2 = 0);
+        IF x.a + frame >= C10 THEN OM4S.Mark("param offset 1 too far")
+        END;
+        Put0(VSTR + 1*C23 + SH MOD C1*C22 + RH*C16 + SH DIV C1*C12 + (x.b) DIV C2)
+      ELSE encMemImm12(op, y.r, RH, x.b, "param offset 1 too far")
       END
-    ELSIF x.mode = OM4B.Par THEN Put2(Ldr, RH, SP, x.a + frame); Put2(op, y.r, RH, x.b);
-    ELSIF x.mode = RegI THEN Put2(op, y.r, x.r, x.a); DEC(RH);
+    ELSIF x.mode = RegI THEN
+      IF y.type.form = OM4B.Real THEN ASSERT((x.a) MOD C2 = 0);
+        IF x.a + frame >= C10 THEN OM4S.Mark("RegI too far")
+        END;
+        Put0(VSTR + 1*C23 + y.r MOD C1*C22 + x.r*C16 + y.r DIV C1*C12 + (x.a + frame) DIV C2);
+        DEC(SH)
+      ELSE encMemImm12(op, y.r, x.r, x.a, "RegI too far"); DEC(RH)
+      END
     ELSE OM4S.Mark("bad mode in Store")
-    END ;
-    DEC(RH)
+    END;
+    IF y.type.form = OM4B.Real THEN DEC(SH) ELSE DEC(RH)
+    END
   END Store;
 
   PROCEDURE StoreStruct*(VAR x, y: Item); (* x := y, frame = 0 *)
-    VAR s, pc0: LONGINT;
+    VAR s, pc0, pc1: LONGINT;
   BEGIN
+    pc0 := -1;
     IF y.type.size # 0 THEN
       loadAdr(x); loadAdr(y);
       IF (x.type.form = OM4B.Array) &  (x.type.len > 0) THEN
         IF y.type.len >= 0 THEN 
-          IF x.type.size = y.type.size THEN Put1a(Mov, RH, 0, (y.type.size+3) DIV 4)
+          IF x.type.size = y.type.size THEN encMovImm32(RH, (y.type.size+3) DIV 4)
           ELSE OM4S.Mark("different length/size, not implemented")
           END
-        ELSE (*y  open array*) Put2(Ldr, RH, SP, y.a+4); s := y.type.base.size;  (*element size*)
-          pc0 := pc; Put3(BC, EQ, 0);
-          IF s = 1 THEN Put1(Add, RH, RH, 3); Put1(Asr, RH, RH, 2)
-          ELSIF s # 4 THEN Put1a(Mul, RH, RH, s DIV 4)
-          END ;
+        ELSE (*y  open array*) encMemImm12(LDRIT3, RH, SP, y.a+4, "struct too far"); s := y.type.base.size;  (*element size*)
+          encCMPImm8(RH, 0); pc0 := pc; Put1(BCT1 + EQ*C8); (*BEQ L0*)
+          IF s = 1 THEN encDPImm32(ADD, RH, RH, 3); encShiftImm5(ASR, RH, RH, 2)
+          ELSIF s # 4 THEN ASSERT(s MOD 4 = 0); incR; encMovImm32(RH, s DIV 4); encMUL(RH-1, RH-1, RH); DEC(RH)
+          END;
           IF check THEN
-            Put1a(Mov, RH+1, 0, (x.type.size+3) DIV 4); Put0(Cmp, RH+1, RH, RH+1); Trap(GT, 3)
-          END ;
-          fix25(pc0, pc + 5 - pc0)
+            incR; encMovImm32(RH, (x.type.size+3) DIV 4); encCMPReg(RH-1, RH); Trap(GT, 3); DEC(RH)
+          END
         END
-      ELSIF x.type.form = OM4B.Record THEN Put1a(Mov, RH, 0, x.type.size DIV 4)
+      ELSIF x.type.form = OM4B.Record THEN encMovImm32(RH, x.type.size DIV 4)
       ELSE OM4S.Mark("inadmissible assignment")
       END ;
-      Put2(Ldr, RH+1, y.r, 0); Put1(Add, y.r, y.r, 4);
-      Put2(Str, RH+1, x.r, 0); Put1(Add, x.r, x.r, 4);
-      Put1(Sub, RH, RH, 1); Put3(BC, NE, -6)
-    END ;
+      incR;
+      (*L1*) pc1 := pc;
+      encMemImm12(LDRIT3, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+      encMemImm12(STRIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+      DEC(RH);
+      encDPImm32(SUB, RH, RH, 1); Put1(BCT1 + NE*C8 + (pc1-(pc+4)) DIV C1 MOD C8); (*BNE L1*)
+      (*L0:*) IF pc0 # -1 THEN fix8(pc0, pc - pc0 - 4) 
+              END
+    END;
     RH := 0
   END StoreStruct;
 
   PROCEDURE CopyString*(VAR x, y: Item);  (* x := y *) 
-     VAR len: LONGINT;
+     VAR len, pc0: LONGINT;
    BEGIN loadAdr(x); len := x.type.len;
     IF len >= 0 THEN
-      IF len <  y.b THEN OM4S.Mark("string too long") END
-    ELSIF check THEN Put2(Ldr, RH, SP, x.a+4);  (*open array len, frame = 0*)
-      Put1(Cmp,RH, RH, y.b); Trap(LT, 3)
+      IF len < y.b THEN OM4S.Mark("string too long") END
+    ELSIF check THEN encMemImm12(LDRIT3, RH, SP, x.a+4, "string too far");  (*open array len, frame = 0*)
+      encCMPImm8(RH, y.b); Trap(LT, 3)
     END ;
     loadStringAdr(y);
-    Put2(Ldr, RH, y.r, 0); Put1(Add, y.r, y.r, 4);
-    Put2(Str, RH, x.r, 0); Put1(Add, x.r, x.r, 4);
-    Put1(Asr, RH, RH, 24); Put3(BC, NE,  -6);  RH := 0
+    (*L0:*) pc0 := pc;
+    encMemImm12(LDRIT3, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+    encMemImm12(STRIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+    encShiftImm5(ASR, RH, RH, 24); Put1(BCT1 + NE*C8 + (pc0-(pc+4)) DIV C1 MOD C8); (*BNE L0*)
+    RH := 0
    END CopyString;
   
   (* Code generation for parameters *)
   
+(* TODO: j'en suis là *)
+
   PROCEDURE OpenArrayParam*(VAR x: Item);
   BEGIN loadAdr(x);
     IF x.type.len >= 0 THEN Put1a(Mov, RH, 0, x.type.len) ELSE Put2(Ldr, RH, SP, x.a+4+frame) END ;
