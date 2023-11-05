@@ -1,24 +1,24 @@
 MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; 
   C. Schoffit 19/10/2023 code generator for Cortex M4 STM32I-DISCO*)
   IMPORT SYSTEM, Files, OM4S, OM4B;
-  (*Code generator for Oberon compiler for Cortex M4 processor.
+  (*Code generator for Oberon compiler targetting Cortex M4F processor.
      Procedural interface to Parser OM4P; result in array "code".
      Procedure Close writes code-files*)
 
   CONST WordSize* = 4;
-(* Non applicable for STM32I-DISCO with C initialization code
-     StkORG0 = -64; *)
     MT = 12; SP = 13; LNK = 14; PC = 15; (*dedicated registers*)
+    APSRnzcv = 15; (*APSR_nzcv is encoded as <Rt> = '1111'*)
     NBS = 32; (* Number of single float registers in the FPU bank *)
     VarORG0 = 0D0201000H;  (*for bare metal program only, 
     0D0200400H is the end address of VGA buffers*)
     maxCode = 8000*4; maxStrx = 2400; maxTD = 160;
     
-    (* Powers of two *)
+    (*Powers of two*)
     C30=40000000H; C28=10000000H; C27=8000000H; C26=4000000H;
     C25=2000000H; C24=1000000H; C23=800000H; C22=400000H; 
     C21=200000H; C20=100000H; C16=10000H; C13=2000H; C12=1000H; C11=800H; 
-    C10=400H; C8=100H; C7=80H; C6=40H; C5=20H; C4=10H; C3=8; C2=4; C1=2;
+    C10=400H; C9=200H;C8=100H; C7=80H; C6=40H; C5=20H; 
+    C4=10H; C3=8; C2=4; C1=2;
     
     Reg = 10; RegI = 11; Cond = 12;  (*internal item modes*)
 
@@ -75,11 +75,27 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VDIV    = 0EE800A00H;
     (*|1110 1110 1D00  Vn   Vd  101s N0M0  Vm |
       VDIV<c>.F32 <Sd>, <Sn>, <Sm>*)
+    VCMP0   = 0EEB50A40H;
+    (*|1110 1110 1D11 0101  Vd  101s E100 0000|
+      VCMP{E}<c>.F32 <Sd>, #0.0*)
+    VCMP    = 0EEB40A40H;
+    (*|1110 1110 1D11 0100  Vd  101s E1M0  Vm |
+      VCMP{E}<c>.F32 <Sd>, <Sm>*)
+    VMRS    = 0EEF10A10H;
+    (*|1110 1110 1111 0001  Rt  1010 0001 0000|
+      VMRS<c> <Rt>, FPSCR*)
     
     LDRIT3  = 0F8D00000H;
     LDRBIT2 = 0F8900000H;
+    (*|1111 1000 1001  Rn   Rt      imm12     |
+      LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
+    LDRBIT3 = 0F8100800H;
+    (*|1111 1000 0001  Rn   Rt  1PUW   imm8   |
+      LDRB<c> <Rt>,[<Rn>,#-<imm8>]
+      LDRB<c> <Rt>,[<Rn>],#+/-<imm8>
+      LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
     
-    BRSIG*  = 1EH;
+    BRSIG   = 1EH;
 
     CMPIT1  = 2800H;
     CMPIT2  = 0F1B00F00H;
@@ -128,9 +144,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ADD:
     10aaaabbbb00000000000000000pvvvv
 *)
-    EXTLDR =0; EXTSTR =2; EXTADD =4;
-    EXTLDRB=1; EXTSTRB=3; EXTADDB=5;
-    EXTVLDR=6;
+    EXTLDR* =0; EXTSTR* =2; EXTADD* =4;
+    EXTLDRB*=1; EXTSTRB*=3; EXTADDB*=5;
+    EXTVLDR*=6;
 
   TYPE Item* = RECORD
     mode*: INTEGER;
@@ -257,6 +273,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ASSERT ((a < C4) & (b < C4) & (c < C4));
     RETURN 0 + b*C16 + a*C8 + c
   END format3Reg4;
+  
+  PROCEDURE formatPUWImm8(p, u, w: BOOLEAN; imm8: LONGINT): LONGINT;
+  BEGIN
+    ASSERT((imm8 >= 0) & (imm8 < C8));
+    RETURN ORD(p)*C10 + ORD(u)*C9 + ORD(w)*C8 + imm8
+  END formatPUWImm8;
   
   PROCEDURE encMovImm32(reg: BYTE; val: LONGINT);
   VAR hw: LONGINT;
@@ -495,7 +517,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (*The statement must be a narrow jump with immediate offset (B.N <Label>).*)
   BEGIN
     ASSERT(code[at+1] DIV C4*C4 = BT1); (*Check op code*)
-    IF with >= C8 THEN OM4S.Mark("narrow forward jump too far")
+    ASSERT (~ODD(with)); with := with DIV C1;
+    IF (with < -C7) OR (with >= C7) THEN OM4S.Mark("narrow jump too far");
+    with := with MOD C8;
     ELSE INC(code[at], with) END
   END fix8;
 
@@ -1020,42 +1044,50 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* Code generation for relations *)
 
-(* TODO: j'en suis là *)
-
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN
     IF (y.mode = OM4B.Const) & (y.type.form # OM4B.Proc) THEN
       load(x);
-      IF (y.a # 0) OR ~(op IN {OM4S.eql, OM4S.neq}) OR (code[pc-1] DIV 40000000H # -2) THEN Put1a(Cmp, x.r, x.r, y.a) END ;
+      IF (y.a # 0) OR ~(op IN {OM4S.eql, OM4S.neq}) OR ~lastInstrSetFlags THEN
+        encMovImm32(RH, y.a); encCMPReg(x.r, RH)
+      END;
       DEC(RH)
     ELSE
       IF (x.mode = Cond) OR (y.mode = Cond) THEN OM4S.Mark("not implemented") END ;
-      load(x); load(y); Put0(Cmp, x.r, x.r, y.r); DEC(RH, 2)
+      load(x); load(y); encCMPReg(x.r, y.r); DEC(RH, 2)
     END ;
     SetCC(x, relmap[op - OM4S.eql])
   END IntRelation;
 
   PROCEDURE RealRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN load(x);
-    IF (y.mode = OM4B.Const) & (y.a = 0) THEN DEC(RH)
-    ELSE load(y); Put0(Fsb, x.r, x.r, y.r); DEC(RH, 2)
-    END ;
+    IF (y.mode = OM4B.Const) & (y.a = 0) THEN encFPOpReg(VCMP0, x.r, 0, 0); DEC(RH)
+    ELSE load(y); encFPOpReg(VCMP, x.r, 0, y.r); DEC(RH, 2)
+    END;
+    Put0(VMRS + APSRnzcv*C12);
+    lastInstrSetFlags := TRUE;
     SetCC(x, relmap[op - OM4S.eql])
   END RealRelation;
 
   PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
     (*x, y are char arrays or strings*)
+    VAR pc0, tbf0: LONGINT;
   BEGIN
     IF x.type.form = OM4B.String THEN loadStringAdr(x) ELSE loadAdr(x) END ;
     IF y.type.form = OM4B.String THEN loadStringAdr(y) ELSE loadAdr(y) END ;
-    Put2(Ldr+1, RH, x.r, 0); Put1(Add, x.r, x.r, 1);
-    Put2(Ldr+1, RH+1, y.r, 0); Put1(Add, y.r, y.r, 1);
-    Put0(Cmp, RH+2, RH, RH+1); Put3(BC, NE, 2);
-    Put1(Cmp, RH+2, RH, 0); Put3(BC, NE, -8);
+    pc0 := pc;
+  (*Compare:*)
+    encLdrImm12(LDRBIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 1), "");
+    encLdrImm12(LDRBIT3, RH+1, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 1), "");
+    encCMPReg(RH, RH+1); tbf0 := pc; Put1(BT1 + NE*C8); (*BC NE Fin*)
+    encCMPImm8(RH, 0); Put1(BT1 + NE*C8 + (pc0-(pc+4)) DIV 2); (*BC NE Compare*)
+  (* Fin: *) fix8(tbf0, pc - tbf0 - 4);
     DEC(RH, 2); SetCC(x, relmap[op - OM4S.eql])
   END StringRelation;
 
   (* Code generation of Assignments *)
+
+(* TODO: j'en suis là *)
 
   PROCEDURE StrToChar*(VAR x: Item);
   BEGIN x.type := OM4B.charType; DEC(strx, 4); x.a := ORD(str[x.a])
