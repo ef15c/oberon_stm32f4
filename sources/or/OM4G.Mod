@@ -1211,11 +1211,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   (* Code generation for parameters *)
   
-(* TODO: j'en suis là *)
-
   PROCEDURE OpenArrayParam*(VAR x: Item);
   BEGIN loadAdr(x);
-    IF x.type.len >= 0 THEN Put1a(Mov, RH, 0, x.type.len) ELSE Put2(Ldr, RH, SP, x.a+4+frame) END ;
+    IF x.type.len >= 0 THEN encMovImm32(RH, x.type.len) ELSE encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "open array param too far") END ;
     incR
   END OpenArrayParam;
 
@@ -1223,10 +1221,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR xmd: INTEGER;
   BEGIN xmd := x.mode; loadAdr(x);
     IF (ftype.form = OM4B.Array) & (ftype.len < 0) THEN (*open array*)
-      IF x.type.len >= 0 THEN Put1a(Mov, RH, 0, x.type.len) ELSE  Put2(Ldr, RH, SP, x.a+4+frame) END ;
+      IF x.type.len >= 0 THEN encMovImm32(RH, x.type.len) ELSE  encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "array param too far") END ;
       incR
     ELSIF ftype.form = OM4B.Record THEN
-      IF xmd = OM4B.Par THEN Put2(Ldr, RH, SP, x.a+4+frame); incR ELSE loadTypTagAdr(x.type) END
+      IF xmd = OM4B.Par THEN encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "record param too far"); incR ELSE loadTypTagAdr(x.type) END
     END
   END VarParam;
 
@@ -1235,8 +1233,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END ValueParam;
 
   PROCEDURE StringParam*(VAR x: Item);
-  BEGIN loadStringAdr(x); Put1(Mov, RH, 0, x.b); incR  (*len*)
+  BEGIN loadStringAdr(x); encMovImm32(RH, x.b); incR  (*len*)
   END StringParam;
+
+(* TODO: j'en suis là *)
 
   (*For Statements*)
 
