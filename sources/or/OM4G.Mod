@@ -895,7 +895,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
     Put1(IT + negated(x.r)*C4 + 8H (*IT cond*));  nbRmnITBlockInsts := 1;
-    Put0(BRSIG*C27+x.a);
+    Put0(BRSIG*C27 + x.a);
     x.a := pc-4; FixLink(x.b); x.b := 0
   END And1;
 
@@ -909,7 +909,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
     Put1(IT + x.r*C4 + 8H (*IT cond*));  nbRmnITBlockInsts := 1;
-    Put0(BRSIG*C27+x.b);
+    Put0(BRSIG*C27 + x.b);
     x.b := pc-4; FixLink(x.a); x.a := 0
   END Or1;
 
@@ -1236,8 +1236,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN loadStringAdr(x); encMovImm32(RH, x.b); incR  (*len*)
   END StringParam;
 
-(* TODO: j'en suis là *)
-
   (*For Statements*)
 
   PROCEDURE For0*(VAR x, y: Item);
@@ -1246,19 +1244,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: LONGINT);
   BEGIN 
-    IF z.mode = OM4B.Const THEN Put1a(Cmp, RH, y.r, z.a)
-    ELSE load(z); Put0(Cmp, RH-1, y.r, z.r); DEC(RH)
-    END ;
+    load(z); encCMPReg(y.r, z.r); DEC(RH);
+    IF w.a > 0 THEN Put1(IT + GT*C4 + 8H (*IT cond*))
+    ELSIF w.a < 0 THEN Put1(IT + LT*C4 + 8H)
+    ELSE OM4S.Mark("zero increment"); Put1(IT + MI*C4 + 8H)
+    END;
+    nbRmnITBlockInsts := 1;
     L := pc;
-    IF w.a > 0 THEN Put3(BC, GT, 0)
-    ELSIF w.a < 0 THEN Put3(BC, LT, 0)
-    ELSE OM4S.Mark("zero increment"); Put3(BC, MI, 0)
-    END ;
+    Put0(BRSIG*C27);
     Store(x, y)
   END For1;
 
   PROCEDURE For2*(VAR x, y, w: Item);
-  BEGIN load(x); DEC(RH); Put1a(Add, x.r, x.r, w.a)
+  BEGIN load(x); DEC(RH); encDPImm32(ADD, x.r, x.r, w.a)
   END For2;
 
   (* Branches, procedure calls, procedure prolog and epilog *)
@@ -1268,14 +1266,17 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Here;
 
   PROCEDURE FJump*(VAR L: LONGINT);
-  BEGIN Put3(BC, 7, L); L := pc-1
+  BEGIN Put0(BRSIG*C27 + L); L := pc-4
   END FJump;
 
   PROCEDURE CFJump*(VAR x: Item);
   BEGIN
-    IF x.mode # Cond THEN loadCond(x) END ;
-    Put3(BC, negated(x.r), x.a); FixLink(x.b); x.a := pc-1
+    IF x.mode # Cond THEN loadCond(x) END;
+    Put1(IT + negated(x.r) + 8H (*IT cond*))
+    Put0(BRSIG*C27 + x.a); FixLink(x.b); x.a := pc-4
   END CFJump;
+
+(* TODO: j'en suis là *)
 
   PROCEDURE BJump*(L: LONGINT);
   BEGIN Put3(BC, 7, L-pc-1)
