@@ -47,6 +47,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*|11110S   imm10  10J1J   imm11   |
       |                  1 2           |
       B.W T4*)
+    BLX    = 4780H;
+    (*|0100/0111/1 Rm/ 000|
+      BLX<c> <Rm>*)
 
     MOVIT3    = 0F2400000H;
     (*|1111/0i10/0100/imm4/0im3/ Rd / imm/8   |
@@ -98,8 +101,14 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       VMRS<c> <Rt>, FPSCR*)
     
     LDRIT3  = 0F8D00000H;
-    (*|1111 1000 1101  Rn   Rt      imm12     |
+    (*|1111/1000/1101/ Rn / Rt /    /imm1/2   |
       LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
+    LDRIT4  = 0F8500800H;
+    (*|1111/1000/0101/ Rn / Rt /1PUW/ imm/8   |
+      LDR<c> <Rt>,[<Rn>,#-<imm8>]
+      LDR<c> <Rt>,[<Rn>],#+/-<imm8>
+      LDR<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
+    
     LDRBIT2 = 0F8900000H;
     (*|1111 1000 1001  Rn   Rt      imm12     |
       LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
@@ -109,9 +118,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       LDRB<c> <Rt>,[<Rn>],#+/-<imm8>
       LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
     
-    STRIT3 = 0F8C000000H;
-    (*|1111 1000 1100  Rn   Rt     imm12      |
+    STRIT3 = 0F8C00000H;
+    (*|1111/1000/1100/ Rn / Rt /    /imm1/2   |
       STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
+    STRIT4 = 0F8400800H;
+    (*|1111/1000/0100/ Rn / Rt /1PUW/ imm/8   |
+      STR<c> <Rt>,[<Rn>,#-<imm8>]
+      STR<c> <Rt>,[<Rn>],#+/-<imm8>
+      STR<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
+    
     STRBIT2 = 0F8800000H;
     (*|1111 1000 1000  Rn   Rt      imm12     |
       STRB<c>.W <Rt>,[<Rn>,#<imm12>]*)
@@ -156,14 +171,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     These pseudo-instructions will be fixup at load or link time by
     the Modules or OM4L modules.
-    
+
+  1/ Variables
     The size of the offset is limited to 12 bits, that is 1K words.
     This is too short to implement the fixup link. We'll use pseudo
     LDR/STR/ADD instructions.
 
     Getting base address
     LDR:
-    aaaannnnddddddddddddddddddddddd
+    aaaannnndddddddddddddddddddddddd
     
     aaaa: destination register
     nnnn: number of the module
@@ -171,15 +187,25 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     
     Accessing external variable
     LDR/STR/ADD
-    ooosaaaabbbb00000000000000pvvvv
+    ooosaaaabbbb000000000000000pvvvv
     
-    ooo:   operation code 000: LDR, 001: STR, 010: ADD
+    ooo:  operation code 000: LDR, 001: STR, 010: ADD
     s:    size of operation (0: 4 bytes, 1: 1 byte)
     aaaa: destination register
     bbbb: operand register
     p:    program based variable
     vvvv: number of the variable
+  
+  2/ Procedures
+    No need to encode the instruction wich is always 
+    LDR r, <proc address>+1:
     
+    aaaannnnppppppppdddddddddddddddd
+
+    aaaa: destination register
+    nnnn:     number of the module
+    pppppppp: number of the procedure
+    dd16: offset DIV 2 of next op to fix for procedure address loading
 *)
     EXTLDR* =0; EXTSTR* =2; EXTADD* =4;
     EXTLDRB*=1; EXTSTRB*=3; EXTADDB*=5;
@@ -1227,8 +1253,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END ;
       incR;
       (*L1*) pc1 := pc;
-      encMemImm12(LDRIT3, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
-      encMemImm12(STRIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+      encMemImm12(LDRIT4, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+      encMemImm12(STRIT4, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
       DEC(RH);
       encDPImm32(SUB, RH, RH, 1); encBackBranch(NE, pc1); (*BNE L1*)
       (*L0:*) IF pc0 # -1 THEN fix8(pc0, pc - pc0 - 4) 
@@ -1247,8 +1273,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     loadStringAdr(y);
     (*L0:*) pc0 := pc;
-    encMemImm12(LDRIT3, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
-    encMemImm12(STRIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+    encMemImm12(LDRIT4, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+    encMemImm12(STRIT4, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
     encShiftImm5(ASR, RH, RH, 24); encBackBranch(NE, pc0); (*BNE L0*)
     RH := 0
    END CopyString;
@@ -1356,8 +1382,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     DEC(frame, 4*r)
   END RestoreRegs;
 
-(* TODO: j'en suis là *)
-
   PROCEDURE PrepCall*(VAR x: Item; VAR r: LONGINT);
   BEGIN (*x.type.form = OM4B.Proc*)
     IF x.mode > OM4B.Par THEN load(x) END ;
@@ -1368,23 +1392,27 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Call*(VAR x: Item; r: LONGINT);
   BEGIN (*x.type.form = OM4B.Proc*)
     IF x.mode = OM4B.Const THEN
-      IF x.r >= 0 THEN Put3(BL, 7, (x.a DIV 4)-pc-1)
+      IF x.r >= 0 THEN encBackBranch(AL, x.a)
       ELSE (*imported*)
-        IF pc - fixORGP < 1000H THEN
-          Put3(BL, 7, ((-x.r) * C8 + x.a) * 1000H + pc-fixORGP); fixORGP := pc-1
+        IF pc - fixORGP < C16 THEN
+        (*aaaannnnppppppppdddddddddddddddd*)
+          Put0(RH*C28 + (-x.r)*C24 + x.a*C16 + pc - fixORGP); fixORGP := pc-4;
+          Put1(BLX + RH*C3) (*Attention : nécéssite de placer l'adresse 
+            ablosule et non relative au début du module dans les descripteurs de
+            module chagée par le module Modules*)
         ELSE OM4S.Mark("fixup impossible")
         END
       END
     ELSE
       IF x.mode <= OM4B.Par THEN load(x); DEC(RH)
-      ELSE Put2(Ldr, RH, SP, 0); Put1(Add, SP, SP, 4); DEC(r); DEC(frame, 4)
+      ELSE encMemImm12(LDRIT3, RH, SP, 0, ""); encDPImm32(ADD, SP, SP, 4); DEC(r); DEC(frame, 4)
       END ;
       IF check THEN Trap(EQ, 5) END ;
-      Put3(BLR, 7, RH)
+      Put1(BLX + RH*C3)
     END ;
     IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0
     ELSE (*function*)
-      IF r > 0 THEN Put0(Mov, r, 0, 0); RestoreRegs(r) END ;
+      IF r > 0 THEN encMovImm32(r, 0); RestoreRegs(r) END ;
       x.mode := Reg; x.r := r; RH := r+1
     END
   END Call;
@@ -1395,10 +1423,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF ~int THEN (*procedure prolog*)
       IF locblksize >= C16 THEN OM4S.Mark("too many locals") END ;
       a := 4; r := 0;
-      Put1(Sub, SP, SP, locblksize); Put2(Str, LNK, SP, 0);
-      WHILE a < parblksize DO Put2(Str, r, SP, a); INC(r); INC(a, 4) END
-    ELSE (*interrupt procedure*)
-      Put1(Sub, SP, SP, locblksize); Put2(Str, 0, SP, 0); Put2(Str, 1, SP, 4); Put2(Str, 2, SP, 8)
+      encDPImm32(SUB, SP, SP, locblksize); encMemImm12(STRIT3, LNK, SP, 0, "");
+      WHILE a < parblksize DO encMemImm12(STRIT3, r, SP, a, ""); INC(r); INC(a, 4) END
+      ELSE (*interrupt procedure*) 
+      OM4S.Mark("Not implemented yet");
+(* TODO : à reprendre 
+      encDPImm32(SUB, SP, SP, locblksize); encMemImm12(STRIT3, 0, SP, 0, ""); encMemImm12(STRIT3, 1, SP, 4, ""); encMemImm12(STRIT3, 2, SP, 8, "")
+*)
       (*R0, R1, R2 saved on stack*)
     END
   END Enter;
@@ -1407,13 +1438,17 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF form # OM4B.NoTyp THEN load(x) END ;
     IF ~int THEN (*procedure epilog*)
-      Put2(Ldr, LNK, SP, 0); Put1(Add, SP, SP, size); Put3(BR, 7, LNK)
+      encMemImm12(LDRIT3, LNK, SP, 0, ""); encDPImm32(ADD, SP, SP, size); Put1(BLX + LNK*C3)
     ELSE (*interrupt return, restore R2, R1, R0*)
+      OM4S.Mark("Not implemented yet");
+(* TODO : à reprendre 
       Put2(Ldr, 2, SP, 8); Put2(Ldr, 1, SP, 4); Put2(Ldr, 0, SP, 0); Put1(Add, SP, SP, size);
-      Put3(BR, 7, C4) (*RTI*)
+      Put3(BR, 7, C4) *)(*RTI*)
     END ;
     RH := 0
   END Return;
+
+(* TODO: j'en suis là *)
 
   (* In-line code procedures*)
 
