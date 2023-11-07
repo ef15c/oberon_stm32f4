@@ -16,7 +16,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*Powers of two*)
     C30=40000000H; C28=10000000H; C27=8000000H; C26=4000000H;
     C25=2000000H; C24=1000000H; C23=800000H; C22=400000H; 
-    C21=200000H; C20=100000H; C16=10000H; C13=2000H; C12=1000H; C11=800H; 
+    C21=200000H; C20=100000H; C19=80000H; C18=40000H; C17=20000H;
+    C16=10000H; C13=2000H; C12=1000H; C11=800H; 
     C10=400H; C9=200H;C8=100H; C7=80H; C6=40H; C5=20H; 
     C4=10H; C3=8; C2=4; C1=2;
     
@@ -29,24 +30,30 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     CoP     = 0ED000000H; (*Coprocessor instruction*)
 
-    BWT4    = 0F0009000H;
+    BL     = 0F000C000H;
+    (*|11110S   imm10  11J1J   imm11   |
+      |                  1 2           |
+      BL<c> <label> *)
+
+    (*B<c> <label>*)
+    BCT1    = 0D000H;
+    (*|1101 cond   imm8   |*)
+    BT2     = 0E000H;
+    (*|1110 0   imm11     |*)
+    BCT3    = 0F0008000H;
+    (*|1111/0Sco/nd i/mm6 /10J0/J   / imm/11  |
+                             1  2             *)
+    BT4    = 0F0009000H;
     (*|11110S   imm10  10J1J   imm11   |
       |                  1 2           |
       B.W T4*)
 
-    BLW     = 0F000C000H;
-    (*|11110S   imm10  11J1J   imm11   |
-      |                  1 2           |
-      BL.W *)
-
-    BCT1=0D000H;
-    (*|1101cond  imm8  |
-      B T1*) 
-
-    (*BCWT3   = 0F0008000;*)
-      
-    MOVW    = 0F2400000H;
-    MOVN    = 2000H;
+    MOVIT3    = 0F2400000H;
+    (*|1111/0i10/0100/imm4/0im3/ Rd / imm/8   |
+      MOVW<c> <Rd>,#<imm16>*)
+    MOVIT1    = 2000H;
+    (*|0010/0 Rd/  im/m8  |
+      MOVS <Rd>,#<imm8>*)
     MOVT    = 0F2C00000H;
 
     VMOVSR  = 0EE000A10H;
@@ -108,13 +115,27 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     STRBIT2 = 0F8800000H;
     (*|1111 1000 1000  Rn   Rt      imm12     |
       STRB<c>.W <Rt>,[<Rn>,#<imm12>]*)
-    
-    BRSIG   = 1EH;
 
+    PUSHT1 = 0B400H;
+    (*|1011/010M/reg_/list|
+      PUSH<c> <registers>*)
+    PUSHT2 = 0E92D0000H;
+    (*|1110/1001/0010/1101/0M0 /reg_/list/    |
+      PUSH<c>.W <registers>*)
+    POPT1  = 0BC00H;
+    (*|1011/110P/reg_/list|
+      POP<c> <registers>*)
+    POPT2  = 0E8BD0000H;
+    (*|1110/1000/1011/1101/PM0 /reg_/list/    |
+      POP<c>.W <registers>*)
+    
     CMPIT1  = 2800H;
     CMPIT2  = 0F1B00F00H;
     CMPRT1  = 4280H;
     CMPRT2  = 4500H;
+    
+    BRSIG   = 1EH;
+
     
     (* Arithmetic and logical operations *)
     SUB=0; ADD=1; RSB=2; EOR=3; AND=4; BIC=5; ORR=6;
@@ -122,8 +143,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (* Shift operations *)
     LSl=0; ASR=1; LSR=2; ROR=3;
 
-    MULN  = 4340H;
-    MULW  = 0FB00F000H;
+    MULT1  = 4340H;
+    (*|0100/0011/01Rn/ Rdm|
+      MULS <Rdm>,<Rn>,<Rdm>   Outside IT block.
+      MUL<c> <Rdm>,<Rn>,<Rdm> Inside IT block.*)
+    MULT2  = 0FB00F000H;
+    (*|1111/1011/0000/ Rn /1111/ Rd /0000/ Rm |
+      MUL<c> <Rd>,<Rn>,<Rm>*)
     UDIV  = 0FBB0F0F0H;
     
 (*  Format of pseudo operations for accessing external vars and procs
@@ -308,8 +334,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     hw := val MOD C16;
     IF (reg < 8) & (hw < C8) THEN 
       lastInstrSetFlags := nbRmnITBlockInsts = 0; (* not in IT block *)
-      Put1(MOVN + reg*C8 + hw);
-    ELSE Put0(MOVW + formatImm16(reg, val)) END;
+      Put1(MOVIT1 + reg*C8 + hw);
+    ELSE Put0(MOVIT3 + formatImm16(reg, val)) END;
     hw := val DIV C16 MOD C16;
     IF hw # 0 THEN
       ASSERT(nbRmnITBlockInsts = 0);
@@ -423,9 +449,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE encMUL(a, b, c: BYTE);
   BEGIN
     ASSERT((a < 15) & (a # 13) & (b < 15) & (b # 13) & (c < 15) & (c # 13));
-    IF (a = b) & (a < C3) & (c < C3) THEN Put1(MULN + c*C3 + a)
-    ELSIF (a = c) & (a < C3) & (b < C3) THEN Put1(MULN + b*C3 + a)
-    ELSE Put0(MULW + format3Reg4(a, b, c)) END
+    IF (a = b) & (a < C3) & (c < C3) THEN Put1(MULT1 + c*C3 + a)
+    ELSIF (a = c) & (a < C3) & (b < C3) THEN Put1(MULT1 + b*C3 + a)
+    ELSE Put0(MULT2 + format3Reg4(a, b, c)) END
   END encMUL;
   
   PROCEDURE encUDIV(a, b, c: BYTE);
@@ -441,6 +467,24 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     *  VMOVSR (b := a) *)
     Put0(op + a MOD C1*C22 + b DIV C1*C16 + a DIV C1*C12 + b MOD C1*C7 + c MOD C1*C5 + c DIV C1)
   END encFPOpReg;
+
+  PROCEDURE encBackBranch(cond: BYTE; L: LONGINT);
+    VAR ofs: LONGINT;
+  BEGIN ASSERT((cond < C4) & (cond # NV));
+    ASSERT(~ODD(L-pc));
+    ofs := (L - (pc + 4)) DIV C1; ASSERT(ofs < 0);
+    IF (cond # AL) & (ofs > -C7) THEN (*T1*) Put1(BCT1 + cond*C8 + ofs MOD C8)
+    ELSIF (cond = AL) & (ofs > -C10) THEN (*T2*) Put1(BT2 + ofs MOD C11)
+    ELSIF (cond # AL) & (ofs > -C19) THEN (*T3*) 
+      Put0(BCT3 + ofs DIV C19 MOD C1*C26 + cond*C22 + ofs DIV C11 MOD C6*C16 +
+        ofs DIV C17 MOD C1*C13 + ofs DIV C18 MOD C1*C11 + ofs MOD C11)
+    ELSIF ofs > -C23 THEN
+      IF (cond # AL) THEN Put1(IT + cond*C4 + 8H (*IT cond*));  nbRmnITBlockInsts := 1
+      END;
+      Put0(BT4 + formatEvenImm25(ofs*C1))
+    ELSE OM4S.Mark("branch too far")
+    END
+  END encBackBranch;
   
   PROCEDURE incR;
   BEGIN
@@ -521,7 +565,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     ASSERT(code[at+1] DIV C3 = BRSIG); (*Check branch signature*)
     IF with >= C24 THEN OM4S.Mark("forward jump too far")
-    ELSE modify(at, BWT4 + formatEvenImm25(with)) END
+    ELSE modify(at, BT4 + formatEvenImm25(with)) END
   END fix25;
 
   PROCEDURE fix8(at, with: LONGINT);
@@ -620,7 +664,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF x.type.form = OM4B.Proc THEN
           IF x.r > 0 THEN OM4S.Mark("not allowed")
           ELSIF x.r = 0 THEN
-            Put0(BLW + formatEvenImm25(0));  (* Put address of next statement in LR *)
+            Put0(BL + formatEvenImm25(0));  (* Put address of next statement in LR *)
             encDPImm32(SUB, RH, LNK, pc - x.a + 1 (*For Thumb state*) )
           ELSE GetSB(x.r); Put0(EXTADD*C28 + RH*C24 + RH*C20 + C8 (*mark as progbase-relative*) + x.a)
           END;
@@ -1107,7 +1151,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     encMemImm12(LDRBIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 1), "");
     encMemImm12(LDRBIT3, RH+1, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 1), "");
     encCMPReg(RH, RH+1); tbf0 := pc; Put1(BCT1 + NE*C8); (*BC NE Fin*)
-    encCMPImm8(RH, 0); Put1(BCT1 + NE*C8 + (pc0-(pc+4)) DIV C1 MOD C8); (*BC NE Compare*)
+    encCMPImm8(RH, 0); encBackBranch(NE, pc0); (*BC NE Compare*)
   (* Fin: *) fix8(tbf0, pc - tbf0 - 4);
     DEC(RH, 2); SetCC(x, relmap[op - OM4S.eql])
   END StringRelation;
@@ -1186,7 +1230,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       encMemImm12(LDRIT3, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
       encMemImm12(STRIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
       DEC(RH);
-      encDPImm32(SUB, RH, RH, 1); Put1(BCT1 + NE*C8 + (pc1-(pc+4)) DIV C1 MOD C8); (*BNE L1*)
+      encDPImm32(SUB, RH, RH, 1); encBackBranch(NE, pc1); (*BNE L1*)
       (*L0:*) IF pc0 # -1 THEN fix8(pc0, pc - pc0 - 4) 
               END
     END;
@@ -1205,7 +1249,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*L0:*) pc0 := pc;
     encMemImm12(LDRIT3, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
     encMemImm12(STRIT3, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
-    encShiftImm5(ASR, RH, RH, 24); Put1(BCT1 + NE*C8 + (pc0-(pc+4)) DIV C1 MOD C8); (*BNE L0*)
+    encShiftImm5(ASR, RH, RH, 24); encBackBranch(NE, pc0); (*BNE L0*)
     RH := 0
    END CopyString;
   
@@ -1272,20 +1316,18 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE CFJump*(VAR x: Item);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    Put1(IT + negated(x.r) + 8H (*IT cond*))
+    Put1(IT + negated(x.r) + 8H (*IT cond*));
     Put0(BRSIG*C27 + x.a); FixLink(x.b); x.a := pc-4
   END CFJump;
 
-(* TODO: j'en suis là *)
-
   PROCEDURE BJump*(L: LONGINT);
-  BEGIN Put3(BC, 7, L-pc-1)
+  BEGIN encBackBranch(AL, L)
   END BJump;
 
   PROCEDURE CBJump*(VAR x: Item; L: LONGINT);
   BEGIN
-    IF x.mode # Cond THEN loadCond(x) END ;
-    Put3(BC, negated(x.r), L-pc-1); FixLink(x.b); FixLinkWith(x.a, L)
+    IF x.mode # Cond THEN loadCond(x) END;
+    encBackBranch(negated(x.r), L); FixLink(x.b); FixLinkWith(x.a, L)
   END CBJump;
 
   PROCEDURE Fixup*(VAR x: Item);
@@ -1294,17 +1336,27 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE SaveRegs(r: LONGINT);  (* R[0 .. r-1]*)
     VAR r0: LONGINT;
-  BEGIN (*r > 0*) r0 := 0;
-    Put1(Sub, SP, SP, r*4); INC(frame, 4*r);
-    REPEAT Put2(Str, r0, SP, (r-r0-1)*4); INC(r0) UNTIL r0 = r
+  BEGIN 
+    ASSERT(r IN {0..13});
+    r0 := LSL(1, r) - 1;
+    IF r0 < C8 THEN (*PUSH T1*) Put1(PUSHT1 + r0)
+    ELSE (*PUSH T2*) Put0(PUSHT2 + r0)
+    END;
+    INC(frame, 4*r)
   END SaveRegs;
 
   PROCEDURE RestoreRegs(r: LONGINT); (*R[0 .. r-1]*)
     VAR r0: LONGINT;
   BEGIN (*r > 0*) r0 := r;
-    REPEAT DEC(r0); Put2(Ldr, r0, SP, (r-r0-1)*4) UNTIL r0 = 0;
-    Put1(Add, SP, SP, r*4); DEC(frame, 4*r)
+    ASSERT(r IN {0..13});
+    r0 := LSL(1, r) - 1;
+    IF r0 < C8 THEN (*POP T1*) Put1(POPT1 + r0)
+    ELSE (*POP T2*) Put0(POPT2 + r0)
+    END;
+    DEC(frame, 4*r)
   END RestoreRegs;
+
+(* TODO: j'en suis là *)
 
   PROCEDURE PrepCall*(VAR x: Item; VAR r: LONGINT);
   BEGIN (*x.type.form = OM4B.Proc*)
