@@ -59,6 +59,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       MOVS <Rd>,#<imm8>*)
     MOVT    = 0F2C00000H;
 
+    MOVRT1  = 4600H;
+    (*|0100/0110/D Rm/  Rd|
+      MOV<c> <Rd>,<Rm>*)
+      
     VMOVSR  = 0EE000A10H;
     (*|1110 1110 000o  Vn   Rt  1010 N001 0000|
       VMOV (between Arm core register and single-precision register)
@@ -148,7 +152,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     CMPIT2  = 0F1B00F00H;
     CMPRT1  = 4280H;
     CMPRT2  = 4500H;
-    
+
+    SVC     = 0DF00H;
+    (*|1101/1111/ imm/8   |
+      SVC<c> #<imm8>*)
+      
     BRSIG   = 1EH;
 
     
@@ -331,6 +339,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN shift DIV C2*C12 + shift MOD C2*C6
   END formatShiftImm5;
 
+  PROCEDURE format2Reg4(a, b: BYTE): LONGINT;
+  BEGIN
+    ASSERT ((a < C4) & (b < C4));
+    RETURN 0 + a DIV 3*C7 + b*C3 + a MOD 3
+  END format2Reg4;
+  
   PROCEDURE format3Reg4(a, b, c: BYTE): LONGINT;
   BEGIN
     ASSERT ((a < C4) & (b < C4) & (c < C4));
@@ -343,7 +357,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN ORD(p)*C10 + ORD(u)*C9 + ORD(w)*C8 + imm8
   END formatPUWImm8;
   
-  PROCEDURE encMovImm32(reg: BYTE; val: LONGINT);
+  PROCEDURE encMOVImm32(reg: BYTE; val: LONGINT);
   VAR hw: LONGINT;
   
     PROCEDURE formatImm16(reg: BYTE; val: LONGINT): LONGINT;
@@ -367,7 +381,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ASSERT(nbRmnITBlockInsts = 0);
       Put0(MOVT + formatImm16(reg, val))
     END
-  END encMovImm32;
+  END encMOVImm32;
 
   PROCEDURE encMemImm12(op, a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
   BEGIN
@@ -401,7 +415,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       lastInstrSetFlags := ODD(imm12map[op] DIV C20);
     ELSE
       ASSERT(nbRmnITBlockInsts = 0);
-      encMovImm32(RH, imm);
+      encMOVImm32(RH, imm);
       IF (a < C3) & (b < C3) & (RH < C3) & (reg3map[op] # 0) THEN
         lastInstrSetFlags := nbRmnITBlockInsts = 0; (* not in IT block *)
         Put1(reg3map[op] + RH*C6 + b*C3 + a)
@@ -462,15 +476,21 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE encCMPReg(a, b: BYTE);
   BEGIN
-    ASSERT ((a < 15) & (b < 15));
+    ASSERT((a < 15) & (b < 15));
     IF (a < 8) & (b < 8) THEN
       (*CMP (register) T1*)
       Put1(CMPRT1 + b*C3 + a)
     ELSE (*CMP (register) T2*)
-      Put1(CMPRT2 + a DIV 3*C7 + b*C3 + a MOD 3)
+      Put1(CMPRT2 + format2Reg4(a, b))
     END;
     lastInstrSetFlags := TRUE
   END encCMPReg;
+  
+  PROCEDURE encMOVReg(a, b: BYTE);
+  BEGIN
+    ASSERT((a # 15) OR (nbRmnITBlockInsts <= 1));
+    Put1(MOVRT1 + a DIV 3*C7 + b*C3 + a MOD 3)
+  END encMOVReg;
   
   PROCEDURE encMUL(a, b, c: BYTE);
   BEGIN
@@ -638,7 +658,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE GetSB(base: LONGINT);
   BEGIN
-    IF version = 0 THEN encMovImm32(RH, VarORG0)
+    IF version = 0 THEN encMOVImm32(RH, VarORG0)
     ELSE
       IF pc-fixORGD > C25 THEN OM4S.Mark("too many instruction between static access") END;
       Put0(RH*C28 + (-base)*C24 + (pc-fixORGD) DIV C1);
@@ -695,7 +715,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSE GetSB(x.r); Put0(EXTADD*C28 + RH*C24 + RH*C20 + C8 (*mark as progbase-relative*) + x.a)
           END;
           x.r := RH; incR
-        ELSE encMovImm32(RH, x.a);
+        ELSE encMOVImm32(RH, x.a);
           IF x.type.form = OM4B.Real THEN
             encFPOpReg(VMOVSR, RH, SH, 0);
             x.r := SH; incS
@@ -739,8 +759,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END
       ELSIF x.mode = Cond THEN
         Put1(IT + x.r*C4 + negated(x.r) MOD C1*C3 + C2); (* ITE cond *) nbRmnITBlockInsts := 2;
-        encMovImm32(RH, 1);
-        encMovImm32(RH, 0);
+        encMOVImm32(RH, 1);
+        encMOVImm32(RH, 0);
         x.r := RH; incR
       END ;
       x.mode := Reg
@@ -1085,7 +1105,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
   BEGIN
     IF x.mode = OM4B.Const THEN x.a := LSL(1, x.a)
-    ELSE load(x); encMovImm32(RH, 1); encShiftReg(LSl, x.r, RH,  x.r)
+    ELSE load(x); encMOVImm32(RH, 1); encShiftReg(LSl, x.r, RH,  x.r)
     END
   END Singleton;
 
@@ -1094,8 +1114,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF (x.mode = OM4B.Const) & ( y.mode = OM4B.Const) THEN
       IF x.a <= y.a THEN x.a := LSL(2, y.a) - LSL(1, x.a) ELSE x.a := 0 END
     ELSE
-      load(x); encMovImm32(RH, -1); encShiftReg(LSl, x.r, RH, x.r);
-      load(y); encMovImm32(RH, -2); encShiftReg(LSl, y.r, RH, y.r);
+      load(x); encMOVImm32(RH, -1); encShiftReg(LSl, x.r, RH, x.r);
+      load(y); encMOVImm32(RH, -2); encShiftReg(LSl, y.r, RH, y.r);
       IF x.mode = OM4B.Const THEN
         IF x.a # 0 THEN encDPImm32(EOR, y.r, y.r, -1); encDPImm32(AND, RH-1, y.r, x.a) END ;
         x.mode := Reg; x.r := RH-1 (*TODO Vérifier s'il ne maque pas des DEC(RH)*)
@@ -1147,7 +1167,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF (y.mode = OM4B.Const) & (y.type.form # OM4B.Proc) THEN
       load(x);
       IF (y.a # 0) OR ~(op IN {OM4S.eql, OM4S.neq}) OR ~lastInstrSetFlags THEN
-        encMovImm32(RH, y.a); encCMPReg(x.r, RH)
+        encMOVImm32(RH, y.a); encCMPReg(x.r, RH)
       END;
       DEC(RH)
     ELSE
@@ -1236,19 +1256,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       loadAdr(x); loadAdr(y);
       IF (x.type.form = OM4B.Array) &  (x.type.len > 0) THEN
         IF y.type.len >= 0 THEN 
-          IF x.type.size = y.type.size THEN encMovImm32(RH, (y.type.size+3) DIV 4)
+          IF x.type.size = y.type.size THEN encMOVImm32(RH, (y.type.size+3) DIV 4)
           ELSE OM4S.Mark("different length/size, not implemented")
           END
         ELSE (*y  open array*) encMemImm12(LDRIT3, RH, SP, y.a+4, "struct too far"); s := y.type.base.size;  (*element size*)
           encCMPImm8(RH, 0); pc0 := pc; Put1(BCT1 + EQ*C8); (*BEQ L0*)
           IF s = 1 THEN encDPImm32(ADD, RH, RH, 3); encShiftImm5(ASR, RH, RH, 2)
-          ELSIF s # 4 THEN ASSERT(s MOD 4 = 0); incR; encMovImm32(RH, s DIV 4); encMUL(RH-1, RH-1, RH); DEC(RH)
+          ELSIF s # 4 THEN ASSERT(s MOD 4 = 0); incR; encMOVImm32(RH, s DIV 4); encMUL(RH-1, RH-1, RH); DEC(RH)
           END;
           IF check THEN
-            incR; encMovImm32(RH, (x.type.size+3) DIV 4); encCMPReg(RH-1, RH); Trap(GT, 3); DEC(RH)
+            incR; encMOVImm32(RH, (x.type.size+3) DIV 4); encCMPReg(RH-1, RH); Trap(GT, 3); DEC(RH)
           END
         END
-      ELSIF x.type.form = OM4B.Record THEN encMovImm32(RH, x.type.size DIV 4)
+      ELSIF x.type.form = OM4B.Record THEN encMOVImm32(RH, x.type.size DIV 4)
       ELSE OM4S.Mark("inadmissible assignment")
       END ;
       incR;
@@ -1283,7 +1303,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE OpenArrayParam*(VAR x: Item);
   BEGIN loadAdr(x);
-    IF x.type.len >= 0 THEN encMovImm32(RH, x.type.len) ELSE encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "open array param too far") END ;
+    IF x.type.len >= 0 THEN encMOVImm32(RH, x.type.len) ELSE encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "open array param too far") END ;
     incR
   END OpenArrayParam;
 
@@ -1291,7 +1311,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR xmd: INTEGER;
   BEGIN xmd := x.mode; loadAdr(x);
     IF (ftype.form = OM4B.Array) & (ftype.len < 0) THEN (*open array*)
-      IF x.type.len >= 0 THEN encMovImm32(RH, x.type.len) ELSE  encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "array param too far") END ;
+      IF x.type.len >= 0 THEN encMOVImm32(RH, x.type.len) ELSE  encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "array param too far") END ;
       incR
     ELSIF ftype.form = OM4B.Record THEN
       IF xmd = OM4B.Par THEN encMemImm12(LDRIT3, RH, SP, x.a+4+frame, "record param too far"); incR ELSE loadTypTagAdr(x.type) END
@@ -1303,7 +1323,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END ValueParam;
 
   PROCEDURE StringParam*(VAR x: Item);
-  BEGIN loadStringAdr(x); encMovImm32(RH, x.b); incR  (*len*)
+  BEGIN loadStringAdr(x); encMOVImm32(RH, x.b); incR  (*len*)
   END StringParam;
 
   (*For Statements*)
@@ -1412,7 +1432,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0
     ELSE (*function*)
-      IF r > 0 THEN encMovImm32(r, 0); RestoreRegs(r) END ;
+      IF r > 0 THEN encMOVReg(r, 0); RestoreRegs(r) END ;
       x.mode := Reg; x.r := r; RH := r+1
     END
   END Call;
@@ -1448,42 +1468,42 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RH := 0
   END Return;
 
-(* TODO: j'en suis là *)
-
   (* In-line code procedures*)
 
   PROCEDURE Increment*(upordown: LONGINT; VAR x, y: Item);
-    VAR op, zr, v: LONGINT;
+    VAR op, zr, vl, vs: LONGINT;
   BEGIN (*frame = 0*)
-    IF upordown = 0 THEN op := Add ELSE op := Sub END ;
-    IF x.type = OM4B.byteType THEN v := 1 ELSE v := 0 END ;
+    IF upordown = 0 THEN op := ADD ELSE op := SUB END ;
+    IF x.type = OM4B.byteType THEN vl := LDRBIT2; vs := STRBIT2 ELSE vl := LDRIT3; vs := STRIT3 END ;
     IF y.type.form = OM4B.NoTyp THEN y.mode := OM4B.Const; y.a := 1 END ;
     IF (x.mode = OM4B.Var) & (x.r > 0) THEN
-      zr := RH; Put2(Ldr+v, zr, SP, x.a); incR;
-      IF y.mode = OM4B.Const THEN Put1a(op, zr, zr, y.a) ELSE load(y); Put0(op, zr, zr, y.r); DEC(RH) END ;
-      Put2(Str+v, zr, SP, x.a); DEC(RH)
-    ELSE loadAdr(x); zr := RH; Put2(Ldr+v, RH, x.r, 0); incR;
-      IF y.mode = OM4B.Const THEN Put1a(op, zr, zr, y.a) ELSE load(y); Put0(op, zr, zr, y.r); DEC(RH) END ;
-      Put2(Str+v, zr, x.r, 0); DEC(RH, 2)
+      zr := RH; encMemImm12(vl, zr, SP, x.a, "incd var too far"); incR;
+      IF y.mode = OM4B.Const THEN encDPImm32(op, zr, zr, y.a) ELSE load(y); encDPReg(op, zr, zr, y.r, 0); DEC(RH) END ;
+      encMemImm12(vs, zr, SP, x.a, "too far"); DEC(RH)
+    ELSE loadAdr(x); zr := RH; encMemImm12(vl, RH, x.r, 0, "incd too far"); incR;
+      IF y.mode = OM4B.Const THEN encDPImm32(op, zr, zr, y.a) ELSE load(y); encDPReg(op, zr, zr, y.r, 0); DEC(RH) END ;
+      encMemImm12(vs, zr, x.r, 0, "too far"); DEC(RH, 2)
     END
   END Increment;
 
   PROCEDURE Include*(inorex: LONGINT; VAR x, y: Item);
     VAR op, zr: LONGINT;
-  BEGIN loadAdr(x); zr := RH; Put2(Ldr, RH, x.r, 0); incR;
-    IF inorex = 0 THEN op := Ior ELSE op := Ann END ;
-    IF y.mode = OM4B.Const THEN Put1a(op, zr, zr, LSL(1, y.a))
-    ELSE load(y); Put1(Mov, RH, 0, 1); Put0(Lsl, y.r, RH, y.r); Put0(op, zr, zr, y.r); DEC(RH)
+  BEGIN loadAdr(x); zr := RH; encMemImm12(LDRIT3, RH, x.r, 0, "inorex var too far"); incR;
+    IF inorex = 0 THEN op := ORR ELSE op := BIC END ;
+    IF y.mode = OM4B.Const THEN encDPImm32(op, zr, zr, LSL(1, y.a))
+    (* considérer BFI et BFC pour gagner 4 octets par le remplacement de LSL et ORR/BIC par BFI/BFC*)
+    ELSE load(y); encMOVImm32(RH, 1); encShiftReg(LSl, y.r, RH, y.r); encDPReg(op, zr, zr, y.r, 0); DEC(RH)
     END ;
-    Put2(Str, zr, x.r, 0); DEC(RH, 2)
+    encMemImm12(STRIT3, zr, x.r, 0, "too far"); DEC(RH, 2)
   END Include;
 
   PROCEDURE Assert*(VAR x: Item);
     VAR cond: LONGINT;
   BEGIN
-    IF x.mode # Cond THEN loadCond(x) END ;
+    IF x.mode # Cond THEN loadCond(x) END;
     IF x.a = 0 THEN cond := negated(x.r)
-    ELSE Put3(BC, x.r, x.b); FixLink(x.a); x.b := pc-1; cond := AL
+    ELSE Put1(IT + negated(x.r)*C4 + 8H (*IT cond*)); nbRmnITBlockInsts := 1;
+      FixLink(x.a); cond := AL
     END ;
     Trap(cond, 7); FixLink(x.b)
   END Assert; 
@@ -1495,18 +1515,22 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Pack*(VAR x, y: Item);
     VAR z: Item;
   BEGIN z := x; load(x); load(y);
-    Put1(Lsl, y.r, y.r, 23); Put0(Add, x.r, x.r, y.r); DEC(RH); Store(z, x)
+    encDPReg(ADD, x.r, x.r, y.r, 23); DEC(RH); Store(z, x)
   END Pack;
 
   PROCEDURE Unpk*(VAR x, y: Item);
     VAR z, e0: Item;
   BEGIN  z := x; load(x); e0.mode := Reg; e0.r := RH; e0.type := OM4B.intType;
-    Put1(Asr, RH, x.r, 23); Put1(Sub, RH, RH, 127); Store(y, e0); incR;
-    Put1(Lsl, RH, RH, 23); Put0(Sub, x.r, x.r, RH); Store(z, x)
+    encShiftImm5(ASR, RH, x.r, 23); encDPImm32(SUB, RH, RH, 127); Store(y, e0); incR;
+    encDPReg(SUB, x.r, x.r, RH, 23); Store(z, x)
   END Unpk;
 
+(* The SVC mechanism will be used to communicate with undelying firmware,
+   in order to hide board level details, like the LED attachement to ports.*)
+   
   PROCEDURE Led*(VAR x: Item);
-  BEGIN load(x); Put1(Mov, RH, 0, -60); Put2(Str, x.r, RH, 0); DEC(RH)
+  (*SVC #1 is assigned to LEDS*)
+  BEGIN load(x); Put1(SVC + 1); DEC(RH)
   END Led;
 
   PROCEDURE Get*(VAR x, y: Item);
@@ -1518,30 +1542,31 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Put;
 
   PROCEDURE Copy*(VAR x, y, z: Item);
+    VAR pc0, pc1: LONGINT;
   BEGIN load(x); load(y);
     IF z.mode = OM4B.Const THEN
       IF z.a > 0 THEN load(z) ELSE OM4S.Mark("bad count") END
     ELSE load(z);
       IF check THEN Trap(LT, 3) END ;
-      Put3(BC, EQ, 6)
+      pc0 := pc; Put1(BCT1 + EQ*C8); (*BEQ L0*)
     END ;
-    Put2(Ldr, RH, x.r, 0); Put1(Add, x.r, x.r, 4);
-    Put2(Str, RH, y.r, 0); Put1(Add, y.r, y.r, 4);
-    Put1(Sub, z.r, z.r, 1); Put3(BC, NE, -6); DEC(RH, 3)
+    pc1 := pc;
+    encMemImm12(LDRIT4, RH, x.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+    encMemImm12(STRIT4, RH, y.r, formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+    encDPImm32(SUB, z.r, z.r, 1); encBackBranch(NE, pc1); (*BNE L1*)
+    fix8(pc0, pc - pc0 - 4); DEC(RH, 3)
   END Copy;
-
-  PROCEDURE LDPSR*(VAR x: Item);
-  BEGIN (*x.mode = Const*)  Put3(0, 15, x.a + 20H)
-  END LDPSR;
 
   PROCEDURE LDREG*(VAR x, y: Item);
   BEGIN
-    IF y.mode = OM4B.Const THEN Put1a(Mov, x.a, 0, y.a)
-    ELSE load(y); Put0(Mov, x.a, 0, y.r); DEC(RH)
+    IF y.mode = OM4B.Const THEN encMOVImm32(x.a, y.a)
+    ELSE load(y); encMOVReg(x.a, y.r); DEC(RH)
     END
   END LDREG;
 
   (*In-line code functions*)
+
+(* TODO: j'en suis là *)
 
   PROCEDURE Abs*(VAR x: Item);
   BEGIN

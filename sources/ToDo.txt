@@ -1,21 +1,21 @@
-Leste des modules Ã  crÃ©er :
+Liste des modules à créer :
 OM4P, OM4S, OM4B, OM4G
 
-Liste des modules Ã  modifier :
-BootLoad, Modules, System
+Liste des modules à modifier :
+BootLoad, Modules, System, Kernel
 
-PiÃ¨ge thumb : l'ordre en mÃ©moire des octets de l'instruction est bizarre :
+Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
 15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0   15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0
      32-bit Thumb instruction, hw1            32-bit Thumb instruction, hw2
 Byte at Address A+1   Byte at Address A   Byte at Address A+3  Byte at Address A+2
 
-PiÃ¨ge exÃ©cution dans SDRAM :
+Piège exécution dans SDRAM :
 MPU or default memory map
 -mismatch:on instruction access IACCVIOL(1)
 1. Occurs on an access to an XN region even if the MPU is disabled.
 
-PossibilitÃ© pour implÃ©menter le mÃ©canisme Trap : gÃ©nÃ©rer une instruction illÃ©gale
-pour un coprocesseur non extistant, c'est Ã  dire ni 10 ni 11
+Possibilité pour implémenter le mécanisme Trap : générer une instruction illégale
+pour un coprocesseur non extistant, c'est à dire ni 10 ni 11
 
 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
  1  1  1     1  1                                |  coproc | 
@@ -25,5 +25,5 @@ Ce qui nous donne (Forme 0) (* Put0(op : BYTE; p : LONGINT *) :
  1  1  1  H  1  1           im14                   0        im11
 
 
-On peut spÃ©cifier H:im14:im11 soit 26 bits de donnÃ©es contre 24 pour RISC-5,
-donc Ã§a devrait marcher.
+On peut spécifier H:im14:im11 soit 26 bits de données contre 24 pour RISC-5,
+donc ça devrait marcher.
