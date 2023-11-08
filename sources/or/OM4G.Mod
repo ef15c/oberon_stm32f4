@@ -64,10 +64,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       MOV<c> <Rd>,<Rm>*)
       
     VMOVSR  = 0EE000A10H;
-    (*|1110 1110 000o  Vn   Rt  1010 N001 0000|
+    (*|1110/1110/000o/ Vn / Rt /1010/N001/0000|
       VMOV (between Arm core register and single-precision register)
       VMOV{<c>}{<q>} <Sn>,<Rt> o=0*)
-      
+    VMOVRS  = 0EE100A10H;
+    (*|1110/1110/000o/ Vn / Rt /1010/N001/0000|
+      VMOV (between Arm core register and single-precision register)
+      VMOV{<c>}{<q>}<Rt>,<Sn> o=1*)
     VMOVSS  = 0EEB00A40H;
     (*|1110 1110 1D11 0000  Vd  101s 01M0  Vm |
       VMOV<c>.F32 <Sd>, <Sm>*)
@@ -100,6 +103,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VCMP    = 0EEB40A40H;
     (*|1110 1110 1D11 0100  Vd  101s E1M0  Vm |
       VCMP{E}<c>.F32 <Sd>, <Sm>*)
+    VABS    = 0EEB00AC0H;
+    (*|1110/1110/1D11/0000/ Vd /101s/11M0/ Vm |
+      VABS<c>.F32 <Sd>, <Sm>*)
+    VCVTSF  = 0EEBD0A40H;
+    (*|1110/1110/1D11/1op2/ Vd /101s/o1M0/ Vm |
+      VCVT{R}{<c>}{<q>}.S32.F32 <Sd>, <Sm> Encoded as op2 = b101, sz = 0, o = 0*)
+    VCVTFS  = 0EEB80AC0H;
+    (*|1110/1110/1D11/1op2/ Vd /101s/o1M0/ Vm |
+      VCVT{<c>}{<q>}.F32.<Tm> <Sd>, <Sm> Encoded as op2 = b000, s = 0, o = 1*)
+    
     VMRS    = 0EEF10A10H;
     (*|1110 1110 1111 0001  Rt  1010 0001 0000|
       VMRS<c> <Rt>, FPSCR*)
@@ -156,12 +169,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     SVC     = 0DF00H;
     (*|1101/1111/ imm/8   |
       SVC<c> #<imm8>*)
-      
+    
+    BFC     = 0F36F0000H;
+    (*|1111/0011/0110/1111/0im3/ Rd /im0 /msb |
+      BFC<c> <Rd>,#<lsb>,#<width>*)
+    
     BRSIG   = 1EH;
 
     
     (* Arithmetic and logical operations *)
-    SUB=0; ADD=1; RSB=2; EOR=3; AND=4; BIC=5; ORR=6;
+    SUB=0; ADD=1; RSB=2; EOR=3; AND=4; BIC=5; ORR=6; ADc=7; SBc=8;
 
     (* Shift operations *)
     LSl=0; ASR=1; LSR=2; ROR=3;
@@ -174,6 +191,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*|1111/1011/0000/ Rn /1111/ Rd /0000/ Rm |
       MUL<c> <Rd>,<Rn>,<Rm>*)
     UDIV  = 0FBB0F0F0H;
+    (*|1111/1011/1011/ Rn /1111/ Rd /1111/ Rm |
+      UDIV<c><q> {<Rd>,} <Rn>, <Rm>*)
+    UMULL = 0FBA00000H;
+  (*|1111/1011/1010/ Rn /RdLo/RdHi/0000/ Rm |
+    UMULL<c><q> <RdLo>, <RdHi>, <Rn>, <Rm>*)
     
 (*  Format of pseudo operations for accessing external vars and procs
 
@@ -396,7 +418,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE encDPImm32(op, a, b: BYTE; imm: LONGINT);
   BEGIN
-    ASSERT (op <= ORR);
+    ASSERT (op <= SBc);
     ASSERT ((a < C4) & (b < C4));
     IF (imm >= 0) & (imm < C3) & (a < C3) & (b < C3) & (imm3map[op] # 0) THEN
       (*|   op  immbbbaaa|
@@ -427,7 +449,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE encDPReg(op, a, b, c: BYTE; shift: LONGINT);
   BEGIN
-    ASSERT (op <= ORR);
+    ASSERT (op <= SBc);
     ASSERT ((a < C4) & (b < C4) & (c < C4));
     IF (a < C3) & (b < C3) & (c < C3) & (shift = 0) & (reg3map[op] # 0) THEN
       (*ADD/SUB (Register) T1*)
@@ -510,7 +532,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     ASSERT((a < C5) & (b < C5) & (c < C5));
     (* VNEG (a := -c)
-    *  VMOVSR (b := a) *)
+    *  VMOVSR (b := a)
+    *  VMOVRS (a := b) *)
     Put0(op + a MOD C1*C22 + b DIV C1*C16 + a DIV C1*C12 + b MOD C1*C7 + c MOD C1*C5 + c DIV C1)
   END encFPOpReg;
 
@@ -525,7 +548,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       Put0(BCT3 + ofs DIV C19 MOD C1*C26 + cond*C22 + ofs DIV C11 MOD C6*C16 +
         ofs DIV C17 MOD C1*C13 + ofs DIV C18 MOD C1*C11 + ofs MOD C11)
     ELSIF ofs > -C23 THEN
-      IF (cond # AL) THEN Put1(IT + cond*C4 + 8H (*IT cond*));  nbRmnITBlockInsts := 1
+      IF (cond # AL) THEN Put1(IT + cond*C4 + C3 (*IT cond*));  nbRmnITBlockInsts := 1
       END;
       Put0(BT4 + formatEvenImm25(ofs*C1))
     ELSE OM4S.Mark("branch too far")
@@ -581,7 +604,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN 
     ASSERT(cond # NV);
     (*IT<cond> encoding if needed*)
-    IF cond # AL THEN Put1(IT + cond*C4 + 8H (*IT cond*));  nbRmnITBlockInsts := 1 END;
+    IF cond # AL THEN Put1(IT + cond*C4 + C3 (*IT cond*));  nbRmnITBlockInsts := 1 END;
     pos := OM4S.Pos();
     ASSERT(pos < C20);
     ASSERT(num < C4);
@@ -695,6 +718,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       Put0(ope*C28 + s*C24 + r*C20 + par)
     END
   END encStaticRealAccess;
+  
+  PROCEDURE encBFC(a, l, m: BYTE);
+  BEGIN
+    ASSERT((a < C4) & (l < C5) & (m >= l) & (m < C5));
+    Put0(BFC + l DIV C2*C12 + a*C8 + l MOD C2*C6 + m)
+  END encBFC;
   
   PROCEDURE NilCheck;
   BEGIN IF check THEN Trap(EQ, 4) END
@@ -984,7 +1013,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE And1*(VAR x: Item);   (* x := x & *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
-    Put1(IT + negated(x.r)*C4 + 8H (*IT cond*));  nbRmnITBlockInsts := 1;
+    Put1(IT + negated(x.r)*C4 + C3 (*IT cond*));  nbRmnITBlockInsts := 1;
     Put0(BRSIG*C27 + x.a);
     x.a := pc-4; FixLink(x.b); x.b := 0
   END And1;
@@ -998,7 +1027,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Or1*(VAR x: Item);   (* x := x OR *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
-    Put1(IT + x.r*C4 + 8H (*IT cond*));  nbRmnITBlockInsts := 1;
+    Put1(IT + x.r*C4 + C3 (*IT cond*));  nbRmnITBlockInsts := 1;
     Put0(BRSIG*C27 + x.b);
     x.b := pc-4; FixLink(x.a); x.a := 0
   END Or1;
@@ -1335,9 +1364,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: LONGINT);
   BEGIN 
     load(z); encCMPReg(y.r, z.r); DEC(RH);
-    IF w.a > 0 THEN Put1(IT + GT*C4 + 8H (*IT cond*))
-    ELSIF w.a < 0 THEN Put1(IT + LT*C4 + 8H)
-    ELSE OM4S.Mark("zero increment"); Put1(IT + MI*C4 + 8H)
+    IF w.a > 0 THEN Put1(IT + GT*C4 + C3 (*IT cond*))
+    ELSIF w.a < 0 THEN Put1(IT + LT*C4 + C3)
+    ELSE OM4S.Mark("zero increment"); Put1(IT + MI*C4 + C3)
     END;
     nbRmnITBlockInsts := 1;
     L := pc;
@@ -1362,7 +1391,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE CFJump*(VAR x: Item);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    Put1(IT + negated(x.r) + 8H (*IT cond*));
+    Put1(IT + negated(x.r) + C3 (*IT cond*)); nbRmnITBlockInsts := 1;
     Put0(BRSIG*C27 + x.a); FixLink(x.b); x.a := pc-4
   END CFJump;
 
@@ -1502,7 +1531,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
     IF x.a = 0 THEN cond := negated(x.r)
-    ELSE Put1(IT + negated(x.r)*C4 + 8H (*IT cond*)); nbRmnITBlockInsts := 1;
+    ELSE Put1(IT + negated(x.r)*C4 + C3 (*IT cond*)); nbRmnITBlockInsts := 1;
       FixLink(x.a); cond := AL
     END ;
     Trap(cond, 7); FixLink(x.b)
@@ -1514,15 +1543,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Pack*(VAR x, y: Item);
     VAR z: Item;
-  BEGIN z := x; load(x); load(y);
-    encDPReg(ADD, x.r, x.r, y.r, 23); DEC(RH); Store(z, x)
+  BEGIN (*Load x in a core register*)
+    x.type.form := OM4B.Int;
+    z := x; load(x); load(y);
+    encDPReg(ADD, x.r, x.r, y.r, 23); DEC(RH); Store(z, x);
   END Pack;
 
   PROCEDURE Unpk*(VAR x, y: Item);
     VAR z, e0: Item;
-  BEGIN  z := x; load(x); e0.mode := Reg; e0.r := RH; e0.type := OM4B.intType;
+  BEGIN (*Load x in a core register*)
+    x.type.form := OM4B.Int;
+    z := x; load(x); e0.mode := Reg; e0.r := RH; e0.type := OM4B.intType;
     encShiftImm5(ASR, RH, x.r, 23); encDPImm32(SUB, RH, RH, 127); Store(y, e0); incR;
-    encDPReg(SUB, x.r, x.r, RH, 23); Store(z, x)
+    encDPReg(SUB, x.r, x.r, RH, 23); Store(z, x);
   END Unpk;
 
 (* The SVC mechanism will be used to communicate with undelying firmware,
@@ -1566,28 +1599,29 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (*In-line code functions*)
 
-(* TODO: j'en suis là *)
-
   PROCEDURE Abs*(VAR x: Item);
   BEGIN
     IF x.mode = OM4B.Const THEN x.a := ABS(x.a)
     ELSE load(x);
-      IF x.type.form = OM4B.Real THEN Put1(Lsl, x.r, x.r, 1); Put1(Ror, x.r, x.r, 1)
-      ELSE Put1(Cmp, x.r, x.r, 0); Put3(BC, GE, 2); Put1(Mov, RH, 0, 0); Put0(Sub, x.r, RH, x.r)
+      IF x.type.form = OM4B.Real THEN encFPOpReg(VABS, x.r, 0, x.r)
+      ELSE encCMPImm8(x.r, 0); Put1(IT + LT*C4 + LT MOD C1*C3 + C2 (*ITT LT*)); nbRmnITBlockInsts := 2;
+      encMOVImm32(RH, 0); encDPReg(SUB, x.r, RH, x.r, 0)
       END
     END
   END Abs;
 
   PROCEDURE Odd*(VAR x: Item);
-  BEGIN load(x); Put1(And, x.r, x.r, 1); SetCC(x, NE); DEC(RH)
+  BEGIN load(x); encShiftImm5(ROR, x.r, x.r, 1); SetCC(x, MI); DEC(RH)
   END Odd;
 
   PROCEDURE Floor*(VAR x: Item);
-  BEGIN load(x); Put1(Mov+U, RH, 0, 4B00H); Put0(Fad+V, x.r, x.r, RH)
+  BEGIN load(x); encFPOpReg(VCVTSF, x.r, 0, x.r); 
+    incR; encFPOpReg(VMOVRS, RH-1, x.r, 0); x.r := RH-1; DEC(SH)
   END Floor;
 
   PROCEDURE Float*(VAR x: Item);
-  BEGIN load(x); Put1(Mov+U, RH, 0, 4B00H);  Put0(Fad+U, x.r, x.r, RH)
+  BEGIN load(x); incS; encFPOpReg(VMOVSR, x.r, SH-1, 0); x.r := SH-1;
+    DEC(RH); encFPOpReg(VCVTFS, x.r, 0, x.r)
   END Float;
 
   PROCEDURE Ord*(VAR x: Item);
@@ -1600,30 +1634,33 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.type.len >= 0 THEN
       IF x.mode = RegI THEN DEC(RH) END ;
       x.mode := OM4B.Const; x.a := x.type.len
-    ELSE (*open array*) Put2(Ldr, RH, SP, x.a + 4 + frame); x.mode := Reg; x.r := RH; incR
+    ELSE (*open array*) encMemImm12(LDRIT4, RH, SP, x.a + 4 + frame, "len too far");
+      x.mode := Reg; x.r := RH; incR
     END 
   END Len;
 
   PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item);
     VAR op: LONGINT;
   BEGIN load(x);
-    IF fct = 0 THEN op := Lsl ELSIF fct = 1 THEN op := Asr ELSE op := Ror END ;
-    IF y.mode = OM4B.Const THEN Put1(op, x.r, x.r, y.a MOD 20H)
-    ELSE load(y); Put0(op, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+    IF fct = 0 THEN op := LSl ELSIF fct = 1 THEN op := ASR ELSE op := ROR END ;
+    IF y.mode = OM4B.Const THEN encShiftImm5(op, x.r, x.r, y.a MOD 20H)
+    ELSE load(y); encShiftImm5(op, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
     END
   END Shift;
 
   PROCEDURE ADC*(VAR x, y: Item);
-  BEGIN load(x); load(y); Put0(Add+C13, x.r, x.r, y.r); DEC(RH)
+  BEGIN load(x); load(y); encDPReg(ADc, x.r, x.r, y.r, 0); DEC(RH)
   END ADC;
 
   PROCEDURE SBC*(VAR x, y: Item);
-  BEGIN load(x); load(y); Put0(Sub+C13, x.r, x.r, y.r); DEC(RH)
+  BEGIN load(x); load(y); encDPReg(SBc, x.r, x.r, y.r, 0); DEC(RH)
   END SBC;
 
   PROCEDURE UML*(VAR x, y: Item);
-  BEGIN load(x); load(y); Put0(Mul+C13, x.r, x.r, y.r); DEC(RH)
+  BEGIN load(x); load(y); Put0(UMULL + x.r*C16 + x.r*C12 + y.r*C8 + y.r); DEC(RH)
   END UML;
+
+(* TODO: j'en suis là *)
 
   PROCEDURE Bit*(VAR x, y: Item);
   BEGIN load(x); Put2(Ldr, x.r, x.r, 0);
@@ -1782,6 +1819,8 @@ BEGIN relmap[0] := EQ; relmap[1] := NE; relmap[2] := LT; relmap[3] := LE; relmap
   imm3map[AND] := 0H;    imm8map[AND] := 0H;    imm12map[AND] := 0H;         reg3map[AND] := 4000H; reg4map[AND] = 0H;    reg4shmap[AND] := 0EA100000H;
   imm3map[BIC] := 0H;    imm8map[BIC] := 0H;    imm12map[BIC] := 0H;         reg3map[BIC] := 4380H; reg4map[BIC] = 0H;    reg4shmap[BIC] := 0EA300000H;
   imm3map[ORR] := 0H;    imm8map[ORR] := 0H;    imm12map[ORR] := 0H;         reg3map[ORR] := 4300H; reg4map[ORR] = 0H;    reg4shmap[ORR] := 0EA500000H;
+  imm3map[ADc] := 0H;    imm8map[ADc] := 0H;    imm12map[ADc] := 0H;         reg3map[ADc] := 4140H; reg4map[ADc] = 0H;    reg4shmap[ADc] := 0EB500000H;
+  imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    imm12map[SBc] := 0H;         reg3map[SBc] := 4180H; reg4map[SBc] = 0H;    reg4shmap[SBc] := 0EB700000H;
   
   shimm5map[LSl] :=  0000H; shimm5wmap[LS1] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
   shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
