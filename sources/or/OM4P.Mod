@@ -1,4 +1,5 @@
-MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020, C. Schoffit 19/10/2023 Oberon compiler for Cortex M4 in Oberon-07*)
+MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020, 
+  C. Schoffit 19/10/2023 Oberon compiler for Cortex M4 in Oberon-07*)
   IMPORT Texts, Oberon, OM4S, OM4B, OM4G;
   (*Author: Niklaus Wirth, 2014.
     Parser of Oberon-RISC compiler. Uses Scanner OM4S to obtain symbols (tokens),
@@ -274,7 +275,6 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020, C. Schoffit 19/10/2023 Oberon compile
         ELSE OM4S.Mark("must be a type")
         END
       ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); OM4G.Condition(x)
-      ELSIF fct = 20 THEN (*H*) CheckConst(x); CheckInt(x); OM4G.H(x)
       END ;
       x.type := restyp
     ELSE OM4S.Mark("wrong nof params")
@@ -453,7 +453,6 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020, C. Schoffit 19/10/2023 Oberon compile
       ELSIF pno = 10 THEN CheckInt(x); OM4G.Get(x, y)
       ELSIF pno = 11 THEN CheckInt(x); OM4G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); OM4G.Copy(x, y, z)
-      ELSIF pno = 13 THEN CheckConst(x); CheckInt(x); OM4G.LDPSR(x)
       ELSIF pno = 14 THEN CheckInt(x); OM4G.LDREG(x, y)
       END
     ELSE OM4S.Mark("wrong nof parameters")
@@ -945,7 +944,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020, C. Schoffit 19/10/2023 Oberon compile
       END ;
       IF OM4S.errcnt = 0 THEN
         OM4G.Close(modid, key, exno);
-        Texts.WriteInt(W, OM4G.pc, 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key)
+        Texts.WriteInt(W, OM4G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key)
       ELSE Texts.WriteLn(W); Texts.WriteString(W, "compilation FAILED")
       END ;
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);

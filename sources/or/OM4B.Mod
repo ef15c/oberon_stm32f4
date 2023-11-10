@@ -1,4 +1,5 @@
-MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07*)
+MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
+  C. Schoffit 12/11/2023 for Cortex M4 STM32I-DISCO*)
   IMPORT Files, OM4S;
   (*Definition of data types Object and Type, which together form the data structure
     called "symbol table". Contains procedures for creation of Objects, and for search:
@@ -425,7 +426,6 @@ BEGIN
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
   
   system := NIL;  (* initialize "unsafe" pseudo-module SYSTEM*)
-  enter("H", SFunc, intType, 201);     (*functions*)
   enter("COND", SFunc, boolType, 191);
   enter("SIZE", SFunc, intType, 181);
   enter("ADR", SFunc, intType, 171);
@@ -433,7 +433,6 @@ BEGIN
   enter("REG", SFunc, intType, 151);
   enter("BIT", SFunc, boolType, 142);
   enter("LDREG", SProc, noType, 142);  (*procedures*)
-  enter("LDPSR", SProc, noType, 131);
   enter("COPY", SProc, noType, 123);
   enter("PUT", SProc, noType, 112);
   enter("GET", SProc, noType, 102);
