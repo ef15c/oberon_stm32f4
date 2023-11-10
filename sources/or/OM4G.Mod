@@ -31,12 +31,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     CoP     = 0ED000000H; (*Coprocessor instruction*)
 
-    BL     = 0F000C000H;
-    (*|11110S   imm10  11J1J   imm11   |
-      |                  1 2           |
-      BL<c> <label> *)
-
-    (*B<c> <label>*)
     BCT1    = 0D000H;
     (*|1101 cond   imm8   |*)
     BT2     = 0E000H;
@@ -48,9 +42,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*|11110S   imm10  10J1J   imm11   |
       |                  1 2           |
       B.W T4*)
+    BL     = 0F000D000H;
+    (*|1111/0S  /im10/    /11J1/J   /im11/    |
+                             1  2
+      BL<c><q> <label>*)
     BLX    = 4780H;
     (*|0100/0111/1 Rm/ 000|
       BLX<c> <Rm>*)
+    BX     = 4700H;
+    (*|0100/0111/0 Rm/ 000|
+      BX<c><q> <Rm>*)
 
     MOVIT3    = 0F2400000H;
     (*|1111/0i10/0100/imm4/0im3/ Rd / imm/8   |
@@ -1487,13 +1488,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Call*(VAR x: Item; r: LONGINT);
   BEGIN (*x.type.form = OM4B.Proc*)
     IF x.mode = OM4B.Const THEN
-      IF x.r >= 0 THEN encBackBranch(AL, x.a)
+      IF x.r >= 0 THEN Put0(BL + formatEvenImm25(x.a - (pc+4)))
       ELSE (*imported*)
         IF pc - fixORGP < C16 THEN
         (*aaaannnnppppppppdddddddddddddddd*)
           Put0(RH*C28 + (-x.r)*C24 + x.a*C16 + pc - fixORGP); fixORGP := pc-4;
           Put1(BLX + RH*C3) (*Attention : nécéssite de placer l'adresse 
-            ablosule et non relative au début du module dans les descripteurs de
+            absolue et non relative au début du module dans les descripteurs de
             module chagée par le module Modules*)
         ELSE OM4S.Mark("fixup impossible")
         END
@@ -1532,7 +1533,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN);
   BEGIN
     IF form # OM4B.NoTyp THEN load(x) END ;
-    encMemImm12(LDRIT3, LR, SP, 0, ""); encDPImm32(ADD, SP, SP, size); Put1(BLX + LR*C3);
+    encMemImm12(LDRIT3, LR, SP, 0, ""); encDPImm32(ADD, SP, SP, size); Put1(BX + LR*C3);
     RH := 0
   END Return;
 
@@ -1727,23 +1728,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Open*(v: INTEGER);
   BEGIN pc := 0; tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
-(* TODO
-    IF v = 0 THEN pc := 1;
-      REPEAT code[pc] := 0; INC(pc) UNTIL pc = 8
+    IF v = 0 THEN pc := 4;
+      REPEAT code[pc] := 0; INC(pc) UNTIL pc = 8*4
     END
-    *)
   END Open;
-
-(* TODO: j'en suis là *)
 
   PROCEDURE SetDataSize*(dc: LONGINT);
   BEGIN varsize := dc
   END SetDataSize;
 
   PROCEDURE Header*;
-  BEGIN entry := pc*4;
-    IF version = 0 THEN code[0] := 0E7000000H-1 + pc;  Put1a(Mov, SP, 0, StkORG0)  (*RISC-0*)
-    ELSE Put1(Sub, SP, SP, 4); Put2(Str, LR, SP, 0)
+  BEGIN entry := pc;
+    IF version = 0 THEN modify(0, BT4 + formatEvenImm25(pc-4))
+    ELSE encDPImm32(SUB, SP, SP, 4); encMemImm12(STRIT4, LR, SP, 0, "")
     END
   END Header;
 
@@ -1779,8 +1776,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       name: OM4S.Ident;
       F: Files.File; R: Files.Rider;
   BEGIN  (*exit code*)
-    IF version = 0 THEN Put1(Mov, 0, 0, 0); Put3(BR, 7, 0)  (*RISC-0*)
-    ELSE Put2(Ldr, LR, SP, 0); Put1(Add, SP, SP, 4); Put3(BR, 7, LR)
+    IF version = 0 THEN encMOVImm32(0, VarORG0); Put1(BX) (*BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)
+    ELSE encMemImm12(LDRIT4, LR, SP, 0, ""); encDPImm32(ADD, SP, SP, 4); Put1(BX + LR*C3)
     END ;
     obj := OM4B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0;
     WHILE obj # NIL DO
@@ -1878,7 +1875,7 @@ BEGIN relmap[0] := EQ; relmap[1] := NE; relmap[2] := LT; relmap[3] := LE; relmap
   imm3map[TST] := 0H;    imm8map[TST] := 0H;    immthmap[TST]  := 0F0100F00H; imm12map[TST] := 0H;
   reg3map[TST] := 4200H; reg4map[TST] := 0H;    reg4shmap[TST] := 0EA100F00H;
   
-  shimm5map[LSl] :=  0000H; shimm5wmap[LS1] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
+  shimm5map[LSl] :=  0000H; shimm5wmap[LSl] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
   shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
   shimm5map[LSR] :=  0800H; shimm5wmap[LSR] := 0EA5F0010H; shreg3map[LSR] := 40C0H; shreg4map[LSR] := 0FA30F000H;
   shimm5map[ROR] := 0FFFFH; shimm5wmap[ROR] := 0EA5F0030H; shreg3map[ROR] := 41C0H; shreg4map[ROR] := 0FA70F000H;
