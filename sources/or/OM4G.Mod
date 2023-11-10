@@ -6,7 +6,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      Procedure Close writes code-files*)
 
   CONST WordSize* = 4;
-    MT = 12; SP = 13; LNK = 14; PC = 15; (*dedicated registers*)
+    MT = 12; SP = 13; LR = 14; PC = 15; (*dedicated registers*)
+    MSP = 8; PSP = 9;
     APSRnzcv = 15; (*APSR_nzcv is encoded as <Rt> = '1111'*)
     NBS = 32; (* Number of single float registers in the FPU bank *)
     VarORG0 = 0D0201000H;  (*for bare metal program only, 
@@ -178,7 +179,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     
     (* Arithmetic and logical operations *)
-    SUB=0; ADD=1; RSB=2; EOR=3; AND=4; BIC=5; ORR=6; ADc=7; SBc=8;
+    SUB=0; ADD=1; RSB=2; EOR=3; AND=4; BIC=5; ORR=6; ADc=7; SBc=8; TST=9;
 
     (* Shift operations *)
     LSl=0; ASR=1; LSR=2; ROR=3;
@@ -452,7 +453,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE encDPImm32(op, a, b: BYTE; imm: LONGINT);
     VAR tmiCode: LONGINT;
   BEGIN
-    ASSERT (op <= SBc);
+    ASSERT (op <= TST);
     ASSERT ((a < C4) & (b < C4));
     IF (imm >= 0) & (imm < C3) & (a < C3) & (b < C3) & (imm3map[op] # 0) THEN
       (*|   op  immbbbaaa|
@@ -485,7 +486,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE encDPReg(op, a, b, c: BYTE; shift: LONGINT);
   BEGIN
-    ASSERT (op <= SBc);
+    ASSERT (op <= TST);
     ASSERT ((a < C4) & (b < C4) & (c < C4));
     IF (a < C3) & (b < C3) & (c < C3) & (shift = 0) & (reg3map[op] # 0) THEN
       (*ADD/SUB (Register) T1*)
@@ -590,6 +591,51 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE OM4S.Mark("branch too far")
     END
   END encBackBranch;
+  
+  PROCEDURE encBFC(a, l, m: BYTE);
+  BEGIN
+    ASSERT((a < C4) & (l < C5) & (m >= l) & (m < C5));
+    Put0(BFC + l DIV C2*C12 + a*C8 + l MOD C2*C6 + m)
+  END encBFC;
+  
+  PROCEDURE encStaticAccess(base, op, ope, a, b: BYTE; par: LONGINT);
+  BEGIN
+    ASSERT(base <= 0);
+    ASSERT((a < C4) & (b < C4));
+    IF base=0 THEN (*static variable in current module*)
+      IF par >= C12 THEN OM4S.Mark("static var too far") END;
+      Put0(op + a*C12 + b*C16 + par)
+    ELSE
+      ASSERT(ope < C4);
+      ASSERT(par < C4);
+      Put0(ope*C28 + a*C24 + b*C20 + par)
+    END
+  END encStaticAccess;
+  
+  PROCEDURE encStaticRealAccess(base, op, ope, s, r: BYTE; par: LONGINT);
+  BEGIN
+    ASSERT(base <= 0);
+    ASSERT((r < C4) & (s < C5));
+    IF base=0 THEN (*static real variable in current module*)
+      ASSERT(par MOD C2 = 0);
+      IF par >= C10 THEN OM4S.Mark("static real var too far") END;
+      Put0(op + 1*C23 + s MOD C1*C22 + r*C16 + s DIV C1*C12 + par DIV C2)
+    ELSE
+      ASSERT(ope < C4);
+      ASSERT(par < C4);
+      IF s >= C4 THEN OM4S.Mark("extern real var access not implemented for registers above 15") END;
+      Put0(ope*C28 + s*C24 + r*C20 + par)
+    END
+  END encStaticRealAccess;
+
+  PROCEDURE encMRS(a, s: LONGINT);
+  (*|1111/0011/1110/1111/1000/ Rd /  SY/Sm  |
+    MRS<c> <Rd>,<spec_reg>*)
+  BEGIN
+    ASSERT(a < C4);
+    ASSERT(s IN {0..9, 16..20});
+    Put0(0F3EF8000H + a*C8 + s)
+  END encMRS;
   
   PROCEDURE incR;
   BEGIN
@@ -725,42 +771,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END GetSB;
 
-  PROCEDURE encStaticAccess(base, op, ope, a, b: BYTE; par: LONGINT);
-  BEGIN
-    ASSERT(base <= 0);
-    ASSERT((a < C4) & (b < C4));
-    IF base=0 THEN (*static variable in current module*)
-      IF par >= C12 THEN OM4S.Mark("static var too far") END;
-      Put0(op + a*C12 + b*C16 + par)
-    ELSE
-      ASSERT(ope < C4);
-      ASSERT(par < C4);
-      Put0(ope*C28 + a*C24 + b*C20 + par)
-    END
-  END encStaticAccess;
-  
-  PROCEDURE encStaticRealAccess(base, op, ope, s, r: BYTE; par: LONGINT);
-  BEGIN
-    ASSERT(base <= 0);
-    ASSERT((r < C4) & (s < C5));
-    IF base=0 THEN (*static real variable in current module*)
-      ASSERT(par MOD C2 = 0);
-      IF par >= C10 THEN OM4S.Mark("static real var too far") END;
-      Put0(op + 1*C23 + s MOD C1*C22 + r*C16 + s DIV C1*C12 + par DIV C2)
-    ELSE
-      ASSERT(ope < C4);
-      ASSERT(par < C4);
-      IF s >= C4 THEN OM4S.Mark("extern real var access not implemented for registers above 15") END;
-      Put0(ope*C28 + s*C24 + r*C20 + par)
-    END
-  END encStaticRealAccess;
-  
-  PROCEDURE encBFC(a, l, m: BYTE);
-  BEGIN
-    ASSERT((a < C4) & (l < C5) & (m >= l) & (m < C5));
-    Put0(BFC + l DIV C2*C12 + a*C8 + l MOD C2*C6 + m)
-  END encBFC;
-  
   PROCEDURE NilCheck;
   BEGIN IF check THEN Trap(EQ, 4) END
   END NilCheck;
@@ -776,7 +786,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.r > 0 THEN OM4S.Mark("not allowed")
           ELSIF x.r = 0 THEN
             Put0(BL + formatEvenImm25(0));  (* Put address of next statement in LR *)
-            encDPImm32(SUB, RH, LNK, pc - x.a + 1 (*For Thumb state*) )
+            encDPImm32(SUB, RH, LR, pc - x.a + 1 (*For Thumb state*) )
           ELSE GetSB(x.r); Put0(EXTADD*C28 + RH*C24 + RH*C20 + C8 (*mark as progbase-relative*) + x.a)
           END;
           x.r := RH; incR
@@ -1505,31 +1515,24 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN);
     VAR a, r: LONGINT;
   BEGIN frame := 0;
-    IF ~int THEN (*procedure prolog*)
-      IF locblksize >= C16 THEN OM4S.Mark("too many locals") END ;
-      a := 4; r := 0;
-      encDPImm32(SUB, SP, SP, locblksize); encMemImm12(STRIT3, LNK, SP, 0, "");
-      WHILE a < parblksize DO encMemImm12(STRIT3, r, SP, a, ""); INC(r); INC(a, 4) END
-      ELSE (*interrupt procedure*) 
-      OM4S.Mark("Not implemented yet");
-(* TODO : à reprendre 
-      encDPImm32(SUB, SP, SP, locblksize); encMemImm12(STRIT3, 0, SP, 0, ""); encMemImm12(STRIT3, 1, SP, 4, ""); encMemImm12(STRIT3, 2, SP, 8, "")
-*)
-      (*R0, R1, R2 saved on stack*)
-    END
+    IF locblksize >= C16 THEN OM4S.Mark("too many locals") END;
+    IF int THEN (*interrupt procedure, lot of registers are already saved in interrupt frame*)
+      (*Store interrupt frame address in R0*)
+      encDPImm32(TST, 0, LR, 4);
+      Put1(IT + EQ*C4 + NE MOD C1*C3 + C2); (* ITE EQ *) nbRmnITBlockInsts := 2;
+      encMRS(0, MSP);
+      encMRS(0, PSP)
+    END;
+    a := 4; r := 0;
+    encDPImm32(SUB, SP, SP, locblksize); encMemImm12(STRIT3, LR, SP, 0, "");
+    WHILE a < parblksize DO encMemImm12(STRIT3, r, SP, a, ""); INC(r); INC(a, 4) END;
+    encDPImm32(SUB, SP, SP, locblksize); encMemImm12(STRIT3, LR, SP, 0, "")
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN);
   BEGIN
     IF form # OM4B.NoTyp THEN load(x) END ;
-    IF ~int THEN (*procedure epilog*)
-      encMemImm12(LDRIT3, LNK, SP, 0, ""); encDPImm32(ADD, SP, SP, size); Put1(BLX + LNK*C3)
-    ELSE (*interrupt return, restore R2, R1, R0*)
-      OM4S.Mark("Not implemented yet");
-(* TODO : à reprendre 
-      Put2(Ldr, 2, SP, 8); Put2(Ldr, 1, SP, 4); Put2(Ldr, 0, SP, 0); Put1(Add, SP, SP, size);
-      Put3(BR, 7, C4) *)(*RTI*)
-    END ;
+    encMemImm12(LDRIT3, LR, SP, 0, ""); encDPImm32(ADD, SP, SP, size); Put1(BLX + LR*C3);
     RH := 0
   END Return;
 
@@ -1740,7 +1743,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Header*;
   BEGIN entry := pc*4;
     IF version = 0 THEN code[0] := 0E7000000H-1 + pc;  Put1a(Mov, SP, 0, StkORG0)  (*RISC-0*)
-    ELSE Put1(Sub, SP, SP, 4); Put2(Str, LNK, SP, 0)
+    ELSE Put1(Sub, SP, SP, 4); Put2(Str, LR, SP, 0)
     END
   END Header;
 
@@ -1777,7 +1780,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       F: Files.File; R: Files.Rider;
   BEGIN  (*exit code*)
     IF version = 0 THEN Put1(Mov, 0, 0, 0); Put3(BR, 7, 0)  (*RISC-0*)
-    ELSE Put2(Ldr, LNK, SP, 0); Put1(Add, SP, SP, 4); Put3(BR, 7, LNK)
+    ELSE Put2(Ldr, LR, SP, 0); Put1(Add, SP, SP, 4); Put3(BR, 7, LR)
     END ;
     obj := OM4B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0;
     WHILE obj # NIL DO
@@ -1845,32 +1848,35 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
 BEGIN relmap[0] := EQ; relmap[1] := NE; relmap[2] := LT; relmap[3] := LE; relmap[4] := GT; relmap[5] := GE;
 
-  imm3map[SUB] := 1E00H; imm8map[SUB] := 3800H; immthmap[SUB] := 0F1B00000H; imm12map[SUB] := 0F2A00000H;
-  reg3map[SUB] := 1A00H; reg4map[SUB] = 0H;    reg4shmap[SUB] := 0EBB00000H;
+  imm3map[SUB] := 1E00H; imm8map[SUB] := 3800H; immthmap[SUB]  := 0F1B00000H; imm12map[SUB] := 0F2A00000H;
+  reg3map[SUB] := 1A00H; reg4map[SUB] := 0H;    reg4shmap[SUB] := 0EBB00000H;
   
-  imm3map[ADD] := 1C00H; imm8map[ADD] := 3000H; immthmap[ADD] := 0F1100000H; imm12map[ADD] := 0F2000000H;
-  reg3map[ADD] := 1800H; reg4map[ADD] = 4400H; reg4shmap[ADD] := 0EB100000H;
+  imm3map[ADD] := 1C00H; imm8map[ADD] := 3000H; immthmap[ADD]  := 0F1100000H; imm12map[ADD] := 0F2000000H;
+  reg3map[ADD] := 1800H; reg4map[ADD] := 4400H; reg4shmap[ADD] := 0EB100000H;
   
-  imm3map[RSB] := 4240H; imm8map[RSB] := 0H;    immthmap[RSB] := 0F1D00000H; imm12map[RSB] := 0H;
-  reg3map[RSB] := 0H;    reg4map[RSB] = 0H;    reg4shmap[RSB] := 0EBD00000H;
+  imm3map[RSB] := 4240H; imm8map[RSB] := 0H;    immthmap[RSB]  := 0F1D00000H; imm12map[RSB] := 0H;
+  reg3map[RSB] := 0H;    reg4map[RSB] := 0H;    reg4shmap[RSB] := 0EBD00000H;
   
-  imm3map[EOR] := 0H;    imm8map[EOR] := 0H;    immthmap[EOR] := 0F0900000H; imm12map[EOR] := 0H;
-  reg3map[EOR] := 4040H; reg4map[EOR] = 0H;    reg4shmap[EOR] := 0EA900000H;
+  imm3map[EOR] := 0H;    imm8map[EOR] := 0H;    immthmap[EOR]  := 0F0900000H; imm12map[EOR] := 0H;
+  reg3map[EOR] := 4040H; reg4map[EOR] := 0H;    reg4shmap[EOR] := 0EA900000H;
   
-  imm3map[AND] := 0H;    imm8map[AND] := 0H;    immthmap[AND] := 0F0100000H; imm12map[AND] := 0H;
-  reg3map[AND] := 4000H; reg4map[AND] = 0H;    reg4shmap[AND] := 0EA100000H;
+  imm3map[AND] := 0H;    imm8map[AND] := 0H;    immthmap[AND]  := 0F0100000H; imm12map[AND] := 0H;
+  reg3map[AND] := 4000H; reg4map[AND] := 0H;    reg4shmap[AND] := 0EA100000H;
   
-  imm3map[BIC] := 0H;    imm8map[BIC] := 0H;    immthmap[BIC] := 0F0300000H; imm12map[BIC] := 0H;
-  reg3map[BIC] := 4380H; reg4map[BIC] = 0H;    reg4shmap[BIC] := 0EA300000H;
+  imm3map[BIC] := 0H;    imm8map[BIC] := 0H;    immthmap[BIC]  := 0F0300000H; imm12map[BIC] := 0H;
+  reg3map[BIC] := 4380H; reg4map[BIC] := 0H;    reg4shmap[BIC] := 0EA300000H;
   
-  imm3map[ORR] := 0H;    imm8map[ORR] := 0H;    immthmap[ORR] := 0F0500000H; imm12map[ORR] := 0H;
-  reg3map[ORR] := 4300H; reg4map[ORR] = 0H;    reg4shmap[ORR] := 0EA500000H;
+  imm3map[ORR] := 0H;    imm8map[ORR] := 0H;    immthmap[ORR]  := 0F0500000H; imm12map[ORR] := 0H;
+  reg3map[ORR] := 4300H; reg4map[ORR] := 0H;    reg4shmap[ORR] := 0EA500000H;
   
-  imm3map[ADc] := 0H;    imm8map[ADc] := 0H;    immthmap[ADc] := 0F1500000H; imm12map[ADc] := 0H;
-  reg3map[ADc] := 4140H; reg4map[ADc] = 0H;    reg4shmap[ADc] := 0EB500000H;
+  imm3map[ADc] := 0H;    imm8map[ADc] := 0H;    immthmap[ADc]  := 0F1500000H; imm12map[ADc] := 0H;
+  reg3map[ADc] := 4140H; reg4map[ADc] := 0H;    reg4shmap[ADc] := 0EB500000H;
   
-  imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    immthmap[SBc] := 0F1700000H; imm12map[SBc] := 0H;
-  reg3map[SBc] := 4180H; reg4map[SBc] = 0H;    reg4shmap[SBc] := 0EB700000H;
+  imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    immthmap[SBc]  := 0F1700F00H; imm12map[SBc] := 0H;
+  reg3map[SBc] := 4180H; reg4map[SBc] := 0H;    reg4shmap[SBc] := 0EB700000H;
+  
+  imm3map[TST] := 0H;    imm8map[TST] := 0H;    immthmap[TST]  := 0F0100F00H; imm12map[TST] := 0H;
+  reg3map[TST] := 4200H; reg4map[TST] := 0H;    reg4shmap[TST] := 0EA100F00H;
   
   shimm5map[LSl] :=  0000H; shimm5wmap[LS1] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
   shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
