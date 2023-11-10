@@ -275,6 +275,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     
     imm3map: ARRAY 10 OF LONGINT;
     imm8map: ARRAY 10 OF LONGINT;
+    immthmap: ARRAY 10 OF LONGINT;
     imm12map: ARRAY 10 OF LONGINT;
     
     reg3map: ARRAY 10 OF LONGINT;
@@ -379,6 +380,38 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN ORD(p)*C10 + ORD(u)*C9 + ORD(w)*C8 + imm8
   END formatPUWImm8;
   
+  PROCEDURE formatThumbExpandImm(val: LONGINT; VAR res: LONGINT): BOOLEAN;
+  (* Put |0000/0i00/0000/0000/0im3/0000/abcd/efgh| in res if  val can be
+     encoded as "modified immediate constants" in a thumb instruction
+     or return false if it can't*)
+    VAR a, b, c, d : LONGINT;
+      retv : BOOLEAN;
+  BEGIN
+    retv := FALSE;
+    d := val MOD C8;
+    a := val DIV C8;
+    c := a MOD C8;
+    a := a DIV C8;
+    b := a MOD C8;
+    a := a DIV C8;
+    
+    IF val DIV C8 = 0 THEN res := d; retv := TRUE
+    ELSIF (a = 0) & (b = d) & (c = 0) THEN res := C12 + d; retv := TRUE
+    ELSIF (a = c) & (b = 0) & (d = 0) THEN res := C13 + d; retv := TRUE
+    ELSIF (a = b) & (a = c) & (a = d) THEN res := C12+ C13 + d; retv := TRUE
+    ELSE
+      c := d MOD C7;
+      a := (c + C7)*C24;
+      b := 8;
+      WHILE (b <= 23) & ~retv DO
+        IF (a = val) THEN res := b DIV C4*C26 + b DIV C1 MOD C3*C12 + b MOD C1*C7 + c; ; retv := TRUE
+        ELSE a := a DIV C1; INC(b)
+        END
+      END
+    END;
+    RETURN retv
+  END formatThumbExpandImm;
+  
   PROCEDURE encMOVImm32(reg: BYTE; val: LONGINT);
   VAR hw: LONGINT;
   
@@ -417,6 +450,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END encMemImm12;
   
   PROCEDURE encDPImm32(op, a, b: BYTE; imm: LONGINT);
+    VAR tmiCode: LONGINT;
   BEGIN
     ASSERT (op <= SBc);
     ASSERT ((a < C4) & (b < C4));
@@ -428,7 +462,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF (imm >= 0) & (imm < C8) & (a < C3) & (a = b) & (imm8map[op] # 0) THEN
       lastInstrSetFlags := nbRmnITBlockInsts = 0; (* not in IT block *)
       Put1(imm8map[op] + a*C8 + imm)
-      (*TODO: ajouter la forme ThumbExpandImm*)
+    ELSIF formatThumbExpandImm(imm, tmiCode) THEN
+      Put0(immthmap[op] + b*C16 + a*C8 + tmiCode);
+      lastInstrSetFlags := ODD(reg4shmap[op] DIV C20);
     ELSIF (imm >= 0) & (imm < C12)  & (imm12map[op] # 0) THEN
       (*|  o1 i  o2 sbbbboim3aaaa  imm8  |
         RSB (immediate) T2*) 
@@ -1660,25 +1696,18 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN load(x); load(y); Put0(UMULL + x.r*C16 + x.r*C12 + y.r*C8 + y.r); DEC(RH)
   END UML;
 
-(* TODO: j'en suis là *)
-
   PROCEDURE Bit*(VAR x, y: Item);
-  BEGIN load(x); Put2(Ldr, x.r, x.r, 0);
-    IF y.mode = OM4B.Const THEN Put1(Ror, x.r, x.r, y.a+1); DEC(RH)
-    ELSE load(y); Put1(Add, y.r, y.r, 1); Put0(Ror, x.r, x.r, y.r); DEC(RH, 2)
+  BEGIN load(x); encMemImm12(LDRIT4, x.r, x.r, 0, "");
+    IF y.mode = OM4B.Const THEN encShiftImm5(ROR, x.r, x.r, y.a+1); DEC(RH)
+    ELSE load(y); encDPImm32(ADD, y.r, y.r, 1); encShiftReg(ROR, x.r, x.r, y.r); DEC(RH, 2)
     END ;
     SetCC(x, MI)
   END Bit;
 
   PROCEDURE Register*(VAR x: Item);
   BEGIN (*x.mode = Const*)
-    Put0(Mov, RH, 0, x.a MOD C4); x.mode := Reg; x.r := RH; incR
+    encMOVReg(RH, x.a MOD C4); x.mode := Reg; x.r := RH; incR
   END Register;
-
-  PROCEDURE H*(VAR x: Item);
-  BEGIN (*x.mode = Const*)
-    Put0(Mov + U + x.a MOD 2 * V, RH, 0, 0); x.mode := Reg; x.r := RH; incR
-  END H;
 
   PROCEDURE Adr*(VAR x: Item);
   BEGIN 
@@ -1694,11 +1723,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Condition;
 
   PROCEDURE Open*(v: INTEGER);
-  BEGIN pc := 0; tdx := 0; strx := 0; RH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
+  BEGIN pc := 0; tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
+(* TODO
     IF v = 0 THEN pc := 1;
       REPEAT code[pc] := 0; INC(pc) UNTIL pc = 8
     END
+    *)
   END Open;
+
+(* TODO: j'en suis là *)
 
   PROCEDURE SetDataSize*(dc: LONGINT);
   BEGIN varsize := dc
@@ -1812,15 +1845,32 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
 BEGIN relmap[0] := EQ; relmap[1] := NE; relmap[2] := LT; relmap[3] := LE; relmap[4] := GT; relmap[5] := GE;
 
-  imm3map[SUB] := 1E00H; imm8map[SUB] := 3800H; imm12map[SUB] := 0F2A00000H; reg3map[SUB] := 1A00H; reg4map[SUB] = 0H;    reg4shmap[SUB] := 0EBB00000H;
-  imm3map[ADD] := 1C00H; imm8map[ADD] := 3000H; imm12map[ADD] := 0F2000000H; reg3map[ADD] := 1800H; reg4map[ADD] = 4400H; reg4shmap[ADD] := 0EB100000H;
-  imm3map[RSB] := 4240H; imm8map[RSB] := 0H;    imm12map[RSB] := 0H;         reg3map[RSB] := 0H;    reg4map[RSB] = 0H;    reg4shmap[RSB] := 0EBD00000H;
-  imm3map[EOR] := 0H;    imm8map[EOR] := 0H;    imm12map[EOR] := 0H;         reg3map[EOR] := 4040H; reg4map[EOR] = 0H;    reg4shmap[EOR] := 0EA900000H;
-  imm3map[AND] := 0H;    imm8map[AND] := 0H;    imm12map[AND] := 0H;         reg3map[AND] := 4000H; reg4map[AND] = 0H;    reg4shmap[AND] := 0EA100000H;
-  imm3map[BIC] := 0H;    imm8map[BIC] := 0H;    imm12map[BIC] := 0H;         reg3map[BIC] := 4380H; reg4map[BIC] = 0H;    reg4shmap[BIC] := 0EA300000H;
-  imm3map[ORR] := 0H;    imm8map[ORR] := 0H;    imm12map[ORR] := 0H;         reg3map[ORR] := 4300H; reg4map[ORR] = 0H;    reg4shmap[ORR] := 0EA500000H;
-  imm3map[ADc] := 0H;    imm8map[ADc] := 0H;    imm12map[ADc] := 0H;         reg3map[ADc] := 4140H; reg4map[ADc] = 0H;    reg4shmap[ADc] := 0EB500000H;
-  imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    imm12map[SBc] := 0H;         reg3map[SBc] := 4180H; reg4map[SBc] = 0H;    reg4shmap[SBc] := 0EB700000H;
+  imm3map[SUB] := 1E00H; imm8map[SUB] := 3800H; immthmap[SUB] := 0F1B00000H; imm12map[SUB] := 0F2A00000H;
+  reg3map[SUB] := 1A00H; reg4map[SUB] = 0H;    reg4shmap[SUB] := 0EBB00000H;
+  
+  imm3map[ADD] := 1C00H; imm8map[ADD] := 3000H; immthmap[ADD] := 0F1100000H; imm12map[ADD] := 0F2000000H;
+  reg3map[ADD] := 1800H; reg4map[ADD] = 4400H; reg4shmap[ADD] := 0EB100000H;
+  
+  imm3map[RSB] := 4240H; imm8map[RSB] := 0H;    immthmap[RSB] := 0F1D00000H; imm12map[RSB] := 0H;
+  reg3map[RSB] := 0H;    reg4map[RSB] = 0H;    reg4shmap[RSB] := 0EBD00000H;
+  
+  imm3map[EOR] := 0H;    imm8map[EOR] := 0H;    immthmap[EOR] := 0F0900000H; imm12map[EOR] := 0H;
+  reg3map[EOR] := 4040H; reg4map[EOR] = 0H;    reg4shmap[EOR] := 0EA900000H;
+  
+  imm3map[AND] := 0H;    imm8map[AND] := 0H;    immthmap[AND] := 0F0100000H; imm12map[AND] := 0H;
+  reg3map[AND] := 4000H; reg4map[AND] = 0H;    reg4shmap[AND] := 0EA100000H;
+  
+  imm3map[BIC] := 0H;    imm8map[BIC] := 0H;    immthmap[BIC] := 0F0300000H; imm12map[BIC] := 0H;
+  reg3map[BIC] := 4380H; reg4map[BIC] = 0H;    reg4shmap[BIC] := 0EA300000H;
+  
+  imm3map[ORR] := 0H;    imm8map[ORR] := 0H;    immthmap[ORR] := 0F0500000H; imm12map[ORR] := 0H;
+  reg3map[ORR] := 4300H; reg4map[ORR] = 0H;    reg4shmap[ORR] := 0EA500000H;
+  
+  imm3map[ADc] := 0H;    imm8map[ADc] := 0H;    immthmap[ADc] := 0F1500000H; imm12map[ADc] := 0H;
+  reg3map[ADc] := 4140H; reg4map[ADc] = 0H;    reg4shmap[ADc] := 0EB500000H;
+  
+  imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    immthmap[SBc] := 0F1700000H; imm12map[SBc] := 0H;
+  reg3map[SBc] := 4180H; reg4map[SBc] = 0H;    reg4shmap[SBc] := 0EB700000H;
   
   shimm5map[LSl] :=  0000H; shimm5wmap[LS1] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
   shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
