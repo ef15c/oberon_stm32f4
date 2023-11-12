@@ -1,5 +1,5 @@
 Liste des modules à créer en se basant sur ORx :
-OM4P, OM4S, OM4B, OM4G, OM4L, OM4X
+OM4P, OM4S, OM4B, OM4G, OM4A, OM4Tool, OM4L, OM4X
 
 Liste des modules à modifier :
 BootLoad, Modules, System, Kernel, BootLoad.Mod

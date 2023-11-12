@@ -943,8 +943,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         IF newSF THEN Texts.WriteString(W, " new symbol file") END
       END ;
       IF OM4S.errcnt = 0 THEN
-        OM4G.Close(modid, key, exno);
-        Texts.WriteInt(W, OM4G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key)
+        Texts.WriteInt(W, OM4G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key);
+        OM4G.Close(modid, key, exno)
       ELSE Texts.WriteLn(W); Texts.WriteString(W, "compilation FAILED")
       END ;
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);

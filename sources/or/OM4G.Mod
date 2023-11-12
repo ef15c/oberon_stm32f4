@@ -1075,8 +1075,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Condition;
 
   PROCEDURE Open*(v: INTEGER);
-  BEGIN mcode.pc := 0; tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
-    NEW(mcode);
+  BEGIN NEW(mcode); OM4A.Init(mcode);
+    tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
     IF v = 0 THEN mcode.pc := 4;
       REPEAT mcode.code[mcode.pc] := 0; INC(mcode.pc) UNTIL mcode.pc = 8*4
     END
@@ -1157,7 +1157,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     Files.WriteInt(R, strx);
     FOR i := 0 TO strx-1 DO Files.Write(R, str[i]) END ;  (*strings*)
     Files.WriteInt(R, mcode.pc);  (*code len*)
-    FOR i := 0 TO mcode.pc-1 DO Files.WriteInt(R, mcode.code[i]) END ;  (*program*)
+    FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
     obj := OM4B.topScope.next;
     WHILE obj # NIL DO  (*commands*)
       IF (obj.exno # 0) & (obj.class = OM4B.Const) & (obj.type.form = OM4B.Proc) &
