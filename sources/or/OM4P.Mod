@@ -1,4 +1,4 @@
-MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020, 
+MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   C. Schoffit 19/10/2023 Oberon compiler for Cortex M4 in Oberon-07*)
   IMPORT Texts, Oberon, OM4S, OM4B, OM4G;
   (*Author: Niklaus Wirth, 2014.

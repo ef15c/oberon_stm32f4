@@ -270,7 +270,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN ASSERT(m > 0);
     e := 0;
     WHILE ~ODD(m) DO m := m DIV 2; 
-      IF (m < 0) THEN m := -m END;
+      IF (m < 0) THEN INC(m, OM4A.C31) END;
       INC(e) END ;
     RETURN m
   END log2;
@@ -1022,7 +1022,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.type.len >= 0 THEN
       IF x.mode = RegI THEN DEC(RH) END ;
       x.mode := OM4B.Const; x.a := x.type.len
-    ELSE (*open array*) OM4A.encMemImm12(mcode, OM4A.LDRIT4, RH, SP, x.a + 4 + frame, "len too far");
+    ELSE (*open array*) OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + 4 + frame, "len too far");
       x.mode := Reg; x.r := RH; incR
     END 
   END Len;
@@ -1049,7 +1049,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END UML;
 
   PROCEDURE Bit*(VAR x, y: Item);
-  BEGIN load(x); OM4A.encMemImm12(mcode, OM4A.LDRIT4, x.r, x.r, 0, "");
+  BEGIN load(x); OM4A.encMemImm12(mcode, OM4A.LDRIT3, x.r, x.r, 0, "");
     IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROR, x.r, x.r, y.a+1); DEC(RH)
     ELSE load(y); OM4A.encDPImm32(mcode, OM4A.ADD, y.r, y.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROR, x.r, x.r, y.r); DEC(RH, 2)
     END ;
@@ -1089,7 +1089,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Header*;
   BEGIN entry := mcode.pc;
     IF version = 0 THEN OM4A.modify(mcode, 0, OM4A.BT4 + OM4A.formatEvenImm25(mcode.pc-4))
-    ELSE OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, 4); OM4A.encMemImm12(mcode, OM4A.STRIT4, LR, SP, 0, "")
+    ELSE OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, 4); OM4A.encMemImm12(mcode, OM4A.STRIT3, LR, SP, 0, "")
     END
   END Header;
 
@@ -1126,7 +1126,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       F: Files.File; R: Files.Rider;
   BEGIN  (*exit code*)
     IF version = 0 THEN OM4A.encMOVImm32(mcode, 0, VarORG0); OM4A.Put1(mcode, OM4A.BX) (*OM4A.BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)
-    ELSE OM4A.encMemImm12(mcode, OM4A.LDRIT4, LR, SP, 0, ""); OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, 4); OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3)
+    ELSE OM4A.encMemImm12(mcode, OM4A.LDRIT3, LR, SP, 0, ""); OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, 4); OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3)
     END ;
     obj := OM4B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0;
     WHILE obj # NIL DO
@@ -1139,7 +1139,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END ;
       obj := obj.next
     END ;
-    size := varsize + strx + comsize + (mcode.pc + nofimps + nofent + nofptrs + 1)*4;  (*varsize includes type descriptors*)
+    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + nofptrs + 1)*4;  (*varsize includes type descriptors*)
     
     OM4B.MakeFileName(name, modid, ".m4c"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.Write(R, CHR(version));

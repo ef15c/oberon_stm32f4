@@ -3,7 +3,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   
   CONST
     (*Powers of two*)
-    C30*=40000000H; C28*=10000000H; C27*=8000000H; C26*=4000000H;
+    C31*=80000000H; C30*=40000000H; C28*=10000000H; C27*=8000000H; C26*=4000000H;
     C25*=2000000H; C24*=1000000H; C23*=800000H; C22*=400000H; 
     C21*=200000H; C20*=100000H; C19*=80000H; C18*=40000H; C17*=20000H;
     C16*=10000H; C13*=2000H; C12*=1000H; C11*=800H; 
@@ -288,6 +288,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   PROCEDURE Put0*(VAR c: ModuleCode; op: LONGINT);
   BEGIN (*emit format-0 instruction (32bit)
          format: op8:p24 *)
+(*    OM4S.DebugHex(op);*)
     c.lastInstrSetFlags := FALSE;
     IF c.nbRmnITBlockInsts > 0 THEN DEC(c.nbRmnITBlockInsts) END;
     modify(c, c.pc, op);
@@ -382,7 +383,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       b := 8;
       WHILE (b <= 23) & ~retv DO
         IF (a = val) THEN res := b DIV C4*C26 + b DIV C1 MOD C3*C12 + b MOD C1*C7 + c; ; retv := TRUE
-        ELSE a := a DIV C1; INC(b)
+        ELSE a := a DIV C1; IF a < 0 THEN INC(a, C31) END; INC(b)
         END
       END
     END;
@@ -414,7 +415,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encMOVImm32;
 
-  PROCEDURE encMemImm12*(VAR c: ModuleCode; op, a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
+  PROCEDURE encMemImm12*(VAR c: ModuleCode; op: LONGINT; a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
   BEGIN
   (*|111110001101 Rn  Rt   imm12     |
      F   8   D LDR (immediate) T3
@@ -425,7 +426,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     Put0(c, op + a*C12 + b*C16 + imm);
   END encMemImm12;
   
-  PROCEDURE encDPImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: LONGINT);
+  PROCEDURE encDPImm32*(VAR c: ModuleCode; op: LONGINT; a, b, t: BYTE; imm: LONGINT);
     VAR tmiCode: LONGINT;
   BEGIN
     ASSERT (op <= TST);
@@ -459,7 +460,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encDPImm32;
   
-  PROCEDURE encDPReg*(VAR co: ModuleCode; op, a, b, c: BYTE; shift: LONGINT);
+  PROCEDURE encDPReg*(VAR co: ModuleCode; op: LONGINT; a, b, c: BYTE; shift: LONGINT);
   BEGIN
     ASSERT (op <= TST);
     ASSERT ((a < C4) & (b < C4) & (c < C4));
@@ -476,7 +477,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encDPReg;
   
-  PROCEDURE encShiftImm5*(VAR c: ModuleCode; op, a, b: BYTE; shift: LONGINT);
+  PROCEDURE encShiftImm5*(VAR c: ModuleCode; op: LONGINT; a, b: BYTE; shift: LONGINT);
   BEGIN
     ASSERT (op <= ROR);
     ASSERT ((a < 15) & (b < C4) & (shift < C5));
@@ -487,7 +488,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encShiftImm5;
   
-  PROCEDURE encShiftReg*(VAR co: ModuleCode; op, a, b, c: BYTE);
+  PROCEDURE encShiftReg*(VAR co: ModuleCode; op: LONGINT; a, b, c: BYTE);
   BEGIN
     ASSERT (op <= ROR);
     ASSERT((a < 15) & (a # 13) & (b < 15) & (b # 13) & (c < 15) & (c # 13));
@@ -540,7 +541,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     Put0(co, UDIV + format3Reg4(a, b, c))
   END encUDIV;
   
-  PROCEDURE encFPOpReg*(VAR co: ModuleCode; op, a, b, c: BYTE);
+  PROCEDURE encFPOpReg*(VAR co: ModuleCode; op: LONGINT; a, b, c: BYTE);
   BEGIN
     ASSERT((a < C5) & (b < C5) & (c < C5));
     (* VNEG (a := -c)
@@ -573,7 +574,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     Put0(c, BFC + l DIV C2*C12 + a*C8 + l MOD C2*C6 + m)
   END encBFC;
   
-  PROCEDURE encStaticAccess*(VAR c: ModuleCode; base, op, ope, a, b: BYTE; par: LONGINT);
+  PROCEDURE encStaticAccess*(VAR c: ModuleCode; base, op: LONGINT; ope, a, b: BYTE; par: LONGINT);
   BEGIN
     ASSERT(base <= 0);
     ASSERT((a < C4) & (b < C4));
@@ -587,7 +588,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encStaticAccess;
   
-  PROCEDURE encStaticRealAccess*(VAR c: ModuleCode; base, op, ope, s, r: BYTE; par: LONGINT);
+  PROCEDURE encStaticRealAccess*(VAR c: ModuleCode; base, op: LONGINT; ope, s, r: BYTE; par: LONGINT);
   BEGIN
     ASSERT(base <= 0);
     ASSERT((r < C4) & (s < C5));
