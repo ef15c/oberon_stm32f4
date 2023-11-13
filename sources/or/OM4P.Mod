@@ -993,7 +993,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  19.10.2023");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  19/10/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   NEW(dummy); dummy.class := OM4B.Var; dummy.type := OM4B.intType;
   expression := expression0; Type := Type0; FormalType := FormalType0

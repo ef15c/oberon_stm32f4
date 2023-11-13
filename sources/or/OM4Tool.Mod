@@ -5,12 +5,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
   TYPE
     ExternalRefMap = POINTER TO ExternalRefMapDesc;
     ExternalRefMapDesc = RECORD
-      isExt: ARRAY OM4A.maxCode OF BOOLEAN
+      ext: ARRAY OM4A.maxCode OF BYTE
     END;
   
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
-    mnemo0, mnemo1: ARRAY 16, 4 OF CHAR;  (*mnemonics*)
+    mnemo0: ARRAY 8, 5 OF CHAR;  (*mnemonics*)
   
   PROCEDURE WriteHexVLen (VAR W: Texts.Writer; x, n: LONGINT);
     VAR i: INTEGER; y: LONGINT;
@@ -216,48 +216,45 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
       
-    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm: BYTE;
+    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, mno, ext, exop: BYTE;
       op: SET;
   BEGIN
-    IF ~er.isExt[i] THEN
-      b1 := c.code[i+1];
-      b2 := c.code[i];
-      INC(i, 2);
+    ext := er.ext[i];
+    b1 := c.code[i+1]; b2 := c.code[i]; INC(i, 2);
+    IF ext = 0 THEN
       t := b1 DIV OM4A.C3; 
       IF t >= 01DH THEN (*32-bit instruction*)
-        b3 := c.code[i+1];
-        b4 := c.code[i];
-        INC(i, 2);
+        b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
         op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
         Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
         IF op*SCMSK4 = DataProcModImm THEN
           (* SCMSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
           Rn := b2 MOD OM4A.C4; Rd := b3 MOD OM4A.C4;
           IF op*SCMSK41 = SubCmpModImm THEN
-            IF Rd = 15 THEN Texts.WriteString(W, "CMP ") ELSE Texts.WriteString(W, "SUB ")
+            IF Rd = 15 THEN Texts.WriteString(W, "CMP") ELSE Texts.WriteString(W, "SUB")
             END;
             WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #"); 
             WriteHexVLen(W, ThumbExpandImm(op), 2); Texts.Write(W, "H")
           ELSIF op*SCMSK41 = AddCmnModImm THEN
-            IF Rd = 15 THEN Texts.WriteString(W, "CMN ") ELSE Texts.WriteString(W, "ADD ")
+            IF Rd = 15 THEN Texts.WriteString(W, "CMN") ELSE Texts.WriteString(W, "ADD")
             END;
             WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #"); 
             WriteHexVLen(W, ThumbExpandImm(op), 2); Texts.Write(W, "H")
-          ELSE Texts.WriteString(W, "TODO: not AddCmnModImm ")
+          ELSE Texts.WriteString(W, "TODO: not AddCmnModImm")
           END
         ELSIF op*SCMSK4 = DataProcPlainBinImm THEN
           (*SCMSK4 10 x1xxxxx 0: Data processing (plain binary immediate) on page A5-141*)
-          Texts.WriteString(W, "TODO: DataProcPlainBinImm ")
+          Texts.WriteString(W, "TODO: DataProcPlainBinImm")
         ELSIF op*SCMSK6 = StrSingleDataItem THEN
           (*SCMSK6 11 000xxx0 x: Store single data item on page A5-149*)
           IF op*SCMSK61 = StrRegImmT3 THEN
           (*SCMSK61 110 1xxxxx: Store Register STR (immediate) on page A7-386*)
           (*STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
             Rn := b2 MOD OM4A.C4; Rt := b3 DIV OM4A.C4;
-            Texts.WriteString(W, "STR "); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
+            Texts.WriteString(W, "STR"); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
             Texts.WriteString(W, " #"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 2);
             Texts.WriteString(W, "H]")
-          ELSE Texts.WriteString(W, "TODO: not StrRegImmT3 ")
+          ELSE Texts.WriteString(W, "TODO: not StrRegImmT3")
           END
         ELSIF op*SCMSK7 = LdrWord THEN
           (*SCMSK7 11 00xx101 x Load word on page A5-146*)
@@ -266,12 +263,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
             (*LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
             Rt := b3 DIV OM4A.C4;
-            Texts.WriteString(W, "LDR "); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
+            Texts.WriteString(W, "LDR"); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
             Texts.WriteString(W, " #"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 2);
             Texts.WriteString(W, "H]")
-          ELSE Texts.WriteString(W, "TODO: not LdrRegImmOrLit ")
+          ELSE Texts.WriteString(W, "TODO: not LdrRegImmOrLit")
           END
-        ELSE Texts.WriteString(W, "??? ")
+        ELSE Texts.WriteString(W, "???")
         END
       ELSE op := SYSTEM.VAL(SET, 0+b2+100H*b1);
         WriteHexVLen(W, ORD(op), 4); Texts.Write(W, 9X);
@@ -280,13 +277,34 @@ MODULE OM4Tool;  (*NW 18.2.2013
           IF op*T16MSK23 = BrEx THEN
             (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
             Rm := b2 DIV OM4A.C3;
-            Texts.WriteString(W, "BX "); WriteReg(Rm)
-          ELSE Texts.WriteString(W, "TODO: not BrEx ")
+            Texts.WriteString(W, "BX"); WriteReg(Rm)
+          ELSE Texts.WriteString(W, "TODO: not BrEx")
           END
-        ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction ")
+        ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
       END
-    ELSE Texts.WriteString(W, "TODO: External reference ")
+    ELSIF ext = 1 THEN (*Get static base*)
+      b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
+      op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
+      Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
+      Rd := b1 DIV OM4A.C4; mno := b1 MOD OM4A.C4;
+      Texts.WriteString(W, "LDR"); WriteReg(Rd); Texts.WriteString(W, " = Base[");
+      Texts.WriteInt(W, mno, 3); Texts.WriteString(W, "]");
+    ELSIF ext = 2 THEN (*LDR/STR/ADD relative to static base*)
+      b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
+      op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
+      Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
+      exop := b1 DIV OM4A.C4;
+      IF exop < OM4A.EXTVLDR THEN
+        Rd := b1 MOD OM4A.C4; Rn := b2 DIV OM4A.C4;
+        Texts.WriteString(W, mnemo0[exop]); WriteReg(Rd); WriteReg(Rn);
+        Texts.WriteString(W, " = Var["); Texts.WriteInt(W, b4, 4);
+        Texts.WriteString(W, "]");
+        IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END;
+      ELSE Texts.WriteString(W, "TODO: Real external reference");
+      END
+    ELSE Texts.WriteString(W, "TODO: External reference");
+      INC(i, 2)
     END
   END opcode;
 
@@ -301,7 +319,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
 
   PROCEDURE DecObj*;   (*decode object file*)
     VAR class, i, n, key, size, fix, adr, data, len: INTEGER;
-      bl, bh: BYTE;
+      bl, bh, mno: BYTE;
+      next: INTEGER;
       ch: CHAR;
       name: ARRAY 32 OF CHAR;
       F: Files.File; R: Files.Rider;
@@ -338,7 +357,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Texts.Append(Oberon.Log, W.buf);
         Files.ReadInt(R, mcode.pc); i := 0;
         WHILE i < mcode.pc DO
-          Files.ReadByte(R, mcode.code[i]); eref.isExt[i] := FALSE;
+          Files.ReadByte(R, mcode.code[i]); eref.ext[i] := 0;
 (*          Texts.WriteInt(W, i, 4); Texts.Write(W, 9X); WriteHexVLen(W, data, 4);
           Texts.Write(W, 9X); opcode(data); Texts.WriteLn(W);*) INC(i)
         END;
@@ -367,11 +386,17 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (* Sync(R); *)
         Files.ReadInt(R, data); Texts.WriteString(W, "fixP = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
         Files.ReadInt(R, data); Texts.WriteString(W, "fixD = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
+        i := 10;
+        WHILE data # 0 DO eref.ext[data] := 1; mno := mcode.code[data+1] MOD OM4A.C4;
+          IF mno # 0 THEN eref.ext[data+4] := 2 END; 
+          next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*OM4A.C1;
+          data := next
+        END;
         Files.ReadInt(R, data); Texts.WriteString(W, "fixT = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
         Files.ReadInt(R, data); Texts.WriteString(W, "entry = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
         Files.Read(R, ch);
         Texts.Append(Oberon.Log, W.buf);
-        IF ch # "O" THEN Texts.WriteString(W, "format eror"); Texts.WriteLn(W) END;
+        IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
       (* Sync(R); *)
         (* TODO Locate external references *)
         i := 0;
@@ -387,31 +412,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 12.11.2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-  mnemo0[0] := "MOV";
-  mnemo0[1] := "LSL";
-  mnemo0[2] := "ASR";
-  mnemo0[3] := "ROR";
-  mnemo0[4] := "AND";
-  mnemo0[5] := "ANN";
-  mnemo0[6] := "IOR";
-  mnemo0[7] := "XOR";
-  mnemo0[8] := "ADD";
-  mnemo0[9] := "SUB";
-  mnemo0[10] := "MUL";
-  mnemo0[11] := "DIV";
-  mnemo0[12] := "FAD";
-  mnemo0[13] := "FSB";
-  mnemo0[14] := "FML";
-  mnemo0[15] := "FDV";
-  mnemo1[0] := "MI ";
-  mnemo1[8] := "PL";
-  mnemo1[1] := "EQ ";
-  mnemo1[9] := "NE ";
-  mnemo1[2] := "LS ";
-  mnemo1[10] := "HI ";
-  mnemo1[5] := "LT ";
-  mnemo1[13] := "GE ";
-  mnemo1[6] := "LE ";
-  mnemo1[14] := "GT ";
-  mnemo1[15] := "NO ";
+  mnemo0[0] := "LDR";
+  mnemo0[1] := "LDRB";
+  mnemo0[2] := "STR";
+  mnemo0[3] := "STRB";
+  mnemo0[4] := "ADD";
+  mnemo0[5] := "ADDB";
+  mnemo0[6] := "VLDR";
+  mnemo0[7] := "VSTR";
 END OM4Tool.

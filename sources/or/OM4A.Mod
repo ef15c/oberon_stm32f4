@@ -218,14 +218,13 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     
     Accessing external variable
     LDR/STR/ADD
-    ooosaaaabbbb000000000000000pvvvv
+    ooooaaaabbbb00000000000pvvvvvvvv
     
-    ooo:  operation code 000: LDR, 001: STR, 010: ADD
-    s:    size of operation (0: 4 bytes, 1: 1 byte)
+    oooo:  operation code 0000: LDR, ..., 0111 VSTR
     aaaa: destination register
     bbbb: operand register
     p:    program based variable
-    vvvv: number of the variable
+    vvv8: number of the variable
   
   2/ Procedures
     No need to encode the instruction wich is always 
