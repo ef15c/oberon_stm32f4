@@ -838,12 +838,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = OM4B.Const THEN
       IF x.r >= 0 THEN OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(x.a - (mcode.pc+4)))
       ELSE (*imported*)
-        IF mcode.pc - fixORGP < OM4A.C16 THEN
-        (*aaaannnnppppppppdddddddddddddddd*)
-          OM4A.Put0(mcode, RH*OM4A.C28 + (-x.r)*OM4A.C24 + x.a*OM4A.C16 + mcode.pc - fixORGP); fixORGP := mcode.pc-4;
-          OM4A.Put1(mcode, OM4A.BLX + RH*OM4A.C3) (*Attention : nécéssite de placer l'adresse 
-            absolue et non relative au début du module dans les descripteurs de
-            module chagée par le module Modules*)
+        IF mcode.pc - fixORGP < OM4A.C21 THEN
+          OM4A.Put0(mcode, (-x.r)*OM4A.C28 + x.a*OM4A.C20 + (mcode.pc - fixORGP) DIV OM4A.C1); fixORGP := mcode.pc-4;
+          (*Branching range is -16777216 to 16777214. If caller is in SDRAM (0xD0000000)
+          * and callee in Flash (0x0F000000), the offset will not be in the permissible
+          * range. In this case, the loader will have to generate a "veneer code" near the caller
+          * which will jump to the callee. This code could be LDR PC, [PC] followed by the absolute
+          * callee address.*)
         ELSE OM4S.Mark("fixup impossible")
         END
       END

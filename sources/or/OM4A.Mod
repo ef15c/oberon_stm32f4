@@ -228,14 +228,13 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   
   2/ Procedures
     No need to encode the instruction wich is always 
-    LDR r, <proc address>+1:
+    BL <proc address>:
     
-    aaaannnnppppppppdddddddddddddddd
+    nnnnppppppppdddddddddddddddddddd
 
-    aaaa: destination register
     nnnn:     number of the module
     pppppppp: number of the procedure
-    dd16: offset DIV 2 of next op to fix for procedure address loading
+    dd20: offset DIV 2 of next op to fix for procedure address loading
 *)
     EXTLDR* =0; EXTSTR* =2; EXTADD* =4;
     EXTLDRB*=1; EXTSTRB*=3; EXTADDB*=5;

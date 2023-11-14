@@ -169,41 +169,63 @@ MODULE OM4Tool;  (*NW 18.2.2013
     (*Note b. UNPREDICTABLE if abcdefgh == 00000000.*)
   END ThumbExpandImm;
   
+  PROCEDURE SignExtendEven25(op: SET): LONGINT;
+    VAR res: LONGINT;
+    s, j1, j2: BOOLEAN;
+  BEGIN res := 0;
+    s := 26 IN op;
+    j1 := 13 IN op;
+    j2 := 11 IN op;
+    IF ~(j1 # s) THEN INC(res, OM4A.C22) END;
+    IF ~(j2 # s) THEN INC(res, OM4A.C21) END;
+    INC(res, ORD(op) DIV OM4A.C16 MOD OM4A.C10*OM4A.C11);
+    INC(res, ORD(op) MOD OM4A.C11);
+    res := LSL(res, 1);
+    IF s THEN (* Negative offset*) INC(res, LSL(-1, 24)) END;
+    RETURN res
+  END SignExtendEven25;
+  
   PROCEDURE opcode(VAR c: OM4A.ModuleCode; VAR er: ExternalRefMap; VAR i: LONGINT);
     CONST
       (*32-bit instructions*)
-      SCMSK1 = {25..28, 22}; SCMSK2 = {25..28}; SCMSK3 = {26..28};
-      SCMSK4 = {25, 27..28, 15}; SCMSK5 = {27..28, 15}; SCMSK6 = {24..28, 20};
-      SCMSK7 = {25..28, 20..22};
+      T32MSK1 = {25..28, 22}; T32MSK2 = {25..28}; T32MSK3 = {26..28};
+      T32MSK4 = {25, 27..28, 15}; T32MSK5 = {27..28, 15}; T32MSK6 = {24..28, 20};
+      T32MSK7 = {25..28, 20..22};
       
-      (*SCMSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
+      (*T32MSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
       DataProcModImm = {28};
-      (*SCMSK4 10 x1xxxxx 0: Data processing (plain binary immediate) on page A5-141*)
+      (*T32MSK4 10 x1xxxxx 0: Data processing (plain binary immediate) on page A5-141*)
       DataProcPlainBinImm = {28, 25};
+      (*T32MSK5 10 xxxxxxx 1: Branches and miscellaneous control on page A5-142*)
+      BrMiscCtrl = {28, 15};
 
-      (*SCMSK6 11 000xxx0 x: Store single data item on page A5-149*)
+      (*T32MSK6 11 000xxx0 x: Store single data item on page A5-149*)
       StrSingleDataItem = {27..28};
 
-      (*SCMSK7 11 00xx101 x Load word on page A5-146*)
+      (*T32MSK7 11 00xx101 x Load word on page A5-146*)
       LdrWord = {27..28, 22, 20};
 
-      SCMSK41 = {21..24};      
-      (*SCMSK41 1101x SUB (immediate) on page A7-402 or CMP (immediate) on page A7-223*)
+      T32MSK41 = {21..24};      
+      (*T32MSK41 1101x SUB (immediate) on page A7-402 or CMP (immediate) on page A7-223*)
       SubCmpModImm = {24, 23, 21};
-      (*SCMSK41 1000x ADD (immediate) on page A7-190 or CMN (immediate) on page A7-221*)
+      (*T32MSK41 1000x ADD (immediate) on page A7-190 or CMN (immediate) on page A7-221*)
       AddCmnModImm = {24};
       
-      SCMSK61 = {21..23};
-      SCMSK62 = {21..23, 11};
-      (*SCMSK61 010 1xxxxx: Store Register STR (immediate) on page A7-386*)
+      T32MSK61 = {21..23};
+      T32MSK62 = {21..23, 11};
+      (*T32MSK61 010 1xxxxx: Store Register STR (immediate) on page A7-386*)
       StrRegImmT3 = {22..23};
       StrRegImmT4 = {22, 11};
       
-      SCMSK71 = {23..24};
-      (*01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
-      (*0x xxxxxx: Rn = 1111: Load Register LDR (literal) on page A7-248*)
+      T32MSK71 = {23..24};
+      (*T32MSK71 01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
+      (*T32MSK71 0x xxxxxx: Rn = 1111: Load Register LDR (literal) on page A7-248*)
       LdrRegImmOrLit = {23};
 
+      T32MSK51 = {12, 14};
+      (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
+      BrWithLnk = {12, 14};
+      
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
       T16MSK5 = {13..15};
@@ -216,7 +238,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
       
-    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, mno, ext, exop: BYTE;
+    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, mno, ext, exop, proc: BYTE;
       op: SET;
   BEGIN
     ext := er.ext[i];
@@ -227,51 +249,58 @@ MODULE OM4Tool;  (*NW 18.2.2013
         b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
         op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
         Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
-        IF op*SCMSK4 = DataProcModImm THEN
-          (* SCMSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
+        IF op*T32MSK4 = DataProcModImm THEN
+          (* T32MSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
           Rn := b2 MOD OM4A.C4; Rd := b3 MOD OM4A.C4;
-          IF op*SCMSK41 = SubCmpModImm THEN
+          IF op*T32MSK41 = SubCmpModImm THEN
             IF Rd = 15 THEN Texts.WriteString(W, "CMP") ELSE Texts.WriteString(W, "SUB")
             END;
             WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #"); 
             WriteHexVLen(W, ThumbExpandImm(op), 2); Texts.Write(W, "H")
-          ELSIF op*SCMSK41 = AddCmnModImm THEN
+          ELSIF op*T32MSK41 = AddCmnModImm THEN
             IF Rd = 15 THEN Texts.WriteString(W, "CMN") ELSE Texts.WriteString(W, "ADD")
             END;
             WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #"); 
             WriteHexVLen(W, ThumbExpandImm(op), 2); Texts.Write(W, "H")
           ELSE Texts.WriteString(W, "TODO: not AddCmnModImm")
           END
-        ELSIF op*SCMSK4 = DataProcPlainBinImm THEN
-          (*SCMSK4 10 x1xxxxx 0: Data processing (plain binary immediate) on page A5-141*)
+        ELSIF op*T32MSK4 = DataProcPlainBinImm THEN
+          (*T32MSK4 10 x1xxxxx 0: Data processing (plain binary immediate) on page A5-141*)
           Texts.WriteString(W, "TODO: DataProcPlainBinImm")
-        ELSIF op*SCMSK6 = StrSingleDataItem THEN
-          (*SCMSK6 11 000xxx0 x: Store single data item on page A5-149*)
-          IF op*SCMSK61 = StrRegImmT3 THEN
-          (*SCMSK61 110 1xxxxx: Store Register STR (immediate) on page A7-386*)
+        ELSIF op*T32MSK6 = StrSingleDataItem THEN
+          (*T32MSK6 11 000xxx0 x: Store single data item on page A5-149*)
+          IF op*T32MSK61 = StrRegImmT3 THEN
+          (*T32MSK61 110 1xxxxx: Store Register STR (immediate) on page A7-386*)
           (*STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
             Rn := b2 MOD OM4A.C4; Rt := b3 DIV OM4A.C4;
             Texts.WriteString(W, "STR"); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
-            Texts.WriteString(W, " #"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 2);
+            Texts.WriteString(W, " +"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 2);
             Texts.WriteString(W, "H]")
           ELSE Texts.WriteString(W, "TODO: not StrRegImmT3")
           END
-        ELSIF op*SCMSK7 = LdrWord THEN
-          (*SCMSK7 11 00xx101 x Load word on page A5-146*)
+        ELSIF op*T32MSK7 = LdrWord THEN
+          (*T32MSK7 11 00xx101 x Load word on page A5-146*)
           Rn := b2 MOD OM4A.C4;
-          IF (op*SCMSK71 = LdrRegImmOrLit) & (Rn # 15) THEN
-            (*01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
+          IF (op*T32MSK71 = LdrRegImmOrLit) & (Rn # 15) THEN
+            (*T32MSK71 01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
             (*LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
             Rt := b3 DIV OM4A.C4;
             Texts.WriteString(W, "LDR"); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
-            Texts.WriteString(W, " #"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 2);
+            Texts.WriteString(W, " +"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 2);
             Texts.WriteString(W, "H]")
           ELSE Texts.WriteString(W, "TODO: not LdrRegImmOrLit")
           END
-        ELSE Texts.WriteString(W, "???")
+        ELSIF op*T32MSK5 = BrMiscCtrl THEN
+          IF op*T32MSK51 = BrWithLnk THEN
+            (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
+            (*BL<c> <label> Outside or last in IT block*)
+            Texts.WriteString(W, "BL #"); Texts.WriteInt(W, SignExtendEven25(op), 10);
+          ELSE Texts.WriteString(W, "TODO: not BrWithLnk")
+          END
+        ELSE Texts.WriteString(W, "TODO 32-bit thumb instruction")
         END
       ELSE op := SYSTEM.VAL(SET, 0+b2+100H*b1);
-        WriteHexVLen(W, ORD(op), 4); Texts.Write(W, 9X);
+        Texts.WriteString(W, "    "); WriteHexVLen(W, ORD(op), 4); Texts.Write(W, 9X);
         IF op*T16MSK2 = SpecDataBrEx THEN
           (*T16MSK2 010001: Special data instructions and branch and exchange on page A5-132*)
           IF op*T16MSK23 = BrEx THEN
@@ -288,8 +317,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
       Rd := b1 DIV OM4A.C4; mno := b1 MOD OM4A.C4;
-      Texts.WriteString(W, "LDR"); WriteReg(Rd); Texts.WriteString(W, " = Base[");
-      Texts.WriteInt(W, mno, 3); Texts.WriteString(W, "]");
+      Texts.WriteString(W, "LDR"); WriteReg(Rd); Texts.WriteString(W, " [ MT + Base(");
+      Texts.WriteInt(W, mno, 3); Texts.WriteString(W, ")]")
     ELSIF ext = 2 THEN (*LDR/STR/ADD relative to static base*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
@@ -297,12 +326,21 @@ MODULE OM4Tool;  (*NW 18.2.2013
       exop := b1 DIV OM4A.C4;
       IF exop < OM4A.EXTVLDR THEN
         Rd := b1 MOD OM4A.C4; Rn := b2 DIV OM4A.C4;
-        Texts.WriteString(W, mnemo0[exop]); WriteReg(Rd); WriteReg(Rn);
-        Texts.WriteString(W, " = Var["); Texts.WriteInt(W, b4, 4);
-        Texts.WriteString(W, "]");
-        IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END;
-      ELSE Texts.WriteString(W, "TODO: Real external reference");
+        Texts.WriteString(W, mnemo0[exop]); WriteReg(Rd);
+        Texts.WriteString(W, " ["); WriteReg(Rn);
+        Texts.WriteString(W, " + Var("); Texts.WriteInt(W, b4, 4);
+        Texts.WriteString(W, ")]");
+        IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END
+      ELSE Texts.WriteString(W, "TODO: Real external reference")
       END
+    ELSIF ext = 3 THEN (*BL Call external procedure*)
+      b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
+      op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
+      Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
+      mno := b1 DIV OM4A.C4; proc := b1 MOD OM4A.C4*OM4A.C4 + b2 DIV OM4A.C4;
+      Texts.WriteString(W, "BL Mod("); Texts.WriteInt(W, mno, 3);
+      Texts.WriteString(W, ") proc("); Texts.WriteInt(W, proc, 4);
+      Texts.WriteString(W, ")")
     ELSE Texts.WriteString(W, "TODO: External reference");
       INC(i, 2)
     END
@@ -356,10 +394,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Texts.WriteString(W, "code"); Texts.WriteLn(W);
         Texts.Append(Oberon.Log, W.buf);
         Files.ReadInt(R, mcode.pc); i := 0;
-        WHILE i < mcode.pc DO
-          Files.ReadByte(R, mcode.code[i]); eref.ext[i] := 0;
-(*          Texts.WriteInt(W, i, 4); Texts.Write(W, 9X); WriteHexVLen(W, data, 4);
-          Texts.Write(W, 9X); opcode(data); Texts.WriteLn(W);*) INC(i)
+        WHILE i < mcode.pc DO Files.ReadByte(R, mcode.code[i]); eref.ext[i] := 0; INC(i)
         END;
       (* Sync(R); *)
         Texts.WriteString(W, "commands:"); Texts.WriteLn(W);
@@ -385,8 +420,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Texts.WriteLn(W);
       (* Sync(R); *)
         Files.ReadInt(R, data); Texts.WriteString(W, "fixP = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
+        WHILE data # 0 DO eref.ext[data] := 3;
+          next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*(mcode.code[data] MOD OM4A.C4)))*OM4A.C1;
+          data := next
+        END;
         Files.ReadInt(R, data); Texts.WriteString(W, "fixD = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
-        i := 10;
         WHILE data # 0 DO eref.ext[data] := 1; mno := mcode.code[data+1] MOD OM4A.C4;
           IF mno # 0 THEN eref.ext[data+4] := 2 END; 
           next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*OM4A.C1;
