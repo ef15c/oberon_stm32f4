@@ -83,11 +83,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (*
     Trap is implemented as a coprocessor instruction targeting a
     non existing coprocessor, i.e. not CP10 or CP11 assocatied to FPU.
-    The encoding is 111x11xxxxxxxxxxxxxx0xxxxxxxxxxx, that leaves 26 bits
+    The encoding is 1110/11xx/xxxx/xxxx/xxxx/0xxx/xxxx/xxxx, that leaves 25 bits
     for describing the trap number and file position.
     
-    In this implementation, 24 bits will be used, like in RISC-5 code
-    1110110ppppppppppppp0pppppppnnnn
+    In this implementation, 24 bits will be used, like in RISC-5 code:
+    1110/110p/pppp/pppp/pppp/0ppp/pppp/nnnn
     This will generate an exception trapped by the usage fault handler 
     implemented as the trap procedure of the System module.
   *)
@@ -852,7 +852,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.mode <= OM4B.Par THEN load(x); DEC(RH)
       ELSE OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, 0, ""); OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, 4); DEC(r); DEC(frame, 4)
       END ;
-      IF check THEN Trap(OM4A.EQ, 5) END ;
+      IF check THEN 
+        IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm8(mcode, RH, 0) END;
+        Trap(OM4A.EQ, 5) 
+      END;
       OM4A.Put1(mcode, OM4A.BLX + RH*OM4A.C3)
     END ;
     IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0
@@ -1147,7 +1150,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END ;
       obj := obj.next
     END ;
-    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + nofptrs + 1)*4 + nofusedextprocs*8;  (*varsize includes type descriptors*)
+    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + nofptrs + 1)*4 + nofusedextprocs*8;  (*varsize includes type descriptors and trampolines*)
     
     OM4B.MakeFileName(name, modid, ".m4c"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.Write(R, CHR(version));

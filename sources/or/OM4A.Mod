@@ -24,11 +24,11 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
  *)
  
     MI* = 4; PL* = 5; EQ* = 0; NE* = 1; LT* = 11; GE* = 10; LE* = 13; GT* = 12;
-    CC* = 3; AL* = 14; NV*=15;
+    CC* = 3; AL* = 14; NV* = 15;
 
     IT*  = 0BF00H; (*If-Then base*)
 
-    CoP*     = 0ED000000H; (*Coprocessor instruction*)
+    CoP*     = 0EC000000H; (*Coprocessor instruction*)
 
     BCT1*    = 0D000H;
     (*|1101 cond   imm8   |*)

@@ -11,6 +11,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
     mnemo0: ARRAY 8, 5 OF CHAR;  (*mnemonics*)
+    mnemo1: ARRAY 16, 3 OF CHAR;  (*condition mnemonics*)
   
   PROCEDURE WriteHexVLen (VAR W: Texts.Writer; x, n: LONGINT);
     VAR i: INTEGER; y: LONGINT;
@@ -198,6 +199,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       DataProcPlainBinImm = {28, 25};
       (*T32MSK5 10 xxxxxxx 1: Branches and miscellaneous control on page A5-142*)
       BrMiscCtrl = {28, 15};
+      (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
+      CoProc = {26..27};
 
       (*T32MSK6 11 000xxx0 x: Store single data item on page A5-149*)
       StrSingleDataItem = {27..28};
@@ -226,17 +229,37 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
       BrWithLnk = {12, 14};
       
+      T32MSK31 = {11};
+      (*T32MSK31 0: Oberon implementation for Trap*)
+      Trap = {};
+
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
       T16MSK5 = {13..15};
       
       (*T16MSK2 010001: Special data instructions and branch and exchange on page A5-132*)
       SpecDataBrEx = {14, 10};
+      (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
+      Misc16bInst = {15, 12..13};
+      (*T16MSK1 00xxxx: Shift (immediate), add, subtract, move, and compare on page A5-130*)
+      ShAdSuMoCm = {};
       
       T16MSK21 = {8..9}; T16MSK22 = {6..9}; T16MSK23 = {7..9};
       
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
+      (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
+      BrLEx = {7..9};
+      
+      T16MSK41 = {5..11}; T16MSK42 = {7..11}; T16MSK43 = {8..11}; T16MSK44 = {6..11};
+      
+      (*T16MSK43 1111xxx: If-Then, and hints on page A5-135*)
+      IfThenHints = {8..11};
+      
+      T16MSK11 = {11..13};
+      
+      (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
+      CmpImm = {13, 11};
       
     VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, mno, ext, exop, proc: BYTE;
       op: SET;
@@ -297,17 +320,57 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Texts.WriteString(W, "BL #"); Texts.WriteInt(W, SignExtendEven25(op), 10);
           ELSE Texts.WriteString(W, "TODO: not BrWithLnk")
           END
+        ELSIF op*T32MSK3 = CoProc THEN
+          (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
+          IF op*T32MSK31 = Trap THEN
+            (*T32MSK31 0: Oberon implementation for Trap*)
+            Texts.WriteString(W, "Trap "); Texts.WriteInt(W, b4 MOD OM4A.C4, 2);
+            Texts.WriteString(W, " at pos "); 
+            Texts.WriteInt(W, 0+b1 MOD OM4A.C1*OM4A.C19 + b2*OM4A.C11 + b3 DIV OM4A.C4*OM4A.C7 +
+              b3 MOD OM4A.C3*OM4A.C4 + b4 DIV OM4A.C4, 7);
+          ELSE Texts.WriteString(W, "TODO: not Trap")
+          END
         ELSE Texts.WriteString(W, "TODO 32-bit thumb instruction")
         END
       ELSE op := SYSTEM.VAL(SET, 0+b2+100H*b1);
         Texts.WriteString(W, "    "); WriteHexVLen(W, ORD(op), 4); Texts.Write(W, 9X);
         IF op*T16MSK2 = SpecDataBrEx THEN
           (*T16MSK2 010001: Special data instructions and branch and exchange on page A5-132*)
+          Rm := b2 DIV OM4A.C3 MOD OM4A.C4;
           IF op*T16MSK23 = BrEx THEN
             (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
-            Rm := b2 DIV OM4A.C3;
             Texts.WriteString(W, "BX"); WriteReg(Rm)
-          ELSE Texts.WriteString(W, "TODO: not BrEx")
+          ELSIF op*T16MSK23 = BrLEx THEN
+            (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
+            Texts.WriteString(W, "BLX"); WriteReg(Rm)
+          ELSE Texts.WriteString(W, "TODO: not BrLEx")
+          END
+        ELSIF op*T16MSK4 = Misc16bInst THEN
+          (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
+          IF op*T16MSK43 = IfThenHints THEN
+            (*T16MSK43 1111xxx: If-Then, and hints on page A5-135*)
+            IF b2 MOD OM4A.C4 # 0 THEN
+              (*xxxx not 0000 If-Then IT on page A7-236*)
+              Texts.WriteString(W, "IT");
+              b3 := b2 DIV OM4A.C4; (*condition*)
+              t := 3; WHILE ~ODD(b2) DO b2 := ASR(b2, 1); DEC(t) END;
+              FOR b4 := t TO 1 BY -1 DO 
+                IF ASR(b2, b4) MOD OM4A.C1 = b3 MOD OM4A.C1 THEN Texts.WriteString(W, "T")
+                ELSE Texts.WriteString(W, "E")
+                END
+              END;
+              Texts.WriteString(W, " "); Texts.WriteString(W, mnemo1[b3]);
+            ELSE Texts.WriteString(W, "TODO: not If-Then")
+            END
+          ELSE Texts.WriteString(W, "TODO: not IfThenHints")
+          END
+        ELSIF op*T16MSK1 = ShAdSuMoCm THEN
+          (*T16MSK1 00xxxx: Shift (immediate), add, subtract, move, and compare on page A5-130*)
+          IF op*T16MSK11 = CmpImm THEN
+            Rn := b1 MOD OM4A.C3;
+            Texts.WriteString(W, "CMP"); WriteReg(Rn); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, b2, 3)
+          ELSE Texts.WriteString(W, "TODO: not CmpImm")
           END
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
@@ -450,12 +513,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 12.11.2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-  mnemo0[0] := "LDR";
-  mnemo0[1] := "LDRB";
-  mnemo0[2] := "STR";
-  mnemo0[3] := "STRB";
-  mnemo0[4] := "ADD";
-  mnemo0[5] := "ADDB";
-  mnemo0[6] := "VLDR";
-  mnemo0[7] := "VSTR";
+  mnemo0[0] := "LDR";  mnemo0[1] := "LDRB";  mnemo0[2] := "STR";
+  mnemo0[3] := "STRB"; mnemo0[4] := "ADD";   mnemo0[5] := "ADDB";
+  mnemo0[6] := "VLDR"; mnemo0[7] := "VSTR";
+  
+  mnemo1[OM4A.MI] := "MI"; mnemo1[OM4A.PL] := "PL"; mnemo1[OM4A.EQ] := "EQ"; mnemo1[OM4A.NE] := "NE";
+  mnemo1[OM4A.LT] := "LT"; mnemo1[OM4A.GE] := "GE"; mnemo1[OM4A.LE] := "LE"; mnemo1[OM4A.GT] := "GT";
+  mnemo1[OM4A.CC] := "CC"; mnemo1[OM4A.AL] := "AL"; mnemo1[OM4A.NV] := "NV"
 END OM4Tool.

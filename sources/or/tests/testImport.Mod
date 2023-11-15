@@ -1,9 +1,12 @@
 MODULE testImport;
   IMPORT testExport;
   VAR v1*: LONGINT;
+    p1*: PROCEDURE;
   
 BEGIN v1 := testExport.v;
-  testExport.p
+  testExport.p;
+  p1 := testExport.p;
+  p1
 END testImport.
 
 (*
