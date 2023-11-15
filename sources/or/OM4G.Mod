@@ -1121,17 +1121,24 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END FindPtrs;
 
   PROCEDURE Close*(VAR modid: OM4S.Ident; key, nofent: LONGINT);
-    VAR obj: OM4B.Object;
-      i, comsize, nofimps, nofptrs, size: LONGINT;
+    VAR obj, obj2: OM4B.Object;
+      i, comsize, nofimps, nofptrs, nofusedextprocs, size: LONGINT;
       name: OM4S.Ident;
       F: Files.File; R: Files.Rider;
   BEGIN  (*exit code*)
     IF version = 0 THEN OM4A.encMOVImm32(mcode, 0, VarORG0); OM4A.Put1(mcode, OM4A.BX) (*OM4A.BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)
     ELSE OM4A.encMemImm12(mcode, OM4A.LDRIT3, LR, SP, 0, ""); OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, 4); OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3)
     END ;
-    obj := OM4B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0;
+    obj := OM4B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0; nofusedextprocs := 0;
+    (*TODO: count user external procedures*)
     WHILE obj # NIL DO
-      IF (obj.class = OM4B.Mod) & (obj.dsc # OM4B.system) THEN INC(nofimps) (*count imports*)
+      IF (obj.class = OM4B.Mod) & (obj.dsc # OM4B.system) THEN INC(nofimps); (*count imports*)
+        obj2 := obj.dsc;
+        WHILE (obj2 # NIL) DO
+          IF obj2.used & (obj2.lev < 0) & (obj2.class = OM4B.Const) & (obj2.type.form = OM4B.Proc) THEN INC(nofusedextprocs) (*count external procs called*)
+          END;
+          obj2 := obj2.next
+        END
       ELSIF (obj.exno # 0) & (obj.class = OM4B.Const) & (obj.type.form = OM4B.Proc)
           & (obj.type.nofpar = 0) & (obj.type.base = OM4B.noType) THEN i := 0; (*count commands*)
         WHILE obj.name[i] # 0X DO INC(i) END ;
@@ -1140,7 +1147,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END ;
       obj := obj.next
     END ;
-    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + nofptrs + 1)*4;  (*varsize includes type descriptors*)
+    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + nofptrs + 1)*4 + nofusedextprocs*8;  (*varsize includes type descriptors*)
     
     OM4B.MakeFileName(name, modid, ".m4c"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.Write(R, CHR(version));

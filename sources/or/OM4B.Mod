@@ -24,7 +24,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
     ObjDesc*= RECORD
       class*, exno*: BYTE;
-      expo*, rdo*: BOOLEAN;   (*exported / read-only*)
+      expo*, rdo*, used*: BOOLEAN;   (*exported / read-only / used*)
       lev*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
@@ -74,7 +74,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN x := topScope;
     WHILE (x.next # NIL) & (x.next.name # id) DO x := x.next END ;
     IF x.next = NIL THEN
-      NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.dsc := NIL;
+      NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.used := FALSE; new.dsc := NIL;
       x.next := new; obj := new
     ELSE obj := x.next; OM4S.Mark("mult def")
     END 
@@ -238,7 +238,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           ELSE
             IF class = Const THEN
               IF obj.type.form = Real THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END
-            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE
+            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.used := FALSE;
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)

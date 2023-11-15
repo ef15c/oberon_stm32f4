@@ -319,6 +319,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         IF sym = OM4S.lparen THEN
           OM4S.Get(sym);
           IF (x.type.form = OM4B.Proc) & (x.type.base.form # OM4B.NoTyp) THEN
+            obj.used := TRUE;
             OM4G.PrepCall(x, rx); ParamList(x); OM4G.Call(x, rx); x.type := x.type.base
           ELSE OM4S.Mark("not a function"); ParamList(x)
           END
@@ -512,12 +513,17 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
           ELSIF sym = OM4S.lparen THEN (*procedure call*)
             OM4S.Get(sym);
             IF (x.type.form = OM4B.Proc) & (x.type.base.form = OM4B.NoTyp) THEN
+              obj.used := TRUE;
               OM4G.PrepCall(x, rx); ParamList(x); OM4G.Call(x, rx)
             ELSE OM4S.Mark("not a procedure"); ParamList(x)
             END
           ELSIF x.type.form = OM4B.Proc THEN (*procedure call without parameters*)
             IF x.type.nofpar > 0 THEN OM4S.Mark("missing parameters") END ;
-            IF x.type.base.form = OM4B.NoTyp THEN OM4G.PrepCall(x, rx); OM4G.Call(x, rx) ELSE OM4S.Mark("not a procedure") END
+            IF x.type.base.form = OM4B.NoTyp THEN 
+              obj.used := TRUE;
+              OM4G.PrepCall(x, rx); OM4G.Call(x, rx)
+            ELSE OM4S.Mark("not a procedure")
+            END
           ELSIF x.mode = OM4B.Typ THEN OM4S.Mark("illegal assignment")
           ELSE OM4S.Mark("not a procedure")
           END
