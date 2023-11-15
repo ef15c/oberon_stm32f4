@@ -79,7 +79,7 @@ entry =       18
   22	 F8CDE000	STR LR [ SP + 00H]
   26	 F7FFFFF1	BL #       -30
   30	 F000F800	BL #         0
-  34	 F1BE0023	SUB  R0 LR # 23H
+  34	 F1BE0021	SUB  R0 LR # 22H
   38	 10000013	LDR  R1 [ MT + Base(  0)]
   42	 F8C10004	STR  R0 [  R1 + 04H]
   46	 00000004	LDR  R0 [ MT + Base(  0)]

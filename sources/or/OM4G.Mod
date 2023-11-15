@@ -127,7 +127,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.r > 0 THEN OM4S.Mark("not allowed")
           ELSIF x.r = 0 THEN
             OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0));  (* Put address of next statement in LR *)
-            OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a + 1 (*For Thumb state*) )
+            OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a)
           ELSE GetSB(x.r); OM4A.Put0(mcode, OM4A.EXTADD*OM4A.C28 + RH*OM4A.C24 + RH*OM4A.C20 + OM4A.C8 (*mark as progbase-relative*) + x.a)
           END;
           x.r := RH; incR
