@@ -1,4 +1,7 @@
 08006988	ldr.w	pc, [pc]	; 0x800698c <__codeInRam_veneer+4>
-0800698C	asrs	r1, r0, #32
+0800698C	asrs	r1, r0, #32 ;0110
+0800698E  beq next; 20D0
+  .fill 66, 1, 0
+next:
 
 0xD0201001

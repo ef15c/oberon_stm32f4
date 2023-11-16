@@ -8,8 +8,13 @@ MODULE OM4Tool;  (*NW 18.2.2013
       ext: ARRAY OM4A.maxCode OF BYTE
     END;
   
+    ITBlockDesc = RECORD
+      cond, pos, nofinst: BYTE;
+      mask: ARRAY 5 OF CHAR
+    END;
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
+    itB: ITBlockDesc;
     mnemo0: ARRAY 8, 5 OF CHAR;  (*mnemonics*)
     mnemo1: ARRAY 16, 3 OF CHAR;  (*condition mnemonics*)
   
@@ -186,6 +191,23 @@ MODULE OM4Tool;  (*NW 18.2.2013
     RETURN res
   END SignExtendEven25;
   
+  PROCEDURE imm16(b1, b2, b3, b4: BYTE): LONGINT;
+  BEGIN
+    RETURN 0 + b2 MOD OM4A.C4*OM4A.C12 + b1 DIV OM4A.C2 MOD OM4A.C1*OM4A.C11 +
+              b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C8 + b4
+  END imm16;
+  
+  PROCEDURE WriteOp(op: SET; mnemo: ARRAY OF CHAR; setFlagsOutsideITB, bit20SetsFlag: BOOLEAN);
+  BEGIN Texts.WriteString(W, mnemo); IF bit20SetsFlag & (20 IN op) THEN Texts.Write(W, "S") END;
+    IF itB.pos < itB.nofinst THEN
+      IF itB.mask[itB.pos] = "T" THEN Texts.WriteString(W, mnemo1[itB.cond])
+      ELSE Texts.WriteString(W, mnemo1[OM4A.negated(itB.cond)])
+      END;
+      INC(itB.pos)
+    ELSIF setFlagsOutsideITB THEN Texts.Write(W, "S")
+    END
+  END WriteOp;
+  
   PROCEDURE opcode(VAR c: OM4A.ModuleCode; VAR er: ExternalRefMap; VAR i: LONGINT);
     CONST
       (*32-bit instructions*)
@@ -208,14 +230,18 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK7 11 00xx101 x Load word on page A5-146*)
       LdrWord = {27..28, 22, 20};
 
-      T32MSK41 = {21..24};      
+      T32MSK41 = {21..24}; T32MSK42 = {20..24}; 
       (*T32MSK41 1101x SUB (immediate) on page A7-402 or CMP (immediate) on page A7-223*)
       SubCmpModImm = {24, 23, 21};
       (*T32MSK41 1000x ADD (immediate) on page A7-190 or CMN (immediate) on page A7-221*)
       AddCmnModImm = {24};
       
-      T32MSK61 = {21..23};
-      T32MSK62 = {21..23, 11};
+      (*T32MSK42 00100 -: Move Wide, 16-bit MOV (immediate) on page A7-291*)
+      MW16Bit = {22};
+      (*T32MSK42 01100 -: Move Top, 16-bit MOVT on page A7-296*)
+      MoveTop = {23, 22};
+      
+      T32MSK61 = {21..23}; T32MSK62 = {21..23, 11};
       (*T32MSK61 010 1xxxxx: Store Register STR (immediate) on page A7-386*)
       StrRegImmT3 = {22..23};
       StrRegImmT4 = {22, 11};
@@ -229,10 +255,18 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
       BrWithLnk = {12, 14};
       
-      T32MSK31 = {11};
+      T32MSK31 = {11}; T32MSK32 = {8..11};
       (*T32MSK31 0: Oberon implementation for Trap*)
       Trap = {};
+      (*T32MSK32 1010: Single-precision floating point coprocessor*)
+      FPSingle = {11, 9};
 
+      T32MSK321 = {20..25, 4}; T32MSK322 = {24..25, 20..21};
+      (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
+      VMOVSR = {25, 4};
+      (*T32MSK322 A7.7.259 VSTR*)
+      VSTR = {24};
+      
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
       T16MSK5 = {13..15};
@@ -260,8 +294,10 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
       CmpImm = {13, 11};
+      (*T16MSK11 100xx: Move MOV (immediate) on page A7-291*)
+      Move = {13};
       
-    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, mno, ext, exop, proc: BYTE;
+    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, Sn, Sd, mno, ext, exop, proc: BYTE;
       op: SET;
   BEGIN
     ext := er.ext[i];
@@ -276,28 +312,39 @@ MODULE OM4Tool;  (*NW 18.2.2013
           (* T32MSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
           Rn := b2 MOD OM4A.C4; Rd := b3 MOD OM4A.C4;
           IF op*T32MSK41 = SubCmpModImm THEN
-            IF Rd = 15 THEN Texts.WriteString(W, "CMP") ELSE Texts.WriteString(W, "SUB")
+            IF Rd = 15 THEN WriteOp(op, "CMP", FALSE, FALSE) ELSE WriteOp(op, "SUB", FALSE, TRUE)
             END;
             WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #"); 
-            WriteHexVLen(W, ThumbExpandImm(op), 2); Texts.Write(W, "H")
+            WriteHexVLen(W, ThumbExpandImm(op), 1); Texts.Write(W, "H")
           ELSIF op*T32MSK41 = AddCmnModImm THEN
-            IF Rd = 15 THEN Texts.WriteString(W, "CMN") ELSE Texts.WriteString(W, "ADD")
+            IF Rd = 15 THEN WriteOp(op, "CMN", FALSE, FALSE) ELSE WriteOp(op, "ADD", FALSE, TRUE)
             END;
-            WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #"); 
-            WriteHexVLen(W, ThumbExpandImm(op), 2); Texts.Write(W, "H")
+            WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
+            WriteHexVLen(W, ThumbExpandImm(op), 1); Texts.Write(W, "H")
           ELSE Texts.WriteString(W, "TODO: not AddCmnModImm")
           END
         ELSIF op*T32MSK4 = DataProcPlainBinImm THEN
           (*T32MSK4 10 x1xxxxx 0: Data processing (plain binary immediate) on page A5-141*)
-          Texts.WriteString(W, "TODO: DataProcPlainBinImm")
+          Rn := b2 MOD OM4A.C4;
+          Rd := b3 MOD OM4A.C4;
+          IF op*T32MSK42 = MW16Bit THEN
+            (*T32MSK42 00100 -: Move Wide, 16-bit MOV (immediate) on page A7-291*)
+            WriteOp(op, "MOV", FALSE, FALSE); WriteReg(Rd); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, imm16(b1, b2, b3, b4), 6)
+          ELSIF op*T32MSK42 = MoveTop THEN
+            (*T32MSK42 01100 -: Move Top, 16-bit MOVT on page A7-296*)
+            WriteOp(op, "MOVT", FALSE, FALSE); WriteReg(Rd); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, imm16(b1, b2, b3, b4), 6)
+          ELSE Texts.WriteString(W, "TODO: not MW16Bit")
+          END
         ELSIF op*T32MSK6 = StrSingleDataItem THEN
           (*T32MSK6 11 000xxx0 x: Store single data item on page A5-149*)
           IF op*T32MSK61 = StrRegImmT3 THEN
           (*T32MSK61 110 1xxxxx: Store Register STR (immediate) on page A7-386*)
           (*STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
             Rn := b2 MOD OM4A.C4; Rt := b3 DIV OM4A.C4;
-            Texts.WriteString(W, "STR"); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
-            Texts.WriteString(W, " +"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 2);
+            WriteOp(op, "STR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
+            Texts.WriteString(W, " +"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 1);
             Texts.WriteString(W, "H]")
           ELSE Texts.WriteString(W, "TODO: not StrRegImmT3")
           END
@@ -308,8 +355,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*T32MSK71 01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
             (*LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
             Rt := b3 DIV OM4A.C4;
-            Texts.WriteString(W, "LDR"); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
-            Texts.WriteString(W, " +"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 2);
+            WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
+            Texts.WriteString(W, " +"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 1);
             Texts.WriteString(W, "H]")
           ELSE Texts.WriteString(W, "TODO: not LdrRegImmOrLit")
           END
@@ -317,17 +364,40 @@ MODULE OM4Tool;  (*NW 18.2.2013
           IF op*T32MSK51 = BrWithLnk THEN
             (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
             (*BL<c> <label> Outside or last in IT block*)
-            Texts.WriteString(W, "BL #"); Texts.WriteInt(W, SignExtendEven25(op), 10);
+            WriteOp(op, "BL", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven25(op), 10);
           ELSE Texts.WriteString(W, "TODO: not BrWithLnk")
           END
         ELSIF op*T32MSK3 = CoProc THEN
           (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
+          (*1110/11xx/xxxx/xxxx/xxxx/xxxx/xxxx/xxxx*)
           IF op*T32MSK31 = Trap THEN
             (*T32MSK31 0: Oberon implementation for Trap*)
-            Texts.WriteString(W, "Trap "); Texts.WriteInt(W, b4 MOD OM4A.C4, 2);
+            WriteOp(op, "Trap", FALSE, FALSE); Texts.Write(W, " "); Texts.WriteInt(W, b4 MOD OM4A.C4, 2);
             Texts.WriteString(W, " at pos "); 
             Texts.WriteInt(W, 0+b1 MOD OM4A.C1*OM4A.C19 + b2*OM4A.C11 + b3 DIV OM4A.C4*OM4A.C7 +
               b3 MOD OM4A.C3*OM4A.C4 + b4 DIV OM4A.C4, 7);
+          ELSIF op*T32MSK32 = FPSingle THEN
+            (*T32MSK32 1010: Single-precision floating point coprocessor*)
+            (*1110/11xx/xxxx/xxxx/xxxx/1010/xxxx/xxxx*)
+            IF op*T32MSK321 = VMOVSR THEN
+              (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
+              (*VMOV<c> <Sn>, <Rt> 1110/1110/000o/ Vn / Rt /1010/N--1/----*)
+              Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
+              Rt := b3 DIV OM4A.C4;
+              WriteOp(op, "VMOV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1);
+              Texts.Write(W, " "); WriteReg(Rt)
+            ELSIF op*T32MSK322 = VSTR THEN
+              (*T32MSK322 A7.7.259 VSTR*)
+              (*VSTR<c> <Sd>, [<Rn>{, #+/-<imm>}] 1110/1101/UD00/ Rn / Vd /1010/ imm/8   *)
+              Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
+              Rn := b2 MOD OM4A.C4;
+              WriteOp(op, "VSTR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " ["); WriteReg(Rn);
+              IF 23 IN op THEN Texts.Write(W, " +") ELSE  Texts.Write(W, " -") END;
+              WriteHexVLen(W, b4*OM4A.C2, 1);
+              Texts.WriteString(W, "H]");
+            ELSE Texts.WriteString(W, "TODO: not VSTR")
+            END
           ELSE Texts.WriteString(W, "TODO: not Trap")
           END
         ELSE Texts.WriteString(W, "TODO 32-bit thumb instruction")
@@ -339,10 +409,10 @@ MODULE OM4Tool;  (*NW 18.2.2013
           Rm := b2 DIV OM4A.C3 MOD OM4A.C4;
           IF op*T16MSK23 = BrEx THEN
             (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
-            Texts.WriteString(W, "BX"); WriteReg(Rm)
+            WriteOp(op, "BX", FALSE, FALSE); WriteReg(Rm)
           ELSIF op*T16MSK23 = BrLEx THEN
             (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
-            Texts.WriteString(W, "BLX"); WriteReg(Rm)
+            WriteOp(op, "BLX", FALSE, FALSE); WriteReg(Rm)
           ELSE Texts.WriteString(W, "TODO: not BrLEx")
           END
         ELSIF op*T16MSK4 = Misc16bInst THEN
@@ -354,11 +424,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Texts.WriteString(W, "IT");
               b3 := b2 DIV OM4A.C4; (*condition*)
               t := 3; WHILE ~ODD(b2) DO b2 := ASR(b2, 1); DEC(t) END;
+              itB.cond := b3; itB.pos := 0; itB.nofinst := 1; itB.mask[0] := "T";
               FOR b4 := t TO 1 BY -1 DO 
-                IF ASR(b2, b4) MOD OM4A.C1 = b3 MOD OM4A.C1 THEN Texts.WriteString(W, "T")
-                ELSE Texts.WriteString(W, "E")
-                END
+                IF ASR(b2, b4) MOD OM4A.C1 = b3 MOD OM4A.C1 THEN 
+                  Texts.WriteString(W, "T"); itB.mask[itB.nofinst] := "T"
+                ELSE Texts.WriteString(W, "E"); itB.mask[itB.nofinst] := "E"
+                END;
+                INC(itB.nofinst)
               END;
+              itB.mask[itB.nofinst] := 0X;
               Texts.WriteString(W, " "); Texts.WriteString(W, mnemo1[b3]);
             ELSE Texts.WriteString(W, "TODO: not If-Then")
             END
@@ -366,11 +440,19 @@ MODULE OM4Tool;  (*NW 18.2.2013
           END
         ELSIF op*T16MSK1 = ShAdSuMoCm THEN
           (*T16MSK1 00xxxx: Shift (immediate), add, subtract, move, and compare on page A5-130*)
+          Rn := b1 MOD OM4A.C3;
           IF op*T16MSK11 = CmpImm THEN
-            Rn := b1 MOD OM4A.C3;
-            Texts.WriteString(W, "CMP"); WriteReg(Rn); Texts.WriteString(W, " #");
+            (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
+            (*CMP<c> <Rn>,#<imm8>*)
+            WriteOp(op, "CMP", FALSE, FALSE); WriteReg(Rn); Texts.WriteString(W, " #");
             Texts.WriteInt(W, b2, 3)
-          ELSE Texts.WriteString(W, "TODO: not CmpImm")
+          ELSIF op*T16MSK11 = Move THEN
+            (*T16MSK11 100xx: Move MOV (immediate) on page A7-291*)
+            (*MOVS <Rd>,#<imm8>   Outside IT block.
+              MOV<c> <Rd>,#<imm8> Inside IT block.*)
+            WriteOp(op, "MOV", TRUE, FALSE); WriteReg(Rn); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, b2, 3)
+          ELSE Texts.WriteString(W, "TODO: not Move")
           END
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
@@ -380,7 +462,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
       Rd := b1 DIV OM4A.C4; mno := b1 MOD OM4A.C4;
-      Texts.WriteString(W, "LDR"); WriteReg(Rd); Texts.WriteString(W, " [ MT + Base(");
+      WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rd); Texts.WriteString(W, " [ MT + Base(");
       Texts.WriteInt(W, mno, 3); Texts.WriteString(W, ")]")
     ELSIF ext = 2 THEN (*LDR/STR/ADD relative to static base*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
@@ -389,7 +471,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       exop := b1 DIV OM4A.C4;
       IF exop < OM4A.EXTVLDR THEN
         Rd := b1 MOD OM4A.C4; Rn := b2 DIV OM4A.C4;
-        Texts.WriteString(W, mnemo0[exop]); WriteReg(Rd);
+        WriteOp(op, mnemo0[exop], FALSE, FALSE); WriteReg(Rd);
         Texts.WriteString(W, " ["); WriteReg(Rn);
         Texts.WriteString(W, " + Var("); Texts.WriteInt(W, b4, 4);
         Texts.WriteString(W, ")]");
@@ -401,7 +483,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
       mno := b1 DIV OM4A.C4; proc := b1 MOD OM4A.C4*OM4A.C4 + b2 DIV OM4A.C4;
-      Texts.WriteString(W, "BL Mod("); Texts.WriteInt(W, mno, 3);
+      WriteOp(op, "BL", FALSE, FALSE); Texts.WriteString(W, " Mod("); Texts.WriteInt(W, mno, 3);
       Texts.WriteString(W, ") proc("); Texts.WriteInt(W, proc, 4);
       Texts.WriteString(W, ")")
     ELSE Texts.WriteString(W, "TODO: External reference");
@@ -513,6 +595,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 12.11.2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+  itB.pos := 0; itB.nofinst := 0;
   mnemo0[0] := "LDR";  mnemo0[1] := "LDRB";  mnemo0[2] := "STR";
   mnemo0[3] := "STRB"; mnemo0[4] := "ADD";   mnemo0[5] := "ADDB";
   mnemo0[6] := "VLDR"; mnemo0[7] := "VSTR";

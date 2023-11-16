@@ -6,7 +6,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     C31*=80000000H; C30*=40000000H; C28*=10000000H; C27*=8000000H; C26*=4000000H;
     C25*=2000000H; C24*=1000000H; C23*=800000H; C22*=400000H; 
     C21*=200000H; C20*=100000H; C19*=80000H; C18*=40000H; C17*=20000H;
-    C16*=10000H; C13*=2000H; C12*=1000H; C11*=800H; 
+    C16*=10000H; C15*= 8000H; C13*=2000H; C12*=1000H; C11*=800H; 
     C10*=400H; C9*=200H;C8*=100H; C7*=80H; C6*=40H; C5*=20H; 
     C4*=10H; C3*=8; C2*=4; C1*=2;
     
@@ -409,7 +409,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     hw := val DIV C16 MOD C16;
     IF hw # 0 THEN
       ASSERT(c.nbRmnITBlockInsts = 0);
-      Put0(c, MOVT + formatImm16(reg, val))
+      Put0(c, MOVT + formatImm16(reg, val DIV C16))
     END
   END encMOVImm32;
 
