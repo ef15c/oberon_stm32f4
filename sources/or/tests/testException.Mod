@@ -45,7 +45,7 @@ entry =       36
 OM4Tool.DecObj testException.m4c ~
 
 decode testException.m4c
-testException 49415297   1    74
+testException 49415297   1    64
 imports:
 type descriptors
 
@@ -55,28 +55,27 @@ strings
 code
 commands:
 entries
-    44
+    34
 pointer refs
 
 fixP =        0
 fixD =        0
 fixT =        0
-entry =       44
-entry =       44
+entry =       34
    0	 F01E0F04	TST LR # 4H
    4	     BF0C	ITE EQ
    6	 F3EF8008	MRSEQ  R0 MSP
   10	 F3EF8009	MRSNE  R0 PSP
-  14	 F1BD0D08	SUBS SP SP # 8H
+  14	 F1BD0D04	SUBS SP SP # 4H
   18	 F8CDE000	STR LR [ SP + 0H]
-  22	 F8CD0004	STR  R0 [ SP + 4H]
-  26	 F8DDE000	LDR LR [ SP + 0H]
-  30	 F11D0D08	ADDS SP SP # 8H
-  34	     4770	BX LR
-  36	 F1BD0D04	SUBS SP SP # 4H
-  40	 F8CDE000	STR LR [ SP + 0H]
-  44	 F8DDE000	LDR LR [ SP + 0H]
-  48	 F11D0D04	ADDS SP SP # 4H
-  52	     4770	BX LR
+  22	     B401	PUSH  R0
+  24	 F8DDE000	LDR LR [ SP + 0H]
+  28	 F11D0D08	ADDS SP SP # 8H
+  32	     4770	BX LR
+  34	 F1BD0D04	SUBS SP SP # 4H
+  38	 F8CDE000	STR LR [ SP + 0H]
+  42	 F8DDE000	LDR LR [ SP + 0H]
+  46	 F11D0D04	ADDS SP SP # 4H
+  50	     4770	BX LR
 
 *)

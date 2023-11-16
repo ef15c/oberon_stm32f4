@@ -875,7 +875,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       IF sym = OM4S.procedure THEN
         L := 0; OM4G.FJump(L);
         REPEAT ProcedureDecl; Check(OM4S.semicolon, "no ;") UNTIL sym # OM4S.procedure;
-        OM4G.FixOne(L); proc.val := OM4G.Here() * 4; proc.type.dsc := OM4B.topScope.next
+        OM4G.FixOne(L); proc.val := OM4G.Here(); proc.type.dsc := OM4B.topScope.next
       END ;
       OM4G.Enter(parblksize, locblksize, int);
       IF sym = OM4S.begin THEN OM4S.Get(sym); StatSequence END ;

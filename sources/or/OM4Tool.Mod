@@ -290,9 +290,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
       BrLEx = {7..9};
       
       T16MSK41 = {5..11}; T16MSK42 = {7..11}; T16MSK43 = {8..11}; T16MSK44 = {6..11};
+      T16MSK45 = {9..11};
       
       (*T16MSK43 1111xxx: If-Then, and hints on page A5-135*)
       IfThenHints = {8..11};
+      (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)
+      PushMultRegs = {10};
       
       T16MSK11 = {11..13};
       
@@ -458,6 +461,13 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Texts.WriteString(W, " "); Texts.WriteString(W, mnemo1[b3]);
             ELSE Texts.WriteString(W, "TODO: not If-Then")
             END
+          ELSIF op*T16MSK45 = PushMultRegs THEN
+            (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)
+            (*PUSH<c> <registers>*)
+            WriteOp(op, "PUSH", FALSE, FALSE);
+            FOR t := 0 TO 7 DO IF t IN op THEN WriteReg(t) END
+            END;
+            IF 8 IN op THEN WriteReg(14) END
           ELSE Texts.WriteString(W, "TODO: not IfThenHints")
           END
         ELSIF op*T16MSK1 = ShAdSuMoCm THEN

@@ -806,8 +806,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE SaveRegs(r: LONGINT);  (* R[0 .. r-1]*)
     VAR r0: LONGINT;
-  BEGIN 
-    ASSERT(r IN {0..13});
+  BEGIN (*r > 0*)
+    ASSERT(r IN {1..13});
     r0 := LSL(1, r) - 1;
     IF r0 < OM4A.C8 THEN (*OM4A.PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r0)
     ELSE (*OM4A.PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r0)
@@ -817,8 +817,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE RestoreRegs(r: LONGINT); (*R[0 .. r-1]*)
     VAR r0: LONGINT;
-  BEGIN (*r > 0*) r0 := r;
-    ASSERT(r IN {0..13});
+  BEGIN (*r > 0*)
+    ASSERT(r IN {1..13});
     r0 := LSL(1, r) - 1;
     IF r0 < OM4A.C8 THEN (*OM4A.POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + r0)
     ELSE (*OM4A.POP T2*) OM4A.Put0(mcode, OM4A.POPT2 + r0)
@@ -866,7 +866,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Call;
 
   PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN);
-    VAR a, r: LONGINT;
+    VAR r: LONGINT;
   BEGIN frame := 0;
     IF locblksize >= OM4A.C16 THEN OM4S.Mark("too many locals") END;
     IF int THEN (*interrupt procedure, lot of registers are already saved in interrupt frame*)
@@ -876,9 +876,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       OM4A.encMRS(mcode, 0, MSP);
       OM4A.encMRS(mcode, 0, PSP)
     END;
-    a := 4; r := 0;
-    OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, locblksize); OM4A.encMemImm12(mcode, OM4A.STRIT3, LR, SP, 0, "");
-    WHILE a < parblksize DO OM4A.encMemImm12(mcode, OM4A.STRIT3, r, SP, a, ""); INC(r); INC(a, 4) END;
+    OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, locblksize - parblksize + 4); OM4A.encMemImm12(mcode, OM4A.STRIT3, LR, SP, 0, "");
+    r := LSL(1, (parblksize-4) DIV 4) - 1;
+    IF r < OM4A.C8 THEN (*OM4A.PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r)
+    ELSE (*OM4A.PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r)
+    END;
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN);
