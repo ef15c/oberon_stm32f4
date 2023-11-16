@@ -235,6 +235,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       SubCmpModImm = {24, 23, 21};
       (*T32MSK41 1000x ADD (immediate) on page A7-190 or CMN (immediate) on page A7-221*)
       AddCmnModImm = {24};
+      (*T32MSK41 0000x AND (immediate) on page A7-200 or TST (immediate) on page A7-419*)
+      AndTstModImm = {};
       
       (*T32MSK42 00100 -: Move Wide, 16-bit MOV (immediate) on page A7-291*)
       MW16Bit = {22};
@@ -251,9 +253,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK71 0x xxxxxx: Rn = 1111: Load Register LDR (literal) on page A7-248*)
       LdrRegImmOrLit = {23};
 
-      T32MSK51 = {12, 14};
+      T32MSK51 = {12, 14}; T32MSK52 = {21..26, 12, 14};
       (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
       BrWithLnk = {12, 14};
+      (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
+      MovFrSpReg = {21..25};
       
       T32MSK31 = {11}; T32MSK32 = {8..11};
       (*T32MSK31 0: Oberon implementation for Trap*)
@@ -312,14 +316,23 @@ MODULE OM4Tool;  (*NW 18.2.2013
           (* T32MSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
           Rn := b2 MOD OM4A.C4; Rd := b3 MOD OM4A.C4;
           IF op*T32MSK41 = SubCmpModImm THEN
-            IF Rd = 15 THEN WriteOp(op, "CMP", FALSE, FALSE) ELSE WriteOp(op, "SUB", FALSE, TRUE)
+            IF Rd = 15 THEN WriteOp(op, "CMP", FALSE, FALSE)
+            ELSE WriteOp(op, "SUB", FALSE, TRUE); WriteReg(Rd)
             END;
-            WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #"); 
+            WriteReg(Rn); Texts.WriteString(W, " #"); 
             WriteHexVLen(W, ThumbExpandImm(op), 1); Texts.Write(W, "H")
           ELSIF op*T32MSK41 = AddCmnModImm THEN
-            IF Rd = 15 THEN WriteOp(op, "CMN", FALSE, FALSE) ELSE WriteOp(op, "ADD", FALSE, TRUE)
+            IF Rd = 15 THEN WriteOp(op, "CMN", FALSE, FALSE)
+            ELSE WriteOp(op, "ADD", FALSE, TRUE); WriteReg(Rd)
             END;
-            WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
+            WriteReg(Rn); Texts.WriteString(W, " #");
+            WriteHexVLen(W, ThumbExpandImm(op), 1); Texts.Write(W, "H")
+          ELSIF op*T32MSK41 = AndTstModImm THEN
+            (*T32MSK41 0000x AND (immediate) on page A7-200 or TST (immediate) on page A7-419*)
+            IF Rd = 15 THEN WriteOp(op, "TST", FALSE, FALSE)
+            ELSE WriteOp(op, "AND", FALSE, TRUE); WriteReg(Rd)
+            END;
+            WriteReg(Rn); Texts.WriteString(W, " #"); 
             WriteHexVLen(W, ThumbExpandImm(op), 1); Texts.Write(W, "H")
           ELSE Texts.WriteString(W, "TODO: not AddCmnModImm")
           END
@@ -365,7 +378,16 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
             (*BL<c> <label> Outside or last in IT block*)
             WriteOp(op, "BL", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven25(op), 10);
-          ELSE Texts.WriteString(W, "TODO: not BrWithLnk")
+          ELSIF op*T32MSK52 = MovFrSpReg THEN
+            (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
+            (*MRS<c> <Rd>,<spec_reg>*)
+            Rd := b3 MOD OM4A.C4;
+            WriteOp(op, "MRS", FALSE, FALSE); WriteReg(Rd);
+            IF b4 = 8 THEN Texts.WriteString(W, " MSP")
+            ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
+            ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
+            END
+          ELSE Texts.WriteString(W, "TODO: not MovFrSpReg")
           END
         ELSIF op*T32MSK3 = CoProc THEN
           (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
@@ -393,7 +415,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Rn := b2 MOD OM4A.C4;
               WriteOp(op, "VSTR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " ["); WriteReg(Rn);
-              IF 23 IN op THEN Texts.Write(W, " +") ELSE  Texts.Write(W, " -") END;
+              IF 23 IN op THEN Texts.WriteString(W, " +") ELSE  Texts.WriteString(W, " -") END;
               WriteHexVLen(W, b4*OM4A.C2, 1);
               Texts.WriteString(W, "H]");
             ELSE Texts.WriteString(W, "TODO: not VSTR")

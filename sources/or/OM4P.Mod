@@ -862,7 +862,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = OM4S.ident THEN
       OM4S.CopyId(procid); OM4S.Get(sym);
       OM4B.NewObj(proc, OM4S.id, OM4B.Const);
-      IF int THEN parblksize := 12 ELSE parblksize := 4 END ;
+      parblksize := 4;
       NEW(type); type.form := OM4B.Proc; type.size := OM4G.WordSize;
       proc.type := type; proc.val := -1; proc.lev := level; 
       CheckExport(proc.expo);
@@ -871,7 +871,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ProcedureType(type, parblksize);  (*formal parameter list*)
       Check(OM4S.semicolon, "no ;"); locblksize := parblksize; 
       Declarations(locblksize);
-      proc.val := OM4G.Here() * 4; proc.type.dsc := OM4B.topScope.next;
+      proc.val := OM4G.Here(); proc.type.dsc := OM4B.topScope.next;
       IF sym = OM4S.procedure THEN
         L := 0; OM4G.FJump(L);
         REPEAT ProcedureDecl; Check(OM4S.semicolon, "no ;") UNTIL sym # OM4S.procedure;
