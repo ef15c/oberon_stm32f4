@@ -266,11 +266,17 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK32 1010: Single-precision floating point coprocessor*)
       FPSingle = {11, 9};
 
-      T32MSK321 = {20..25, 4}; T32MSK322 = {24..25, 20..21};
+      T32MSK321 = {20..25, 4}; T32MSK322 = {24..25, 20..21}; T32MSK323 = {28, 23, 20..21, 6};
       (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
       VMOVSR = {25, 4};
+      
       (*T32MSK322 A7.7.259 VSTR*)
       VSTR = {24};
+      (*T32MSK322 1xx01 - FP Load Register VLDR on page A7-473*)
+      VLDR = {20, 24};
+      
+      (*T32MSK323 0 0x11 - x0 FP Add VADD on page A7-456*)
+      VADD = {20..21};
       
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
@@ -304,8 +310,10 @@ MODULE OM4Tool;  (*NW 18.2.2013
       CmpImm = {13, 11};
       (*T16MSK11 100xx: Move MOV (immediate) on page A7-291*)
       Move = {13};
+      (*T16MSK11 110xx: Add 8-bit immediate ADD (immediate) on page A7-190*)
+      AddImm8 = {13, 12};
       
-    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, Sn, Sd, mno, ext, exop, proc: BYTE;
+    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, Sn, Sd, Sm, mno, ext, exop, proc: BYTE;
       op: SET;
   BEGIN
     ext := er.ext[i];
@@ -421,10 +429,28 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Texts.WriteString(W, " ["); WriteReg(Rn);
               IF 23 IN op THEN Texts.WriteString(W, " +") ELSE  Texts.WriteString(W, " -") END;
               WriteHexVLen(W, b4*OM4A.C2, 1);
-              Texts.WriteString(W, "H]");
-            ELSE Texts.WriteString(W, "TODO: not VSTR")
+              Texts.WriteString(W, "H]")
+            ELSIF op*T32MSK322 = VLDR THEN
+              (*T32MSK322 1xx01 - FP Load Register VLDR on page A7-473*)
+              (*VLDR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
+              Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
+              Rn := b2 MOD OM4A.C4;
+              WriteOp(op, "VLDR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " ["); WriteReg(Rn);
+              IF 23 IN op THEN Texts.WriteString(W, " +") ELSE  Texts.WriteString(W, " -") END;
+              WriteHexVLen(W, b4*OM4A.C2, 1);
+              Texts.WriteString(W, "H]")
+            ELSIF op*T32MSK323 = VADD THEN
+              (*T32MSK323 0 0x11 - x0 FP Add VADD on page A7-456*)
+              (*VADD{<c>}{<q>}.F32 {<Sd>,} <Sn>, <Sm>*)
+              Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
+              Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
+              Sm := b4 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C5 MOD OM4A.C1;
+              WriteOp(op, "VADD", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+            ELSE Texts.WriteString(W, "TODO: not VADD")
             END
-          ELSE Texts.WriteString(W, "TODO: not Trap")
+          ELSE Texts.WriteString(W, "TODO: not FPSingle")
           END
         ELSE Texts.WriteString(W, "TODO 32-bit thumb instruction")
         END
@@ -484,6 +510,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*MOVS <Rd>,#<imm8>   Outside IT block.
               MOV<c> <Rd>,#<imm8> Inside IT block.*)
             WriteOp(op, "MOV", TRUE, FALSE); WriteReg(Rn); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, b2, 3)
+          ELSIF op*T16MSK11 = AddImm8 THEN
+            (*T16MSK11 110xx: Add 8-bit immediate ADD (immediate) on page A7-190*)
+            (*ADDS <Rdn>,#<imm8> Outside IT block.
+              ADD<c> <Rdn>,#<imm8> Inside IT block.*)
+            WriteOp(op, "ADD", TRUE, FALSE); WriteReg(Rn); Texts.WriteString(W, " #");
             Texts.WriteInt(W, b2, 3)
           ELSE Texts.WriteString(W, "TODO: not Move")
           END
