@@ -638,7 +638,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.a + frame >= OM4A.C10 THEN OM4S.Mark("local real var too far")
           END;
           OM4A.Put0(mcode, OM4A.VSTRT2 + 1*OM4A.C23(*ADD*) +
-            SH MOD OM4A.C1*OM4A.C22 + SP*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 +
+            y.r MOD OM4A.C1*OM4A.C22 + SP*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 +
             (x.a + frame) DIV OM4A.C2)
         ELSE OM4A.encMemImm12(mcode, op, y.r, SP, x.a + frame, "local var too far")
         END
@@ -809,8 +809,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN (*r > 0*)
     ASSERT(r IN {1..13});
     r0 := LSL(1, r) - 1;
-    IF r0 < OM4A.C8 THEN (*OM4A.PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r0)
-    ELSE (*OM4A.PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r0)
+    IF r0 < OM4A.C8 THEN (*PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r0)
+    ELSE (*PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r0)
     END;
     INC(frame, 4*r)
   END SaveRegs;
@@ -820,8 +820,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN (*r > 0*)
     ASSERT(r IN {1..13});
     r0 := LSL(1, r) - 1;
-    IF r0 < OM4A.C8 THEN (*OM4A.POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + r0)
-    ELSE (*OM4A.POP T2*) OM4A.Put0(mcode, OM4A.POPT2 + r0)
+    IF r0 < OM4A.C8 THEN (*POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + r0)
+    ELSE (*POP T2*) OM4A.Put0(mcode, OM4A.POPT2 + r0)
     END;
     DEC(frame, 4*r)
   END RestoreRegs;
@@ -841,7 +841,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF mcode.pc - fixORGP < OM4A.C21 THEN
           OM4A.Put0(mcode, (-x.r)*OM4A.C28 + x.a*OM4A.C20 + (mcode.pc - fixORGP) DIV OM4A.C1); fixORGP := mcode.pc-4;
           (*Branching range is -16777216 to 16777214. If caller is in SDRAM (0xD0000000)
-          * and callee in Flash (0x0F000000), the offset will not be in the permissible
+          * and callee in Flash (0x08000000), the offset will not be in the permissible
           * range. In this case, the loader will have to generate a "veneer code" near the caller
           * which will jump to the callee. This code could be LDR PC, [PC] followed by the absolute
           * callee address.*)
@@ -878,9 +878,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
     OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, locblksize - parblksize + 4); OM4A.encMemImm12(mcode, OM4A.STRIT3, LR, SP, 0, "");
     r := LSL(1, (parblksize-4) DIV 4) - 1;
-    IF r < OM4A.C8 THEN (*OM4A.PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r)
-    ELSE (*OM4A.PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r)
-    END;
+    IF r > 0 THEN
+      IF r < OM4A.C8 THEN (*PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r)
+      ELSE (*PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r) END
+    END
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN);

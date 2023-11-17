@@ -26,6 +26,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       IF y < 10 THEN a[i] := CHR(y + 30H) ELSE a[i] := CHR(y + 37H) END;
       x := x DIV 10H; INC(i)
     UNTIL (i >= n) & (x = 0);
+    IF a[i-1] > "9" THEN Texts.Write(W, "0") END; (*Add a leading 0 if first hex digit is a letter*)
     REPEAT DEC(i); Texts.Write(W, a[i]) UNTIL i = 0
   END WriteHexVLen;
 
