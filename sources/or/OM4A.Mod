@@ -369,7 +369,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     c := a MOD C8;
     a := a DIV C8;
     b := a MOD C8;
-    a := a DIV C8;
+    a := a DIV C8 MOD C8;
     
     IF val DIV C8 = 0 THEN res := d; retv := TRUE
     ELSIF (a = 0) & (b = d) & (c = 0) THEN res := C12 + d; retv := TRUE
@@ -498,15 +498,6 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encShiftReg;
   
-  PROCEDURE encCMPImm8*(VAR c: ModuleCode; a, imm: LONGINT);
-  BEGIN
-    ASSERT(a < 15);
-    ASSERT((imm >= 0) & (imm < C8));
-    IF a < 8 THEN Put1(c, CMPIT1 + a*C3 + imm)
-    ELSE Put0(c, CMPIT2 + a*C16 + imm) END;
-    c.lastInstrSetFlags := TRUE
-  END encCMPImm8;
-  
   PROCEDURE encCMPReg*(VAR c: ModuleCode; a, b: BYTE);
   BEGIN
     ASSERT((a < 15) & (b < 15));
@@ -518,6 +509,19 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END;
     c.lastInstrSetFlags := TRUE
   END encCMPReg;
+  
+  PROCEDURE encCMPImm*(VAR c: ModuleCode; a, t: BYTE; imm: LONGINT);
+    VAR tmiCode: LONGINT;
+  BEGIN
+    ASSERT(a < 15);
+    IF (a < 8) & (imm >= 0) & (imm < C8) THEN (*CMP (immediate) T1*) 
+      Put1(c, CMPIT1 + a*C3 + imm)
+    ELSIF formatThumbExpandImm(imm, tmiCode) THEN (*CMP (immediate) T2*) 
+      Put0(c, CMPIT2 + a*C16 + tmiCode) 
+    ELSE encMOVImm32(c, t, imm); encCMPReg(c, a, t)
+    END;
+    c.lastInstrSetFlags := TRUE
+  END encCMPImm;
   
   PROCEDURE encMOVReg*(VAR c: ModuleCode; a, b: BYTE);
   BEGIN

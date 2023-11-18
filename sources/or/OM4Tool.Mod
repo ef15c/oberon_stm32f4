@@ -18,13 +18,14 @@ MODULE OM4Tool;  (*NW 18.2.2013
     mnemo0: ARRAY 8, 5 OF CHAR;  (*mnemonics*)
     mnemo1: ARRAY 16, 3 OF CHAR;  (*condition mnemonics*)
   
-  PROCEDURE WriteHexVLen (VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
+  PROCEDURE WriteHexVLen(VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
     VAR i: INTEGER; y: LONGINT;
       a: ARRAY 10 OF CHAR;
-  BEGIN i := 0; Texts.Write(W, " ");
+  BEGIN ASSERT(n<=10);
+    i := 0; Texts.Write(W, " ");
     REPEAT y := x MOD 10H;
       IF y < 10 THEN a[i] := CHR(y + 30H) ELSE a[i] := CHR(y + 37H) END;
-      x := x DIV 10H; INC(i)
+      x := x DIV 10H; IF x < 0 THEN INC(x, OM4A.C28) END; INC(i)
     UNTIL (i >= n) & (x = 0);
     IF leadingZero & (a[i-1] > "9") THEN Texts.Write(W, "0") END; (*Add a leading 0 if first hex digit is a letter*)
     REPEAT DEC(i); Texts.Write(W, a[i]) UNTIL i = 0
@@ -125,7 +126,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
 
   PROCEDURE WriteReg(r: LONGINT);
   BEGIN Texts.Write(W, " ");
-    IF r < 12 THEN Texts.WriteString(W, " R"); Texts.WriteInt(W, r MOD 10H, 1)
+    IF r < 12 THEN Texts.WriteString(W, "R"); Texts.WriteInt(W, r MOD 10H, 1)
     ELSIF r = 12 THEN Texts.WriteString(W, "MT")
     ELSIF r = 13 THEN Texts.WriteString(W, "SP")
     ELSIF r = 14 THEN Texts.WriteString(W, "LR")
@@ -245,7 +246,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       MoveTop = {23, 22};
       
       T32MSK61 = {21..23}; T32MSK62 = {21..23, 11};
-      (*T32MSK61 010 1xxxxx: Store Register STR (immediate) on page A7-386*)
+      (*T32MSK61 100 xxxxxx Store Register Byte STRB (immediate) on page A7-389*)
+      StrRegByteImmT2 = {23};
+      (*T32MSK62 010 1xxxxx: Store Register STR (immediate) on page A7-386*)
       StrRegImmT3 = {22..23};
       StrRegImmT4 = {22, 11};
       
@@ -284,12 +287,19 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T16MSK2 010001: Special data instructions and branch and exchange on page A5-132*)
       SpecDataBrEx = {14, 10};
+      (*T16MSK2 010000 Data processing on page A5-131*)
+      DataProc = {14};
+      
       (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
       Misc16bInst = {15, 12..13};
+      
       (*T16MSK1 00xxxx: Shift (immediate), add, subtract, move, and compare on page A5-130*)
       ShAdSuMoCm = {};
       
       T16MSK21 = {8..9}; T16MSK22 = {6..9}; T16MSK23 = {7..9};
+      
+      (*T16MSK22 1010 Compare Registers CMP (register) on page A7-224*)
+      CmpReg = {9, 7};
       
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
@@ -332,20 +342,20 @@ MODULE OM4Tool;  (*NW 18.2.2013
             ELSE WriteOp(op, "SUB", FALSE, TRUE); WriteReg(Rd)
             END;
             WriteReg(Rn); Texts.WriteString(W, " #"); 
-            WriteHexVLen(W, ThumbExpandImm(op), 1, TRUE); Texts.Write(W, "H")
+            Texts.WriteInt(W, ThumbExpandImm(op), 1)
           ELSIF op*T32MSK41 = AddCmnModImm THEN
             IF Rd = 15 THEN WriteOp(op, "CMN", FALSE, FALSE)
             ELSE WriteOp(op, "ADD", FALSE, TRUE); WriteReg(Rd)
             END;
             WriteReg(Rn); Texts.WriteString(W, " #");
-            WriteHexVLen(W, ThumbExpandImm(op), 1, TRUE); Texts.Write(W, "H")
+            Texts.WriteInt(W, ThumbExpandImm(op), 1)
           ELSIF op*T32MSK41 = AndTstModImm THEN
             (*T32MSK41 0000x AND (immediate) on page A7-200 or TST (immediate) on page A7-419*)
             IF Rd = 15 THEN WriteOp(op, "TST", FALSE, FALSE)
             ELSE WriteOp(op, "AND", FALSE, TRUE); WriteReg(Rd)
             END;
             WriteReg(Rn); Texts.WriteString(W, " #"); 
-            WriteHexVLen(W, ThumbExpandImm(op), 1, TRUE); Texts.Write(W, "H")
+            Texts.WriteInt(W, ThumbExpandImm(op), 1)
           ELSE Texts.WriteString(W, "TODO: not AddCmnModImm")
           END
         ELSIF op*T32MSK4 = DataProcPlainBinImm THEN
@@ -364,14 +374,18 @@ MODULE OM4Tool;  (*NW 18.2.2013
           END
         ELSIF op*T32MSK6 = StrSingleDataItem THEN
           (*T32MSK6 11 000xxx0 x: Store single data item on page A5-149*)
-          IF op*T32MSK61 = StrRegImmT3 THEN
+          Rn := b2 MOD OM4A.C4; Rt := b3 DIV OM4A.C4;
+          IF op*T32MSK62 = StrRegImmT3 THEN
           (*T32MSK61 110 1xxxxx: Store Register STR (immediate) on page A7-386*)
           (*STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
-            Rn := b2 MOD OM4A.C4; Rt := b3 DIV OM4A.C4;
             WriteOp(op, "STR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
-            Texts.WriteString(W, " +"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 1, TRUE);
-            Texts.WriteString(W, "H]")
-          ELSE Texts.WriteString(W, "TODO: not StrRegImmT3")
+            Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD OM4A.C12, 1); Texts.WriteString(W, " ]")
+          ELSIF op*T32MSK61 = StrRegByteImmT2 THEN
+            (*T32MSK61 100 xxxxxx Store Register Byte STRB (immediate) on page A7-389*)
+            (*STRB<c>.W <Rt>,[<Rn>,#<imm12>]*)
+            WriteOp(op, "STRB", FALSE, FALSE);  WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
+            Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD OM4A.C12, 1); Texts.WriteString(W, " ]")
+          ELSE Texts.WriteString(W, "TODO: not StrRegByteImmT2")
           END
         ELSIF op*T32MSK7 = LdrWord THEN
           (*T32MSK7 11 00xx101 x Load word on page A5-146*)
@@ -381,8 +395,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
             Rt := b3 DIV OM4A.C4;
             WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
-            Texts.WriteString(W, " +"); WriteHexVLen(W, ORD(op) MOD OM4A.C12, 1, TRUE);
-            Texts.WriteString(W, "H]")
+            Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD OM4A.C12, 1); Texts.WriteString(W, " ]")
           ELSE Texts.WriteString(W, "TODO: not LdrRegImmOrLit")
           END
         ELSIF op*T32MSK5 = BrMiscCtrl THEN
@@ -427,9 +440,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Rn := b2 MOD OM4A.C4;
               WriteOp(op, "VSTR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " ["); WriteReg(Rn);
-              IF 23 IN op THEN Texts.WriteString(W, " +") ELSE  Texts.WriteString(W, " -") END;
-              WriteHexVLen(W, b4*OM4A.C2, 1, TRUE);
-              Texts.WriteString(W, "H]")
+              IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - ") END;
+              Texts.WriteInt(W, b4*OM4A.C2, 1); Texts.WriteString(W, " ]")
             ELSIF op*T32MSK322 = VLDR THEN
               (*T32MSK322 1xx01 - FP Load Register VLDR on page A7-473*)
               (*VLDR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
@@ -437,9 +449,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Rn := b2 MOD OM4A.C4;
               WriteOp(op, "VLDR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " ["); WriteReg(Rn);
-              IF 23 IN op THEN Texts.WriteString(W, " +") ELSE  Texts.WriteString(W, " -") END;
-              WriteHexVLen(W, b4*OM4A.C2, 1, TRUE);
-              Texts.WriteString(W, "H]")
+              IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - " ) END;
+              Texts.WriteInt(W, b4*OM4A.C2, 1); Texts.WriteString(W, " ]")
             ELSIF op*T32MSK323 = VADD THEN
               (*T32MSK323 0 0x11 - x0 FP Add VADD on page A7-456*)
               (*VADD{<c>}{<q>}.F32 {<Sd>,} <Sn>, <Sm>*)
@@ -466,6 +477,16 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
             WriteOp(op, "BLX", FALSE, FALSE); WriteReg(Rm)
           ELSE Texts.WriteString(W, "TODO: not BrLEx")
+          END
+        ELSIF op*T16MSK2 = DataProc THEN
+          (*T16MSK2 010000 Data processing on page A5-131*)
+          IF op*T16MSK22 = CmpReg THEN
+            (*T16MSK22 1010 Compare Registers CMP (register) on page A7-224*)
+            (*CMP<c> <Rn>,<Rm>*)
+            Rn := b2 MOD OM4A.C3;
+            Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+            WriteOp(op, "CMP", FALSE, FALSE); WriteReg(Rn); WriteReg(Rm)
+          ELSE Texts.WriteString(W, "TODO: not CmpReg")
           END
         ELSIF op*T16MSK4 = Misc16bInst THEN
           (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
@@ -528,7 +549,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
       Rd := b1 DIV OM4A.C4; mno := b1 MOD OM4A.C4;
       WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rd); Texts.WriteString(W, " [ MT + Base(");
-      Texts.WriteInt(W, mno, 3); Texts.WriteString(W, ")]")
+      Texts.WriteInt(W, mno, 1); Texts.WriteString(W, ") ]")
     ELSIF ext = 2 THEN (*LDR/STR/ADD relative to static base/VLDR/VSTR*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
@@ -541,8 +562,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Texts.WriteInt(W, Rd, 1)
       END;
       Texts.WriteString(W, " ["); WriteReg(Rn);
-      Texts.WriteString(W, " + Var("); Texts.WriteInt(W, b4, 4);
-      Texts.WriteString(W, ")]");
+      Texts.WriteString(W, " + Var("); Texts.WriteInt(W, b4, 1);
+      Texts.WriteString(W, ") ]");
       IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END
     ELSIF ext = 3 THEN (*BL Call external procedure*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
@@ -550,7 +571,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
       mno := b1 DIV OM4A.C4; proc := b1 MOD OM4A.C4*OM4A.C4 + b2 DIV OM4A.C4;
       WriteOp(op, "BL", FALSE, FALSE); Texts.WriteString(W, " Mod("); Texts.WriteInt(W, mno, 3);
-      Texts.WriteString(W, ") proc("); Texts.WriteInt(W, proc, 4);
+      Texts.WriteString(W, ") proc("); Texts.WriteInt(W, proc, 1);
       Texts.WriteString(W, ")")
     ELSE Texts.WriteString(W, "TODO: External reference");
       INC(i, 2)
