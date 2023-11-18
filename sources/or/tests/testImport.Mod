@@ -90,7 +90,7 @@ entry =        0
   44	 00000004	LDR  R0 [ MT + Base(  0)]
   48	 F8D00004	LDR  R0 [  R0 + 4H]
   52	     2800	CMP  R0 #  0
-  54	     0BF08	IT EQ
+  54	     BF08	IT EQ
   56	 EC0012D5	TrapEQ  5 at pos     173
   60	     4780	BLX  R0
   62	 01000009	LDR  R0 [ MT + Base(  1)]
