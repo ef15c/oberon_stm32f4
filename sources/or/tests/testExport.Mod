@@ -1,6 +1,7 @@
 MODULE testExport;
   VAR v*: LONGINT;
     p1*: PROCEDURE;
+    r*: REAL;
   
   PROCEDURE p*;
   BEGIN
@@ -15,11 +16,11 @@ END testExport.
 ORTool.DecObj testExport.rsc ~
 
 decode testExport.rsc
-testExport 1760CB95   1   116
+testExport 0F5D31AF   1   124
 imports:
 type descriptors
 
-data     8
+data    12
 strings
 
 code
@@ -37,7 +38,7 @@ code
   11	 A0100004	STR   R0  R1       4
   12	 80000002	LDR  R0  R0       2
   13	 80000004	LDR  R0  R0       4
-  14	 D100865C	BLEQ  MT
+  14	 D100955C	BLEQ  MT
   15	 D7000000	BL  R0
   16	 8FE00000	LDR LNK SP       0
   17	 4EE80004	ADD SP SP      4
@@ -45,51 +46,56 @@ code
 commands:
 	p    0
 entries
-    20     0     4     0
+    20     0     4     8     0
 pointer refs
+
+fixP =        0
+fixD =       12
+fixT =        0
+entry =       20
 
 
 OM4Tool.DecObj testExport.m4c ~
 
 decode testExport.m4c
-testExport 1760CB95   1   114
+testExport 0F5D31AF   1   122
 imports:
 type descriptors
 
-data     8
+data    12
 strings
 
 code
 commands:
 	p    0
 entries
-    18     0     4     0
+    18     0     4     8     0
 pointer refs
 
 fixP =        0
 fixD =       46
 fixT =        0
 entry =       18
-   0	 F1BD0D04	SUB SP SP # 04H
-   4	 F8CDE000	STR LR [ SP + 00H]
-   8	 F8DDE000	LDR LR [ SP + 00H]
-  12	 F11D0D04	ADD SP SP # 04H
+   0	 F1BD0D04	SUBS SP SP # 4H
+   4	 F8CDE000	STR LR [ SP + 0H]
+   8	 F8DDE000	LDR LR [ SP + 0H]
+  12	 F11D0D04	ADDS SP SP # 4H
   16	     4770	BX LR
-  18	 F1BD0D04	SUB SP SP # 04H
-  22	 F8CDE000	STR LR [ SP + 00H]
+  18	 F1BD0D04	SUBS SP SP # 4H
+  22	 F8CDE000	STR LR [ SP + 0H]
   26	 F7FFFFF1	BL #       -30
   30	 F000F800	BL #         0
-  34	 F1BE0021	SUB  R0 LR # 22H
+  34	 F1BE0022	SUBS  R0 LR # 22H
   38	 10000013	LDR  R1 [ MT + Base(  0)]
-  42	 F8C10004	STR  R0 [  R1 + 04H]
+  42	 F8C10004	STR  R0 [  R1 + 4H]
   46	 00000004	LDR  R0 [ MT + Base(  0)]
-  50	 F8D00004	LDR  R0 [  R0 + 04H]
+  50	 F8D00004	LDR  R0 [  R0 + 4H]
   54	     2800	CMP  R0 #  0
   56	     BF08	IT EQ
-  58	 EC001065	Trap  5 at pos     134
+  58	 EC001155	TrapEQ  5 at pos     149
   62	     4780	BLX  R0
-  64	 F8DDE000	LDR LR [ SP + 00H]
-  68	 F11D0D04	ADD SP SP # 04H
+  64	 F8DDE000	LDR LR [ SP + 0H]
+  68	 F11D0D04	ADDS SP SP # 4H
   72	     4770	BX LR
 
 *)
