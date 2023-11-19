@@ -835,7 +835,10 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
           obj.type := tp; obj.lev := level;
           IF tp.size > 1 THEN varsize := (varsize + 3) DIV 4 * 4 (*align*) END ;
           obj.val := varsize; varsize := varsize + obj.type.size;
-          IF obj.expo THEN obj.exno := exno; INC(exno) END ;
+          IF obj.expo THEN 
+            IF obj.val > OM4G.maxExpProcOffset THEN OM4S.Mark("exported var too far") END;
+            obj.exno := exno; INC(exno)
+          END ;
           obj := obj.next
         END ;
         Check(OM4S.semicolon, "; missing")
@@ -871,7 +874,9 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ProcedureType(type, parblksize);  (*formal parameter list*)
       Check(OM4S.semicolon, "no ;"); locblksize := parblksize; 
       Declarations(locblksize);
-      proc.val := OM4G.Here(); proc.type.dsc := OM4B.topScope.next;
+      proc.val := OM4G.Here(); 
+      IF proc.expo & (proc.val > OM4G.maxExpProcOffset) THEN OM4S.Mark("exported proc too far") END;
+      proc.type.dsc := OM4B.topScope.next;
       IF sym = OM4S.procedure THEN
         L := 0; OM4G.FJump(L);
         REPEAT ProcedureDecl; Check(OM4S.semicolon, "no ;") UNTIL sym # OM4S.procedure;

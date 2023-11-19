@@ -6,6 +6,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      Procedure Close writes code-files*)
 
   CONST WordSize* = 4;
+    maxExpProcOffset* = 4095;
     MT = 12; SP = 13; LR = 14; PC = 15; (*dedicated registers*)
     MSP = 8; PSP = 9;
     APSRnzcv = 15; (*APSR_nzcv is encoded as <Rt> = '1111'*)
