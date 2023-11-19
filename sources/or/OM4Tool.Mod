@@ -193,6 +193,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
     RETURN res
   END SignExtendEven25;
   
+  PROCEDURE SignExtendEven8(imm: LONGINT): LONGINT;
+  BEGIN IF imm > OM4A.C7 THEN DEC(imm, OM4A.C8) END;
+    RETURN imm*OM4A.C1
+  END SignExtendEven8;
+  
   PROCEDURE imm16(b1, b2, b3, b4: BYTE): LONGINT;
   BEGIN
     RETURN 0 + b2 MOD OM4A.C4*OM4A.C12 + b1 DIV OM4A.C2 MOD OM4A.C1*OM4A.C11 +
@@ -248,15 +253,20 @@ MODULE OM4Tool;  (*NW 18.2.2013
       T32MSK61 = {21..23}; T32MSK62 = {21..23, 11};
       (*T32MSK61 100 xxxxxx Store Register Byte STRB (immediate) on page A7-389*)
       StrRegByteImmT2 = {23};
-      (*T32MSK62 010 1xxxxx: Store Register STR (immediate) on page A7-386*)
+      (*T32MSK61 110 xxxxxx Store Register STR (immediate) on page A7-386*)
       StrRegImmT3 = {22..23};
+      
+      (*T32MSK62 010 1xxxxx Store Register STR (immediate) on page A7-386*)
       StrRegImmT4 = {22, 11};
       
-      T32MSK71 = {23..24};
+      T32MSK71 = {23..24}; T32MSK72 = {23..24, 11, 8};
       (*T32MSK71 01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
       (*T32MSK71 0x xxxxxx: Rn = 1111: Load Register LDR (literal) on page A7-248*)
       LdrRegImmOrLit = {23};
 
+      (*T32MSK72 00 1xx1xx not 1111 LDR (immediate) on page A7-246*)
+      LdrREgImmOrLit2 = {11, 8};
+      
       T32MSK51 = {12, 14}; T32MSK52 = {21..26, 12, 14};
       (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
       BrWithLnk = {12, 14};
@@ -292,6 +302,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
       Misc16bInst = {15, 12..13};
+      (*T16MSK4 1101xx Conditional branch, and Supervisor Call on page A5-136*)
+      CondBrAndSVC = {14..15, 12};
       
       (*T16MSK1 00xxxx: Shift (immediate), add, subtract, move, and compare on page A5-130*)
       ShAdSuMoCm = {};
@@ -322,6 +334,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       Move = {13};
       (*T16MSK11 110xx: Add 8-bit immediate ADD (immediate) on page A7-190*)
       AddImm8 = {13, 12};
+      (*T16MSK11 010xx Arithmetic Shift Right ASR (immediate) on page A7-203*)
+      ASRImmT1 = {12};
+
       (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
       AddImm3 = {10..12};
       
@@ -377,9 +392,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
         ELSIF op*T32MSK6 = StrSingleDataItem THEN
           (*T32MSK6 11 000xxx0 x: Store single data item on page A5-149*)
           Rn := b2 MOD OM4A.C4; Rt := b3 DIV OM4A.C4;
-          IF op*T32MSK62 = StrRegImmT3 THEN
-          (*T32MSK61 110 1xxxxx: Store Register STR (immediate) on page A7-386*)
-          (*STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
+          IF op*T32MSK61 = StrRegImmT3 THEN
+            (*T32MSK61 110 xxxxxx: Store Register STR (immediate) on page A7-386*)
+            (*STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
             WriteOp(op, "STR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
             Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD OM4A.C12, 1); Texts.WriteString(W, " ]")
           ELSIF op*T32MSK61 = StrRegByteImmT2 THEN
@@ -387,24 +402,47 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*STRB<c>.W <Rt>,[<Rn>,#<imm12>]*)
             WriteOp(op, "STRB", FALSE, FALSE);  WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
             Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD OM4A.C12, 1); Texts.WriteString(W, " ]")
-          ELSE Texts.WriteString(W, "TODO: not StrRegByteImmT2")
+          ELSIF op*T32MSK62 = StrRegImmT4 THEN
+            (*T32MSK62 010 1xxxxx Store Register STR (immediate) on page A7-386*)
+            (*STR<c> <Rt>,[<Rn>,#-<imm8>]
+              STR<c> <Rt>,[<Rn>],#+/-<imm8>
+              STR<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
+            WriteOp(op, "STR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
+            IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
+            IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "- ") END;
+            Texts.WriteInt(W, b4, 1);
+            IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
+              IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
+            END
+          ELSE Texts.WriteString(W, "TODO: not StrRegImmT4")
           END
         ELSIF op*T32MSK7 = LdrWord THEN
           (*T32MSK7 11 00xx101 x Load word on page A5-146*)
-          Rn := b2 MOD OM4A.C4;
+          Rn := b2 MOD OM4A.C4; Rt := b3 DIV OM4A.C4;
           IF (op*T32MSK71 = LdrRegImmOrLit) & (Rn # 15) THEN
             (*T32MSK71 01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
-            (*LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
-            Rt := b3 DIV OM4A.C4;
+            (*LDR<c>.W <Rt>,[<Rn>{,#<imm12>}] T3*)
             WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
             Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD OM4A.C12, 1); Texts.WriteString(W, " ]")
-          ELSE Texts.WriteString(W, "TODO: not LdrRegImmOrLit")
+          ELSIF (op*T32MSK72 = LdrREgImmOrLit2)  & (Rn # 15) THEN
+            (*T32MSK72 00 1xx1xx not 1111 LDR (immediate) on page A7-246*)
+            (*LDR<c> <Rt>,[<Rn>,#-<imm8>]
+              LDR<c> <Rt>,[<Rn>],#+/-<imm8>
+              LDR<c> <Rt>,[<Rn>,#+/-<imm8>]! T4*)
+            WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
+            IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
+            IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "- ") END;
+            Texts.WriteInt(W, b4, 1);
+            IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
+              IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
+            END
+          ELSE Texts.WriteString(W, "TODO: not LdrREgImmOrLit2")
           END
         ELSIF op*T32MSK5 = BrMiscCtrl THEN
           IF op*T32MSK51 = BrWithLnk THEN
             (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
             (*BL<c> <label> Outside or last in IT block*)
-            WriteOp(op, "BL", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven25(op), 10);
+            WriteOp(op, "BL", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven25(op), 1);
           ELSIF op*T32MSK52 = MovFrSpReg THEN
             (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
             (*MRS<c> <Rd>,<spec_reg>*)
@@ -550,7 +588,25 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Rd := b2 MOD OM4A.C3;
             WriteOp(op, "ADD", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
             Texts.WriteInt(W, b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6, 1)
-          ELSE Texts.WriteString(W, "TODO: not AddImm3")
+          ELSIF op*T16MSK11 = ASRImmT1 THEN
+            (*T16MSK11 010xx Arithmetic Shift Right ASR (immediate) on page A7-203*)
+            (*ASRS <Rd>,<Rm>,#<imm5> Outside IT block.
+              ASR<c> <Rd>,<Rm>,#<imm5> Inside IT block.*)
+            Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+            Rd := b2 MOD OM4A.C3;            
+            WriteOp(op, "ASR", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6, 1)
+          ELSE Texts.WriteString(W, "TODO: not ASRImmT1")
+          END
+        ELSIF op*T16MSK4 = CondBrAndSVC THEN
+          (*T16MSK4 1101xx Conditional branch, and Supervisor Call on page A5-136*)
+          IF b1 MOD OM4A.C4 = 0EH THEN Texts.WriteString(W, "TODO UDF on page A7-425")
+          ELSIF b1 MOD OM4A.C4 = 0FH THEN Texts.WriteString(W, "TODO SVC on page A7-409")
+          ELSE
+            (*B<c> <label> Not permitted in IT block.*)
+            WriteOp(op, "B", FALSE, FALSE); Texts.Write(W, " ");
+            Texts.WriteString(W, mnemo1[b1 MOD OM4A.C4]);
+            Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven8(b2), 1)
           END
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
