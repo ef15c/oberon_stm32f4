@@ -581,6 +581,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     ASSERT(base <= 0);
     ASSERT((a < C4) & (b < C4));
     IF base=0 THEN (*static variable in current module*)
+      ASSERT(op DIV C24 MOD C8 >= 0E8H); (*32-bit thumb instruction*)
       IF par >= C12 THEN OM4S.Mark("static var too far") END;
       Put0(c, op + a*C12 + b*C16 + par)
     ELSE

@@ -188,7 +188,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode = OM4B.Var THEN
       IF x.r > 0 THEN (*local*) OM4A.encDPImm32(mcode, OM4A.ADD, RH, SP, RH, x.a + frame)
-      ELSE GetSB(x.r); OM4A.encStaticAccess(mcode, x.r, OM4A.ADD, OM4A.EXTADD, RH, RH, x.a) END;
+      ELSE GetSB(x.r);
+        IF x.r = 0 THEN 
+          IF x.a # 0 THEN incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, x.a); DEC(RH) END
+        ELSE OM4A.encStaticAccess(mcode, x.r, 0, OM4A.EXTADD, RH, RH, x.a)
+        END
+      END;
       x.r := RH; incR
     ELSIF x.mode = OM4B.Par THEN OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + frame, "param too far");
       IF x.b # 0 THEN incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, x.b); DEC(RH) END;
@@ -220,8 +225,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE loadStringAdr(VAR x: Item);
   BEGIN GetSB(0); 
-    ASSERT(varsize+x.a < OM4A.C12); incR;
-    OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, varsize+x.a);
+    incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, varsize+x.a);
     x.mode := Reg; x.r := RH-1
   END loadStringAdr;
 
@@ -877,12 +881,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       OM4A.encMRS(mcode, 0, MSP);
       OM4A.encMRS(mcode, 0, PSP)
     END;
-    OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, locblksize - parblksize + 4); OM4A.encMemImm12(mcode, OM4A.STRIT3, LR, SP, 0, "");
     r := LSL(1, (parblksize-4) DIV 4) - 1;
     IF r > 0 THEN
       IF r < OM4A.C8 THEN (*PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r)
       ELSE (*PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r) END
-    END
+    END;
+    (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8)
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN);

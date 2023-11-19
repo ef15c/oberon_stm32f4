@@ -314,7 +314,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)
       PushMultRegs = {10};
       
-      T16MSK11 = {11..13};
+      T16MSK11 = {11..13}; T16MSK12 = {9..13};
       
       (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
       CmpImm = {13, 11};
@@ -322,6 +322,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       Move = {13};
       (*T16MSK11 110xx: Add 8-bit immediate ADD (immediate) on page A7-190*)
       AddImm8 = {13, 12};
+      (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
+      AddImm3 = {10..12};
       
     VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, Sn, Sd, Sm, mno, ext, exop, proc: BYTE;
       op: SET;
@@ -520,25 +522,35 @@ MODULE OM4Tool;  (*NW 18.2.2013
           END
         ELSIF op*T16MSK1 = ShAdSuMoCm THEN
           (*T16MSK1 00xxxx: Shift (immediate), add, subtract, move, and compare on page A5-130*)
-          Rn := b1 MOD OM4A.C3;
           IF op*T16MSK11 = CmpImm THEN
             (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
             (*CMP<c> <Rn>,#<imm8>*)
+            Rn := b1 MOD OM4A.C3;
             WriteOp(op, "CMP", FALSE, FALSE); WriteReg(Rn); Texts.WriteString(W, " #");
-            Texts.WriteInt(W, b2, 3)
+            Texts.WriteInt(W, b2, 1)
           ELSIF op*T16MSK11 = Move THEN
             (*T16MSK11 100xx: Move MOV (immediate) on page A7-291*)
             (*MOVS <Rd>,#<imm8>   Outside IT block.
               MOV<c> <Rd>,#<imm8> Inside IT block.*)
+            Rn := b1 MOD OM4A.C3;
             WriteOp(op, "MOV", TRUE, FALSE); WriteReg(Rn); Texts.WriteString(W, " #");
-            Texts.WriteInt(W, b2, 3)
+            Texts.WriteInt(W, b2, 1)
           ELSIF op*T16MSK11 = AddImm8 THEN
             (*T16MSK11 110xx: Add 8-bit immediate ADD (immediate) on page A7-190*)
             (*ADDS <Rdn>,#<imm8> Outside IT block.
               ADD<c> <Rdn>,#<imm8> Inside IT block.*)
+            Rn := b1 MOD OM4A.C3;
             WriteOp(op, "ADD", TRUE, FALSE); WriteReg(Rn); Texts.WriteString(W, " #");
-            Texts.WriteInt(W, b2, 3)
-          ELSE Texts.WriteString(W, "TODO: not Move")
+            Texts.WriteInt(W, b2, 1)
+          ELSIF op*T16MSK12 = AddImm3 THEN
+            (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
+            (*ADDS <Rd>,<Rn>,#<imm3> Outside IT block.
+              ADD<c> <Rd>,<Rn>,#<imm3> Inside IT block.*)
+            Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
+            Rd := b2 MOD OM4A.C3;
+            WriteOp(op, "ADD", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6, 1)
+          ELSE Texts.WriteString(W, "TODO: not AddImm3")
           END
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
