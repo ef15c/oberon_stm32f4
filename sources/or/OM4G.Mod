@@ -113,8 +113,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END GetSB;
 
-  PROCEDURE NilCheck;
-  BEGIN IF check THEN Trap(OM4A.EQ, 4) END
+  PROCEDURE NilCheck(a: BYTE);
+  BEGIN
+    IF check THEN
+      IF ~mcode.lastInstrSetFlags THEN  incR; OM4A.encCMPImm(mcode, a, RH, 0); DEC(RH) END ;
+      Trap(OM4A.EQ, 4) 
+    END
   END NilCheck;
 
   PROCEDURE load(VAR x: Item);
@@ -210,7 +214,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.type.form = OM4B.Bool THEN
       IF x.mode = OM4B.Const THEN IF x.a = 0 THEN x.r := OM4A.NV ELSE x.r := OM4A.AL END
       ELSE load(x);
-        IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode ,x.r, RH, 0) END ;
+        IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, x.r, RH, 0) END;
         x.r := OM4A.NE; DEC(RH)
       END ;
       x.mode := Cond; x.a := 0; x.b := 0
@@ -323,11 +327,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = OM4B.Var THEN
       IF x.r > 0 THEN (*local*) OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + frame, "local ref too far")
       ELSE GetSB(x.r); OM4A.encStaticAccess(mcode, x.r, OM4A.LDRIT3, OM4A.EXTLDR, RH, RH, x.a) END;
-      NilCheck; x.r := RH; incR
+      NilCheck(RH); x.r := RH; incR
     ELSIF x.mode = OM4B.Par THEN
       OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + frame, "par1 ref too far");
-      OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, RH, x.b, "par2 ref too far"); NilCheck; x.r := RH; incR
-    ELSIF x.mode = RegI THEN OM4A.encMemImm12(mcode, OM4A.LDRIT3, x.r, x.r, x.a, "RegI ref too far"); NilCheck
+      OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, RH, x.b, "par2 ref too far"); NilCheck(RH); x.r := RH; incR
+    ELSIF x.mode = RegI THEN OM4A.encMemImm12(mcode, OM4A.LDRIT3, x.r, x.r, x.a, "RegI ref too far"); NilCheck(x.r)
     ELSIF x.mode # Reg THEN OM4S.Mark("bad mode in DeRef")
     END ;
     x.mode := RegI; x.a := 0; x.b := 0
