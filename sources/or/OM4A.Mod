@@ -24,7 +24,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
  *)
  
     MI* = 4; PL* = 5; EQ* = 0; NE* = 1; LT* = 11; GE* = 10; LE* = 13; GT* = 12;
-    CC* = 3; AL* = 14; NV* = 15;
+    CS* = 2; CC* = 3; VS* = 6; VC* = 7; HI* = 8;  LS* = 9;  AL* = 14; NV* = 15;
 
     IT*  = 0BF00H; (*If-Then base*)
 
@@ -515,7 +515,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN
     ASSERT(a < 15);
     IF (a < 8) & (imm >= 0) & (imm < C8) THEN (*CMP (immediate) T1*) 
-      Put1(c, CMPIT1 + a*C3 + imm)
+      Put1(c, CMPIT1 + a*C8 + imm)
     ELSIF formatThumbExpandImm(imm, tmiCode) THEN (*CMP (immediate) T2*) 
       Put0(c, CMPIT2 + a*C16 + tmiCode) 
     ELSE encMOVImm32(c, t, imm); encCMPReg(c, a, t)

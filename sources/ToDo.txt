@@ -9,6 +9,16 @@ Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
      32-bit Thumb instruction, hw1            32-bit Thumb instruction, hw2
 Byte at Address A+1   Byte at Address A   Byte at Address A+3  Byte at Address A+2
 
+Pièce Carry :
+"In A32/T32 code, C is set in one of the following ways:
+
+For an addition, including the comparison instruction CMN, C is set to 1
+if the addition produced a carry (that is, an unsigned overflow), and to 0 otherwise.
+
+For a subtraction, including the comparison instruction CMP, C is set to 0
+if the subtraction produced a borrow (that is, an unsigned underflow), and to 1 otherwise."
+
+
 Piège exécution dans SDRAM :
 MPU or default memory map
 -mismatch:on instruction access IACCVIOL(1)

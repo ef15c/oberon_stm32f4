@@ -290,14 +290,14 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSE load(y);
       IF check THEN  (*check array bounds*)
-        IF lim >= 0 THEN OM4A.encCMPImm(mcode ,y.r, RH, lim)
+        IF lim >= 0 THEN OM4A.encCMPImm(mcode, y.r, RH, lim)
         ELSE (*open array*)
           IF x.mode IN {OM4B.Var, OM4B.Par} THEN
             OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + 4 + frame, "array too big"); OM4A.encCMPReg(mcode, y.r, RH)
           ELSE OM4S.Mark("error in Index")
           END
         END ;
-        Trap(OM4A.CC, 1)
+        Trap(OM4A.CS, 1) (*ARM inverts the carry with SUB and CMP instructions*)
       END ;
       (* Compute the shift to apply when s is a power of two *)
       IF log2(s, p2) # 1 THEN OM4A.encMUL(mcode, y.r, y.r, s); p2 := 0 END ;
