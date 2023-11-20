@@ -840,6 +840,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode > OM4B.Par THEN load(x) END ;
     r := RH;
     IF RH > 0 THEN SaveRegs(RH); RH := 0 END
+    (* TODO : Et les registres FP ? *)
   END PrepCall;
 
   PROCEDURE Call*(VAR x: Item; r: LONGINT);
@@ -867,9 +868,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END;
       OM4A.Put1(mcode, OM4A.BLX + RH*OM4A.C3)
     END ;
-    IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0
+    IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0; SH := 0;
     ELSE (*function*)
-      IF r > 0 THEN OM4A.encMOVReg(mcode, r, 0); RestoreRegs(r) END ;
+      IF r > 0 THEN OM4A.encMOVReg(mcode, r, 0); RestoreRegs(r) END ; (* TODO : et le registres FP ? *)
       x.mode := Reg; x.r := r; RH := r+1
     END
   END Call;
@@ -898,7 +899,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF form # OM4B.NoTyp THEN load(x) END ;
     (*POP T3 LR *) OM4A.encMemImm12(mcode, OM4A.LDRIT4, LR, SP, OM4A.formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
     IF size - 4 # 0 THEN OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size - 4) END;
-    OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3); RH := 0
+    OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3); RH := 0; SH := 0;
   END Return;
 
   (* In-line code procedures*)
@@ -942,7 +943,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Assert; 
 
   PROCEDURE New*(VAR x: Item);
-  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Trap(OM4A.AL, 0); RH := 0
+  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Trap(OM4A.AL, 0); RH := 0; SH := 0
   END New;
 
   PROCEDURE Pack*(VAR x, y: Item);
