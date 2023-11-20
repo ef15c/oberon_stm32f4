@@ -294,9 +294,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK72 00 1xx1xx not 1111 LDR (immediate) on page A7-246*)
       LdrREgImmOrLit2 = {11, 8};
       
-      T32MSK51 = {12, 14}; T32MSK52 = {21..26, 12, 14};
+      T32MSK51 = {12, 14}; T32MSK52 = {21..26, 12, 14}; T32MSK53 = {23..25};
       (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
       BrWithLnk = {12, 14};
+      (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
+      BranchT4 = {12};
+      
       (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
       MovFrSpReg = {21..25};
       
@@ -481,7 +484,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
             ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
             ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
             END
-          ELSE Texts.WriteString(W, "TODO: not MovFrSpReg")
+          ELSIF op*T32MSK51 = BranchT4 THEN
+            (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
+            (*B<c>.W <label>*)
+            WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven25(op), 1);
+          ELSE Texts.WriteString(W, "TODO: not BranchT4")
           END
         ELSIF op*T32MSK3 = CoProc THEN
           (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
