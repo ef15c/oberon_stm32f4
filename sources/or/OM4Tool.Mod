@@ -546,7 +546,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
                 INC(itB.nofinst)
               END;
               itB.mask[itB.nofinst] := 0X;
-              Texts.WriteString(W, " "); Texts.WriteString(W, mnemo1[b3]);
+              Texts.WriteString(W, " "); Texts.WriteString(W, mnemo1[b3])
             ELSE Texts.WriteString(W, "TODO: not If-Then")
             END
           ELSIF op*T16MSK45 = PushMultRegs THEN
@@ -681,24 +681,20 @@ MODULE OM4Tool;  (*NW 18.2.2013
         END ;
       (* Sync(R); *)
         Texts.WriteString(W, "type descriptors"); Texts.WriteLn(W);
-        Texts.Append(Oberon.Log, W.buf);
         Files.ReadInt(R, n); n := n DIV 4; i := 0;
         WHILE i < n DO Files.ReadInt(R, data); Texts.WriteHex(W, data); INC(i) END ;
         Texts.WriteLn(W);
         Texts.WriteString(W, "data"); Files.ReadInt(R, data); Texts.WriteInt(W, data, 6); Texts.WriteLn(W);
         Texts.WriteString(W, "strings"); Texts.WriteLn(W);
-        Texts.Append(Oberon.Log, W.buf);
         Files.ReadInt(R, n); i := 0;
-        WHILE i < n DO Files.Read(R, ch); Texts.Write(W, ch); INC(i) END ;
+        WHILE i < n DO Files.Read(R, ch); IF ch=0X THEN ch := "|" END; Texts.Write(W, ch); INC(i) END ;
         Texts.WriteLn(W);
         Texts.WriteString(W, "code"); Texts.WriteLn(W);
-        Texts.Append(Oberon.Log, W.buf);
         Files.ReadInt(R, mcode.pc); i := 0;
         WHILE i < mcode.pc DO Files.ReadByte(R, mcode.code[i]); eref.ext[i] := 0; INC(i)
         END;
       (* Sync(R); *)
         Texts.WriteString(W, "commands:"); Texts.WriteLn(W);
-        Texts.Append(Oberon.Log, W.buf);
         Files.ReadString(R, name);
         WHILE name[0] # 0X DO
           Texts.Write(W, 9X); Texts.WriteString(W, name);
@@ -707,7 +703,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
         END ;
       (* Sync(R); *)
         Texts.WriteString(W, "entries"); Texts.WriteLn(W);
-        Texts.Append(Oberon.Log, W.buf);
         Files.ReadInt(R, n); i := 0;
         WHILE i < n DO
           Files.ReadInt(R, adr); Texts.WriteInt(W, adr, 6); INC(i)
@@ -715,7 +710,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Texts.WriteLn(W);
       (* Sync(R); *)
         Texts.WriteString(W, "pointer refs"); Texts.WriteLn(W); Files.ReadInt(R, adr);
-        Texts.Append(Oberon.Log, W.buf);
         WHILE adr # -1 DO Texts.WriteInt(W, adr, 6); Files.ReadInt(R, adr) END ;
         Texts.WriteLn(W);
       (* Sync(R); *)
@@ -733,7 +727,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Files.ReadInt(R, data); Texts.WriteString(W, "fixT = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
         Files.ReadInt(R, data); Texts.WriteString(W, "entry = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
         Files.Read(R, ch);
-        Texts.Append(Oberon.Log, W.buf);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
       (* Sync(R); *)
         (* TODO Locate external references *)

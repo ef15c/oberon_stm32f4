@@ -19,7 +19,7 @@ type descriptors
 
 data    12
 strings
-bonjour
+bonjour|
 code
    0	 4EE9000C	SUB SP SP     12
    1	 AFE00000	STR  LNK SP       0
@@ -65,7 +65,7 @@ type descriptors
 
 data    12
 strings
-bonjour
+bonjour|
 code
 commands:
 entries
@@ -78,24 +78,22 @@ fixT =        0
 entry =       14
    0	     B403	PUSH R0 R1
    2	     B500	PUSH LR
-   4	 F8DDE000	LDR LR [ SP + 0 ]
-   8	 F11D0D0C	ADDS SP SP #12
+   4	 F85DEB04	LDR LR [ SP ] + 4
+   8	 F11D0D08	ADDS SP SP #8
   12	     4770	BX LR
-  14	 F1BD0D04	SUBS SP SP #4
-  18	 F8CDE000	STR LR [ SP + 0 ]
-  22	 0000000B	LDR R0 [ MT + Base(0) ]
-  26	 10000002	LDR R1 [ MT + Base(0) ]
-  30	     310C	ADDS R1 #12
-  32	 F8512B04	LDR R2 [ R1 ] + 4
-  36	 F8402B04	STR R2 [ R0 ] + 4
-  40	     1612	ASRS R2 R2 #24
-  42	     D1F9	B NE #-14
-  44	 00000009	LDR R0 [ MT + Base(0) ]
-  48	     210A	MOVS R1 #10
-  50	 F7FFFFE5	BL #-54
-  54	 F8DDE000	LDR LR [ SP + 0 ]
-  58	 F11D0D04	ADDS SP SP
-
+  14	     B500	PUSH LR
+  16	 00000008	LDR R0 [ MT + Base(0) ]
+  20	 10000002	LDR R1 [ MT + Base(0) ]
+  24	     310C	ADDS R1 #12
+  26	 F8512B04	LDR R2 [ R1 ] + 4
+  30	 F8402B04	STR R2 [ R0 ] + 4
+  34	     1612	ASRS R2 R2 #24
+  36	     D1F9	B NE #-14
+  38	 00000009	LDR R0 [ MT + Base(0) ]
+  42	     210A	MOVS R1 #10
+  44	 F7FFFFE8	BL #-48
+  48	 F85DEB04	LDR LR [ SP ] + 4
+  52	     4770	BX LR
 
 *)
 

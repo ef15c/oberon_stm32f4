@@ -892,7 +892,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN);
   BEGIN
     IF form # OM4B.NoTyp THEN load(x) END ;
-    OM4A.encMemImm12(mcode, OM4A.LDRIT3, LR, SP, 0, ""); OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size);
+    (*POP T3 LR *) OM4A.encMemImm12(mcode, OM4A.LDRIT4, LR, SP, OM4A.formatPUWImm8(FALSE, TRUE, TRUE, 4), "");
+    IF size - 4 # 0 THEN OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size - 4) END;
     OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3); RH := 0
   END Return;
 
@@ -1101,7 +1102,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Header*;
   BEGIN entry := mcode.pc;
     IF version = 0 THEN OM4A.modify(mcode, 0, OM4A.BT4 + OM4A.formatEvenImm25(mcode.pc-4))
-    ELSE OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, 4); OM4A.encMemImm12(mcode, OM4A.STRIT3, LR, SP, 0, "")
+    ELSE (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8)
     END
   END Header;
 
@@ -1138,10 +1139,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       F: Files.File; R: Files.Rider;
   BEGIN  (*exit code*)
     IF version = 0 THEN OM4A.encMOVImm32(mcode, 0, VarORG0); OM4A.Put1(mcode, OM4A.BX) (*OM4A.BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)
-    ELSE OM4A.encMemImm12(mcode, OM4A.LDRIT3, LR, SP, 0, ""); OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, 4); OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3)
+    ELSE (*POP T3 LR *) OM4A.encMemImm12(mcode, OM4A.LDRIT4, LR, SP, OM4A.formatPUWImm8(FALSE, TRUE, TRUE, 4), ""); OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3)
     END ;
     obj := OM4B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0; nofusedextprocs := 0;
-    (*TODO: count user external procedures*)
+    (*count user external procedures*)
     WHILE obj # NIL DO
       IF (obj.class = OM4B.Mod) & (obj.dsc # OM4B.system) THEN INC(nofimps); (*count imports*)
         obj2 := obj.dsc;
