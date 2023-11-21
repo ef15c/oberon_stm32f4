@@ -312,6 +312,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       T32MSK321 = {20..25, 4}; T32MSK322 = {24..25, 20..21}; T32MSK323 = {28, 23, 20..21, 6};
       (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
       VMOVSR = {25, 4};
+      VMOVRS = {25, 20, 4};
       
       (*T32MSK322 A7.7.259 VSTR*)
       VSTR = {24};
@@ -504,11 +505,18 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*1110/11xx/xxxx/xxxx/xxxx/1010/xxxx/xxxx*)
             IF op*T32MSK321 = VMOVSR THEN
               (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
-              (*VMOV<c> <Sn>, <Rt> 1110/1110/000o/ Vn / Rt /1010/N--1/----*)
+              (*VMOV<c> <Sn>, <Rt> 1110/1110/000o/ Vn / Rt /1010/N--1/---- o=0*)
               Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
               Rt := b3 DIV OM4A.C4;
               WriteOp(op, "VMOV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1);
-              Texts.Write(W, " "); WriteReg(Rt)
+              WriteReg(Rt)
+            ELSIF op*T32MSK321 = VMOVRS THEN
+              (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
+              (*VMOV<c> <Rt>, <Sn> 1110/1110/000o/ Vn / Rt /1010/N--1/---- o=1*)
+              Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
+              Rt := b3 DIV OM4A.C4;
+              WriteOp(op, "VMOV", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " S");
+              Texts.WriteInt(W, Sn, 1)
             ELSIF op*T32MSK322 = VSTR THEN
               (*T32MSK322 A7.7.259 VSTR*)
               (*VSTR<c> <Sd>, [<Rn>{, #+/-<imm>}] 1110/1101/UD00/ Rn / Vd /1010/ imm/8   *)

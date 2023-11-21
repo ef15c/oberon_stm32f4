@@ -307,7 +307,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END set; 
 
   PROCEDURE factor(VAR x: OM4G.Item);
-    VAR obj: OM4B.Object; rx: LONGINT;
+    VAR obj: OM4B.Object; rx, sx: LONGINT;
   BEGIN (*sync*)
     IF (sym < OM4S.char) OR (sym > OM4S.ident) THEN OM4S.Mark("expression expected");
       REPEAT OM4S.Get(sym) UNTIL (sym >= OM4S.char) & (sym <= OM4S.for) OR (sym >= OM4S.then)
@@ -320,7 +320,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
           OM4S.Get(sym);
           IF (x.type.form = OM4B.Proc) & (x.type.base.form # OM4B.NoTyp) THEN
             obj.used := TRUE;
-            OM4G.PrepCall(x, rx); ParamList(x); OM4G.Call(x, rx); x.type := x.type.base
+            OM4G.PrepCall(x, rx, sx); ParamList(x); OM4G.Call(x, rx, sx); x.type := x.type.base
           ELSE OM4S.Mark("not a function"); ParamList(x)
           END
         END
@@ -464,7 +464,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR obj: OM4B.Object;
       orgtype: OM4B.Type; (*original type of case var*)
       x, y, z, w: OM4G.Item;
-      L0, L1, rx: LONGINT;
+      L0, L1, rx, sx: LONGINT;
 
     PROCEDURE TypeCase(obj: OM4B.Object; VAR x: OM4G.Item);
       VAR typobj: OM4B.Object;
@@ -514,14 +514,14 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
             OM4S.Get(sym);
             IF (x.type.form = OM4B.Proc) & (x.type.base.form = OM4B.NoTyp) THEN
               obj.used := TRUE;
-              OM4G.PrepCall(x, rx); ParamList(x); OM4G.Call(x, rx)
+              OM4G.PrepCall(x, rx, sx); ParamList(x); OM4G.Call(x, rx, sx)
             ELSE OM4S.Mark("not a procedure"); ParamList(x)
             END
           ELSIF x.type.form = OM4B.Proc THEN (*procedure call without parameters*)
             IF x.type.nofpar > 0 THEN OM4S.Mark("missing parameters") END ;
             IF x.type.base.form = OM4B.NoTyp THEN 
               obj.used := TRUE;
-              OM4G.PrepCall(x, rx); OM4G.Call(x, rx)
+              OM4G.PrepCall(x, rx, sx); OM4G.Call(x, rx, sx)
             ELSE OM4S.Mark("not a procedure")
             END
           ELSIF x.mode = OM4B.Typ THEN OM4S.Mark("illegal assignment")

@@ -73,15 +73,21 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       VMOV (between Arm core register and single-precision register)
       VMOV{<c>}{<q>}<Rt>,<Sn> o=1*)
     VMOVSS*  = 0EEB00A40H;
-    (*|1110 1110 1D11 0000  Vd  101s 01M0  Vm |
+    (*|1110/1110/1D11/0000/ Vd /101s/01M0/ Vm |
       VMOV<c>.F32 <Sd>, <Sm>*)
-      
-    VLDRT2*    = 0ED100A00H;
+    
+    VLDRT2*  = 0ED100A00H;
     (*|1110 1101 UD01   Rn  Vd  1010   imm8   |
       VLDR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
     VSTRT2*  = 0ED000A00H;
     (*|1110 1101 UD00  Rn   Vd  1010   imm8   |
       VSTR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
+    VPUSHT2* = 0ED2D0A00H;
+    (*|1110/1101/0D10/1101/ Vd  /1010/  imm8  |
+      VPUSH{<c>}{<q>}{.<size>} <list>*)
+    VPOPT2*  = 0ECBD0A00H;
+    (*|1110/1100/1D11/1101/ Vd  /1010/  imm8  |
+      VPOP{<c>}{<q>}{.<size>} <list>*)
     
     VNEG*    = 0EEB10A40H;
     (*|1110 1110 1D11 0001  Vd  101s 01M0  Vm |
@@ -696,6 +702,53 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END;
     INC(res, LSL(mask, 4-i) + suffix); Put1(c, res); c.nbRmnITBlockInsts := i+1
   END IfThen;
+  
+  PROCEDURE log2*(m: LONGINT; VAR e: LONGINT): LONGINT;
+  BEGIN ASSERT(m > 0);
+    e := 0;
+    WHILE ~ODD(m) DO m := m DIV 2; 
+      IF (m < 0) THEN INC(m, C31) END;
+      INC(e) END ;
+    RETURN m
+  END log2;
+  
+  PROCEDURE SaveRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT);  (* R[0 .. r-1]*)
+    VAR r0: LONGINT;
+  BEGIN (*r > 0*)
+    ASSERT(r IN {1..13});
+    r0 := LSL(1, r) - 1;
+    IF r0 < C8 THEN (*PUSH T1*) Put1(c, PUSHT1 + r0)
+    ELSE (*PUSH T2*) Put0(c, PUSHT2 + r0)
+    END;
+    INC(frame, 4*r)
+  END SaveRegs;
+
+  PROCEDURE RestoreRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT); (*R[0 .. r-1]*)
+    VAR r0: LONGINT;
+  BEGIN (*r > 0*)
+    ASSERT(r IN {1..13});
+    r0 := LSL(1, r) - 1;
+    IF r0 < C8 THEN (*POP T1*) Put1(c, POPT1 + r0)
+    ELSE (*POP T2*) Put0(c, POPT2 + r0)
+    END;
+    DEC(frame, 4*r)
+  END RestoreRegs;
+
+  PROCEDURE SaveFPRegs*(VAR c: ModuleCode; s: BYTE; VAR frame: LONGINT); (*S[0 .. s-1]*)
+  BEGIN
+    ASSERT(s IN {1..16});
+    (*VPUSH{<c>}{<q>}{.<size>} <list>*)
+    Put0(c, VPUSHT2 + s);
+    INC(frame, 4*s)
+  END SaveFPRegs;
+  
+  PROCEDURE RestoreFPRegs*(VAR c: ModuleCode; s: BYTE; VAR frame: LONGINT); (*S[0 .. s-1]*)
+  BEGIN
+    ASSERT(s IN {1..16});
+    (*VPOP{<c>}{<q>}{.<size>} <list>*)
+    Put0(c, VPOPT2 + s);
+    DEC(frame, 4*s)
+  END RestoreFPRegs;
   
   PROCEDURE Init*(VAR c: ModuleCode);
   BEGIN
