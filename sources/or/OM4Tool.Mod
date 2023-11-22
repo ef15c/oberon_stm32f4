@@ -359,6 +359,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       T16MSK11 = {11..13}; T16MSK12 = {9..13};
       
+      (*T16MSK5 100xxx Load/store single data item on page A5-133*)
+      LdStSingle = {15};
+      
+      T16MSK51 = {9..12}; T16MSK52 = {11..12};
+      (*T16MSK51 1001 0xx Store Register SP relative STR (immediate) on page A7-386*)
+      StRegSP = {12};
+      (*T16MSK51 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
+      LdRegSP = {11..12};
+      
       (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
       CmpImm = {13, 11};
       (*T16MSK11 100xx: Move MOV (immediate) on page A7-291*)
@@ -678,6 +687,22 @@ MODULE OM4Tool;  (*NW 18.2.2013
             WriteOp(op, "B", FALSE, FALSE); Texts.Write(W, " ");
             Texts.WriteString(W, mnemo1[b1 MOD OM4A.C4]);
             Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven8(b2), 1)
+          END
+        ELSIF op*T16MSK5 = LdStSingle THEN
+          (*T16MSK5 100xxx Load/store single data item on page A5-133*)
+          IF op*T16MSK51 = StRegSP THEN
+            (*T16MSK51 1001 0xx Store Register SP relative STR (immediate) on page A7-386*)
+            (*STR<c> <Rt>,[SP,#<imm8>] T2*)
+            Rt := b1 MOD OM4A.C3;
+            WriteOp(op, "STR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [SP + ");
+            Texts.WriteInt(W, b2*OM4A.C2, 1); Texts.Write(W, "]")
+          ELSIF op*T16MSK51 = LdRegSP THEN
+            (*T16MSK51 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
+            (*LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
+            Rt := b1 MOD OM4A.C3;
+            WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [SP + ");
+            Texts.WriteInt(W, b2*OM4A.C2, 1); Texts.Write(W, "]")
+          ELSE Texts.WriteString(W, "TODO: not StRegSP")
           END
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END

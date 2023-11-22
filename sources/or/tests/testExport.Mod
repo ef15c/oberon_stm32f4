@@ -6,11 +6,12 @@ MODULE testExport;
   VAR l*: LONGINT;
     p1*: PROCEDURE;
     r*: REAL;
-    filler: ARRAY 1500 OF INTEGER;
+(*    filler: ARRAY 1500 OF INTEGER; *)
     v*: rec;
     w: INTEGER;
 
-  
+
+(*
   PROCEDURE q;
     VAR
       a: INTEGER;
@@ -41,7 +42,7 @@ MODULE testExport;
     a := a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a;
 
    END q;
-
+*)
 
   PROCEDURE p*;
     VAR z: rec;

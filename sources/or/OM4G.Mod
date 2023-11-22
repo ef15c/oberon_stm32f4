@@ -896,6 +896,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       OM4A.encMRS(mcode, 0, MSP);
       OM4A.encMRS(mcode, 0, PSP)
     END;
+
+    IF locblksize - parblksize # 0 THEN
+      OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, locblksize - parblksize) END;
+
     r := LSL(1, (parblksize-4) DIV 4) - 1;
     IF r > 0 THEN
       IF r < OM4A.C8 THEN (*PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r)
