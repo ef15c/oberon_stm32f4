@@ -124,37 +124,24 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     (*|1110 1110 1111 0001  Rt  1010 0001 0000|
       VMRS<c> <Rt>, FPSCR*)
     
-    LDRIT3*  = 0F8D00000H;
-    (*|1111/1000/1101/ Rn / Rt /    /imm1/2   |
-      LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
     LDRIT4*  = 0F8500800H;
     (*|1111/1000/0101/ Rn / Rt /1PUW/ imm/8   |
       LDR<c> <Rt>,[<Rn>,#-<imm8>]
       LDR<c> <Rt>,[<Rn>],#+/-<imm8>
       LDR<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
     
-    LDRBIT2* = 0F8900000H;
-    (*|1111 1000 1001  Rn   Rt      imm12     |
-      LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
     LDRBIT3* = 0F8100800H;
     (*|1111 1000 0001  Rn   Rt  1PUW   imm8   |
       LDRB<c> <Rt>,[<Rn>,#-<imm8>]
       LDRB<c> <Rt>,[<Rn>],#+/-<imm8>
       LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
     
-    STRIT3* = 0F8C00000H;
-    (*|1111/1000/1100/ Rn / Rt /    /imm1/2   |
-      STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
     STRIT4* = 0F8400800H;
     (*|1111/1000/0100/ Rn / Rt /1PUW/ imm/8   |
       STR<c> <Rt>,[<Rn>,#-<imm8>]
       STR<c> <Rt>,[<Rn>],#+/-<imm8>
       STR<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
     
-    STRBIT2* = 0F8800000H;
-    (*|1111 1000 1000  Rn   Rt      imm12     |
-      STRB<c>.W <Rt>,[<Rn>,#<imm12>]*)
-
     PUSHT1* = 0B400H;
     (*|1011/010M/reg_/list|
       PUSH<c> <registers>*)
@@ -181,15 +168,6 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     (*|1111/0011/0110/1111/0im3/ Rd /im0 /msb |
       BFC<c> <Rd>,#<lsb>,#<width>*)
     
-    BRSIG*   = 1EH;
-
-    
-    (* Arithmetic and logical operations *)
-    SUB*=0; ADD*=1; RSB*=2; EOR*=3; AND*=4; BIC*=5; ORR*=6; ADc*=7; SBc*=8; TST*=9;
-
-    (* Shift operations *)
-    LSl*=0; ASR*=1; LSR*=2; ROR*=3;
-
     MULT1*  = 4340H;
     (*|0100/0011/01Rn/ Rdm|
       MULS <Rdm>,<Rn>,<Rdm>   Outside IT block.
@@ -204,6 +182,18 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   (*|1111/1011/1010/ Rn /RdLo/RdHi/0000/ Rm |
     UMULL<c><q> <RdLo>, <RdHi>, <Rn>, <Rm>*)
     
+    BRSIG*   = 1EH;
+
+    
+    (*Arithmetic and logical operations*)
+    SUB*=0; ADD*=1; RSB*=2; EOR*=3; AND*=4; BIC*=5; ORR*=6; ADc*=7; SBc*=8; TST*=9;
+
+    (*Shift operations*)
+    LSl*=0; ASR*=1; LSR*=2; ROR*=3;
+    
+    (*Memory operations*)
+    LDR*=0; LDRB*=1; STR*=2; STRB*=3;
+
   TYPE
     ModuleCode* = POINTER TO ModuleCodeDesc;
     
@@ -229,6 +219,10 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
 
     shreg3map: ARRAY 4 OF LONGINT;
     shreg4map: ARRAY 4 OF LONGINT;
+
+    memimm5map: ARRAY 4 OF LONGINT;
+    memimm8map: ARRAY 4 OF LONGINT;
+    memimm12map: ARRAY 4 OF LONGINT;
 
   (*instruction assemblers*)
 
@@ -314,7 +308,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     RETURN 0 + b*C16 + a*C8 + c
   END format3Reg4;
   
-  PROCEDURE formatPUWImm8*(p, u, w: BOOLEAN; imm8: LONGINT): LONGINT;
+  PROCEDURE formatPUWImm8(p, u, w: BOOLEAN; imm8: LONGINT): LONGINT;
   BEGIN
     ASSERT((imm8 >= 0) & (imm8 < C8));
     RETURN ORD(p)*C10 + ORD(u)*C9 + ORD(w)*C8 + imm8
@@ -377,18 +371,39 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encMOVImm32;
 
-  PROCEDURE encMemImm12*(VAR c: ModuleCode; op: LONGINT; a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
+  PROCEDURE encMemImm12*(VAR c: ModuleCode; op, a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
   BEGIN
-  (*|111110001101 Rn  Rt   imm12     |
-     F   8   D LDR (immediate) T3
-    
-    |111110001001 Rn  Rt   imm12     |
-     F   8   9 LDRB (immediate) T2*)
-    IF imm >= C12 THEN OM4S.Mark(msg) END;
-    Put0(c, op + a*C12 + b*C16 + imm);
+    ASSERT(op <= STRB);
+    ASSERT((a < C4) & (b < C4));
+    IF imm < 0 THEN OM4S.Mark(msg) 
+    ELSIF (imm <= C7) & (imm MOD C2 = 0) & (a < C3) & (b < C3) THEN
+      (*|0110/1 im/m5 R/n Rt| LDR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
+      (*|0111/1 im/m5 R/n Rt| LDRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
+      (*|0110/0 im/m5 R/n Rt| STR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
+      (*|0111/0 im/m5 R/n Rt| STRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
+      Put1(c, memimm5map[op] + imm*C6 + b*C3 + a)
+    ELSIF (imm <= C10) & (imm MOD C2 = 0) & (a < C3) & (b = 13) & (memimm8map[op] # 0) THEN
+      (*|1001/1 Rt/  imm8  | LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
+      (*|1001/0 Rt/  imm8  | STR<c> <Rt>,[SP{,#<imm8>}] T2*)
+      Put1(c, memimm8map[op] + a*C8 + imm)
+    ELSIF imm < C12 THEN
+      (*|1111/1000/1101/ Rn / Rt /    /imm1/2   | LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]  T3*)
+      (*|1111/1000/1001/ Rn / Rt /    /imm1/2   | LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}] T2*)
+      (*|1111/1000/1100/ Rn / Rt /    /imm1/2   | STR<c>.W <Rt>,[<Rn>{,#<imm12>}]  T3*)
+      (*|1111/1000/1000/ Rn / Rt /    /imm1/2   | STRB<c>.W <Rt>,[<Rn>{,#<imm12>}] T2*)
+      Put0(c, memimm12map[op] + a*C12 + b*C16 + imm);
+    ELSE OM4S.Mark(msg) 
+    END;
   END encMemImm12;
+
+  PROCEDURE encMemImm8PUW*(VAR c: ModuleCode; op: LONGINT; a, b: BYTE; 
+    p, u, w: BOOLEAN; imm: LONGINT);
+  BEGIN
+    ASSERT((imm >= 0) & (imm < C8));
+    Put0(c, op + a*C12 + b*C16 + formatPUWImm8(p, u, w, imm))
+  END encMemImm8PUW;
   
-  PROCEDURE encDPImm32*(VAR c: ModuleCode; op: LONGINT; a, b, t: BYTE; imm: LONGINT);
+  PROCEDURE encDPImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: LONGINT);
     VAR tmiCode: LONGINT;
   BEGIN
     ASSERT (op <= TST);
@@ -399,14 +414,14 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
       Put1(c, imm3map[op] + imm*C6 + b*C3 + a)
     ELSIF (imm >= 0) & (imm < C8) & (a < C3) & (a = b) & (imm8map[op] # 0) THEN
+      (*|  o1 i  o2 sbbbboim3aaaa  imm8  |
+        RSB (immediate) T2*) 
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
       Put1(c, imm8map[op] + a*C8 + imm)
     ELSIF formatThumbExpandImm(imm, tmiCode) THEN
       Put0(c, immthmap[op] + b*C16 + a*C8 + tmiCode);
       c.lastInstrSetFlags := ODD(reg4shmap[op] DIV C20);
     ELSIF (imm >= 0) & (imm < C12)  & (imm12map[op] # 0) THEN
-      (*|  o1 i  o2 sbbbboim3aaaa  imm8  |
-        RSB (immediate) T2*) 
       Put0(c, imm12map[op] + imm DIV C11 MOD C1*C20 + b*C16 +
         imm DIV C8 MOD C3*C12 + a*C8 + imm MOD C8);
       c.lastInstrSetFlags := ODD(imm12map[op] DIV C20);
@@ -748,4 +763,9 @@ BEGIN
   shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
   shimm5map[LSR] :=  0800H; shimm5wmap[LSR] := 0EA5F0010H; shreg3map[LSR] := 40C0H; shreg4map[LSR] := 0FA30F000H;
   shimm5map[ROR] := 0FFFFH; shimm5wmap[ROR] := 0EA5F0030H; shreg3map[ROR] := 41C0H; shreg4map[ROR] := 0FA70F000H;
+  
+  memimm5map[LDR]  := 6800H; memimm8map[LDR]  := 9800H;  memimm12map[LDR]  := 0F8D00000H;
+  memimm5map[LDRB] := 7800H; memimm8map[LDRB] := 0H;     memimm12map[LDRB] := 0F8900000H;
+  memimm5map[STR]  := 6000H; memimm8map[STR]  := 9000H;  memimm12map[STR]  := 0F8C00000H;
+  memimm5map[STRB] := 7000H; memimm8map[STRB] := 0H;     memimm12map[STRB] := 0F8800000H;
 END OM4A.

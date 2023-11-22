@@ -6,11 +6,10 @@ MODULE testExport;
   VAR l*: LONGINT;
     p1*: PROCEDURE;
     r*: REAL;
-(*    filler: ARRAY 1500 OF INTEGER;*)
+    filler: ARRAY 1500 OF INTEGER;
     v*: rec;
     w: INTEGER;
 
-(*
   
   PROCEDURE q;
     VAR
@@ -42,7 +41,7 @@ MODULE testExport;
     a := a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a+a;
 
    END q;
-*)
+
 
   PROCEDURE p*;
     VAR z: rec;
@@ -143,28 +142,30 @@ entry =       28
   30	 F7FFFFEF	BL #-34
   34	 F000F800	BL #0
   38	 F1BE0026	SUBS R0 LR #38
-  42	 10000015	MOV R4 lower 16-bits base(0)
+  42	 10000015	MOV R1 lower 16-bits base(0)
   46	 0000D334	MOVT R1 higher 16-bits var(24)
   50	 F8C10000	STR R0 [ R1 + 0 ]
-  54	 00000006	MOV R4 lower 16-bits base(0)
+  54	 00000006	MOV R0 lower 16-bits base(0)
   58	 0000D334	MOVT R0 higher 16-bits var(24)
   62	 F8D00000	LDR R0 [ R0 + 0 ]
   66	     2800	CMP R0 #0
   68	     BF08	IT EQ
   70	 EC011475	TrapEQ 5 at pos 2247
   74	     4780	BLX R0
-  76	 0000000B	MOV R4 lower 16-bits base(0)
+  76	 0000000B	MOV R0 lower 16-bits base(0)
+  80	 0000D334	MOVT R0 higher 16-bits var(32)
   80	 0000D334	MOVT R0 higher 16-bits var(32)
   84	 F8D00000	LDR R0 [ R0 + 0 ]
-  88	 10000006	MOV R4 lower 16-bits base(0)
+  88	 10000006	MOV R1 lower 16-bits base(0)
   92	 0000D334	MOVT R1 higher 16-bits var(40)
   96	 F8C10000	STR R0 [ R1 + 0 ]
- 100	 00000006	MOV R4 lower 16-bits base(0)
+ 100	 00000006	MOV R0 lower 16-bits base(0)
  104	 0000D334	MOVT R0 higher 16-bits var(40)
  108	 F8D00000	LDR R0 [ R0 + 0 ]
- 112	 10000006	MOV R4 lower 16-bits base(0)
+ 112	 10000006	MOV R1 lower 16-bits base(0)
  116	 0000D334	MOVT R1 higher 16-bits var(36)
  120	 F8C10000	STR R0 [ R1 + 0 ]
  124	 F85DEB04	LDR LR [ SP ] + 4
+ 128	     4770	BX LR
 
 *)
