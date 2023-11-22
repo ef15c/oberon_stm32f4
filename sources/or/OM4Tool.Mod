@@ -359,13 +359,23 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       T16MSK11 = {11..13}; T16MSK12 = {9..13};
       
+      (*T16MSK5 011xxx Load/store single data item on page A5-133*)
+      LdStSingleT1 = {13..14};
       (*T16MSK5 100xxx Load/store single data item on page A5-133*)
-      LdStSingle = {15};
+      LdStSingleT2 = {15};
       
       T16MSK51 = {9..12}; T16MSK52 = {11..12};
-      (*T16MSK51 1001 0xx Store Register SP relative STR (immediate) on page A7-386*)
+      (*T16MSK52 0110 0xx Store Register STR (immediate) on page A7-386*)
+      StRegImm5 = {};
+      (*T16MSK52 0110 1xx Load Register LDR (immediate) on page A7-246*)
+      LdRegImm5 = {11};
+      (*T16MSK52 0111 0xx Store Register Byte STRB (immediate) on page A7-389*)
+      StRegByteImm5 = {12};
+      (*T16MSK52 0111 1xx Load Register Byte LDRB (immediate) on page A7-252*)
+      LdRegByteImm5 = {11..12};
+      (*T16MSK52 1001 0xx Store Register SP relative STR (immediate) on page A7-386*)
       StRegSP = {12};
-      (*T16MSK51 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
+      (*T16MSK52 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
       LdRegSP = {11..12};
       
       (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
@@ -688,21 +698,54 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Texts.WriteString(W, mnemo1[b1 MOD OM4A.C4]);
             Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven8(b2), 1)
           END
-        ELSIF op*T16MSK5 = LdStSingle THEN
+        ELSIF op*T16MSK5 = LdStSingleT2 THEN
           (*T16MSK5 100xxx Load/store single data item on page A5-133*)
-          IF op*T16MSK51 = StRegSP THEN
-            (*T16MSK51 1001 0xx Store Register SP relative STR (immediate) on page A7-386*)
+          IF op*T16MSK52 = StRegSP THEN
+            (*T16MSK52 1001 0xx Store Register SP relative STR (immediate) on page A7-386*)
             (*STR<c> <Rt>,[SP,#<imm8>] T2*)
             Rt := b1 MOD OM4A.C3;
             WriteOp(op, "STR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [SP + ");
             Texts.WriteInt(W, b2*OM4A.C2, 1); Texts.Write(W, "]")
-          ELSIF op*T16MSK51 = LdRegSP THEN
-            (*T16MSK51 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
+          ELSIF op*T16MSK52 = LdRegSP THEN
+            (*T16MSK52 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
             (*LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
             Rt := b1 MOD OM4A.C3;
             WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [SP + ");
             Texts.WriteInt(W, b2*OM4A.C2, 1); Texts.Write(W, "]")
-          ELSE Texts.WriteString(W, "TODO: not StRegSP")
+          ELSE Texts.WriteString(W, "TODO: not LdRegSP")
+          END
+        ELSIF op*T16MSK5 = LdStSingleT1 THEN
+          (*T16MSK5 011xxx Load/store single data item on page A5-133*)
+          Rt := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3; 
+          IF op*T16MSK52 = StRegImm5 THEN
+            (*T16MSK52 0110 0xx Store Register STR (immediate) on page A7-386*)
+            (*STR<c> <Rt>, [<Rn>{,#<imm5>}]*)
+            WriteOp(op, "STR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
+            WriteReg(Rn); Texts.WriteString(W, " + ");
+            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
+            Texts.Write(W, "]")
+          ELSIF op*T16MSK52 = LdRegImm5 THEN
+            (*T16MSK52 0110 1xx Load Register LDR (immediate) on page A7-246*)
+            (*LDR<c> <Rt>, [<Rn>{,#<imm5>}]*)
+            WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
+            WriteReg(Rn); Texts.WriteString(W, " + ");
+            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
+            Texts.Write(W, "]")
+          ELSIF op*T16MSK52 = StRegByteImm5 THEN
+            (*T16MSK52 0111 0xx Store Register Byte STRB (immediate) on page A7-389*)
+            (*STRB<c> <Rt>,[<Rn>,#<imm5>]*)
+            WriteOp(op, "STRB", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
+            WriteReg(Rn); Texts.WriteString(W, " + ");
+            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
+            Texts.Write(W, "]")
+          ELSIF op*T16MSK52 = LdRegByteImm5 THEN
+            (*T16MSK52 0111 1xx Load Register Byte LDRB (immediate) on page A7-252*)
+            (*LDRB<c> <Rt>,[<Rn>{,#<imm5>}]*)
+            WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
+            WriteReg(Rn); Texts.WriteString(W, " + ");
+            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
+            Texts.Write(W, "]")
+          ELSE Texts.WriteString(W, "TODO not StRegByteImm5")
           END
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END

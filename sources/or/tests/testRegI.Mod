@@ -44,7 +44,7 @@ fixT =        0
 OM4Tool.DecObj testRegI.m4c ~
 
 decode testRegI.m4c
-testRegI BDDACBC6   1    66
+testRegI BDDACBC6   1    58
 imports:
 type descriptors
 
@@ -58,23 +58,22 @@ entries
 pointer refs
 
 fixP =        0
-fixD =       32
+fixD =       26
 fixT =        0
 entry =        0
    0	     B500	PUSH LR
    2	     2000	MOVS R0 #0
-   4	 F8D00000	LDR R0 [ R0 + 0 ]
-   8	 10000004	MOV R1 lower 16-bits base(0)
-  12	 0000D334	MOVT R1 higher 16-bits var(0)
-  16	 F8C10000	STR R0 [ R1 + 0 ]
-  20	 F2410000	MOV R0 #  4096
-  24	 F2CD0020	MOVT R0 # 53280
-  28	 F8D00000	LDR R0 [ R0 + 0 ]
-  32	 1000000C	MOV R1 lower 16-bits base(0)
-  36	 0000D334	MOVT R1 higher 16-bits var(0)
-  40	 F8C10000	STR R0 [ R1 + 0 ]
-  44	 F85DEB04	LDR LR [ SP ] + 4
-  48	     4770	BX LR
+   4	     6800	LDR R0 [ R0 + 0]
+   6	 10000003	MOV R1 lower 16-bits base(0)
+  10	 0000D334	MOVT R1 higher 16-bits var(0)
+  14	     6008	STR R0 [ R1 + 0]
+  16	 F2410000	MOV R0 #  4096
+  20	 F2CD0020	MOVT R0 # 53280
+  24	     6800	LDR R0 [ R0 + 0]
+  26	 1000000A	MOV R1 lower 16-bits base(0)
+  30	 0000D334	MOVT R1 higher 16-bits var(0)
+  34	     6008	STR R0 [ R1 + 0]
+  36	 F85DEB04	LDR LR [ SP ] + 4
 
 *)
 

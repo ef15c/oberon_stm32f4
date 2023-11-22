@@ -43,7 +43,7 @@ entry =        0
 
 OM4Tool.DecObj testCond.m4c ~
 decode testCond.m4c
-testCond D8E1D5B7   1    64
+testCond D8E1D5B7   1    58
 imports:
 type descriptors
 
@@ -57,22 +57,23 @@ entries
 pointer refs
 
 fixP =        0
-fixD =       26
+fixD =       22
 fixT =        0
 entry =        0
-  0	 F1BD0D04	SUBS SP SP #4
-   4	 F8CDE000	STR LR [ SP + 0 ]
-   8	 00000004	LDR R0 [ MT + Base(0) ]
-  12	 F8D00000	LDR R0 [ R0 + 0 ]
-  16	 F1B03FFF	CMP R0 #-1
-  20	     BF0C	ITE EQ
-  22	     2001	MOVEQ R0 #  1
-  24	     2000	MOVNE R0 #  0
-  26	 10000009	LDR R1 [ MT + Base(0) ]
-  30	 F8810004	STRB R0 [ R1 + 4 ]
-  34	 F8DDE000	LDR LR [ SP + 0 ]
-  38	 F11D0D04	ADDS SP SP #4
-  42	     4770	BX LR
+   0	     B500	PUSH LR
+   2	 00000001	MOV R0 lower 16-bits base(0)
+   6	 0000D334	MOVT R0 higher 16-bits var(0)
+  10	     6800	LDR R0 [ R0 + 0]
+  12	 F1B03FFF	CMP R0 #-1
+  16	     BF0C	ITE EQ
+  18	     2001	MOVEQ R0 #1
+  20	     2000	MOVNE R0 #0
+  22	 1000000A	MOV R1 lower 16-bits base(0)
+  26	 0000D334	MOVT R1 higher 16-bits var(4)
+  30	     7008	STRB R0 [ R1 + 0]
+  32	 F85DEB04	LDR LR [ SP ] + 4
+  36	     4770	BX LR
+
 
 *)
 
