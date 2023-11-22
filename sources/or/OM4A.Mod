@@ -204,48 +204,6 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   (*|1111/1011/1010/ Rn /RdLo/RdHi/0000/ Rm |
     UMULL<c><q> <RdLo>, <RdHi>, <Rn>, <Rm>*)
     
-(*  Format of pseudo operations for accessing external vars and procs
-
-    These pseudo-instructions will be fixup at load or link time by
-    the Modules or OM4L modules.
-
-  1/ Variables
-    The size of the offset is limited to 12 bits, that is 1K words.
-    This is too short to implement the fixup link. We'll use pseudo
-    LDR/STR/ADD instructions.
-
-    Getting base address
-    LDR:
-    aaaannnndddddddddddddddddddddddd
-    
-    aaaa: destination register
-    nnnn: number of the module
-    dd24: offset DIV 2 of next op to fix for SB loading
-    
-    Accessing external variable
-    LDR/STR/ADD
-    ooooaaaabbbb00000000000pvvvvvvvv
-    
-    oooo:  operation code 0000: LDR, ..., 0111 VSTR
-    aaaa: destination register
-    bbbb: operand register
-    p:    program based variable
-    vvv8: number of the variable
-  
-  2/ Procedures
-    No need to encode the instruction wich is always 
-    BL <proc address>:
-    
-    nnnnppppppppdddddddddddddddddddd
-
-    nnnn:     number of the module
-    pppppppp: number of the procedure
-    dd20: offset DIV 2 of next op to fix for procedure address loading
-*)
-    EXTLDR* =0; EXTSTR* =2; EXTADD* =4;
-    EXTLDRB*=1; EXTSTRB*=3; EXTADDB*=5;
-    EXTVLDR*=6; EXTVSTR*=7;
-
   TYPE
     ModuleCode* = POINTER TO ModuleCodeDesc;
     

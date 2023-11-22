@@ -72,7 +72,7 @@ OM4Tool.DecObj testImport.m4c ~
 
 
 decode testImport.m4c
-testImport E4E4472F   1   164
+testImport E4E4472F   1   154
 imports:
 	testExport 633B402B
 type descriptors
@@ -86,43 +86,43 @@ entries
      0
 pointer refs
 
-fixP =       24
-fixD =      110
+fixP =       18
+fixD =      104
 fixT =        0
 entry =        0
-   0	 F1BD0D04	SUBS SP SP #4
-   4	 F8CDE000	STR LR [ SP + 0 ]
-   8	 01000004	LDR R0 [ MT + Base(1) ]
-  12	 00000002	LDR R0 [ R0 + Var(2) ]
-  16	 10000004	LDR R1 [ MT + Base(0) ]
-  20	 F8C10000	STR R0 [ R1 + 0 ]
-  24	 1060000C	BL Mod(  1) proc(6)
-  28	 01000006	LDR R0 [ MT + Base(1) ]
-  32	 40000106	ADD R0 [ R0 + Var(6) ] Prog based
-  36	 10000004	LDR R1 [ MT + Base(0) ]
-  40	 F8C10004	STR R0 [ R1 + 4 ]
-  44	 00000004	LDR R0 [ MT + Base(0) ]
-  48	 F8D00004	LDR R0 [ R0 + 4 ]
-  52	     2800	CMP R0 #  0
-  54	     BF08	IT EQ
-  56	 EC0012D5	TrapEQ  5 at pos     173
-  60	     4780	BLX R0
-  62	 01000009	LDR R0 [ MT + Base(1) ]
-  66	 60000004	VLDR S0 [ R0 + Var(4) ]
-  70	 00000004	LDR R0 [ MT + Base(0) ]
-  74	 ED800A02	VSTR S0 [ R0 + 8 ]
-  78	 01000004	LDR R0 [ MT + Base(1) ]
-  82	 40000005	ADD R0 [ R0 + Var(5) ]
-  86	 F8D00000	LDR R0 [ R0 + 0 ]
-  90	 10000006	LDR R1 [ MT + Base(0) ]
-  94	 F8C10000	STR R0 [ R1 + 0 ]
-  98	 01000004	LDR R0 [ MT + Base(1) ]
- 102	 40000005	ADD R0 [ R0 + Var(5) ]
- 106	 F8D00004	LDR R0 [ R0 + 4 ]
- 110	 10000006	LDR R1 [ MT + Base(0) ]
- 114	 F8C10000	STR R0 [ R1 + 0 ]
- 118	 F8DDE000	LDR LR [ SP + 0 ]
- 122	 F11D0D04	ADDS SP SP #4
+   0	     B500	PUSH LR
+   2	 01000001	LDR R0 [ MT + Base(1) ]
+   6	 00000002	LDR R0 [ R0 + Var(2) ]
+  10	 10000004	LDR R1 [ MT + Base(0) ]
+  14	 F8C10000	STR R0 [ R1 + 0 ]
+  18	 10600009	BL Mod(  1) proc(6)
+  22	 01000006	LDR R0 [ MT + Base(1) ]
+  26	 40000106	ADD R0 [ R0 + Var(6) ] Prog based
+  30	 10000004	LDR R1 [ MT + Base(0) ]
+  34	 F8C10004	STR R0 [ R1 + 4 ]
+  38	 00000004	LDR R0 [ MT + Base(0) ]
+  42	 F8D00004	LDR R0 [ R0 + 4 ]
+  46	     2800	CMP R0 #0
+  48	     BF08	IT EQ
+  50	 EC0012D5	TrapEQ 5 at pos 173
+  54	     4780	BLX R0
+  56	 01000009	LDR R0 [ MT + Base(1) ]
+  60	 00000004	LDR R0 [ R0 + Var(4) ]
+  64	 10000004	LDR R1 [ MT + Base(0) ]
+  68	 F8C10008	STR R0 [ R1 + 8 ]
+  72	 01000004	LDR R0 [ MT + Base(1) ]
+  76	 40000005	ADD R0 [ R0 + Var(5) ]
+  80	 F8D00000	LDR R0 [ R0 + 0 ]
+  84	 10000006	LDR R1 [ MT + Base(0) ]
+  88	 F8C10000	STR R0 [ R1 + 0 ]
+  92	 01000004	LDR R0 [ MT + Base(1) ]
+  96	 40000005	ADD R0 [ R0 + Var(5) ]
+ 100	 F8D00004	LDR R0 [ R0 + 4 ]
+ 104	 10000006	LDR R1 [ MT + Base(0) ]
+ 108	 F8C10000	STR R0 [ R1 + 0 ]
+ 112	 F85DEB04	LDR LR [ SP ] + 4
+ 116	     4770	BX LR
+
 
 *)
 

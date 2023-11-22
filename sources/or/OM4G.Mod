@@ -6,8 +6,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      Procedure Close writes code-files*)
 
   CONST WordSize* = 4;
-    maxExpProcOffset* = 4095;
-    MT = 12; SP = 13; LR = 14; PC = 15; (*dedicated registers*)
+    SP = 13; LR = 14; PC = 15; (*dedicated registers*)
     MSP = 8; PSP = 9;
     APSRnzcv = 15; (*APSR_nzcv is encoded as <Rt> = '1111'*)
     NBS = 32; (* Number of single float registers in the FPU bank *)
@@ -61,7 +60,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE incR;
   BEGIN
-    IF RH < MT-1 THEN INC(RH) ELSE OM4S.Mark("register stack overflow") END
+    IF RH < SP-1 THEN INC(RH) ELSE OM4S.Mark("register stack overflow") END
   END incR;
 
   PROCEDURE incS;
@@ -104,16 +103,65 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* loading of operands and addresses into registers *)
 
-  PROCEDURE GetSB(base: LONGINT);
-  BEGIN
-    IF version = 0 THEN OM4A.encMOVImm32(mcode, RH, VarORG0)
-    ELSE
-      IF mcode.pc-fixORGD > OM4A.C25 THEN OM4S.Mark("too many instruction between static access") END;
-      OM4A.Put0(mcode, RH*OM4A.C28 + (-base)*OM4A.C24 + (mcode.pc-fixORGD) DIV OM4A.C1);
-      fixORGD := mcode.pc-4
-    END
-  END GetSB;
+(*  Format of pseudo operations for accessing static vars and procs
 
+    These pseudo-instructions will be fixup at load or link time by
+    the Modules or OM4L modules.
+
+  1/ Variables (entire address space is accessible)
+    The size of the offset is limited to 12 bits, that is 1K words.
+    This is too short to implement the fixup link. We'll use pseudo
+    LDR/STR/ADD instructions.
+
+    a/ Getting lower 16-bits of absolute address
+    MOV a, #imm16:
+    aaaannnndddddddddddddddddddddddd
+    
+    aaaa: destination register
+    nnnn: number of the module
+    dd24: offset DIV 2 of next op to fix for runtime absolute address
+    
+    b/ Getting higher 16-bits of absolute address
+    MOVT a, #imm16
+     
+    if nnnn > 0
+    00000000000000000000000pvvvvvvvv
+    a:    specified in previous instruction
+    p:    program based procedure
+    vvv8: number of the variable or procedure
+    
+    else if nnnn = 0, object cannot be a constant procedure
+    00000000oooooooooooooooooooooooo
+    oo24: offset of the variable
+  
+  2/ Procedures (entire address space is accessible with veneer code
+                 when needed)
+    BL <proc address>:
+    
+    nnnnppppppppdddddddddddddddddddd
+
+    nnnn:     number of the module
+    pppppppp: number of the procedure
+    dd20: offset DIV 2 of next op to fix for procedure address loading
+    
+*)
+
+  PROCEDURE GetStaticVarAddress(x: Item; a: BYTE);
+    VAR progbaseIndic: LONGINT;
+  BEGIN    
+    ASSERT((x.r <= 0) & (a < 13));
+    IF mcode.pc-fixORGD > OM4A.C25 THEN OM4S.Mark("too many instruction between static access") END;
+    (* MOV a, #imm16 *)
+    OM4A.Put0(mcode, RH*OM4A.C28 + (-x.r)*OM4A.C24 + (mcode.pc-fixORGD) DIV OM4A.C1);
+    fixORGD := mcode.pc-4;
+    (*If x.r = 0, x.a contains the offset of the variable computed at compile time,
+      else if x.r < 0, x.a contains the variable or procedure number and the base indicator*)
+    IF (x.type # NIL) & (x.type.form = OM4B.Proc) & (x.r < 0) THEN progbaseIndic := OM4A.C8 
+    ELSE progbaseIndic := 0 END;
+    (* MOVT a, #imm16 *)
+    OM4A.Put0(mcode, progbaseIndic + x.a)
+  END GetStaticVarAddress;
+  
   PROCEDURE NilCheck(a: BYTE);
   BEGIN
     IF check THEN
@@ -123,22 +171,20 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END NilCheck;
 
   PROCEDURE doLoad(VAR x: Item; target: INTEGER);
-    VAR op, opext: LONGINT;
+    VAR op: LONGINT;
   BEGIN
     ASSERT(target IN {Reg, FPReg});
     ASSERT((target # FPReg) OR (x.type.form = OM4B.Real));
-    IF x.type.size = 1 THEN op := OM4A.LDRBIT2; opext := OM4A.EXTLDRB
-    ELSE op := OM4A.LDRIT3; opext := OM4A.EXTLDR END ;
+    IF x.type.size = 1 THEN op := OM4A.LDRBIT2 ELSE op := OM4A.LDRIT3 END ;
     IF x.mode # target THEN
       IF x.mode = OM4B.Const THEN
         IF x.type.form = OM4B.Proc THEN
           IF x.r > 0 THEN OM4S.Mark("not allowed")
           ELSIF x.r = 0 THEN (* Put address of next statement in LR *)
-            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0));
+            (*Si align(PC+4, 4) - x.a < 4096 on peut utiliser l'équivalent de l'assembleur ADR RH, <label>*)
+            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); 
             OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a)
-          ELSE GetSB(x.r); OM4A.Put0(mcode, OM4A.EXTADD*OM4A.C28 + RH*OM4A.C24 +
-              RH*OM4A.C20 + OM4A.C8 (*mark as progbase-relative*) + x.a)
-          END;
+          ELSE GetStaticVarAddress(x, RH) END;
           x.r := RH; incR
         ELSE OM4A.encMOVImm32(mcode, RH, x.a);
           IF target = FPReg THEN
@@ -156,12 +202,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSE OM4A.encMemImm12(mcode, op, RH, SP, x.a + frame, "local var too far");
             x.r := RH; incR
           END
-        ELSE GetSB(x.r);
-          IF target = FPReg THEN OM4A.encStaticRealAccess(mcode, x.r, OM4A.VLDRT2, OM4A.EXTVLDR, SH, RH, x.a);
-            x.r := SH; incS
-          ELSE OM4A.encStaticAccess(mcode, x.r, op, opext, RH, RH, x.a);
-            x.r := RH; incR
-          END
+        ELSE GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := 0; incR; doLoad(x, target)
         END
       ELSIF x.mode = OM4B.Par THEN
         OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + frame, "param offset 0 too far");
@@ -174,9 +215,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           x.r := RH; incR
         END
       ELSIF x.mode = RegI THEN 
-        IF target = FPReg THEN ASSERT((x.a + frame) MOD OM4A.C2 = 0);
-          IF x.a + frame >= OM4A.C10 THEN OM4S.Mark("real RegI too far") END;
-          OM4A.Put0(mcode, OM4A.VLDRT2 + 1*OM4A.C23 + SH MOD OM4A.C1*OM4A.C22 + x.r*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 + (x.a + frame) DIV OM4A.C2);
+        IF target = FPReg THEN ASSERT(x.a MOD OM4A.C2 = 0);
+          IF x.a >= OM4A.C10 THEN OM4S.Mark("real RegI too far") END;
+          OM4A.Put0(mcode, OM4A.VLDRT2 + 1*OM4A.C23 + SH MOD OM4A.C1*OM4A.C22 + x.r*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 + x.a DIV OM4A.C2);
           x.r := SH; incS; DEC(RH)
         ELSE  OM4A.encMemImm12(mcode, op, x.r, x.r, x.a, "RegI too far")          
         END
@@ -204,12 +245,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode = OM4B.Var THEN
       IF x.r > 0 THEN (*local*) OM4A.encDPImm32(mcode, OM4A.ADD, RH, SP, RH, x.a + frame)
-      ELSE GetSB(x.r);
-        IF x.r = 0 THEN 
-          IF x.a # 0 THEN incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, x.a); DEC(RH) END
-        ELSE OM4A.encStaticAccess(mcode, x.r, 0, OM4A.EXTADD, RH, RH, x.a)
-        END
-      END;
+      ELSE GetStaticVarAddress(x, RH) END;
       x.r := RH; incR
     ELSIF x.mode = OM4B.Par THEN OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + frame, "param too far");
       IF x.b # 0 THEN incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, x.b); DEC(RH) END;
@@ -240,8 +276,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END loadTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
-  BEGIN GetSB(0); 
-    incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, varsize+x.a);
+  BEGIN x.r := 0; x.a := varsize+x.a; GetStaticVarAddress(x, RH);
     x.mode := Reg; x.r := RH-1
   END loadStringAdr;
 
@@ -300,7 +335,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF lim >= 0 THEN OM4A.encCMPImm(mcode, y.r, RH, lim)
         ELSE (*open array*)
           IF x.mode IN {OM4B.Var, OM4B.Par} THEN
-            OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + 4 + frame, "array too big"); OM4A.encCMPReg(mcode, y.r, RH)
+            OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + 4 + frame, "array too big");
+            OM4A.encCMPReg(mcode, y.r, RH)
           ELSE OM4S.Mark("error in Index")
           END
         END ;
@@ -310,10 +346,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF OM4A.log2(s, p2) # 1 THEN OM4A.encMUL(mcode, y.r, y.r, s); p2 := 0 END ;
       IF x.mode = OM4B.Var THEN
         IF x.r > 0 THEN OM4A.encDPReg(mcode, OM4A.ADD, y.r, SP, y.r, p2); INC(x.a, frame)
-        ELSE GetSB(x.r);
-          IF x.r = 0 THEN OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2)
-          ELSE OM4A.Put0(mcode, OM4A.EXTADD*OM4A.C28 + RH*OM4A.C24 + RH*OM4A.C20 + x.a); OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.a := 0
-          END
+        ELSE GetStaticVarAddress(x, RH);
+          OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.a := 0
         END ;
         x.r := y.r; x.mode := RegI
       ELSIF x.mode = OM4B.Par THEN
@@ -327,16 +361,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF x.mode = OM4B.Var THEN
-      IF x.r > 0 THEN (*local*) OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + frame, "local ref too far")
-      ELSE GetSB(x.r); OM4A.encStaticAccess(mcode, x.r, OM4A.LDRIT3, OM4A.EXTLDR, RH, RH, x.a) END;
-      NilCheck(RH); x.r := RH; incR
-    ELSIF x.mode = OM4B.Par THEN
-      OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + frame, "par1 ref too far");
-      OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, RH, x.b, "par2 ref too far"); NilCheck(RH); x.r := RH; incR
-    ELSIF x.mode = RegI THEN OM4A.encMemImm12(mcode, OM4A.LDRIT3, x.r, x.r, x.a, "RegI ref too far"); NilCheck(x.r)
-    ELSIF x.mode # Reg THEN OM4S.Mark("bad mode in DeRef")
-    END ;
+    IF x.mode IN {OM4B.Var, OM4B.Par, RegI} THEN load(x); NilCheck(x.r)
+    ELSE OM4S.Mark("bad mode in DeRef") END;
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
 
@@ -640,31 +666,31 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
-    VAR op, opext: LONGINT;
+    VAR op: LONGINT;
   BEGIN IF y.mode # FPReg THEN load(y) END;
-    IF x.type.size = 1 THEN op := OM4A.STRBIT2; opext := OM4A.EXTSTRB
-    ELSE op := OM4A.STRIT3; opext := OM4A.EXTSTR END ;
+    IF x.type.size = 1 THEN op := OM4A.STRBIT2 ELSE op := OM4A.STRIT3 END ;
     IF x.mode = OM4B.Var THEN
       IF x.r > 0 THEN (*local*)
         IF y.mode = FPReg THEN ASSERT((x.a + frame) MOD OM4A.C2 = 0);
           IF x.a + frame >= OM4A.C10 THEN OM4S.Mark("local real var too far")
           END;
           OM4A.Put0(mcode, OM4A.VSTRT2 + 1*OM4A.C23(*ADD*) +
-            y.r MOD OM4A.C1*OM4A.C22 + SP*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 +
+            y.r MOD OM4A.C1*OM4A.C22 + SP*OM4A.C16 + y.r DIV OM4A.C1*OM4A.C12 +
             (x.a + frame) DIV OM4A.C2)
         ELSE OM4A.encMemImm12(mcode, op, y.r, SP, x.a + frame, "local var too far")
         END
-      ELSE GetSB(x.r);
-        IF y.mode = FPReg THEN OM4A.encStaticRealAccess(mcode, x.r, OM4A.VSTRT2, OM4A.EXTVSTR, y.r, RH, x.a)
-        ELSE OM4A.encStaticAccess(mcode, x.r, op, opext, y.r, RH, x.a)
-        END
+      ELSE GetStaticVarAddress(x, RH);
+        IF y.mode = FPReg THEN
+          OM4A.Put0(mcode, OM4A.VSTRT2 + 1*OM4A.C23(*ADD*) +
+            y.r MOD OM4A.C1*OM4A.C22 + RH*OM4A.C16 + y.r DIV OM4A.C1*OM4A.C12)
+        ELSE OM4A.encMemImm12(mcode, op, y.r, RH, 0, "") END
       END    
     ELSIF x.mode = OM4B.Par THEN
       OM4A.encMemImm12(mcode, OM4A.LDRIT3, RH, SP, x.a + frame, "param offset 0 too far"); 
       IF y.mode = FPReg THEN ASSERT((x.b) MOD OM4A.C2 = 0);
         IF x.a + frame >= OM4A.C10 THEN OM4S.Mark("param offset 1 too far")
         END;
-        OM4A.Put0(mcode, OM4A.VSTRT2 + 1*OM4A.C23 + SH MOD OM4A.C1*OM4A.C22 + RH*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 + (x.b) DIV OM4A.C2)
+        OM4A.Put0(mcode, OM4A.VSTRT2 + 1*OM4A.C23 + y.r MOD OM4A.C1*OM4A.C22 + RH*OM4A.C16 + y.r DIV OM4A.C1*OM4A.C12 + (x.b) DIV OM4A.C2)
       ELSE OM4A.encMemImm12(mcode, op, y.r, RH, x.b, "param offset 1 too far")
       END
     ELSIF x.mode = RegI THEN

@@ -15,8 +15,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
     itB: ITBlockDesc;
-    mnemo0: ARRAY 8, 5 OF CHAR;  (*mnemonics*)
     mnemo1: ARRAY 16, 3 OF CHAR;  (*condition mnemonics*)
+    RdG: BYTE;
   
   PROCEDURE WriteHexVLen(VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
     VAR i: INTEGER; y: LONGINT;
@@ -126,10 +126,10 @@ MODULE OM4Tool;  (*NW 18.2.2013
 
   PROCEDURE WriteReg(r: LONGINT);
   BEGIN Texts.Write(W, " ");
-    IF r < 12 THEN Texts.WriteString(W, "R"); Texts.WriteInt(W, r MOD 10H, 1)
-    ELSIF r = 12 THEN Texts.WriteString(W, "MT")
+    IF r < 13 THEN Texts.WriteString(W, "R"); Texts.WriteInt(W, r MOD 10H, 1)
     ELSIF r = 13 THEN Texts.WriteString(W, "SP")
     ELSIF r = 14 THEN Texts.WriteString(W, "LR")
+    ELSIF r = 15 THEN Texts.WriteString(W, "PC")
     ELSE Texts.WriteString(W, "PC")
     END
   END WriteReg;
@@ -682,27 +682,19 @@ MODULE OM4Tool;  (*NW 18.2.2013
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
       END
-    ELSIF ext = 1 THEN (*Get static base*)
+    ELSIF ext = 1 THEN (*Get lower 16-bits of address of the object*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
-      Rd := b1 DIV OM4A.C4; mno := b1 MOD OM4A.C4;
-      WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rd); Texts.WriteString(W, " [ MT + Base(");
-      Texts.WriteInt(W, mno, 1); Texts.WriteString(W, ") ]")
-    ELSIF ext = 2 THEN (*LDR/STR/ADD relative to static base/VLDR/VSTR*)
+      RdG := b1 DIV OM4A.C4; mno := b1 MOD OM4A.C4;
+      WriteOp(op, "MOV", FALSE, FALSE); WriteReg(RdG); Texts.WriteString(W, " lower 16-bits base(");
+      Texts.WriteInt(W, mno, 1); Texts.WriteString(W, ")")
+    ELSIF ext = 2 THEN (*Get higher 16-bits of address of the object*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
-      op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
-      exop := b1 DIV OM4A.C4;
-      Rd := b1 MOD OM4A.C4; Rn := b2 DIV OM4A.C4;
-      WriteOp(op, mnemo0[exop], FALSE, FALSE);
-      IF exop < OM4A.EXTVLDR THEN WriteReg(Rd)
-      ELSE (* EXTVLDR or EXTVSTR*) Texts.WriteString(W, " S");
-        Texts.WriteInt(W, Rd, 1)
-      END;
-      Texts.WriteString(W, " ["); WriteReg(Rn);
-      Texts.WriteString(W, " + Var("); Texts.WriteInt(W, b4, 1);
-      Texts.WriteString(W, ") ]");
+      WriteOp(op, "MOVT", FALSE, FALSE); WriteReg(RdG);
+      Texts.WriteString(W, " higher 16-bits var("); Texts.WriteInt(W, b4, 1);
+      Texts.WriteString(W, ")");
       IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END
     ELSIF ext = 3 THEN (*BL Call external procedure*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
@@ -790,8 +782,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
           data := next
         END;
         Files.ReadInt(R, data); Texts.WriteString(W, "fixD = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
-        WHILE data # 0 DO eref.ext[data] := 1; mno := mcode.code[data+1] MOD OM4A.C4;
-          IF mno # 0 THEN eref.ext[data+4] := 2 END; 
+        WHILE data # 0 DO eref.ext[data] := 1; eref.ext[data+4] := 2;
           next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*OM4A.C1;
           data := next
         END;
@@ -815,9 +806,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 12.11.2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   itB.pos := 0; itB.nofinst := 0;
-  mnemo0[0] := "LDR";  mnemo0[1] := "LDRB";  mnemo0[2] := "STR";
-  mnemo0[3] := "STRB"; mnemo0[4] := "ADD";   mnemo0[5] := "ADDB";
-  mnemo0[6] := "VLDR"; mnemo0[7] := "VSTR";
   
   mnemo1[OM4A.MI] := "MI"; mnemo1[OM4A.PL] := "PL"; mnemo1[OM4A.EQ] := "EQ"; mnemo1[OM4A.NE] := "NE";
   mnemo1[OM4A.LT] := "LT"; mnemo1[OM4A.GE] := "GE"; mnemo1[OM4A.LE] := "LE"; mnemo1[OM4A.GT] := "GT";
