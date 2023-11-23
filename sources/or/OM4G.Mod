@@ -277,7 +277,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE loadStringAdr(VAR x: Item);
   BEGIN x.r := 0; x.a := varsize+x.a; GetStaticVarAddress(x, RH);
-    x.mode := Reg; x.r := RH-1
+    incR; x.mode := Reg; x.r := RH-1
   END loadStringAdr;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
@@ -362,7 +362,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
     IF x.mode IN {OM4B.Var, OM4B.Par, RegI} THEN load(x); NilCheck(x.r)
-    ELSE OM4S.Mark("bad mode in DeRef") END;
+    ELSIF x.mode # Reg THEN OM4S.Mark("bad mode in DeRef") END;
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
 
@@ -654,7 +654,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     OM4A.encMemImm8PUW(mcode, OM4A.LDRBIT3, RH, x.r, FALSE, TRUE, TRUE, 1);
     OM4A.encMemImm8PUW(mcode, OM4A.LDRBIT3, RH+1, y.r, FALSE, TRUE, TRUE, 1);
     OM4A.encCMPReg(mcode, RH, RH+1); tbf0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.NE*OM4A.C8); (*OM4A.BC OM4A.NE Fin*)
-    incR; OM4A.encCMPImm(mcode ,RH-1, RH, 0); DEC(RH); OM4A.encBackBranch(mcode, OM4A.NE, pc0); (*OM4A.BC OM4A.NE Compare*)
+    incR; OM4A.encCMPImm(mcode, RH-1, RH, 0); DEC(RH); OM4A.encBackBranch(mcode, OM4A.NE, pc0); (*OM4A.BC OM4A.NE Compare*)
   (* Fin: *) OM4A.fix8(mcode, tbf0, mcode.pc - tbf0 - 4);
     DEC(RH, 2); SetCC(x, relmap[op - OM4S.eql])
   END StringRelation;

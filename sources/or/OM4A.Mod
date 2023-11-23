@@ -136,12 +136,17 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       LDRB<c> <Rt>,[<Rn>],#+/-<imm8>
       LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
     
-    STRIT4* = 0F8400800H;
+    STRIT4*  = 0F8400800H;
     (*|1111/1000/0100/ Rn / Rt /1PUW/ imm/8   |
       STR<c> <Rt>,[<Rn>,#-<imm8>]
       STR<c> <Rt>,[<Rn>],#+/-<imm8>
       STR<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
     
+    STRBIT3* = 0F8000800H;
+    (*|1111/1000/0000/ Rn / Rt /1PUW/ imm/8   |
+      STRB<c> <Rt>,[<Rn>,#-<imm8>]
+      STRB<c> <Rt>,[<Rn>],#+/-<imm8>
+      STRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
     PUSHT1* = 0B400H;
     (*|1011/010M/reg_/list|
       PUSH<c> <registers>*)
@@ -222,6 +227,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
 
     memimm5map: ARRAY 4 OF LONGINT;
     memimm8map: ARRAY 4 OF LONGINT;
+    memPUWimm8map: ARRAY 4 OF LONGINT;
     memimm12map: ARRAY 4 OF LONGINT;
 
   (*instruction assemblers*)
@@ -244,7 +250,6 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   PROCEDURE Put0*(VAR c: ModuleCode; op: LONGINT);
   BEGIN (*emit format-0 instruction (32bit)
          format: op8:p24 *)
-(*    OM4S.DebugHex(op);*)
     c.lastInstrSetFlags := FALSE;
     IF c.nbRmnITBlockInsts > 0 THEN DEC(c.nbRmnITBlockInsts) END;
     modify(c, c.pc, op);
@@ -371,11 +376,20 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encMOVImm32;
 
+  PROCEDURE encMemImm8PUW*(VAR c: ModuleCode; op: LONGINT; a, b: BYTE; 
+    p, u, w: BOOLEAN; imm: LONGINT);
+  BEGIN
+    ASSERT((imm >= 0) & (imm < C8));
+    Put0(c, op + a*C12 + b*C16 + formatPUWImm8(p, u, w, imm))
+  END encMemImm8PUW;
+  
   PROCEDURE encMemImm12*(VAR c: ModuleCode; op, a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
   BEGIN
     ASSERT(op <= STRB);
     ASSERT((a < C4) & (b < C4));
-    IF imm < 0 THEN OM4S.Mark(msg) 
+    IF (imm < 0) & (imm > -C8) THEN
+      encMemImm8PUW(c, memPUWimm8map[op], a, b, TRUE(*Pre-indexed*), 
+        FALSE(*subtract*), FALSE(*no write back*), -imm)
     ELSIF (imm <= C7) & (imm MOD C2 = 0) & (a < C3) & (b < C3) THEN
       (*|0110/1 im/m5 R/n Rt| LDR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
       (*|0111/1 im/m5 R/n Rt| LDRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
@@ -396,13 +410,6 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END;
   END encMemImm12;
 
-  PROCEDURE encMemImm8PUW*(VAR c: ModuleCode; op: LONGINT; a, b: BYTE; 
-    p, u, w: BOOLEAN; imm: LONGINT);
-  BEGIN
-    ASSERT((imm >= 0) & (imm < C8));
-    Put0(c, op + a*C12 + b*C16 + formatPUWImm8(p, u, w, imm))
-  END encMemImm8PUW;
-  
   PROCEDURE encDPImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: LONGINT);
     VAR tmiCode: LONGINT;
   BEGIN
@@ -764,8 +771,8 @@ BEGIN
   shimm5map[LSR] :=  0800H; shimm5wmap[LSR] := 0EA5F0010H; shreg3map[LSR] := 40C0H; shreg4map[LSR] := 0FA30F000H;
   shimm5map[ROR] := 0FFFFH; shimm5wmap[ROR] := 0EA5F0030H; shreg3map[ROR] := 41C0H; shreg4map[ROR] := 0FA70F000H;
   
-  memimm5map[LDR]  := 6800H; memimm8map[LDR]  := 9800H;  memimm12map[LDR]  := 0F8D00000H;
-  memimm5map[LDRB] := 7800H; memimm8map[LDRB] := 0H;     memimm12map[LDRB] := 0F8900000H;
-  memimm5map[STR]  := 6000H; memimm8map[STR]  := 9000H;  memimm12map[STR]  := 0F8C00000H;
-  memimm5map[STRB] := 7000H; memimm8map[STRB] := 0H;     memimm12map[STRB] := 0F8800000H;
+  memimm5map[LDR]  := 6800H; memimm8map[LDR]  := 9800H;  memPUWimm8map[LDR] := LDRIT4;   memimm12map[LDR]  := 0F8D00000H;
+  memimm5map[LDRB] := 7800H; memimm8map[LDRB] := 0H;     memPUWimm8map[LDRB] := LDRBIT3; memimm12map[LDRB] := 0F8900000H;
+  memimm5map[STR]  := 6000H; memimm8map[STR]  := 9000H;  memPUWimm8map[STR] := STRIT4;   memimm12map[STR]  := 0F8C00000H;
+  memimm5map[STRB] := 7000H; memimm8map[STRB] := 0H;     memPUWimm8map[STRB] := STRBIT3; memimm12map[STRB] := 0F8800000H;
 END OM4A.
