@@ -618,7 +618,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     11110ddddddddddddddddddddddddddd
     
     11110: branch signature
-    d: link descriptor (27 bits)
+    d: address of next forward branch to fix (27 bits)
 *)
 
   PROCEDURE fix25*(VAR c: ModuleCode; at, with: LONGINT);
@@ -662,9 +662,10 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     VAR L2, L3: LONGINT;
   BEGIN 
     IF L0 # 0 THEN L3 := L0;
-      REPEAT L2 := L3; ASSERT(c.code[L2] DIV C3 = BRSIG); (*Check branch signature*)
+      REPEAT L2 := L3;
+        ASSERT(c.code[L2+1] DIV C3 = BRSIG); (*Check branch signature*)
         L3 := load24(c, L2) UNTIL L3 = 0;
-      modify(c, L2, L2 DIV C27 * C27 + L1); L1 := L0
+      modify(c, L2, BRSIG*C27 + L1); L1 := L0
     END ;
     RETURN L1
   END merged;
