@@ -743,28 +743,28 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*STR<c> <Rt>, [<Rn>{,#<imm5>}]*)
             WriteOp(op, "STR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
             WriteReg(Rn); Texts.WriteString(W, " + ");
-            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
+            Texts.WriteInt(W, (b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2)*OM4A.C2, 1);
             Texts.Write(W, "]")
           ELSIF op*T16MSK52 = LdRegImm5 THEN
             (*T16MSK52 0110 1xx Load Register LDR (immediate) on page A7-246*)
             (*LDR<c> <Rt>, [<Rn>{,#<imm5>}]*)
             WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
             WriteReg(Rn); Texts.WriteString(W, " + ");
-            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
+            Texts.WriteInt(W, (b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2)*OM4A.C2, 1);
             Texts.Write(W, "]")
           ELSIF op*T16MSK52 = StRegByteImm5 THEN
             (*T16MSK52 0111 0xx Store Register Byte STRB (immediate) on page A7-389*)
             (*STRB<c> <Rt>,[<Rn>,#<imm5>]*)
             WriteOp(op, "STRB", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
             WriteReg(Rn); Texts.WriteString(W, " + ");
-            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
+            Texts.WriteInt(W, (b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2)*OM4A.C2, 1);
             Texts.Write(W, "]")
           ELSIF op*T16MSK52 = LdRegByteImm5 THEN
             (*T16MSK52 0111 1xx Load Register Byte LDRB (immediate) on page A7-252*)
             (*LDRB<c> <Rt>,[<Rn>{,#<imm5>}]*)
             WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
             WriteReg(Rn); Texts.WriteString(W, " + ");
-            Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
+            Texts.WriteInt(W, (b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2)*OM4A.C2, 1);
             Texts.Write(W, "]")
           ELSE Texts.WriteString(W, "TODO not StRegByteImm5")
           END
