@@ -331,6 +331,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T16MSK2 010000 Data processing on page A5-131*)
       DataProc = {14};
       
+      (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
+      UncBr = {13..15};
+      
       (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
       Misc16bInst = {15, 12..13};
       (*T16MSK4 1101xx Conditional branch, and Supervisor Call on page A5-136*)
@@ -694,8 +697,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
           ELSIF b1 MOD OM4A.C4 = 0FH THEN Texts.WriteString(W, "TODO SVC on page A7-409")
           ELSE
             (*B<c> <label> Not permitted in IT block.*)
-            WriteOp(op, "B", FALSE, FALSE); Texts.Write(W, " ");
-            Texts.WriteString(W, mnemo1[b1 MOD OM4A.C4]);
+            WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[b1 MOD OM4A.C4]);
             Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven8(b2), 1)
           END
         ELSIF op*T16MSK5 = LdStSingleT2 THEN
@@ -747,6 +749,13 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Texts.Write(W, "]")
           ELSE Texts.WriteString(W, "TODO not StRegByteImm5")
           END
+        ELSIF op*T16MSK3 = UncBr THEN
+          (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
+          (*B<c> <label>*)
+          WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, " #");
+          t := b1 MOD OM4A.C3*OM4A.C8 + b2;
+          IF t >= OM4A.C10 THEN DEC(t, OM4A.C11) END;
+          Texts.WriteInt(W, t*OM4A.C1, 1)
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
       END

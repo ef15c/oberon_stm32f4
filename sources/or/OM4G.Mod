@@ -171,7 +171,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END NilCheck;
 
   PROCEDURE doLoad(VAR x: Item; target: INTEGER);
-    VAR op: LONGINT;
+    VAR op, pc0, pc1: LONGINT;
   BEGIN
     ASSERT(target IN {Reg, FPReg});
     ASSERT((target # FPReg) OR (x.type.form = OM4B.Real));
@@ -222,9 +222,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         ELSE  OM4A.encMemImm12(mcode, op, x.r, x.r, x.a, "RegI too far")          
         END
       ELSIF x.mode = Cond THEN
-        OM4A.IfThen(mcode, "E", x.r);
-        OM4A.encMOVImm32(mcode, RH, 1);
-        OM4A.encMOVImm32(mcode, RH, 0);
+        IF (x.a = 0) & (x.b = 0) THEN (*No "false" or "true" chains*)
+          OM4A.IfThen(mcode, "E", x.r);
+          OM4A.encMOVImm32(mcode, RH, 1);
+          OM4A.encMOVImm32(mcode, RH, 0)
+        ELSE (*A "true" chain need to be fixed, do it the classical way*)
+          pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.negated(x.r)*OM4A.C8);
+          FixLink(x.b); OM4A.encMOVImm32(mcode, RH, 1); pc1 := mcode.pc; OM4A.Put1(mcode, OM4A.BT2);
+          OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4); FixLink(x.a); OM4A.encMOVImm32(mcode, RH, 0);
+          OM4A.fix11(mcode, pc1, mcode.pc - pc1 - 4);
+        END;
         x.r := RH; incR
       ELSIF x.mode = Reg THEN OM4A.encFPOpReg(mcode, OM4A.VMOVSR, x.r, SH, 0) (*Reg to FPReg*); x.r := SH; incS; DEC(RH)
       ELSIF x.mode = FPReg THEN OM4A.encFPOpReg(mcode, OM4A.VMOVRS, RH, x.r, 0) (*FPReg to Reg*); x.r := RH; incR; DEC(SH)

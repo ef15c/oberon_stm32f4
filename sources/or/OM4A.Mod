@@ -630,14 +630,24 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   END fix25;
 
   PROCEDURE fix8*(VAR c: ModuleCode; at, with: LONGINT);
-  (*The statement must be a narrow jump with immediate offset (B.N <Label>).*)
+  (*The statement must be a narrow conditional jump with immediate offset (B<C>.N <Label>).*)
   BEGIN
     ASSERT(c.code[at+1] DIV C4 = BCT1 DIV C12); (*Check op code*)
     ASSERT (~ODD(with)); with := with DIV C1;
-    IF (with < -C7) OR (with >= C7) THEN OM4S.Mark("narrow jump too far");
-    with := with MOD C8;
-    ELSE INC(c.code[at], with) END
+    IF (with < -C7) OR (with >= C7) THEN OM4S.Mark("narrow cond jump too far");
+    IF with < 0 THEN INC(with, C8) END;
+    ELSE c.code[at] := with END
   END fix8;
+
+  PROCEDURE fix11*(VAR c: ModuleCode; at, with: LONGINT);
+  (*The statement must be a narrow jump with immediate offset (B.N <Label>).*)
+  BEGIN
+    ASSERT(c.code[at+1] DIV C4 = BT2 DIV C12); (*Check op code*)
+    ASSERT (~ODD(with)); with := with DIV C1;
+    IF (with < -C10) OR (with >= C10) THEN OM4S.Mark("narrow jump too far");
+    IF with < 0 THEN INC(with, C11) END;
+    ELSE c.code[at] := with MOD C8; INC(c.code[at+1], with DIV C8) END
+  END fix11;
 
   PROCEDURE FixOne*(VAR c: ModuleCode; at: LONGINT);
   BEGIN fix25(c, at, c.pc-at-4)
