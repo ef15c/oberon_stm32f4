@@ -193,6 +193,18 @@ MODULE OM4Tool;  (*NW 18.2.2013
     RETURN res
   END SignExtendEven25;
   
+  PROCEDURE SignExtendEven21(op: SET): LONGINT;
+    VAR res: LONGINT;
+  BEGIN res := 0;
+    IF 11 IN op THEN INC(res, OM4A.C18) END;
+    IF 13 IN op THEN INC(res, OM4A.C17) END;
+    INC(res, ORD(op) DIV OM4A.C16 MOD OM4A.C6*OM4A.C11);
+    INC(res, ORD(op) MOD OM4A.C11);
+    res := LSL(res, 1);
+    IF 26 IN op THEN (* Negative offset*) INC(res, LSL(-1, 20)) END;
+    RETURN res
+  END SignExtendEven21;
+  
   PROCEDURE SignExtendEven8(imm: LONGINT): LONGINT;
   BEGIN IF imm > OM4A.C7 THEN DEC(imm, OM4A.C8) END;
     RETURN imm*OM4A.C1
@@ -298,6 +310,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
       BrWithLnk = {12, 14};
       (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
+      BranchT3 = {};
       BranchT4 = {12};
       
       (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
@@ -507,9 +520,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
             ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
             ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
             END
-          ELSIF op*T32MSK51 = BranchT4 THEN
+          ELSIF op*T32MSK51 = BranchT3 THEN
             (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
             (*B<c>.W <label>*)
+            t := b1 MOD OM4A.C2*OM4A.C2 + b2 DIV OM4A.C6;
+            WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[t]);
+            Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven21(op), 1);
+          ELSIF op*T32MSK51 = BranchT4 THEN
+            (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
+            (*B.W <label>*)
             WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven25(op), 1);
           ELSE Texts.WriteString(W, "TODO: not BranchT4")
           END

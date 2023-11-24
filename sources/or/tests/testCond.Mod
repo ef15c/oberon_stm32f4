@@ -61,7 +61,7 @@ fixT =        0
 OM4Tool.DecObj testCond.m4c ~
 
 decode testCond.m4c
-testCond D8E1D5B7   1    92
+testCond D8E1D5B7   1    86
 imports:
 type descriptors
 
@@ -71,44 +71,40 @@ strings
 code
 commands:
 entries
-    66
+    60
 pointer refs
 
 fixP =        0
 fixD =        0
 fixT =        0
-entry =       66
+entry =       60
    0	 F1BD0D04	SUBS SP SP #4
    4	     B401	PUSH R0
    6	     B500	PUSH LR
    8	     9801	LDR R0 [SP + 4]
   10	 F1B03FFF	CMP R0 #-1
-  14	     BFD8	IT LE
-  16	 F000B805	BLE #10
-  20	     9801	LDR R0 [SP + 4]
-  22	     2801	CMP R0 #1
-  24	     BFB8	IT LT
-  26	 F000B808	BLT #16
-  30	     9801	LDR R0 [SP + 4]
-  32	     2809	CMP R0 #9
-  34	     BFD8	IT LE
-  36	 F000B805	BLE #10
-  40	     9801	LDR R0 [SP + 4]
-  42	     280B	CMP R0 #11
-  44	     DA01	BGE #2
-  46	     2001	MOVS R0 #1
-  48	     E000	B #0
-  50	     2000	MOVS R0 #0
-  52	 F88D0008	STRB R0 [ SP + 8 ]
-  56	 F85DEB04	LDR LR [ SP ] + 4
-  60	 F11D0D08	ADDS SP SP #8
-  64	     4770	BX LR
-  66	     B500	PUSH LR
-  68	     2028	MOVS R0 #40
-  70	 F7FFFFDB	BL #-74
-  74	 F85DEB04	LDR LR [ SP ] + 4
-  78	     4770	BX LR
-
+  14	 F3408004	BLE #8
+  18	     9801	LDR R0 [SP + 4]
+  20	     2801	CMP R0 #1
+  22	 F2C08007	BLT #14
+  26	     9801	LDR R0 [SP + 4]
+  28	     2809	CMP R0 #9
+  30	 F3408005	BLE #10
+  34	     9801	LDR R0 [SP + 4]
+  36	     280B	CMP R0 #11
+  38	     DA01	BGE #2
+  40	     2001	MOVS R0 #1
+  42	     E000	B #0
+  44	     2000	MOVS R0 #0
+  46	 F88D0008	STRB R0 [ SP + 8 ]
+  50	 F85DEB04	LDR LR [ SP ] + 4
+  54	 F11D0D08	ADDS SP SP #8
+  58	     4770	BX LR
+  60	     B500	PUSH LR
+  62	     2028	MOVS R0 #40
+  64	 F7FFFFDE	BL #-68
+  68	 F85DEB04	LDR LR [ SP ] + 4
+  72	     4770	BX LR
 
 *)
 

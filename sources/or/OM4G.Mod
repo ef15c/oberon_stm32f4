@@ -446,8 +446,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE And1*(VAR x: Item);   (* x := x & *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    OM4A.IfThen(mcode, "", OM4A.negated(x.r));
-    OM4A.Put0(mcode, OM4A.BRSIG*OM4A.C27 + x.a);
+    OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.negated(x.r)*OM4A.C22 + x.a);
     x.a := mcode.pc-4; OM4A.FixLink(mcode, x.b); x.b := 0
   END And1;
 
@@ -460,8 +459,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Or1*(VAR x: Item);   (* x := x OR *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    OM4A.IfThen(mcode, "", x.r);
-    OM4A.Put0(mcode, OM4A.BRSIG*OM4A.C27 + x.b);
+    OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + x.r*OM4A.C22 + x.b);
     x.b := mcode.pc-4; OM4A.FixLink(mcode, x.a); x.a := 0
   END Or1;
 
@@ -805,12 +803,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: LONGINT);
   BEGIN 
     load(z); OM4A.encCMPReg(mcode, y.r, z.r); DEC(RH);
-    IF w.a > 0 THEN OM4A.IfThen(mcode, "", OM4A.GT)
-    ELSIF w.a < 0 THEN OM4A.IfThen(mcode, "", OM4A.LT)
-    ELSE OM4S.Mark("zero increment"); OM4A.IfThen(mcode, "", OM4A.MI)
-    END;
     L := mcode.pc;
-    OM4A.Put0(mcode, OM4A.BRSIG*OM4A.C27);
+    IF w.a > 0 THEN OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.GT*OM4A.C22);
+    ELSIF w.a < 0 THEN OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.LT*OM4A.C22);
+    ELSE OM4S.Mark("zero increment");
+      OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.MI*OM4A.C22);
+    END;
     Store(x, y)
   END For1;
 
@@ -831,8 +829,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE CFJump*(VAR x: Item);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    OM4A.IfThen(mcode, "", OM4A.negated(x.r));
-    OM4A.Put0(mcode, OM4A.BRSIG*OM4A.C27 + x.a); OM4A.FixLink(mcode, x.b); x.a := mcode.pc-4
+    OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.negated(x.r)*OM4A.C22 + x.a);
+    OM4A.FixLink(mcode, x.b); x.a := mcode.pc-4
   END CFJump;
 
   PROCEDURE BJump*(L: LONGINT);

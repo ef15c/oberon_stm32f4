@@ -187,7 +187,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   (*|1111/1011/1010/ Rn /RdLo/RdHi/0000/ Rm |
     UMULL<c><q> <RdLo>, <RdHi>, <Rn>, <Rm>*)
     
-    BRSIG*   = 1EH;
+    BRSIG*   = 1EH; (*Pseudo branch op signature*)
+    BRCSIG*  = 1EH; (*Pseudo conditional branch op signature*)
 
     
     (*Arithmetic and logical operations*)
@@ -240,12 +241,12 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     c.code[at+2] := with MOD C8;
   END modify;
 
-  PROCEDURE load24(VAR c: ModuleCode; at: LONGINT): LONGINT;
+  PROCEDURE load22(VAR c: ModuleCode; at: LONGINT): LONGINT;
     VAR res: LONGINT;
   BEGIN
-    res := (c.code[at]*C8+c.code[at+3])*C8+c.code[at+2];
+    res := (c.code[at] MOD C6*C8+c.code[at+3])*C8+c.code[at+2];
     RETURN res
-  END load24;
+  END load22;
   
   PROCEDURE Put0*(VAR c: ModuleCode; op: LONGINT);
   BEGIN (*emit format-0 instruction (32bit)
@@ -562,38 +563,6 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     Put0(c, BFC + l DIV C2*C12 + a*C8 + l MOD C2*C6 + m)
   END encBFC;
   
-  PROCEDURE encStaticAccess*(VAR c: ModuleCode; base, op: LONGINT; ope, a, b: BYTE; par: LONGINT);
-  BEGIN
-    ASSERT(base <= 0);
-    ASSERT((a < C4) & (b < C4));
-    IF base=0 THEN (*static variable in current module*)
-      ASSERT(op DIV C24 MOD C8 >= 0E8H); (*32-bit thumb instruction*)
-      IF par >= C12 THEN OM4S.Mark("static var too far") END;
-      Put0(c, op + a*C12 + b*C16 + par)
-    ELSE
-      ASSERT(ope < C4);
-      ASSERT(par < C4);
-      Put0(c, ope*C28 + a*C24 + b*C20 + par)
-    END
-  END encStaticAccess;
-  
-  PROCEDURE encStaticRealAccess*(VAR c: ModuleCode; base, op: LONGINT; ope, s, r: BYTE; par: LONGINT);
-  BEGIN
-    ASSERT(base <= 0);
-    ASSERT((r < C4) & (s < C5));
-    ASSERT(par >= 0);
-    IF base=0 THEN (*static real variable in current module*)
-      ASSERT(par MOD C2 = 0);
-      IF par >= C10 THEN OM4S.Mark("static real var too far") END;
-      Put0(c, op + 1*C23(*ADD*) + s MOD C1*C22 + r*C16 + s DIV C1*C12 + par DIV C2)
-    ELSE
-      ASSERT(ope < C4);
-      ASSERT(par < C4);
-      IF s >= C4 THEN OM4S.Mark("extern real var access not implemented for registers above 15") END;
-      Put0(c, ope*C28 + s*C24 + r*C20 + par)
-    END
-  END encStaticRealAccess;
-
   PROCEDURE encMRS*(VAR c: ModuleCode; a, s: LONGINT);
   (*|1111/0011/1110/1111/1000/ Rd /  SY/Sm  |
     MRS<c> <Rd>,<spec_reg>*)
@@ -611,24 +580,65 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     RETURN cond
   END negated;
 
-(*  Format of forward jump (B):
+(*  Format of forward jump (B)
 
     The bits encoding displacement are scattered in ARM thumb B and B<c> instructions.
-    FJump and CFJump generate 32bit pseudo branch instructions with this format:
-    11110ddddddddddddddddddddddddddd
+    FJump generate 32bit pseudo branch instructions with this format:
+    11110xxxxxdddddddddddddddddddddd
     
     11110: branch signature
-    d: address of next forward branch to fix (27 bits)
+    xxxx : don't care
+    dd22 : address of next forward branch to fix
 *)
 
-  PROCEDURE fix25*(VAR c: ModuleCode; at, with: LONGINT);
+  PROCEDURE fix25(VAR c: ModuleCode; at, with: LONGINT);
   (*The statement must be a wide jump with immediate offset (B.W <Label>).*)
   BEGIN
-    ASSERT(c.code[at+1] DIV C3 = BRSIG); (*Check branch signature*)
     IF with >= C24 THEN OM4S.Mark("forward jump too far")
     ELSE modify(c, at, BT4 + formatEvenImm25(with)) END
   END fix25;
 
+(*  Format of conditional forward jump (B<c>)
+
+    The bits encoding displacement are scattered in ARM thumb B and B<c> instructions.
+    CFJump generate 32bit pseudo branch instructions with this format:
+    11111xccccdddddddddddddddddddddd
+    
+    11111: conditinal branch signature
+    cccc:  condition
+    dd22:  address of next forward branch to fix
+*)
+
+  PROCEDURE fix21(VAR c: ModuleCode; at, with: LONGINT);
+  (*The statement must be a wide jump with immediate offset (B.W <Label>).*)
+    VAR cond: BYTE;
+  BEGIN
+    cond := c.code[at+1] MOD C2*C2 + c.code[at] DIV C6;
+    ASSERT(cond < 14);
+    with := with DIV C1;
+    IF with >= C19 THEN OM4S.Mark("forward jump too far")
+    ELSE modify(c, at, BCT3 + with DIV C19 MOD C1*C26 + cond*C22 + with DIV C11 MOD C6*C16 +
+        with DIV C17 MOD C1*C13 + with DIV C18 MOD C1*C11 + with MOD C11)
+    END
+  END fix21;
+
+  PROCEDURE fix(VAR c: ModuleCode; at, with: LONGINT);
+    VAR sig: BYTE;
+  BEGIN
+    ASSERT(with >= 0);
+    sig := c.code[at+1] DIV C3;
+    IF sig = BRCSIG THEN fix21(c, at, with)
+    ELSE ASSERT(sig = BRSIG); fix25(c, at, with) END
+  END fix;
+  
+(*  Format of forward conditionaljump T1 :
+    1101ccccxxxxxxxx
+    
+    1101: conditional branch signature
+    cccc: condition
+    xx8 : not used
+ *)
+ 
   PROCEDURE fix8*(VAR c: ModuleCode; at, with: LONGINT);
   (*The statement must be a narrow conditional jump with immediate offset (B<C>.N <Label>).*)
   BEGIN
@@ -642,7 +652,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   PROCEDURE fix11*(VAR c: ModuleCode; at, with: LONGINT);
   (*The statement must be a narrow jump with immediate offset (B.N <Label>).*)
   BEGIN
-    ASSERT(c.code[at+1] DIV C4 = BT2 DIV C12); (*Check op code*)
+    ASSERT(c.code[at+1] DIV C3 = BT2 DIV C11); (*Check op code*)
     ASSERT (~ODD(with)); with := with DIV C1;
     IF (with < -C10) OR (with >= C10) THEN OM4S.Mark("narrow jump too far");
     IF with < 0 THEN INC(with, C11) END;
@@ -650,20 +660,20 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   END fix11;
 
   PROCEDURE FixOne*(VAR c: ModuleCode; at: LONGINT);
-  BEGIN fix25(c, at, c.pc-at-4)
+  BEGIN fix(c, at, c.pc-at-4)
   END FixOne;
 
   PROCEDURE FixLink*(VAR c: ModuleCode; L: LONGINT);
     VAR L1: LONGINT;
   BEGIN
-    WHILE L # 0 DO L1 := load24(c, L); fix25(c, L, c.pc-L-4); L := L1 END
+    WHILE L # 0 DO L1 := load22(c, L); fix(c, L, c.pc-L-4); L := L1 END
   END FixLink;
 
   PROCEDURE FixLinkWith*(VAR c: ModuleCode; L0, dst: LONGINT);
     VAR L1: LONGINT;
   BEGIN
     WHILE L0 # 0 DO
-      L1 := load24(c, L0) MOD C24;
+      L1 := load22(c, L0) MOD C24;
       modify(c, L0, dst-L0-4); L0 := L1
     END
   END FixLinkWith;
@@ -673,9 +683,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN 
     IF L0 # 0 THEN L3 := L0;
       REPEAT L2 := L3;
-        ASSERT(c.code[L2+1] DIV C3 = BRSIG); (*Check branch signature*)
-        L3 := load24(c, L2) UNTIL L3 = 0;
-      modify(c, L2, BRSIG*C27 + L1); L1 := L0
+        ASSERT(c.code[L2+1] DIV C3 = BRCSIG); (*Check conditional branch signature*)
+        L3 := load22(c, L2) UNTIL L3 = 0;
+      modify(c, L2, c.code[L2+1]*C24 + c.code[L2] DIV C6*C22 + L1); L1 := L0
     END ;
     RETURN L1
   END merged;
