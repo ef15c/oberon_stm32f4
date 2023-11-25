@@ -293,7 +293,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T32MSK7 11 00xx101 x Load word on page A5-146*)
       LdrWord = {27..28, 22, 20};
-      T32MSK71 = {23..24}; T32MSK72 = {23..24, 11, 8};
+      T32MSK71 = {23..24}; T32MSK72 = {23..24, 11, 8}; T32MSK73 = {23..24, 8..11};
       (*T32MSK71 01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
       (*T32MSK71 0x xxxxxx: Rn = 1111: Load Register LDR (literal) on page A7-248*)
       LdrRegImmOrLit = {23};
@@ -304,7 +304,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
       LdrRegByteT2 = {23};
 
       (*T32MSK72 00 1xx1xx not 1111 LDR (immediate) on page A7-246*)
-      LdrREgImmOrLit2 = {11, 8};
+      LdrRegImmOrLit2 = {11, 8};
+      
+      (*T32MSK73 00 1100xx Rn not 1111 LDR (immediate) on page A7-246*)
+      LdrRegImm1UV = {10..11};
+      
       
       T32MSK51 = {12, 14}; T32MSK52 = {21..26, 12, 14}; T32MSK53 = {23..25};
       (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
@@ -323,6 +327,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       FPSingle = {11, 9};
 
       T32MSK321 = {20..25, 4}; T32MSK322 = {24..25, 20..21}; T32MSK323 = {28, 23, 20..21, 6};
+      T32MSK324 = {28, 23, 16..21, 6..7};
+      
       (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
       VMOVSR = {25, 4};
       VMOVRS = {25, 20, 4};
@@ -334,6 +340,10 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T32MSK323 0 0x11 - x0 FP Add VADD on page A7-456*)
       VADD = {20..21};
+      
+      (*T32MSK324 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
+      VNEG = {23, 20..21, 16, 6};
+      
       
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
@@ -359,6 +369,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T16MSK22 1010 Compare Registers CMP (register) on page A7-224*)
       CmpReg = {9, 7};
+      (*T16MSK22 1001 Reverse Subtract from 0 RSB (immediate) on page A7-341*)
+      RevSub = {9, 6};
       
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
@@ -492,8 +504,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*LDR<c>.W <Rt>,[<Rn>{,#<imm12>}] T3*)
             WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
             Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD OM4A.C12, 1); Texts.WriteString(W, " ]")
-          ELSIF (op*T32MSK72 = LdrREgImmOrLit2)  & (Rn # 15) THEN
-            (*T32MSK72 00 1xx1xx not 1111 LDR (immediate) on page A7-246*)
+          ELSIF ((op*T32MSK72 = LdrRegImmOrLit2) OR (op*T32MSK73 = LdrRegImm1UV)) & (Rn # 15) THEN
+            (*T32MSK72 00 1xx1xx Rn not 1111 LDR (immediate) on page A7-246*)
+            (*T32MSK73 00 1100xx Rn not 1111 LDR (immediate) on page A7-246*)
             (*LDR<c> <Rt>,[<Rn>,#-<imm8>]
               LDR<c> <Rt>,[<Rn>],#+/-<imm8>
               LDR<c> <Rt>,[<Rn>,#+/-<imm8>]! T4*)
@@ -504,7 +517,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
             IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
               IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
             END
-          ELSE Texts.WriteString(W, "TODO: not LdrREgImmOrLit2")
+          ELSE Texts.WriteString(W, "TODO: not LdrRegImmOrLit2 or LdrRegImm1UV")
           END
         ELSIF op*T32MSK5 = BrMiscCtrl THEN
           IF op*T32MSK51 = BrWithLnk THEN
@@ -584,6 +597,13 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Sm := b4 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C5 MOD OM4A.C1;
               WriteOp(op, "VADD", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+            ELSIF op*T32MSK324 = VNEG THEN
+              (*T32MSK324 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
+              (*VNEG<c>.F32 <Sd>, <Sm>*)
+              Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
+              Sm := b4 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C5 MOD OM4A.C1;
+              WriteOp(op, "VNEG", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
             ELSE Texts.WriteString(W, "TODO: not VADD")
             END
           ELSE Texts.WriteString(W, "TODO: not FPSingle")
@@ -632,7 +652,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Rn := b2 MOD OM4A.C3;
             Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
             WriteOp(op, "CMP", FALSE, FALSE); WriteReg(Rn); WriteReg(Rm)
-          ELSE Texts.WriteString(W, "TODO: not CmpReg")
+          ELSIF op*T16MSK22 = RevSub THEN
+            (*T16MSK22 1001 Reverse Subtract from 0 RSB (immediate) on page A7-341*)
+            (*RSBS <Rd>,<Rn>,#0 Outside IT block.
+              RSB<c> <Rd>,<Rn>,#0 Inside IT block.*)
+            Rd := b2 MOD OM4A.C3;
+            Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
+            WriteOp(op, "RSB", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn);
+            Texts.WriteString(W, " #0")
+          ELSE Texts.WriteString(W, "TODO: not RevSub")
           END
         ELSIF op*T16MSK4 = Misc16bInst THEN
           (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
