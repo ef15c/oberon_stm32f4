@@ -510,7 +510,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN x.a := x.a * y.a
     ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x); OM4A.encShiftImm5(mcode, OM4A.LSl, x.r, x.r, e)
-    (*Low half multiplication (32b*32b => 32b) is the same for signed and unsinged integers*)
+    (*Lower half 32bit of result of a multiplication (32b*32b => 32b) is the same for signed and unsigned integers*)
     ELSIF (x.mode = OM4B.Const) & (x.a >= 2) & (OM4A.log2(x.a, e) = 1) THEN load(y); OM4A.encShiftImm5(mcode, OM4A.LSl, y.r, y.r, e); x.mode := Reg; x.r := y.r
     ELSE load(x); load(y); OM4A.encMUL(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
     END
@@ -526,7 +526,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF y.mode = OM4B.Const THEN
         IF y.a > 0 THEN load(x); load(y); OM4A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1 ELSE OM4S.Mark("bad divisor") END
       ELSE load(y);
-        IF check THEN Trap(OM4A.LE, 6) END;
+        IF check THEN 
+          IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, y.r, RH, 0) END;
+          Trap(OM4A.LE, 6)
+        END;
         load(x); OM4A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
       END
     ELSE (*op = OM4S.mod*)
@@ -537,12 +540,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         OM4A.encShiftImm5(mcode, OM4A.LSl, x.r, x.r, 32-e); OM4A.encShiftImm5(mcode, OM4A.LSR, x.r, x.r, 32-e)
       ELSIF y.mode = OM4B.Const THEN
         IF y.a > 0 THEN load(x); load(y); 
-          OM4A.encUDIV(mcode, RH, x.r, y.r); OM4A.encMUL(mcode, RH, RH, y.r); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, RH-2, RH, 0);
+          OM4A.encUDIV(mcode, RH, x.r, y.r); OM4A.encMUL(mcode, RH, RH, y.r); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, x.r, RH, 0);
           DEC(RH); x.r := RH-1
         ELSE OM4S.Mark("bad modulus") END
       ELSE load(y);
-        IF check THEN Trap(OM4A.LE, 6) END;
-        load(x); OM4A.encUDIV(mcode, RH, x.r, y.r); OM4A.encMUL(mcode, RH, RH, y.r); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, RH-2, RH, 0);
+        IF check THEN 
+          IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, y.r, RH, 0) END;
+          Trap(OM4A.LE, 6)
+        END;
+        load(x); OM4A.encUDIV(mcode, RH, x.r, y.r); OM4A.encMUL(mcode, RH, RH, y.r); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, x.r, RH, 0);
         DEC(RH); x.r := RH-1
       END
     END
@@ -1006,7 +1012,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF z.mode = OM4B.Const THEN
       IF z.a > 0 THEN load(z) ELSE OM4S.Mark("bad count") END
     ELSE load(z);
-      IF check THEN Trap(OM4A.LT, 3) END ;
+      IF check THEN 
+          IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, z.r, RH, 0) END;
+        Trap(OM4A.LT, 3)
+      END;
       pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.EQ*OM4A.C8); (*BEQ L0*)
     END ;
     pc1 := mcode.pc;

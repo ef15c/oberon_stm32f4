@@ -243,12 +243,18 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END WriteShift;
   
+  PROCEDURE WritePCOffset(at: LONGINT; ofs: LONGINT);
+  BEGIN
+    Texts.WriteString(W, " #"); Texts.WriteInt(W, ofs, 1);
+    Texts.WriteString(W, ", goes to "); Texts.WriteInt(W, at+ofs, 1);
+  END WritePCOffset;
+  
   PROCEDURE opcode(VAR c: OM4A.ModuleCode; VAR er: ExternalRefMap; VAR i: LONGINT);
     CONST
       (*32-bit instructions*)
       T32MSK1 = {25..28, 22}; T32MSK2 = {25..28}; T32MSK3 = {26..28};
       T32MSK4 = {25, 27..28, 15}; T32MSK5 = {27..28, 15}; T32MSK6 = {24..28, 20};
-      T32MSK7 = {25..28, 20..22};
+      T32MSK7 = {25..28, 20..22}; T32MSK8 = {23..28};
       
       (*T32MSK2 01 01xxxxx x Data processing (shifted register) on page A5-150*)
       DataProcShiftedReg = {27, 25};
@@ -276,6 +282,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       AddCmnModImm = {24};
       (*T32MSK41 0000x AND (immediate) on page A7-200 or TST (immediate) on page A7-419*)
       AndTstModImm = {};
+      
+      (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
+      LongMulAccDiv = {27..28, 23..25};
       
       (*T32MSK42 00100 -: Move Wide, 16-bit MOV (immediate) on page A7-291*)
       MW16Bit = {22};
@@ -344,7 +353,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK324 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
       VNEG = {23, 20..21, 16, 6};
       
+      T32MSK81 = {20..22, 4..7};
       
+      (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426 All*)
+      UnsDiv = {20..21, 4..7};
+
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
       T16MSK5 = {13..15};
@@ -371,6 +384,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       CmpReg = {9, 7};
       (*T16MSK22 1001 Reverse Subtract from 0 RSB (immediate) on page A7-341*)
       RevSub = {9, 6};
+      (*T16MSK22 1101 Multiply Two Registers MUL on page A7-302*)
+      Mul = {8..9, 6};
       
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
@@ -419,6 +434,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       AddImm3 = {10..12};
       (*T16MSK12 01100 Add register ADD (register) on page A7-192*)
       AddRegT1 = {11..12};
+      (*T16MSK12 01101 Subtract register SUB (register) on page A7-404*)
+      SubRegT1 = {11..12, 9};
       
     VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, Sn, Sd, Sm, mno, ext, exop, proc: BYTE;
       op: SET;
@@ -523,7 +540,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
           IF op*T32MSK51 = BrWithLnk THEN
             (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
             (*BL<c> <label> Outside or last in IT block*)
-            WriteOp(op, "BL", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven25(op), 1);
+            WriteOp(op, "BL", FALSE, FALSE); WritePCOffset(i, SignExtendEven25(op))
           ELSIF op*T32MSK52 = MovFrSpReg THEN
             (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
             (*MRS<c> <Rd>,<spec_reg>*)
@@ -538,11 +555,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*B<c>.W <label>*)
             t := b1 MOD OM4A.C2*OM4A.C2 + b2 DIV OM4A.C6;
             WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[t]);
-            Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven21(op), 1);
+            WritePCOffset(i, SignExtendEven21(op))
           ELSIF op*T32MSK51 = BranchT4 THEN
             (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
             (*B.W <label>*)
-            WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven25(op), 1);
+            WriteOp(op, "B", FALSE, FALSE); WritePCOffset(i, SignExtendEven25(op))
           ELSE Texts.WriteString(W, "TODO: not BranchT4")
           END
         ELSIF op*T32MSK3 = CoProc THEN
@@ -629,7 +646,16 @@ MODULE OM4Tool;  (*NW 18.2.2013
             WriteShift(op)
           ELSE Texts.WriteString(W, "TODO not AddShiftedReg")
           END
-        ELSE Texts.WriteString(W, "TODO 32-bit thumb instruction")
+        ELSIF op*T32MSK8 = LongMulAccDiv THEN
+          (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
+          IF op*T32MSK81 = UnsDiv THEN
+            (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426 All*)
+            (*UDIV<c> <Rd>,<Rn>,<Rm>*)
+            Rd := b3 MOD OM4A.C4; Rn := b2 MOD OM4A.C4; Rm := b4 MOD OM4A.C4;
+            WriteOp(op, "UDIV", FALSE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
+          ELSE Texts.WriteString(W, "TODO other LongMulAccDiv")
+          END
+        ELSE Texts.WriteString(W, "TODO other 32-bit thumb instruction")
         END
       ELSE op := SYSTEM.VAL(SET, 0+b2+100H*b1);
         Texts.WriteString(W, "    "); WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
@@ -642,25 +668,29 @@ MODULE OM4Tool;  (*NW 18.2.2013
           ELSIF op*T16MSK23 = BrLEx THEN
             (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
             WriteOp(op, "BLX", FALSE, FALSE); WriteReg(Rm)
-          ELSE Texts.WriteString(W, "TODO: not BrLEx")
+          ELSE Texts.WriteString(W, "TODO: other SpecDataBrEx")
           END
         ELSIF op*T16MSK2 = DataProc THEN
           (*T16MSK2 010000 Data processing on page A5-131*)
           IF op*T16MSK22 = CmpReg THEN
             (*T16MSK22 1010 Compare Registers CMP (register) on page A7-224*)
             (*CMP<c> <Rn>,<Rm>*)
-            Rn := b2 MOD OM4A.C3;
-            Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+            Rn := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
             WriteOp(op, "CMP", FALSE, FALSE); WriteReg(Rn); WriteReg(Rm)
           ELSIF op*T16MSK22 = RevSub THEN
             (*T16MSK22 1001 Reverse Subtract from 0 RSB (immediate) on page A7-341*)
             (*RSBS <Rd>,<Rn>,#0 Outside IT block.
               RSB<c> <Rd>,<Rn>,#0 Inside IT block.*)
-            Rd := b2 MOD OM4A.C3;
-            Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
+            Rd := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
             WriteOp(op, "RSB", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn);
             Texts.WriteString(W, " #0")
-          ELSE Texts.WriteString(W, "TODO: not RevSub")
+          ELSIF op*T16MSK22 = Mul THEN
+            (*T16MSK22 1101 Multiply Two Registers MUL on page A7-302*)
+            (*MULS <Rdm>,<Rn>,<Rdm> Outside IT block.
+              MUL<c> <Rdm>,<Rn>,<Rdm> Inside IT block.*)
+            Rd := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
+            WriteOp(op, "MUL", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rd)
+          ELSE Texts.WriteString(W, "TODO: other DataProc")
           END
         ELSIF op*T16MSK4 = Misc16bInst THEN
           (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
@@ -736,7 +766,13 @@ MODULE OM4Tool;  (*NW 18.2.2013
               ADD<c> <Rd>,<Rn>,<Rm> Inside IT block.*)
             Rd := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3; Rm := b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6;
             WriteOp(op, "ADD", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm)
-          ELSE Texts.WriteString(W, "TODO: not ASRImmT1")
+          ELSIF op*T16MSK12 = SubRegT1 THEN
+            (*T16MSK12 01101 Subtract register SUB (register) on page A7-404*)
+            (*SUBS <Rd>,<Rn>,<Rm> Outside IT block.
+              SUB<c> <Rd>,<Rn>,<Rm> Inside IT block.*)
+            Rd := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3; Rm := b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6;
+            WriteOp(op, "SUB", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm)
+          ELSE Texts.WriteString(W, "TODO: other ShAdSuMoCm")
           END
         ELSIF op*T16MSK4 = CondBrAndSVC THEN
           (*T16MSK4 1101xx Conditional branch, and Supervisor Call on page A5-136*)
@@ -745,7 +781,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
           ELSE
             (*B<c> <label> Not permitted in IT block.*)
             WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[b1 MOD OM4A.C4]);
-            Texts.WriteString(W, " #"); Texts.WriteInt(W, SignExtendEven8(b2), 1)
+            WritePCOffset(i+2, SignExtendEven8(b2))
           END
         ELSIF op*T16MSK5 = LdStSingleT2 THEN
           (*T16MSK5 100xxx Load/store single data item on page A5-133*)
@@ -799,10 +835,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
         ELSIF op*T16MSK3 = UncBr THEN
           (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
           (*B<c> <label>*)
-          WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, " #");
-          t := b1 MOD OM4A.C3*OM4A.C8 + b2;
-          IF t >= OM4A.C10 THEN DEC(t, OM4A.C11) END;
-          Texts.WriteInt(W, t*OM4A.C1, 1)
+          WriteOp(op, "B", FALSE, FALSE); t := b1 MOD OM4A.C3*OM4A.C8 + b2;
+          IF t >= OM4A.C10 THEN DEC(t, OM4A.C11) END; WritePCOffset(i+2, t*OM4A.C1)
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
       END

@@ -139,7 +139,7 @@ entry =      140
   50	     B401	PUSH R0
   52	     B500	PUSH LR
   54	     9801	LDR R0 [SP + 4]
-  56	     D007	BEQ #14
+  56	     D007	BEQ #14, goes to 74
   58	 F8501C08	LDR R1 [ R0- 8 ]
   62	     6849	LDR R1 [ R1 + 4]
   64	 2000001A	MOV R2 lower 16-bits base(0)
@@ -157,16 +157,16 @@ entry =      140
  102	 F11D0004	ADDS R0 SP #4
  106	 10000015	MOV R1 lower 16-bits base(0)
  110	 0000D334	MOVT R1 higher 16-bits var(20)
- 114	 F7FFFFC5	BL #-118
+ 114	 F7FFFFC5	BL #-118, goes to 0
  118	     9803	LDR R0 [SP + 12]
- 120	 F7FFFFD9	BL #-78
+ 120	 F7FFFFD9	BL #-78, goes to 46
  124	     2001	MOVS R0 #1
  126	 F88D0008	STRB R0 [ SP + 8 ]
  130	 F85DEB04	LDR LR [ SP ] + 4
  134	 F11D0D0C	ADDS SP SP #12
  138	     4770	BX LR
  140	     B500	PUSH LR
- 142	 F7FFFFE7	BL #-50
+ 142	 F7FFFFE7	BL #-50, goes to 96
  146	 F85DEB04	LDR LR [ SP ] + 4
  150	     4770	BX LR
 
