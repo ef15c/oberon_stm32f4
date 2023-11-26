@@ -1,11 +1,11 @@
 MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-4*)
 (* Adapted for a customizable framebuffer size -- see git history *)
-(* C. Schoffit modfied for french keyboard layout *)
+(* C. Schoffit: adapted to french keyboard layout *)
   IMPORT SYSTEM;
 
   CONST msAdr = -40; kbdAdr = -36;
   VAR kbdCode: BYTE; (*last keyboard code read*)
-    Recd, Up, Shift, Ctrl, Ext, AltGr: BOOLEAN;
+    Recd, Up, Shift, Ctrl, Ext, AltGr, CapsLock: BOOLEAN;
     KTabAdr, KTabAdrAlt: INTEGER;  (*keyboard code translation tables*)
     MW, MH, MX, MY: INTEGER; (*mouse limits and coords*)
     MK: SET; (*mouse keys*)
@@ -23,6 +23,8 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
         IF Ext & (kbdCode = 11H) THEN AltGr := ~Up
         ELSIF (kbdCode = 12H) OR (kbdCode = 59H) THEN (*shift*) Shift := ~Up
         ELSIF kbdCode = 14H THEN (*ctrl*) Ctrl := ~Up
+        ELSIF (kbdCode = 58H) & ~Up THEN (*capslock*)
+          CapsLock := ~CapsLock; LED(ORD(CapsLock))
         ELSIF ~Up THEN Recd := TRUE (*real key going down*)
         END ;
         Up := FALSE; Ext := FALSE
@@ -44,7 +46,12 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
       IF Shift OR Ctrl THEN INC(kbdCode, 80H) END; (*ctrl implies shift*)
     (* ch := kbdTab[kbdCode]; *)
       SYSTEM.GET(KTabAdr + kbdCode, ch);
-      IF Ctrl THEN ch := CHR(ORD(ch) MOD 20H) END
+      IF Ctrl THEN ch := CHR(ORD(ch) MOD 20H) 
+      ELSIF CapsLock THEN
+        IF (ch >= "a") & (ch <= "z") THEN ch := CHR(ORD(ch)-ORD("a")+ORD("A"))
+        ELSIF (ch >= "A") & (ch <= "Z") THEN ch := CHR(ORD(ch)-ORD("A")+ORD("a"))
+        END
+      END
     END;
     Recd := FALSE
   END Read;
@@ -64,7 +71,7 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
 
   PROCEDURE Init*;
   BEGIN Up := FALSE; Shift := FALSE; Ctrl := FALSE; Recd := FALSE;
-    AltGr := FALSE;
+    AltGr := FALSE; CapsLock := FALSE;
     KTabAdr := SYSTEM.ADR(
     (* US key map $
       00 00 00 00 00 1A 00 00  00 00 00 00 00 09 60 00
