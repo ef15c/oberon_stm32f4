@@ -350,6 +350,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK323 0 0x11 - x0 FP Add VADD on page A7-456*)
       VADD = {20..21};
       
+      (*T32MSK323 0 0x11 - x1 FP Subtract VSUB on page A7-503*)
+      VSUB = {20..21, 6};
+      
+      (*T32MSK323 0 0x10 - x0 FP Multiply VMUL on page A7-487*)
+      VMUL = {21};
+      
+      (*T32MSK323 0 1x00 - x0 FP Divide VDIV on page A7-468*)
+      VDIV = {23};
+      
       (*T32MSK324 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
       VNEG = {23, 20..21, 16, 6};
       
@@ -574,25 +583,24 @@ MODULE OM4Tool;  (*NW 18.2.2013
           ELSIF op*T32MSK32 = FPSingle THEN
             (*T32MSK32 1010: Single-precision floating point coprocessor*)
             (*1110/11xx/xxxx/xxxx/xxxx/1010/xxxx/xxxx*)
+            Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
+            Rt := b3 DIV OM4A.C4;
+            Rn := b2 MOD OM4A.C4;
+            Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
+            Sm := b4 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C5 MOD OM4A.C1;
             IF op*T32MSK321 = VMOVSR THEN
               (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
               (*VMOV<c> <Sn>, <Rt> 1110/1110/000o/ Vn / Rt /1010/N--1/---- o=0*)
-              Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
-              Rt := b3 DIV OM4A.C4;
               WriteOp(op, "VMOV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1);
               WriteReg(Rt)
             ELSIF op*T32MSK321 = VMOVRS THEN
               (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
               (*VMOV<c> <Rt>, <Sn> 1110/1110/000o/ Vn / Rt /1010/N--1/---- o=1*)
-              Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
-              Rt := b3 DIV OM4A.C4;
               WriteOp(op, "VMOV", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " S");
               Texts.WriteInt(W, Sn, 1)
             ELSIF op*T32MSK322 = VSTR THEN
               (*T32MSK322 A7.7.259 VSTR*)
               (*VSTR<c> <Sd>, [<Rn>{, #+/-<imm>}] 1110/1101/UD00/ Rn / Vd /1010/ imm/8   *)
-              Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
-              Rn := b2 MOD OM4A.C4;
               WriteOp(op, "VSTR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " ["); WriteReg(Rn);
               IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - ") END;
@@ -600,8 +608,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
             ELSIF op*T32MSK322 = VLDR THEN
               (*T32MSK322 1xx01 - FP Load Register VLDR on page A7-473*)
               (*VLDR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
-              Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
-              Rn := b2 MOD OM4A.C4;
               WriteOp(op, "VLDR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " ["); WriteReg(Rn);
               IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - " ) END;
@@ -609,19 +615,29 @@ MODULE OM4Tool;  (*NW 18.2.2013
             ELSIF op*T32MSK323 = VADD THEN
               (*T32MSK323 0 0x11 - x0 FP Add VADD on page A7-456*)
               (*VADD{<c>}{<q>}.F32 {<Sd>,} <Sn>, <Sm>*)
-              Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
-              Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
-              Sm := b4 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C5 MOD OM4A.C1;
               WriteOp(op, "VADD", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+            ELSIF op*T32MSK323 = VSUB THEN
+              (*T32MSK323 0 0x11 - x1 FP Subtract VSUB on page A7-503*)
+              (*VSUB<c>.F32 <Sd>, <Sn>, <Sm>*)
+              WriteOp(op, "VSUB", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+            ELSIF op*T32MSK323 = VMUL THEN
+              (*T32MSK323 0 0x10 - x0 FP Multiply VMUL on page A7-487*)
+              (*VMUL<c>.F32 <Sd>, <Sn>, <Sm>*)
+              WriteOp(op, "VMUL", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+            ELSIF op*T32MSK323 = VDIV THEN
+              (*T32MSK323 0 1x00 - x0 FP Divide VDIV on page A7-468*)
+              (*VDIV<c>.F32 <Sd>, <Sn>, <Sm>*)
+              WriteOp(op, "VDIV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
             ELSIF op*T32MSK324 = VNEG THEN
               (*T32MSK324 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
               (*VNEG<c>.F32 <Sd>, <Sm>*)
-              Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
-              Sm := b4 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C5 MOD OM4A.C1;
               WriteOp(op, "VNEG", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-            ELSE Texts.WriteString(W, "TODO: not VADD")
+            ELSE Texts.WriteString(W, "TODO: other FPSingle")
             END
           ELSE Texts.WriteString(W, "TODO: not FPSingle")
           END
