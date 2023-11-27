@@ -580,13 +580,17 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF (x.mode = OM4B.Const) & ( y.mode = OM4B.Const) THEN
       IF x.a <= y.a THEN x.a := LSL(2, y.a) - LSL(1, x.a) ELSE x.a := 0 END
     ELSE
-      load(x); OM4A.encMOVImm32(mcode, RH, -1); OM4A.encShiftReg(mcode, OM4A.LSl, x.r, RH, x.r);
-      load(y); OM4A.encMOVImm32(mcode, RH, -2); OM4A.encShiftReg(mcode, OM4A.LSl, y.r, RH, y.r);
+      IF (x.mode = OM4B.Const) & (x.a <= 16) THEN x.a := LSL(-1, x.a)
+      ELSE load(x); OM4A.encMOVImm32(mcode, RH, -1); OM4A.encShiftReg(mcode, OM4A.LSl, x.r, RH, x.r)
+      END;
+      IF (y.mode = OM4B.Const) & (y.a < 16) THEN OM4A.encMOVImm32(mcode, RH, LSL(-2, y.a)); y.mode := Reg; y.r := RH; incR
+      ELSE load(y); OM4A.encMOVImm32(mcode, RH, -2); OM4A.encShiftReg(mcode, OM4A.LSl, y.r, RH, y.r)
+      END;      
       IF x.mode = OM4B.Const THEN
         IF x.a # 0 THEN OM4A.encDPImm32(mcode, OM4A.EOR, y.r, y.r, RH, -1);
           OM4A.encDPImm32(mcode, OM4A.AND, RH-1, y.r, RH, x.a)
         END;
-        x.mode := Reg; x.r := RH-1 (*TODO Vérifier s'il ne maque pas des DEC(RH)*)
+        x.mode := Reg; x.r := RH-1 (*TODO Vérifier s'il ne manque pas des DEC(RH)*)
       ELSE DEC(RH); OM4A.encDPReg(mcode, OM4A.BIC, RH-1, x.r, y.r, 0)
       END
     END
