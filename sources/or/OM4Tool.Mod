@@ -260,10 +260,17 @@ MODULE OM4Tool;  (*NW 18.2.2013
       DataProcShiftedReg = {27, 25};
 
       T32MSK21 = {21..24};
-      (*T32MSK21 1000 - Rd not 1111 - Add ADD (register) on page A7-192 All*)
+      (*T32MSK21 1000 - Rd not 1111 - Add ADD (register) on page A7-192*)
       AddShiftedReg = {24};
       (*T32MSK21 0000 - Rd not 1111 x Bitwise AND AND (register) on page A7-201*)
       AndRegT2 = {};
+      (*T32MSK21 0010 Rn not 1111 - - Bitwise OR ORR (register) on page A7-310*)
+      OrrRegT2 = {22};
+
+      T32MSK211 = {4..5};
+      (*T32MSK211 11 00000 Rotate Right with Extend RRX on page A7-340
+        or not 00000 Rotate Right ROR (immediate) on page A7-338*)
+      RorOrRrxImm = {4..5};
 
       (*T32MSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
       DataProcModImm = {28};
@@ -376,7 +383,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       T32MSK81 = {20..22, 4..7};
       
-      (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426 All*)
+      (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426*)
       UnsDiv = {20..21, 4..7};
 
       (*T32MSK9 11 010xxxx x Data processing (register) on page A5-152*)
@@ -423,7 +430,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       OrrRegT1 = {8..9};
      (*T16MSK22 0001 Exclusive OR EOR (register) on page A7-233*)
       EorRegT1 = {6};
-            
+     (*T16MSK22 0111 Rotate Right ROR (register) on page A7-339*)
+      RorRegT1 = {6..8};
+
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
       (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
@@ -716,24 +725,71 @@ MODULE OM4Tool;  (*NW 18.2.2013
         ELSIF op*T32MSK2 = DataProcShiftedReg THEN
           (*T32MSK2 01 01xxxxx x Data processing (shifted register) on page A5-150*)
           Rd := b3 MOD OM4A.C4; Rn := b2 MOD OM4A.C4;
-          IF (op*T32MSK21 = AddShiftedReg) & (Rd # 15) THEN
-            (*T32MSK21 1000 - Rd not 1111 - Add ADD (register) on page A7-192 All*)
-            (*ADD{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
+          IF op*T32MSK21 = AddShiftedReg THEN
             Rm := b4 MOD OM4A.C4;
-            WriteOp(op, "ADD", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
-            WriteShift(op)
-          ELSIF (op*T32MSK21 = AndRegT2) &  (Rd # 15) THEN
-            (*T32MSK21 0000 - Rd not 1111 x Bitwise AND AND (register) on page A7-201*)
-            (*AND{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
-            Rm := b4 MOD OM4A.C4;
-            WriteOp(op, "AND", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
-            WriteShift(op)
+            IF Rd = 15 THEN
+              IF 20 IN op THEN
+                (*T32MSK21 1000 - Rd = 1111 1 Compare Negative CMN (register) on page A7-222*)
+                (*CMN<c>.W <Rn>,<Rm>{,<shift>}*)
+                WriteOp(op, "CMN", FALSE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
+                WriteShift(op)
+              ELSE Texts.WriteString(W, "CMN (register) NOT PREDICTABLE")
+              END
+            ELSE
+              (*T32MSK21 1000 - Rd not 1111 - Add ADD (register) on page A7-192*)
+              (*ADD{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
+              WriteOp(op, "ADD", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
+              WriteShift(op)
+            END
+          ELSIF op*T32MSK21 = AndRegT2 THEN
+            IF Rd = 15 THEN
+              IF 20 IN op THEN
+                (*T32MSK21 0000 - Rd = 1111 1 Test TST (register) on page A7-420*)
+                (*TST<c>.W <Rn>,<Rm>{,<shift>}*)
+                WriteOp(op, "TST", FALSE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
+                WriteShift(op)
+              ELSE Texts.WriteString(W, "TST (register) NOT PREDICTABLE")
+              END
+            ELSE
+              (*T32MSK21 0000 - Rd not 1111 x Bitwise AND AND (register) on page A7-201*)
+              (*AND{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
+              Rm := b4 MOD OM4A.C4;
+              WriteOp(op, "AND", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
+              WriteShift(op)
+            END
+          ELSIF op*T32MSK21 = OrrRegT2 THEN
+            IF Rn = 15 THEN
+              (*T32MSK21 0010 Rn = 1111 - - - Move register and immediate shifts*)
+              t := b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C2 + b4 DIV OM4A.C6;
+              IF op*T32MSK211 = RorOrRrxImm THEN
+                (*T32MSK211 11 00000 Rotate Right with Extend RRX on page A7-340
+                  or not 00000 Rotate Right ROR (immediate) on page A7-338*)
+                Rm := b4 MOD OM4A.C4;
+                IF t=0 THEN
+                  (*11 00000 Rotate Right with Extend RRX on page A7-340*)
+                  (*RRX{S}<c> <Rd>,<Rm>*)
+                  WriteOp(op, "RRX", FALSE, TRUE); WriteReg(Rd); WriteReg(Rm);
+                ELSE
+                  (*11 not 00000 Rotate Right ROR (immediate) on page A7-338*)
+                  (*ROR{S}<c> <Rd>,<Rm>,#<imm5>*)
+                  WriteOp(op, "ROR", FALSE, TRUE); WriteReg(Rd); WriteReg(Rm);
+                  Texts.WriteString(W, " #"); Texts.WriteInt(W, t, 1)
+                END
+              ELSE Texts.WriteString(W, "TODO other Move register and immediate shifts on page A5-151")
+              END
+            ELSE
+              (*T32MSK21 0010 Rn not 1111 - - Bitwise OR ORR (register) on page A7-310*)
+              (*ORR{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
+              Rm := b4 MOD OM4A.C4;
+              WriteOp(op, "ORR", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
+              WriteShift(op)
+            END
           ELSE Texts.WriteString(W, "TODO other DataProcShiftedReg on page A5-150")
           END
         ELSIF op*T32MSK8 = LongMulAccDiv THEN
           (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
           IF op*T32MSK81 = UnsDiv THEN
-            (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426 All*)
+            (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426*)
             (*UDIV<c> <Rd>,<Rn>,<Rm>*)
             Rd := b3 MOD OM4A.C4; Rn := b2 MOD OM4A.C4; Rm := b4 MOD OM4A.C4;
             WriteOp(op, "UDIV", FALSE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
@@ -807,6 +863,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
               EOR<c> <Rdn>,<Rm> Inside IT block.*)
             Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
             WriteOp(op, "EOR", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm)
+          ELSIF op*T16MSK22 = RorRegT1 THEN
+            (*T16MSK22 0111 Rotate Right ROR (register) on page A7-339*)
+            (*RORS <Rdn>,<Rm> Outside IT block.
+              ROR<c> <Rdn>,<Rm> Inside IT block.*)
+            Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+            WriteOp(op, "ROR", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm)
           ELSE Texts.WriteString(W, "TODO: other DataProc on page A5-131")
           END
         ELSIF op*T16MSK4 = Misc16bInst THEN

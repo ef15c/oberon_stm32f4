@@ -590,7 +590,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF x.a # 0 THEN OM4A.encDPImm32(mcode, OM4A.EOR, y.r, y.r, RH, -1);
           OM4A.encDPImm32(mcode, OM4A.AND, RH-1, y.r, RH, x.a)
         END;
-        x.mode := Reg; x.r := RH-1 (*TODO Vérifier s'il ne manque pas des DEC(RH)*)
+        x.mode := Reg; x.r := RH-1
       ELSE DEC(RH); OM4A.encDPReg(mcode, OM4A.BIC, RH-1, x.r, y.r, 0)
       END
     END

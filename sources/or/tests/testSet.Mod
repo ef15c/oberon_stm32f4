@@ -3,6 +3,7 @@ MODULE testSet;
 PROCEDURE p;
     VAR a, b, c: SET;
       m, n: LONGINT;
+      t: BOOLEAN;
 BEGIN
   c := {2..5};
   c := {m..5};
@@ -10,6 +11,8 @@ BEGIN
   c := {m..20};
   c := {21..n};
   c := {m..n};
+  t := 10 IN a;
+  t := m IN a;
   c := a*b;
   c := a+b;
   c := a-b;
@@ -21,8 +24,9 @@ END testSet.
 (*
 ORTool.DecObj testSet.rsc ~
 
+
 decode testSet.rsc
-testSet 74E7CAC8   1   268
+testSet 74E7CAC8   1   332
 imports:
 type descriptors
 
@@ -30,7 +34,7 @@ data     0
 strings
 
 code
-   0	 4EE90018	SUB SP SP     24
+   0	 4EE9001C	SUB SP SP     28
    1	 AFE00000	STR  LNK SP       0
    2	 4000003C	MOV  R0  R0     60
    3	 A0E0000C	STR   R0 SP      12
@@ -71,45 +75,61 @@ code
   38	 00050001	ANN  R0  R0  R1
   39	 A0E0000C	STR   R0 SP      12
   40	 80E00004	LDR  R0 SP       4
-  41	 81E00008	LDR  R1 SP       8
-  42	 00040001	AND  R0  R0  R1
-  43	 A0E0000C	STR   R0 SP      12
-  44	 80E00004	LDR  R0 SP       4
-  45	 81E00008	LDR  R1 SP       8
-  46	 00060001	IOR  R0  R0  R1
-  47	 A0E0000C	STR   R0 SP      12
-  48	 80E00004	LDR  R0 SP       4
-  49	 81E00008	LDR  R1 SP       8
-  50	 00050001	ANN  R0  R0  R1
-  51	 A0E0000C	STR   R0 SP      12
-  52	 80E00004	LDR  R0 SP       4
-  53	 81E00008	LDR  R1 SP       8
-  54	 00070001	XOR  R0  R0  R1
-  55	 A0E0000C	STR   R0 SP      12
-  56	 8FE00000	LDR LNK SP       0
-  57	 4EE80018	ADD SP SP     24
-  58	 C700000F	B LNK
-  59	 4EE90004	SUB SP SP      4
-  60	 AFE00000	STR  LNK SP       0
-  61	 8FE00000	LDR LNK SP       0
-  62	 4EE80004	ADD SP SP      4
-  63	 C700000F	B LNK
+  41	 4003000B	ROR  R0  R0     11
+  42	 E8000002	BPL       2
+  43	 40000001	MOV  R0  R0      1
+  44	 E7000001	B       1
+  45	 40000000	MOV  R0  R0      0
+  46	 B0E00018	STR   R0 SP      24
+  47	 80E00004	LDR  R0 SP       4
+  48	 81E00010	LDR  R1 SP      16
+  49	 41180001	ADD  R1  R1      1
+  50	 00030001	ROR  R0  R0  R1
+  51	 E8000002	BPL       2
+  52	 40000001	MOV  R0  R0      1
+  53	 E7000001	B       1
+  54	 40000000	MOV  R0  R0      0
+  55	 B0E00018	STR   R0 SP      24
+  56	 80E00004	LDR  R0 SP       4
+  57	 81E00008	LDR  R1 SP       8
+  58	 00040001	AND  R0  R0  R1
+  59	 A0E0000C	STR   R0 SP      12
+  60	 80E00004	LDR  R0 SP       4
+  61	 81E00008	LDR  R1 SP       8
+  62	 00060001	IOR  R0  R0  R1
+  63	 A0E0000C	STR   R0 SP      12
+  64	 80E00004	LDR  R0 SP       4
+  65	 81E00008	LDR  R1 SP       8
+  66	 00050001	ANN  R0  R0  R1
+  67	 A0E0000C	STR   R0 SP      12
+  68	 80E00004	LDR  R0 SP       4
+  69	 81E00008	LDR  R1 SP       8
+  70	 00070001	XOR  R0  R0  R1
+  71	 A0E0000C	STR   R0 SP      12
+  72	 8FE00000	LDR LNK SP       0
+  73	 4EE8001C	ADD SP SP     28
+  74	 C700000F	B LNK
+  75	 4EE90004	SUB SP SP      4
+  76	 AFE00000	STR  LNK SP       0
+  77	 8FE00000	LDR LNK SP       0
+  78	 4EE80004	ADD SP SP      4
+  79	 C700000F	B LNK
 commands:
 entries
-   236
+   300
 pointer refs
 
 fixP =        0
 fixD =        0
 fixT =        0
-entry =      236
+entry =      300
 
 
 
 OM4Tool.DecObj testSet.m4c ~
 
 decode testSet.m4c
-testSet 74E7CAC8   1   186
+testSet 74E7CAC8   1   220
 imports:
 type descriptors
 
@@ -119,14 +139,14 @@ strings
 code
 commands:
 entries
-   166
+   200
 pointer refs
 
 fixP =        0
 fixD =        0
 fixT =        0
-entry =      166
-   0	 F1BD0D14	SUBS SP SP #20
+entry =      200
+   0	 F1BD0D18	SUBS SP SP #24
    4	     B500	PUSH LR
    6	     203C	MOVS R0 #60
    8	     9003	STR R0 [SP + 12]
@@ -168,28 +188,40 @@ entry =      166
  120	     4388	BICS R0 R1
  122	     9003	STR R0 [SP + 12]
  124	     9801	LDR R0 [SP + 4]
- 126	     9902	LDR R1 [SP + 8]
- 128	     4008	ANDS R0 R1
- 130	     9003	STR R0 [SP + 12]
- 132	     9801	LDR R0 [SP + 4]
- 134	     9902	LDR R1 [SP + 8]
- 136	     4308	ORRS R0 R1
- 138	     9003	STR R0 [SP + 12]
+ 126	 EA5F20F0	RORS R0 R0 #11
+ 130	     BF4C	ITE MI
+ 132	     2001	MOVMI R0 #1
+ 134	     2000	MOVPL R0 #0
+ 136	 F88D0018	STRB R0 [ SP + 24 ]
  140	     9801	LDR R0 [SP + 4]
- 142	     9902	LDR R1 [SP + 8]
- 144	     4388	BICS R0 R1
- 146	     9003	STR R0 [SP + 12]
- 148	     9801	LDR R0 [SP + 4]
- 150	     9902	LDR R1 [SP + 8]
- 152	     4048	EORS R0 R1
- 154	     9003	STR R0 [SP + 12]
- 156	 F85DEB04	LDR LR [ SP ] + 4
- 160	 F11D0D14	ADDS SP SP #20
- 164	     4770	BX LR
- 166	     B500	PUSH LR
- 168	 F85DEB04	LDR LR [ SP ] + 4
- 172	     4770	BX LR
-
+ 142	     9904	LDR R1 [SP + 16]
+ 144	     1849	ADDS R1 R1 R1
+ 146	     41C8	RORS R0 R1
+ 148	     BF4C	ITE MI
+ 150	     2001	MOVMI R0 #1
+ 152	     2000	MOVPL R0 #0
+ 154	 F88D0018	STRB R0 [ SP + 24 ]
+ 158	     9801	LDR R0 [SP + 4]
+ 160	     9902	LDR R1 [SP + 8]
+ 162	     4008	ANDS R0 R1
+ 164	     9003	STR R0 [SP + 12]
+ 166	     9801	LDR R0 [SP + 4]
+ 168	     9902	LDR R1 [SP + 8]
+ 170	     4308	ORRS R0 R1
+ 172	     9003	STR R0 [SP + 12]
+ 174	     9801	LDR R0 [SP + 4]
+ 176	     9902	LDR R1 [SP + 8]
+ 178	     4388	BICS R0 R1
+ 180	     9003	STR R0 [SP + 12]
+ 182	     9801	LDR R0 [SP + 4]
+ 184	     9902	LDR R1 [SP + 8]
+ 186	     4048	EORS R0 R1
+ 188	     9003	STR R0 [SP + 12]
+ 190	 F85DEB04	LDR LR [ SP ] + 4
+ 194	 F11D0D18	ADDS SP SP #24
+ 198	     4770	BX LR
+ 200	     B500	PUSH LR
+ 202	 F85DEB04	LDR LR [ SP ] + 4
 
 
 *)
