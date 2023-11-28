@@ -623,10 +623,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF op = OM4S.rdiv THEN OM4A.encDPImm32(mcode, OM4A.EOR, x.r, x.r, RH, y.a)
       END ;
     ELSE load(x); load(y);
-      IF op = OM4S.plus THEN OM4A.encDPImm32(mcode, OM4A.ORR, RH-2, x.r, RH, y.r)
-      ELSIF op = OM4S.minus THEN OM4A.encDPImm32(mcode, OM4A.BIC, RH-2, x.r, RH, y.r)
-      ELSIF op = OM4S.times THEN OM4A.encDPImm32(mcode, OM4A.AND, RH-2, x.r, RH, y.r)
-      ELSIF op = OM4S.rdiv THEN OM4A.encDPImm32(mcode, OM4A.EOR, RH-2, x.r, RH, y.r)
+      IF op = OM4S.plus THEN OM4A.encDPReg(mcode, OM4A.ORR, RH-2, x.r, y.r, 0)
+      ELSIF op = OM4S.minus THEN OM4A.encDPReg(mcode, OM4A.BIC, RH-2, x.r, y.r, 0)
+      ELSIF op = OM4S.times THEN OM4A.encDPReg(mcode, OM4A.AND, RH-2, x.r, y.r, 0)
+      ELSIF op = OM4S.rdiv THEN OM4A.encDPReg(mcode, OM4A.EOR, RH-2, x.r, y.r, 0)
       END ;
       DEC(RH); x.r := RH-1
     END 
