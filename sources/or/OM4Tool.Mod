@@ -166,7 +166,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
            11110: 00000000 00000000 0000001b cdefgh00
            11111: 00000000 00000000 00000001 bcdefgh0*)
       b4 := b4 MOD OM4A.C7 + OM4A.C7; 
-      i := ORD(op) DIV OM4A.C26 MOD OM4A.C1 + ORD(op) DIV OM4A.C12 MOD OM4A.C3 +
+      i := ORD(op) DIV OM4A.C26 MOD OM4A.C1*OM4A.C4 + ORD(op) DIV OM4A.C12 MOD OM4A.C3*OM4A.C1 +
            ORD(op) DIV OM4A.C7 MOD OM4A.C1 - 8;
       ASSERT((i >= 0) & (i < 24));
       res := b4*OM4A.C24;
@@ -291,6 +291,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       EorOrTeq = {23};
       (*T32MSK41 0001x Bitwise Clear BIC (immediate) on page A7-209*)
       BicImm = {21};
+      (*T32MSK41 0011x Bitwise OR NOT ORN (immediate) on page A7-307
+        or Bitwise NOT MVN (immediate) on page A7-303*)
+      OrnOrMvn = {21..22};
 
       (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
       LongMulAccDiv = {27..28, 23..25};
@@ -526,6 +529,17 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*T32MSK41 0001x Bitwise Clear BIC (immediate) on page A7-209*)
             (*BIC{S}<c> <Rd>,<Rn>,#<const>*)
             WriteOp(op, "BIC", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn);
+            Texts.WriteString(W, " #"); Texts.WriteInt(W, ThumbExpandImm(op), 1)
+          ELSIF op*T32MSK41 = OrnOrMvn THEN
+            (*T32MSK41 Bitwise OR NOT ORN (immediate) on page A7-307
+              or Bitwise NOT MVN (immediate) on page A7-303*)
+            IF Rn = 15 THEN (*0011x Rn = 1111 Bitwise NOT MVN (immediate) on page A7-303*)
+              (*MVN{S}<c> <Rd>,#<const>*)
+              WriteOp(op, "MVN", FALSE, TRUE); WriteReg(Rd)
+            ELSE (*0011x Rn not 1111 Bitwise OR NOT ORN (immediate) on page A7-307*)
+              (*ORN{S}<c> <Rd>,<Rn>,#<const>*)
+              WriteOp(op, "ORN", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn)
+            END;
             Texts.WriteString(W, " #"); Texts.WriteInt(W, ThumbExpandImm(op), 1)
           ELSE Texts.WriteString(W, "TODO: other DataProcModImm on page A5-138")
           END

@@ -37,32 +37,36 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     BCT3*    = 0F0008000H;
     (*|1111/0Sco/nd i/mm6 /10J0/J   / imm/11  |
                              1  2             *)
-    BT4*    = 0F0009000H;
+    BT4*     = 0F0009000H;
     (*|11110S   imm10  10J1J   imm11   |
       |                  1 2           |
       B.W T4*)
-    BL*     = 0F000D000H;
+    BL*      = 0F000D000H;
     (*|1111/0S  /im10/    /11J1/J   /im11/    |
                              1  2
       BL<c><q> <label>*)
-    BLX*    = 4780H;
+    BLX*     = 4780H;
     (*|0100/0111/1 Rm/ 000|
       BLX<c> <Rm>*)
-    BX*     = 4700H;
+    BX*      = 4700H;
     (*|0100/0111/0 Rm/ 000|
       BX<c><q> <Rm>*)
 
 
-    MOVIT1*    = 2000H;
+    MOVIT1*  = 2000H;
     (*|0010/0 Rd/  im/m8  |
       MOVS <Rd>,#<imm8>*)
-    MOVIT2*    = 0F05F0000H;
+    MOVIT2*  = 0F05F0000H;
     (*|1111/0i00/010S/1111/0im3/ Rd / imm/8   |
       MOV{S}<c>.W <Rd>,#<const>*)
-    MOVIT3*    = 0F2400000H;
+    MOVIT3*  = 0F2400000H;
     (*|1111/0i10/0100/imm4/0im3/ Rd / imm/8   |
       MOVW<c> <Rd>,#<imm16>*)
 
+    MVN*     = 0F07F0000H;
+    (*|1111/0i00/011S/1111/0im3/ Rd / imm/8   |
+      MVN{S}<c> <Rd>,#<const>*)
+      
     MOVT*    = 0F2C00000H;
     (*|1111/0i10/1100/imm4/0im3/ Rd / imm/8   |
       MOVT<c> <Rd>,#<imm16>*)
@@ -379,6 +383,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     ELSIF formatThumbExpandImm(val, tmiCode) THEN (*else use encoding T2 if possible*)
       Put0(c, MOVIT2 + reg*C8 + tmiCode);
       c.lastInstrSetFlags := ODD(MOVIT2 DIV C20)
+    ELSIF formatThumbExpandImm(-(val+1), tmiCode) THEN (*else use MVN if possible*)
+      Put0(c, MVN + reg*C8 + tmiCode);
+      c.lastInstrSetFlags := ODD(MVN DIV C20)
     ELSE (*else one or two instructions are needed depending on the size of val,
            one for low half word and if necessary a second for high half word*)
       halfw := val MOD C16;
