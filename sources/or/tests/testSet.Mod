@@ -195,7 +195,7 @@ entry =      200
  136	 F88D0018	STRB R0 [ SP + 24 ]
  140	     9801	LDR R0 [SP + 4]
  142	     9904	LDR R1 [SP + 16]
- 144	     1849	ADDS R1 R1 R1
+ 144	     1849	ADDS R1 R1 #1
  146	     41C8	RORS R0 R1
  148	     BF4C	ITE MI
  150	     2001	MOVMI R0 #1
