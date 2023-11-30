@@ -1,0 +1,261 @@
+MODULE testRealRelat;
+    
+PROCEDURE p;
+    VAR a, b: REAL;
+      t: BOOLEAN;
+BEGIN
+  t := a>1.;
+  t := a>=2.;
+  t := a=3.;
+  t := a<-1.;
+  t := a<=-2.;
+  t := a#-3.;
+  t := 1.>a;
+  t := 2.>=a;
+  t := 3.=a;
+  t := -1.<a;
+  t := -2.<=a;
+  t := -3.#a;
+  t := a>b;
+  t := a>=b;
+  t := a=b;
+  t := a<b;
+  t := a<=b;
+  t := a#b
+END p;
+
+END testRealRelat.
+
+(*
+ORTool.DecObj testRealRelat.rsc ~
+decode testRealRelat.rsc
+testRealRelat 4242308C   1   628
+imports:
+type descriptors
+
+data     0
+strings
+
+code
+   0	 4EE90010	SUB SP SP     16
+   1	 AFE00000	STR  LNK SP       0
+   2	 80E00004	LDR  R0 SP       4
+   3	 61003F80	MOV'  R1  R0  16256
+   4	 000D0001	FSB  R0  R0  R1
+   5	 E6000002	BLE        2
+   6	 40000001	MOV  R0  R0      1
+   7	 E7000001	B       1
+   8	 40000000	MOV  R0  R0      0
+   9	 B0E0000C	STR   R0 SP      12
+  10	 80E00004	LDR  R0 SP       4
+  11	 61004000	MOV'  R1  R0  16384
+  12	 000D0001	FSB  R0  R0  R1
+  13	 E5000002	BLT        2
+  14	 40000001	MOV  R0  R0      1
+  15	 E7000001	B       1
+  16	 40000000	MOV  R0  R0      0
+  17	 B0E0000C	STR   R0 SP      12
+  18	 80E00004	LDR  R0 SP       4
+  19	 61004040	MOV'  R1  R0  16448
+  20	 000D0001	FSB  R0  R0  R1
+  21	 E9000002	BNE        2
+  22	 40000001	MOV  R0  R0      1
+  23	 E7000001	B       1
+  24	 40000000	MOV  R0  R0      0
+  25	 B0E0000C	STR   R0 SP      12
+  26	 80E00004	LDR  R0 SP       4
+  27	 6100BF80	MOV'  R1  R0 -16512
+  28	 000D0001	FSB  R0  R0  R1
+  29	 ED000002	BGE        2
+  30	 40000001	MOV  R0  R0      1
+  31	 E7000001	B       1
+  32	 40000000	MOV  R0  R0      0
+  33	 B0E0000C	STR   R0 SP      12
+  34	 80E00004	LDR  R0 SP       4
+  35	 6100C000	MOV'  R1  R0 -16384
+  36	 000D0001	FSB  R0  R0  R1
+  37	 EE000002	BGT        2
+  38	 40000001	MOV  R0  R0      1
+  39	 E7000001	B       1
+  40	 40000000	MOV  R0  R0      0
+  41	 B0E0000C	STR   R0 SP      12
+  42	 80E00004	LDR  R0 SP       4
+  43	 6100C040	MOV'  R1  R0 -16320
+  44	 000D0001	FSB  R0  R0  R1
+  45	 E1000002	BEQ        2
+  46	 40000001	MOV  R0  R0      1
+  47	 E7000001	B       1
+  48	 40000000	MOV  R0  R0      0
+  49	 B0E0000C	STR   R0 SP      12
+  50	 60003F80	MOV'  R0  R0  16256
+  51	 81E00004	LDR  R1 SP       4
+  52	 000D0001	FSB  R0  R0  R1
+  53	 E6000002	BLE        2
+  54	 40000001	MOV  R0  R0      1
+  55	 E7000001	B       1
+  56	 40000000	MOV  R0  R0      0
+  57	 B0E0000C	STR   R0 SP      12
+  58	 60004000	MOV'  R0  R0  16384
+  59	 81E00004	LDR  R1 SP       4
+  60	 000D0001	FSB  R0  R0  R1
+  61	 E5000002	BLT        2
+  62	 40000001	MOV  R0  R0      1
+  63	 E7000001	B       1
+  64	 40000000	MOV  R0  R0      0
+  65	 B0E0000C	STR   R0 SP      12
+  66	 60004040	MOV'  R0  R0  16448
+  67	 81E00004	LDR  R1 SP       4
+  68	 000D0001	FSB  R0  R0  R1
+  69	 E9000002	BNE        2
+  70	 40000001	MOV  R0  R0      1
+  71	 E7000001	B       1
+  72	 40000000	MOV  R0  R0      0
+  73	 B0E0000C	STR   R0 SP      12
+  74	 6000BF80	MOV'  R0  R0 -16512
+  75	 81E00004	LDR  R1 SP       4
+  76	 000D0001	FSB  R0  R0  R1
+  77	 ED000002	BGE        2
+  78	 40000001	MOV  R0  R0      1
+  79	 E7000001	B       1
+  80	 40000000	MOV  R0  R0      0
+  81	 B0E0000C	STR   R0 SP      12
+  82	 6000C000	MOV'  R0  R0 -16384
+  83	 81E00004	LDR  R1 SP       4
+  84	 000D0001	FSB  R0  R0  R1
+  85	 EE000002	BGT        2
+  86	 40000001	MOV  R0  R0      1
+  87	 E7000001	B       1
+  88	 40000000	MOV  R0  R0      0
+  89	 B0E0000C	STR   R0 SP      12
+  90	 6000C040	MOV'  R0  R0 -16320
+  91	 81E00004	LDR  R1 SP       4
+  92	 000D0001	FSB  R0  R0  R1
+  93	 E1000002	BEQ        2
+  94	 40000001	MOV  R0  R0      1
+  95	 E7000001	B       1
+  96	 40000000	MOV  R0  R0      0
+  97	 B0E0000C	STR   R0 SP      12
+  98	 80E00004	LDR  R0 SP       4
+  99	 81E00008	LDR  R1 SP       8
+ 100	 000D0001	FSB  R0  R0  R1
+ 101	 E6000002	BLE        2
+ 102	 40000001	MOV  R0  R0      1
+ 103	 E7000001	B       1
+ 104	 40000000	MOV  R0  R0      0
+ 105	 B0E0000C	STR   R0 SP      12
+ 106	 80E00004	LDR  R0 SP       4
+ 107	 81E00008	LDR  R1 SP       8
+ 108	 000D0001	FSB  R0  R0  R1
+ 109	 E5000002	BLT        2
+ 110	 40000001	MOV  R0  R0      1
+ 111	 E7000001	B       1
+ 112	 40000000	MOV  R0  R0      0
+ 113	 B0E0000C	STR   R0 SP      12
+ 114	 80E00004	LDR  R0 SP       4
+ 115	 81E00008	LDR  R1 SP       8
+ 116	 000D0001	FSB  R0  R0  R1
+ 117	 E9000002	BNE        2
+ 118	 40000001	MOV  R0  R0      1
+ 119	 E7000001	B       1
+ 120	 40000000	MOV  R0  R0      0
+ 121	 B0E0000C	STR   R0 SP      12
+ 122	 80E00004	LDR  R0 SP       4
+ 123	 81E00008	LDR  R1 SP       8
+ 124	 000D0001	FSB  R0  R0  R1
+ 125	 ED000002	BGE        2
+ 126	 40000001	MOV  R0  R0      1
+ 127	 E7000001	B       1
+ 128	 40000000	MOV  R0  R0      0
+ 129	 B0E0000C	STR   R0 SP      12
+ 130	 80E00004	LDR  R0 SP       4
+ 131	 81E00008	LDR  R1 SP       8
+ 132	 000D0001	FSB  R0  R0  R1
+ 133	 EE000002	BGT        2
+ 134	 40000001	MOV  R0  R0      1
+ 135	 E7000001	B       1
+ 136	 40000000	MOV  R0  R0      0
+ 137	 B0E0000C	STR   R0 SP      12
+ 138	 80E00004	LDR  R0 SP       4
+ 139	 81E00008	LDR  R1 SP       8
+ 140	 000D0001	FSB  R0  R0  R1
+ 141	 E1000002	BEQ        2
+ 142	 40000001	MOV  R0  R0      1
+ 143	 E7000001	B       1
+ 144	 40000000	MOV  R0  R0      0
+ 145	 B0E0000C	STR   R0 SP      12
+ 146	 8FE00000	LDR LNK SP       0
+ 147	 4EE80010	ADD SP SP     16
+ 148	 C700000F	B LNK
+ 149	 4EE90004	SUB SP SP      4
+ 150	 AFE00000	STR  LNK SP       0
+ 151	 8FE00000	LDR LNK SP       0
+ 152	 4EE80004	ADD SP SP      4
+ 153	 C700000F	B LNK
+commands:
+entries
+   596
+pointer refs
+
+fixP =        0
+fixD =        0
+fixT =        0
+entry =      596
+
+
+
+OM4Tool.DecObj testRealRelat.m4c ~
+
+decode testRealRelat.m4c
+testRealRelat 4242308C   1   572
+imports:
+type descriptors
+
+data     0
+strings
+
+code
+commands:
+entries
+   552
+pointer refs
+
+fixP =        0
+fixD =        0
+fixT =        0
+entry =      552
+   0	 F1BD0D0C	SUBS SP SP #12
+   4	     B500	PUSH LR
+   6	 ED9D0A01	VLDR S0 [ SP + 4 ]
+  10	     2000	MOVS R0 #0
+  12	 F6C37080	MOVT R0 # 16256
+  16	 EE000A90	VMOV S1 R0
+  20	 EEB40A60	TODO: other FPSingle
+  24	 EEF1FA10	TODO: other FPSingle
+  28	     BFCC	ITE GT
+  30	     2001	MOVGT R0 #1
+  32	     2000	MOVLE R0 #0
+  34	 F88D000C	STRB R0 [ SP + 12 ]
+  38	 ED9D0A01	VLDR S0 [ SP + 4 ]
+  42	 F05F4080	MOVS R0 #1073741824
+  46	 EE000A90	VMOV S1 R0
+  50	 EEB40A60	TODO: other FPSingle
+  54	 EEF1FA10	TODO: other FPSingle
+  58	     BFAC	ITE GE
+  60	     2001	MOVGE R0 #1
+  62	     2000	MOVLT R0 #0
+  64	 F88D000C	STRB R0 [ SP + 12 ]
+  68	 ED9D0A01	VLDR S0 [ SP + 4 ]
+  72	     2000	MOVS R0 #0
+  74	 F2C40040	MOVT R0 # 16448
+  78	 EE000A90	VMOV S1 R0
+  82	 EEB40A60	TODO: other FPSingle
+  86	 EEF1FA10	TODO: other FPSingle
+  90	     BF0C	ITE EQ
+  92	     2001	MOVEQ R0 #1
+  94	     2000	MOVNE R0 #0
+  96	 F88D000C	STRB R0 [ SP + 12 ]
+ 100	 ED9D0A01	VLDR S0 [ SP + 4 ]
+
+..... a suivre .....
+*)
+

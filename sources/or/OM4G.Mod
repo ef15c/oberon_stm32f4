@@ -580,10 +580,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF (x.mode = OM4B.Const) & ( y.mode = OM4B.Const) THEN
       IF x.a <= y.a THEN x.a := LSL(2, y.a) - LSL(1, x.a) ELSE x.a := 0 END
     ELSE
-      IF (x.mode = OM4B.Const) & (x.a <= 16) THEN x.a := LSL(-1, x.a)
+      IF (x.mode = OM4B.Const) & (x.a <= 8) THEN x.a := LSL(-1, x.a)
       ELSE load(x); OM4A.encMOVImm32(mcode, RH, -1); OM4A.encShiftReg(mcode, OM4A.LSl, x.r, RH, x.r)
       END;
-      IF (y.mode = OM4B.Const) & (y.a < 16) THEN OM4A.encMOVImm32(mcode, RH, LSL(-2, y.a)); y.mode := Reg; y.r := RH; incR
+      IF (y.mode = OM4B.Const) & (y.a < 8) THEN OM4A.encMOVImm32(mcode, RH, LSL(-2, y.a)); y.mode := Reg; y.r := RH; incR
       ELSE load(y); OM4A.encMOVImm32(mcode, RH, -2); OM4A.encShiftReg(mcode, OM4A.LSl, y.r, RH, y.r)
       END;      
       IF x.mode = OM4B.Const THEN
@@ -651,8 +651,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE RealRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN loadFP(x);
-    IF (y.mode = OM4B.Const) & (y.a = 0) THEN OM4A.encFPOpReg(mcode, OM4A.VCMP0, x.r, 0, 0); DEC(RH)
-    ELSE loadFP(y); OM4A.encFPOpReg(mcode, OM4A.VCMP, x.r, 0, y.r); DEC(RH, 2)
+    IF (y.mode = OM4B.Const) & (y.a = 0) THEN OM4A.encFPOpReg(mcode, OM4A.VCMP0, x.r, 0, 0); DEC(SH)
+    ELSE loadFP(y); OM4A.encFPOpReg(mcode, OM4A.VCMP, x.r, 0, y.r); DEC(SH, 2)
     END;
     OM4A.Put0(mcode, OM4A.VMRS + APSRnzcv*OM4A.C12);
     mcode.lastInstrSetFlags := TRUE;
