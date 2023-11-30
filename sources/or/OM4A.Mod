@@ -203,7 +203,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
 
     
     (*Arithmetic and logical operations*)
-    SUB*=0; ADD*=1; RSB*=2; EOR*=3; AND*=4; BIC*=5; ORR*=6; ADc*=7; SBc*=8; TST*=9;
+    NBOPS = 11;
+    SUB*=0; ADD*=1; RSB*=2; EOR*=3; AND*=4; BIC*=5; ORR*=6; ADc*=7; SBc*=8; TST*=9; ORN*=10;
 
     (*Shift operations*)
     LSl*=0; ASR*=1; LSR*=2; ROR*=3;
@@ -222,15 +223,17 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END;
 
   VAR
-    imm3map: ARRAY 10 OF LONGINT;
-    imm8map: ARRAY 10 OF LONGINT;
-    immthmap: ARRAY 10 OF LONGINT;
-    imm12map: ARRAY 10 OF LONGINT;
+    imm3map: ARRAY NBOPS OF LONGINT;
+    imm8map: ARRAY NBOPS OF LONGINT;
+    immthmap: ARRAY NBOPS OF LONGINT;
+    imm12map: ARRAY NBOPS OF LONGINT;
     
-    reg3map: ARRAY 10 OF LONGINT;
-    reg3dnmap: ARRAY 10 OF LONGINT;
-    reg4map: ARRAY 10 OF LONGINT;
-    reg4shmap: ARRAY 10 OF LONGINT;
+    reg3map: ARRAY NBOPS OF LONGINT;
+    reg3dnmap: ARRAY NBOPS OF LONGINT;
+    reg4map: ARRAY NBOPS OF LONGINT;
+    reg4shmap: ARRAY NBOPS OF LONGINT;
+    
+    opnotmap: ARRAY NBOPS OF LONGINT;
 
     shimm5map: ARRAY 4 OF LONGINT;
     shimm5wmap: ARRAY 4 OF LONGINT;
@@ -436,7 +439,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   PROCEDURE encDPImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: LONGINT);
     VAR tmiCode: LONGINT;
   BEGIN
-    ASSERT (op <= TST);
+    ASSERT (op < NBOPS);
     ASSERT ((a < C4) & (b < C4) & (t < C4));
     IF (imm >= 0) & (imm < C3) & (a < C3) & (b < C3) & (imm3map[op] # 0) THEN
       (*|   op  immbbbaaa|
@@ -450,6 +453,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       Put1(c, imm8map[op] + a*C8 + imm)
     ELSIF formatThumbExpandImm(imm, tmiCode) THEN
       Put0(c, immthmap[op] + b*C16 + a*C8 + tmiCode);
+      c.lastInstrSetFlags := ODD(reg4shmap[op] DIV C20)
+    ELSIF (opnotmap[op] < NBOPS) & formatThumbExpandImm(-(imm+1), tmiCode) THEN
+      Put0(c, immthmap[opnotmap[op]] + b*C16 + a*C8 + tmiCode);
       c.lastInstrSetFlags := ODD(reg4shmap[op] DIV C20)
     ELSIF (imm >= 0) & (imm < C12)  & (imm12map[op] # 0) THEN
       Put0(c, imm12map[op] + imm DIV C11 MOD C1*C20 + b*C16 +
@@ -469,7 +475,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   
   PROCEDURE encDPReg*(VAR co: ModuleCode; op, a, b, c: BYTE; shift: LONGINT);
   BEGIN
-    ASSERT (op <= TST);
+    ASSERT (op < NBOPS);
     ASSERT ((a < C4) & (b < C4) & (c < C4));
     IF (a < C3) & (b < C3) & (c < C3) & (shift = 0) & (reg3map[op] # 0) THEN
       co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0; (* not in IT block *)
@@ -781,33 +787,47 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
 BEGIN
   imm3map[SUB] := 1E00H; imm8map[SUB] := 3800H; immthmap[SUB]  := 0F1B00000H; imm12map[SUB] := 0F2A00000H;
   reg3map[SUB] := 1A00H; reg3dnmap[SUB] := 0H;  reg4map[SUB]   := 0H;    reg4shmap[SUB]     := 0EBB00000H;
+  opnotmap[SUB] := NBOPS;
   
   imm3map[ADD] := 1C00H; imm8map[ADD] := 3000H; immthmap[ADD]  := 0F1100000H; imm12map[ADD] := 0F2000000H;
   reg3map[ADD] := 1800H; reg3dnmap[ADD] := 0H;  reg4map[ADD]   := 4400H; reg4shmap[ADD]     := 0EB100000H;
+  opnotmap[ADD] := NBOPS;
   
   imm3map[RSB] := 4240H; imm8map[RSB] := 0H;    immthmap[RSB]  := 0F1D00000H; imm12map[RSB] := 0H;
   reg3map[RSB] := 0H;    reg3dnmap[RSB] := 0H;  reg4map[RSB] := 0H;    reg4shmap[RSB] := 0EBD00000H;
+  opnotmap[RSB] := NBOPS;
   
   imm3map[EOR] := 0H;    imm8map[EOR] := 0H;    immthmap[EOR]  := 0F0900000H; imm12map[EOR] := 0H;
   reg3map[EOR] := 0H;    reg3dnmap[EOR] := 4040H; reg4map[EOR] := 0H;        reg4shmap[EOR] := 0EA900000H;
+  opnotmap[EOR] := NBOPS;
   
   imm3map[AND] := 0H;    imm8map[AND] := 0H;    immthmap[AND]  := 0F0100000H; imm12map[AND] := 0H;
   reg3map[AND] := 0H;    reg3dnmap[AND] := 4000H; reg4map[AND] := 0H;    reg4shmap[AND]     := 0EA100000H;
+  opnotmap[AND] := BIC;
   
   imm3map[BIC] := 0H;    imm8map[BIC] := 0H;    immthmap[BIC]  := 0F0300000H; imm12map[BIC] := 0H;
   reg3map[BIC] := 0H;    reg3dnmap[BIC] := 4380H; reg4map[BIC] := 0H;        reg4shmap[BIC] := 0EA300000H;
+  opnotmap[BIC] := AND;
   
   imm3map[ORR] := 0H;    imm8map[ORR] := 0H;    immthmap[ORR]  := 0F0500000H; imm12map[ORR] := 0H;
   reg3map[ORR] := 0H;    reg3dnmap[ORR] := 4300H; reg4map[ORR] := 0H;        reg4shmap[ORR] := 0EA500000H;
+  opnotmap[ORR] := ORN;
   
   imm3map[ADc] := 0H;    imm8map[ADc] := 0H;    immthmap[ADc]  := 0F1500000H; imm12map[ADc] := 0H;
   reg3map[ADc] := 0H;    reg3dnmap[ADc] := 4140H; reg4map[ADc] := 0H;        reg4shmap[ADc] := 0EB500000H;
+  opnotmap[ADc] := NBOPS;
   
   imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    immthmap[SBc]  := 0F1700F00H; imm12map[SBc] := 0H;
   reg3map[SBc] := 0H;    reg3dnmap[SBc] := 4180H; reg4map[SBc] := 0H;        reg4shmap[SBc] := 0EB700000H;
+  opnotmap[SBc] := NBOPS;
   
   imm3map[TST] := 0H;    imm8map[TST] := 0H;    immthmap[TST]  := 0F0100F00H; imm12map[TST] := 0H;
   reg3map[TST] := 0H;    reg3dnmap[TST] := 4200H; reg4map[TST] := 0H;        reg4shmap[TST] := 0EA100F00H;
+  opnotmap[TST] := NBOPS;
+  
+  imm3map[ORN] := 0H;    imm8map[ORN] := 0H;    immthmap[ORN]  := 0F0700000H; imm12map[ORN] := 0H;
+  reg3map[ORN] := 0H;    reg3dnmap[ORN] := 0H;    reg4map[ORN] := 0H;        reg4shmap[ORN] := 0EA700000H;
+  opnotmap[ORN] := ORR;
   
   shimm5map[LSl] :=  0000H; shimm5wmap[LSl] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
   shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
