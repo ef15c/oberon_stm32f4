@@ -252,7 +252,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   PROCEDURE opcode(VAR c: OM4A.ModuleCode; VAR er: ExternalRefMap; VAR i: LONGINT);
     CONST
       (*32-bit instructions*)
-      T32MSK1 = {25..28, 22}; T32MSK2 = {25..28}; T32MSK3 = {26..28};
+      T32MSK1 = {25..28, 22}; T32MSK2 = {25..28}; T32MSK3 = {26..27};
       T32MSK4 = {25, 27..28, 15}; T32MSK5 = {27..28, 15}; T32MSK6 = {24..28, 20};
       T32MSK7 = {25..28, 20..22}; T32MSK8 = {23..28}; T32MSK9 = {24..28};
       
@@ -278,8 +278,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
       DataProcPlainBinImm = {28, 25};
       (*T32MSK5 10 xxxxxxx 1: Branches and miscellaneous control on page A5-142*)
       BrMiscCtrl = {28, 15};
-      (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
-      CoProc = {26..27};
 
       (*T32MSK6 11 000xxx0 x: Store single data item on page A5-149*)
       StrSingleDataItem = {27..28};
@@ -348,41 +346,61 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
       MovFrSpReg = {21..25};
       
+      (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
+      CoProc = {26..27};
+
       T32MSK31 = {11}; T32MSK32 = {8..11};
       (*T32MSK31 0: Oberon implementation for Trap*)
       Trap = {};
       (*T32MSK32 1010: Single-precision floating point coprocessor*)
       FPSingle = {11, 9};
 
-      T32MSK321 = {20..25, 4}; T32MSK322 = {24..25, 20..21}; T32MSK323 = {28, 23, 20..21, 6};
-      T32MSK324 = {28, 23, 16..21, 6..7}; T32MSK325 = {28, 23, 20..21, 17..19, 6};
+      T32MSK320 = {24..25, 4}; T32MSK321 = {25};
+      T32MSK3205 = {20..25, 4}; T32MSK3212 = {24..25, 20..21}; 
+      T32MSK3206 = {20..23};
       
-      (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
-      VMOVSR = {25, 4};
-      VMOVRS = {25, 20, 4};
+      (*T32MSK320 |111T/1110/opc1/opc2/xxxx/1010/o3x0/opc4|*)
+      FPDataProc = {25};
       
-      (*T32MSK322 A7.7.259 VSTR*)
-      VSTR = {24};
-      (*T32MSK322 1xx01 - FP Load Register VLDR on page A7-473*)
-      VLDR = {20, 24};
+      T32MSK3203 = {28, 23, 20..21, 6};
+      T32MSK3204 = {28, 23, 16..21, 6..7}; T32MSK325 = {28, 23, 20..21, 17..19, 6};
       
-      (*T32MSK323 0 0x11 - x0 FP Add VADD on page A7-456*)
+      (*T32MSK3203 0 0x11 - x0 FP Add VADD on page A7-456*)
       VADD = {20..21};
       
-      (*T32MSK323 0 0x11 - x1 FP Subtract VSUB on page A7-503*)
+      (*T32MSK3203 0 0x11 - x1 FP Subtract VSUB on page A7-503*)
       VSUB = {20..21, 6};
       
-      (*T32MSK323 0 0x10 - x0 FP Multiply VMUL on page A7-487*)
+      (*T32MSK3203 0 0x10 - x0 FP Multiply VMUL on page A7-487*)
       VMUL = {21};
       
-      (*T32MSK323 0 1x00 - x0 FP Divide VDIV on page A7-468*)
+      (*T32MSK3203 0 1x00 - x0 FP Divide VDIV on page A7-468*)
       VDIV = {23};
       
-      (*T32MSK324 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
+      (*T32MSK3204 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
       VNEG = {23, 20..21, 16, 6};
       
       (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457*)
       VCMPT1 = {23, 20..21, 18, 6};
+      
+      (*T32MSK321 |111T/110O/pcod/ Rn /    /1010/    /    |
+        Extension register load or store instructions on page A6.5-167*)      
+      FPExtRegLdSt = {};
+                
+      (*T32MSK3212 A7.7.259 VSTR*)
+      VSTR = {24};
+      (*T32MSK3212 1xx01 - FP Load Register VLDR on page A7-473*)
+      VLDR = {20, 24};
+      
+      (*T32MSK320 |111T/1110/A3 L/    /    /101C/ B21/    |
+        32-bit transfer between Arm core and extension registers on page A6.6-168*)
+      FPTrCoreExtReg = {25, 4};
+      (*T32MSK3205 A7.7.243 VMOV (between Arm core register and single-precision register)*)
+      VMOVSR = {25, 4};
+      VMOVRS = {25, 20, 4};
+      
+      (*T32MSK3206 1 0 111 - Move to Arm core register from FP Special Register VMRS on page A7-485*)
+      VMRS = {20..23};
       
       T32MSK81 = {20..22, 4..7};
       
@@ -647,77 +665,99 @@ MODULE OM4Tool;  (*NW 18.2.2013
           END
         ELSIF op*T32MSK3 = CoProc THEN
           (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
-          (*1110/11xx/xxxx/xxxx/xxxx/xxxx/xxxx/xxxx*)
+          (*111x/11xx/xxxx/xxxx/xxxx/xxxx/xxxx/xxxx*)
           IF op*T32MSK31 = Trap THEN
             (*T32MSK31 0: Oberon implementation for Trap*)
+            (*111x/11xx/xxxx/xxxx/xxxx/0xxx/xxxx/xxxx*)
             WriteOp(op, "Trap", FALSE, FALSE); Texts.Write(W, " "); Texts.WriteInt(W, b4 MOD OM4A.C4, 1);
             Texts.WriteString(W, " at pos "); 
             Texts.WriteInt(W, 0+b1 MOD OM4A.C1*OM4A.C19 + b2*OM4A.C11 + b3 DIV OM4A.C4*OM4A.C7 +
               b3 MOD OM4A.C3*OM4A.C4 + b4 DIV OM4A.C4, 1);
           ELSIF op*T32MSK32 = FPSingle THEN
             (*T32MSK32 1010: Single-precision floating point coprocessor*)
-            (*1110/11xx/xxxx/xxxx/xxxx/1010/xxxx/xxxx*)
+            (*111x/11xx/xxxx/xxxx/xxxx/1010/xxxx/xxxx*)
             Sn := b2 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C7;
             Rt := b3 DIV OM4A.C4;
             Rn := b2 MOD OM4A.C4;
             Sd := b3 DIV OM4A.C4*OM4A.C1 + b2 DIV OM4A.C6 MOD OM4A.C1;
             Sm := b4 MOD OM4A.C4*OM4A.C1 + b4 DIV OM4A.C5 MOD OM4A.C1;
-            IF op*T32MSK321 = VMOVSR THEN
-              (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
-              (*VMOV<c> <Sn>, <Rt> 1110/1110/000o/ Vn / Rt /1010/N--1/---- o=0*)
-              WriteOp(op, "VMOV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1);
-              WriteReg(Rt)
-            ELSIF op*T32MSK321 = VMOVRS THEN
-              (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
-              (*VMOV<c> <Rt>, <Sn> 1110/1110/000o/ Vn / Rt /1010/N--1/---- o=1*)
-              WriteOp(op, "VMOV", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " S");
-              Texts.WriteInt(W, Sn, 1)
-            ELSIF op*T32MSK322 = VSTR THEN
-              (*T32MSK322 A7.7.259 VSTR*)
-              (*VSTR<c> <Sd>, [<Rn>{, #+/-<imm>}] 1110/1101/UD00/ Rn / Vd /1010/ imm/8   *)
-              WriteOp(op, "VSTR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
-              Texts.WriteString(W, " ["); WriteReg(Rn);
-              IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - ") END;
-              Texts.WriteInt(W, b4*OM4A.C2, 1); Texts.WriteString(W, " ]")
-            ELSIF op*T32MSK322 = VLDR THEN
-              (*T32MSK322 1xx01 - FP Load Register VLDR on page A7-473*)
-              (*VLDR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
-              WriteOp(op, "VLDR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
-              Texts.WriteString(W, " ["); WriteReg(Rn);
-              IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - " ) END;
-              Texts.WriteInt(W, b4*OM4A.C2, 1); Texts.WriteString(W, " ]")
-            ELSIF op*T32MSK323 = VADD THEN
-              (*T32MSK323 0 0x11 - x0 FP Add VADD on page A7-456*)
-              (*VADD{<c>}{<q>}.F32 {<Sd>,} <Sn>, <Sm>*)
-              WriteOp(op, "VADD", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
-              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-            ELSIF op*T32MSK323 = VSUB THEN
-              (*T32MSK323 0 0x11 - x1 FP Subtract VSUB on page A7-503*)
-              (*VSUB<c>.F32 <Sd>, <Sn>, <Sm>*)
-              WriteOp(op, "VSUB", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
-              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-            ELSIF op*T32MSK323 = VMUL THEN
-              (*T32MSK323 0 0x10 - x0 FP Multiply VMUL on page A7-487*)
-              (*VMUL<c>.F32 <Sd>, <Sn>, <Sm>*)
-              WriteOp(op, "VMUL", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
-              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-            ELSIF op*T32MSK323 = VDIV THEN
-              (*T32MSK323 0 1x00 - x0 FP Divide VDIV on page A7-468*)
-              (*VDIV<c>.F32 <Sd>, <Sn>, <Sm>*)
-              WriteOp(op, "VDIV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
-              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-            ELSIF op*T32MSK324 = VNEG THEN
-              (*T32MSK324 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
-              (*VNEG<c>.F32 <Sd>, <Sm>*)
-              WriteOp(op, "VNEG", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
-              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-            ELSIF op*T32MSK324 = VCMPT1 THEN
-              (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457
-                VCMP{E}<c>.F32 <Sd>, <Sm>*)
-              WriteOp(op, "VCMP", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
-              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-            ELSE Texts.WriteString(W, "TODO: other FPSingle on page A6.4-165")
-            END
+            IF op*T32MSK320 = FPDataProc THEN
+              (*T32MSK320 |111T/1110/opc1/opc2/xxxx/1010/o3x0/opc4|
+                Floating-point data-processing instructions on page A6.4-165*)
+              IF op*T32MSK3203 = VADD THEN
+                (*T32MSK3203 0 0x11 - x0 FP Add VADD on page A7-456*)
+                (*VADD{<c>}{<q>}.F32 {<Sd>,} <Sn>, <Sm>*)
+                WriteOp(op, "VADD", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK3203 = VSUB THEN
+                (*T32MSK3203 0 0x11 - x1 FP Subtract VSUB on page A7-503*)
+                (*VSUB<c>.F32 <Sd>, <Sn>, <Sm>*)
+                WriteOp(op, "VSUB", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK3203 = VMUL THEN
+                (*T32MSK3203 0 0x10 - x0 FP Multiply VMUL on page A7-487*)
+                (*VMUL<c>.F32 <Sd>, <Sn>, <Sm>*)
+                WriteOp(op, "VMUL", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK3203 = VDIV THEN
+                (*T32MSK3203 0 1x00 - x0 FP Divide VDIV on page A7-468*)
+                (*VDIV<c>.F32 <Sd>, <Sn>, <Sm>*)
+                WriteOp(op, "VDIV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK3204 = VNEG THEN
+                (*T32MSK3204 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
+                (*VNEG<c>.F32 <Sd>, <Sm>*)
+                WriteOp(op, "VNEG", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK3204 = VCMPT1 THEN
+                (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457
+                  VCMP{E}<c>.F32 <Sd>, <Sm>*)
+                WriteOp(op, "VCMP", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSE Texts.WriteString(W, "TODO: other FPDataProc on page A6.4-165")
+              END
+            ELSIF op*T32MSK321 = FPExtRegLdSt THEN
+              (*T32MSK321 |111T/110O/pcod/ Rn /    /1010/    /    |
+                Extension register load or store instructions on page A6.5-167*)
+              IF op*T32MSK3212 = VSTR THEN
+                (*T32MSK3212 A7.7.259 VSTR*)
+                (*VSTR<c> <Sd>, [<Rn>{, #+/-<imm>}] 1110/1101/UD00/ Rn / Vd /1010/ imm/8   *)
+                WriteOp(op, "VSTR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " ["); WriteReg(Rn);
+                IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - ") END;
+                Texts.WriteInt(W, b4*OM4A.C2, 1); Texts.WriteString(W, " ]")
+              ELSIF op*T32MSK3212 = VLDR THEN
+                (*T32MSK3212 1xx01 - FP Load Register VLDR on page A7-473*)
+                (*VLDR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
+                WriteOp(op, "VLDR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " ["); WriteReg(Rn);
+                IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - " ) END;
+                Texts.WriteInt(W, b4*OM4A.C2, 1); Texts.WriteString(W, " ]")
+              ELSE Texts.WriteString(W, "TODO: other FPExtRegLdSt on page A6.5-167")
+              END
+            ELSIF op*T32MSK320 = FPTrCoreExtReg THEN
+              (*T32MSK320 |111T/1110/A3 L/    /    /101C/ B21/    |
+                32-bit transfer between Arm core and extension registers on page A6.6-168*)
+              IF op*T32MSK3205 = VMOVSR THEN
+                (*T32MSK3205 A7.7.243 VMOV (between Arm core register and single-precision register)*)
+                (*VMOV<c> <Sn>, <Rt> 1110/1110/000o/ Vn / Rt /1010/N--1/---- o=0*)
+                WriteOp(op, "VMOV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sn, 1);
+                WriteReg(Rt)
+              ELSIF op*T32MSK3205 = VMOVRS THEN
+                (*T32MSK3205 A7.7.243 VMOV (between Arm core register and single-precision register)*)
+                (*VMOV<c> <Rt>, <Sn> 1110/1110/000o/ Vn / Rt /1010/N--1/---- o=1*)
+                WriteOp(op, "VMOV", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " S");
+                Texts.WriteInt(W, Sn, 1)
+              ELSIF op*T32MSK3206 = VMRS THEN
+                (*T32MSK3206 1 0 111 - Move to Arm core register from FP Special Register VMRS on page A7-485
+                  VMRS<c> <Rt>, FPSCR*)
+                WriteOp(op, "VMRS", FALSE, FALSE);
+                IF Rt = 15 THEN Texts.WriteString(W, " APSR_nzcv") ELSE WriteReg(Rt) END;
+                Texts.WriteString(W, " FPSCR")
+              ELSE Texts.WriteString(W, "TODO: other FPTrCoreExtReg on page A6.6-168")
+              END
+            ELSE Texts.WriteString(W, "TODO: other FPSingle on page A6-159")
+            END 
           ELSE Texts.WriteString(W, "TODO: not FPSingle")
           END
         ELSIF op*T32MSK7 = LdrByteOrMemHints THEN

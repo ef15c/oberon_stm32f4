@@ -966,12 +966,14 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Assert*(VAR x: Item);
     VAR cond, pc0: LONGINT;
   BEGIN
+    pc0 := 0;
     IF x.mode # Cond THEN loadCond(x) END;
     IF x.a = 0 THEN cond := OM4A.negated(x.r);
     ELSE pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + x.r*OM4A.C8);
       OM4A.FixLink(mcode, x.a); cond := OM4A.AL
     END ;
-    Trap(cond, 7); OM4A.FixLink(mcode, x.b); OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4)
+    Trap(cond, 7); OM4A.FixLink(mcode, x.b);
+    IF pc0 # 0 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END
   END Assert; 
 
   PROCEDURE New*(VAR x: Item);
