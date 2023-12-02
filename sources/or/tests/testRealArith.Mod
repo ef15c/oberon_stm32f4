@@ -6,7 +6,8 @@ BEGIN
   a := b + c;
   a := b - c;
   a := b * c;
-  a := b / c
+  a := b / c;
+  a := SQRT(b)
 END p;
 
 END testRealArith.
@@ -63,7 +64,7 @@ entry =       84
 OM4Tool.DecObj testRealArith.m4c ~
 
 decode testRealArith.m4c
-testRealArith 553F3D6F   1   100
+testRealArith 553F3D6F   1   112
 imports:
 type descriptors
 
@@ -73,13 +74,13 @@ strings
 code
 commands:
 entries
-    80
+    92
 pointer refs
 
 fixP =        0
 fixD =        0
 fixT =        0
-entry =       80
+entry =       92
    0	 F1BD0D0C	SUBS SP SP #12
    4	     B500	PUSH LR
    6	 ED9D0A02	VLDR S0 [ SP + 8 ]
@@ -98,12 +99,15 @@ entry =       80
   58	 EDDD0A03	VLDR S1 [ SP + 12 ]
   62	 EE800A20	VDIV S0 S0 S1
   66	 ED8D0A01	VSTR S0 [ SP + 4 ]
-  70	 F85DEB04	LDR LR [ SP ] + 4
-  74	 F11D0D0C	ADDS SP SP #12
-  78	     4770	BX LR
-  80	     B500	PUSH LR
+  70	 ED9D0A02	VLDR S0 [ SP + 8 ]
+  74	 EEB10AC0	VSQRT S0 S0
+  78	 ED8D0A01	VSTR S0 [ SP + 4 ]
   82	 F85DEB04	LDR LR [ SP ] + 4
-  86	     4770	BX LR
+  86	 F11D0D0C	ADDS SP SP #12
+  90	     4770	BX LR
+  92	     B500	PUSH LR
+  94	 F85DEB04	LDR LR [ SP ] + 4
+  98	     4770	BX LR
 
 
 *)

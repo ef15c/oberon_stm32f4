@@ -1051,6 +1051,14 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Abs;
 
+  PROCEDURE Sqrt*(VAR x: Item);
+  BEGIN
+(* TODO uncomment on target compiler 
+    IF x.mode = OM4B.Const THEN x.a := SQRT(x.a)
+    ELSE *) loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VSQRT, x.r, 0, x.r)
+(*    END*)
+  END Sqrt;
+
   PROCEDURE Odd*(VAR x: Item);
   BEGIN load(x); OM4A.encShiftImm5(mcode, OM4A.ROR, x.r, x.r, 1); SetCC(x, OM4A.MI); DEC(RH)
   END Odd;

@@ -115,6 +115,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     VDIV*    = 0EE800A00H;
     (*|1110 1110 1D00  Vn   Vd  101s N0M0  Vm |
       VDIV<c>.F32 <Sd>, <Sn>, <Sm>*)
+    VSQRT*   = 0EEB10AC0H;
+    (*|1110/1110/1D11/0001/ Vd /101s/11M0/ Vm |
+      VSQRT<c>.F32 <Sd>, <Sm>*)
     VCMP0*   = 0EEB50A40H;
     (*|1110 1110 1D11 0101  Vd  101s E100 0000|
       VCMP{E}<c>.F32 <Sd>, #0.0*)

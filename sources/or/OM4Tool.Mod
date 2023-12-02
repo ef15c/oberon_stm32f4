@@ -379,7 +379,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T32MSK3204 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
       VNEG = {23, 20..21, 16, 6};
-      
+      (*T32MSK3204 0 1x11 0001 11 FP Square Root VSQRT on page A7-498*)      
+      VSQRT = {23, 20..21, 16, 6..7};
+                
       (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457*)
       VCMPT1 = {23, 20..21, 18, 6};
       
@@ -713,6 +715,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
                 (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457
                   VCMP{E}<c>.F32 <Sd>, <Sm>*)
                 WriteOp(op, "VCMP", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK3204 = VSQRT THEN
+                (*T32MSK3204 0 1x11 0001 11 FP Square Root VSQRT on page A7-498
+                  VSQRT<c>.F32 <Sd>, <Sm>*)
+                WriteOp(op, "VSQRT", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
                 Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
               ELSE Texts.WriteString(W, "TODO: other FPDataProc on page A6.4-165")
               END

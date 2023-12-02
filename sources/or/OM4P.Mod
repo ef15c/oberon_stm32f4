@@ -275,6 +275,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         ELSE OM4S.Mark("must be a type")
         END
       ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); OM4G.Condition(x)
+      ELSIF fct = 20 THEN (*SQRT*) CheckReal(x); OM4G.Sqrt(x)
       END ;
       x.type := restyp
     ELSE OM4S.Mark("wrong nof params")
