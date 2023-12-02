@@ -328,6 +328,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       LdrByteOrMemHints = {27..28, 20};
       (*T32MSK71 01 xxxxxx Rn not 1111 and Rt not 1111 Load Register Byte LDRB (immediate) on page A7-252*)
       LdrRegByteT2 = {23};
+      (*T32MSK72 00 1xx1xx not 1111 not 1111 Load Register Byte LDRB (immediate) on page A7-252*)
+      LdrRegByteT3 = {11, 8};
+
 
       (*T32MSK72 00 1xx1xx not 1111 LDR (immediate) on page A7-246*)
       LdrRegImmOrLit2 = {11, 8};
@@ -775,7 +778,19 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
             WriteOp(op, "LDRB", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
             Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD OM4A.C12, 1); Texts.WriteString(W, " ]")
-          ELSE Texts.WriteString(W, "TODO not LdrRegByteT2")
+          ELSIF (op*T32MSK72 = LdrRegByteT3) & (Rn # 15) & (Rt # 15) THEN
+            (*T32MSK72? 00 1xx1xx not 1111 not 1111 Load Register Byte LDRB (immediate) on page A7-252*)
+            (*LDRB<c> <Rt>,[<Rn>,#-<imm8>]
+              LDRB<c> <Rt>,[<Rn>],#+/-<imm8>
+              LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
+            WriteOp(op, "LDRB", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " ["); WriteReg(Rn);
+            IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
+            IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "- ") END;
+            Texts.WriteInt(W, b4, 1);
+            IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
+              IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
+            END
+          ELSE Texts.WriteString(W, "TODO other LdrByteOrMemHints on page A5-148")
           END 
         ELSIF op*T32MSK2 = DataProcShiftedReg THEN
           (*T32MSK2 01 01xxxxx x Data processing (shifted register) on page A5-150*)

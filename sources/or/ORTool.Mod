@@ -178,7 +178,7 @@ MODULE ORTool;  (*NW 18.2.2013*)
         Texts.WriteString(W, "data"); Files.ReadInt(R, data); Texts.WriteInt(W, data, 6); Texts.WriteLn(W);
         Texts.WriteString(W, "strings"); Texts.WriteLn(W);
         Files.ReadInt(R, n); i := 0;
-        WHILE i < n DO Files.Read(R, ch); Texts.Write(W, ch); INC(i) END ;
+        WHILE i < n DO Files.Read(R, ch);  IF ch=0X THEN ch := "|" END; Texts.Write(W, ch); INC(i) END ;
         Texts.WriteLn(W);
         Texts.WriteString(W, "code"); Texts.WriteLn(W);
         Files.ReadInt(R, n); i := 0;
