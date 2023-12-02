@@ -8,7 +8,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     C21*=200000H; C20*=100000H; C19*=80000H; C18*=40000H; C17*=20000H;
     C16*=10000H; C15*= 8000H; C13*=2000H; C12*=1000H; C11*=800H; 
     C10*=400H; C9*=200H;C8*=100H; C7*=80H; C6*=40H; C5*=20H; 
-    C4*=10H; C3*=8; C2*=4; C1*=2;
+    C4*=10H; C3*=8; C2*=4; C1*=2; C0*=1;
     
     maxCode* = 16000*4;
     
@@ -56,14 +56,14 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     MOVIT1*  = 2000H;
     (*|0010/0 Rd/  im/m8  |
       MOVS <Rd>,#<imm8>*)
-    MOVIT2*  = 0F05F0000H;
+    MOVSIT2*  = 0F05F0000H;
     (*|1111/0i00/010S/1111/0im3/ Rd / imm/8   |
       MOV{S}<c>.W <Rd>,#<const>*)
     MOVIT3*  = 0F2400000H;
     (*|1111/0i10/0100/imm4/0im3/ Rd / imm/8   |
       MOVW<c> <Rd>,#<imm16>*)
 
-    MVN*     = 0F07F0000H;
+    MVNS*     = 0F07F0000H;
     (*|1111/0i00/011S/1111/0im3/ Rd / imm/8   |
       MVN{S}<c> <Rd>,#<const>*)
       
@@ -173,6 +173,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     
     CMPIT1*  = 2800H;
     CMPIT2*  = 0F1B00F00H;
+    CMNI*    = 0F1100F00H;
+    (*|1111/0i01/0001/ Rn /0im3/1111/ imm/8   |
+      CMN<c> <Rn>,#<const>*)
     CMPRT1*  = 4280H;
     CMPRT2*  = 4500H;
 
@@ -384,11 +387,15 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
       Put1(c, MOVIT1 + reg*C8 + val)
     ELSIF formatThumbExpandImm(val, tmiCode) THEN (*else use encoding T2 if possible*)
-      Put0(c, MOVIT2 + reg*C8 + tmiCode);
-      c.lastInstrSetFlags := ODD(MOVIT2 DIV C20)
-    ELSIF formatThumbExpandImm(-(val+1), tmiCode) THEN (*else use MVN if possible*)
-      Put0(c, MVN + reg*C8 + tmiCode);
-      c.lastInstrSetFlags := ODD(MVN DIV C20)
+      IF c.nbRmnITBlockInsts <= 1 THEN (*not in IT block or last in IT block*)
+        Put0(c, MOVSIT2 + reg*C8 + tmiCode);
+        c.lastInstrSetFlags := TRUE
+      ELSE Put0(c, MOVSIT2-C0*C20 + reg*C8 + tmiCode) END  (*MOV instead of MOVS*)
+    ELSIF formatThumbExpandImm(-(val+1), tmiCode) THEN (*else use MVNS if possible*)
+      IF c.nbRmnITBlockInsts <= 1 THEN (*not in IT block or last in IT block*)
+        Put0(c, MVNS + reg*C8 + tmiCode);
+        c.lastInstrSetFlags := TRUE
+      ELSE Put0(c, MVNS-C0*C20 + reg*C8 + tmiCode) END (*MVN instead of MVNS*)
     ELSE (*else one or two instructions are needed depending on the size of val,
            one for low half word and if necessary a second for high half word*)
       halfw := val MOD C16;
@@ -533,6 +540,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       Put1(c, CMPIT1 + a*C8 + imm)
     ELSIF formatThumbExpandImm(imm, tmiCode) THEN (*CMP (immediate) T2*) 
       Put0(c, CMPIT2 + a*C16 + tmiCode) 
+    ELSIF formatThumbExpandImm(-imm, tmiCode) THEN (*CMN (immediate) T2*) 
+      Put0(c, CMNI + a*C16 + tmiCode) 
     ELSE encMOVImm32(c, t, imm); encCMPReg(c, a, t)
     END;
     c.lastInstrSetFlags := TRUE

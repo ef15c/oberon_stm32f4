@@ -355,7 +355,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       FPSingle = {11, 9};
 
       T32MSK321 = {20..25, 4}; T32MSK322 = {24..25, 20..21}; T32MSK323 = {28, 23, 20..21, 6};
-      T32MSK324 = {28, 23, 16..21, 6..7};
+      T32MSK324 = {28, 23, 16..21, 6..7}; T32MSK325 = {28, 23, 20..21, 17..19, 6};
       
       (*T32MSK321 A7.7.243 VMOV (between Arm core register and single-precision register)*)
       VMOVSR = {25, 4};
@@ -380,6 +380,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T32MSK324 0 1x11 0001 01 FP Negate VNEG on page A7-488*)
       VNEG = {23, 20..21, 16, 6};
+      
+      (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457*)
+      VCMPT1 = {23, 20..21, 18, 6};
       
       T32MSK81 = {20..22, 4..7};
       
@@ -708,7 +711,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
               (*VNEG<c>.F32 <Sd>, <Sm>*)
               WriteOp(op, "VNEG", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-            ELSE Texts.WriteString(W, "TODO: other FPSingle")
+            ELSIF op*T32MSK324 = VCMPT1 THEN
+              (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457
+                VCMP{E}<c>.F32 <Sd>, <Sm>*)
+              WriteOp(op, "VCMP", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+            ELSE Texts.WriteString(W, "TODO: other FPSingle on page A6.4-165")
             END
           ELSE Texts.WriteString(W, "TODO: not FPSingle")
           END

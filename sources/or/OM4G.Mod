@@ -226,7 +226,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           OM4A.IfThen(mcode, "E", x.r);
           OM4A.encMOVImm32(mcode, RH, 1);
           OM4A.encMOVImm32(mcode, RH, 0)
-        ELSE (*A "true" chain need to be fixed, do it the classical way*)
+        ELSE (*A "true" and/or "false" chain need to be fixed, do it the classical way*)
           pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.negated(x.r)*OM4A.C8);
           FixLink(x.b); OM4A.encMOVImm32(mcode, RH, 1); pc1 := mcode.pc; OM4A.Put1(mcode, OM4A.BT2);
           OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4); FixLink(x.a); OM4A.encMOVImm32(mcode, RH, 0);
@@ -750,7 +750,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       OM4A.encMemImm8PUW(mcode, OM4A.STRIT4, RH, x.r, FALSE, TRUE, TRUE, 4);
       OM4A.encDPImm32(mcode, OM4A.SUB, RH-1, RH-1, RH, 1); DEC(RH);
       OM4A.encBackBranch(mcode, OM4A.NE, pc1); (*BNE L1*)
-      (*L0:*) IF pc0 # -1 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) 
+      (*L0:*) IF pc0 # -1 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4)
               END
     END;
     RH := 0
@@ -964,14 +964,14 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Include;
 
   PROCEDURE Assert*(VAR x: Item);
-    VAR cond: LONGINT;
+    VAR cond, pc0: LONGINT;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    IF x.a = 0 THEN cond := OM4A.negated(x.r)
-    ELSE OM4A.IfThen(mcode, "", OM4A.negated(x.r));
+    IF x.a = 0 THEN cond := OM4A.negated(x.r);
+    ELSE pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + x.r*OM4A.C8);
       OM4A.FixLink(mcode, x.a); cond := OM4A.AL
     END ;
-    Trap(cond, 7); OM4A.FixLink(mcode, x.b)
+    Trap(cond, 7); OM4A.FixLink(mcode, x.b); OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4)
   END Assert; 
 
   PROCEDURE New*(VAR x: Item);
