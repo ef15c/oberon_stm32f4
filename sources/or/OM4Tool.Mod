@@ -508,7 +508,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       AddRegT1 = {11..12};
       (*T16MSK12 01101 Subtract register SUB (register) on page A7-404*)
       SubRegT1 = {11..12, 9};
-      
+      (*T16MSK12 01111 Subtract 3-bit immediate SUB (immediate) on page A7-402*)
+      SubImmT1 = {9..12};
+                  
     VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, Sn, Sd, Sm, mno, ext, exop, proc: BYTE;
       op: SET;
   BEGIN
@@ -997,16 +999,14 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
             (*ADDS <Rd>,<Rn>,#<imm3> Outside IT block.
               ADD<c> <Rd>,<Rn>,#<imm3> Inside IT block.*)
-            Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
-            Rd := b2 MOD OM4A.C3;
+            Rn := b2 DIV OM4A.C3 MOD OM4A.C3; Rd := b2 MOD OM4A.C3;
             WriteOp(op, "ADD", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
             Texts.WriteInt(W, b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6, 1)
           ELSIF op*T16MSK11 = ASRImmT1 THEN
             (*T16MSK11 010xx Arithmetic Shift Right ASR (immediate) on page A7-203*)
             (*ASRS <Rd>,<Rm>,#<imm5> Outside IT block.
               ASR<c> <Rd>,<Rm>,#<imm5> Inside IT block.*)
-            Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
-            Rd := b2 MOD OM4A.C3;            
+            Rm := b2 DIV OM4A.C3 MOD OM4A.C3; Rd := b2 MOD OM4A.C3;            
             WriteOp(op, "ASR", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm); Texts.WriteString(W, " #");
             Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6, 1)
           ELSIF op*T16MSK12 = AddRegT1 THEN
@@ -1021,7 +1021,14 @@ MODULE OM4Tool;  (*NW 18.2.2013
               SUB<c> <Rd>,<Rn>,<Rm> Inside IT block.*)
             Rd := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3; Rm := b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6;
             WriteOp(op, "SUB", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm)
-          ELSE Texts.WriteString(W, "TODO: other ShAdSuMoCm")
+          ELSIF op*T16MSK12 = SubImmT1 THEN
+            (*T16MSK12 01111 Subtract 3-bit immediate SUB (immediate) on page A7-402*)
+            (*SUBS <Rd>,<Rn>,#<imm3> Outside IT block.
+              SUB<c> <Rd>,<Rn>,#<imm3> Inside IT block.*)
+            Rd := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
+            WriteOp(op, "SUB", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6, 1)
+          ELSE Texts.WriteString(W, "TODO: other ShAdSuMoCm on page A5-130")
           END
         ELSIF op*T16MSK4 = CondBrAndSVC THEN
           (*T16MSK4 1101xx Conditional branch, and Supervisor Call on page A5-136*)

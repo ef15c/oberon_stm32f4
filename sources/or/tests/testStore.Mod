@@ -1,0 +1,499 @@
+MODULE testStore;
+  TYPE string = ARRAY 10 OF CHAR;
+    vector = ARRAY 5 OF INTEGER;
+  
+  VAR s,t: string;
+    v,u: vector;
+    i: INTEGER;
+    
+  PROCEDURE p(a: ARRAY OF CHAR; c: string;
+    VAR x:ARRAY OF CHAR; VAR z: string);
+    VAR j: INTEGER;
+  BEGIN
+    j := j*3;
+    z := c;
+    z := s;
+    s := z;
+    x[j] := a[1];
+    x[j] := s[1];
+    z[j] := a[1]
+  END p;
+  
+  PROCEDURE q(b: ARRAY OF INTEGER; d: vector; 
+    VAR y: ARRAY OF INTEGER; VAR t: vector);
+    VAR j: INTEGER;
+  BEGIN
+    t := d;
+    t := v;
+    v := t;
+    y[j] := b[1];
+    y[j] := v[1];
+    t[j] := b[1]
+  END q;
+  
+BEGIN
+  i := i*3;
+  s := t;
+  s[i] := s[1];
+  u := v;
+  v[i] := v[1]
+END testStore.
+
+(*
+ORTool.DecObj testStore.rsc ~
+
+decode testStore.rsc
+testStore E6E3DA2C   1   924
+imports:
+type descriptors
+
+data    68
+strings
+
+code
+   0	 4EE90020	SUB SP SP     32
+   1	 AFE00000	STR  LNK SP       0
+   2	 A0E00004	STR   R0 SP       4
+   3	 A1E00008	STR   R1 SP       8
+   4	 A2E0000C	STR   R2 SP      12
+   5	 A3E00010	STR   R3 SP      16
+   6	 A4E00014	STR   R4 SP      20
+   7	 A5E00018	STR   R5 SP      24
+   8	 80E0001C	LDR  R0 SP      28
+   9	 400A0003	MUL  R0  R0      3
+  10	 A0E0001C	STR   R0 SP      28
+  11	 80E00018	LDR  R0 SP      24
+  12	 81E0000C	LDR  R1 SP      12
+  13	 42000003	MOV  R2  R0      3
+  14	 83100000	LDR  R3  R1       0
+  15	 41180004	ADD  R1  R1      4
+  16	 A3000000	STR   R3  R0       0
+  17	 40080004	ADD  R0  R0      4
+  18	 42290001	SUB  R2  R2      1
+  19	 E9FFFFFA	BNE       -6
+  20	 80E00018	LDR  R0 SP      24
+  21	 81000015	LDR  R1  R0      21
+  22	 41180000	ADD  R1  R1      0
+  23	 42000003	MOV  R2  R0      3
+  24	 83100000	LDR  R3  R1       0
+  25	 41180004	ADD  R1  R1      4
+  26	 A3000000	STR   R3  R0       0
+  27	 40080004	ADD  R0  R0      4
+  28	 42290001	SUB  R2  R2      1
+  29	 E9FFFFFA	BNE       -6
+  30	 80000009	LDR  R0  R0       9
+  31	 40080000	ADD  R0  R0      0
+  32	 81E00018	LDR  R1 SP      24
+  33	 42000003	MOV  R2  R0      3
+  34	 83100000	LDR  R3  R1       0
+  35	 41180004	ADD  R1  R1      4
+  36	 A3000000	STR   R3  R0       0
+  37	 40080004	ADD  R0  R0      4
+  38	 42290001	SUB  R2  R2      1
+  39	 E9FFFFFA	BNE       -6
+  40	 80E0001C	LDR  R0 SP      28
+  41	 81E00014	LDR  R1 SP      20
+  42	 01090001	SUB  R1  R0  R1
+  43	 DA014B1C	BLHI  MT
+  44	 81E00010	LDR  R1 SP      16
+  45	 00180000	ADD  R0  R1  R0
+  46	 41000001	MOV  R1  R0      1
+  47	 82E00008	LDR  R2 SP       8
+  48	 02190002	SUB  R2  R1  R2
+  49	 DA01531C	BLHI  MT
+  50	 82E00004	LDR  R2 SP       4
+  51	 01280001	ADD  R1  R2  R1
+  52	 91100000	LDR  R1  R1       0
+  53	 B1000000	STR   R1  R0       0
+  54	 80E0001C	LDR  R0 SP      28
+  55	 81E00014	LDR  R1 SP      20
+  56	 01090001	SUB  R1  R0  R1
+  57	 DA015E1C	BLHI  MT
+  58	 81E00010	LDR  R1 SP      16
+  59	 00180000	ADD  R0  R1  R0
+  60	 8100001E	LDR  R1  R0      30
+  61	 91100001	LDR  R1  R1       1
+  62	 B1000000	STR   R1  R0       0
+  63	 80E0001C	LDR  R0 SP      28
+  64	 4109000A	SUB  R1  R0     10
+  65	 DA01711C	BLHI  MT
+  66	 81E00018	LDR  R1 SP      24
+  67	 00180000	ADD  R0  R1  R0
+  68	 41000001	MOV  R1  R0      1
+  69	 82E00008	LDR  R2 SP       8
+  70	 02190002	SUB  R2  R1  R2
+  71	 DA01791C	BLHI  MT
+  72	 82E00004	LDR  R2 SP       4
+  73	 01280001	ADD  R1  R2  R1
+  74	 91100000	LDR  R1  R1       0
+  75	 B1000000	STR   R1  R0       0
+  76	 8FE00000	LDR LNK SP       0
+  77	 4EE80020	ADD SP SP     32
+  78	 C700000F	B LNK
+  79	 4EE90020	SUB SP SP     32
+  80	 AFE00000	STR  LNK SP       0
+  81	 A0E00004	STR   R0 SP       4
+  82	 A1E00008	STR   R1 SP       8
+  83	 A2E0000C	STR   R2 SP      12
+  84	 A3E00010	STR   R3 SP      16
+  85	 A4E00014	STR   R4 SP      20
+  86	 A5E00018	STR   R5 SP      24
+  87	 80E00018	LDR  R0 SP      24
+  88	 81E0000C	LDR  R1 SP      12
+  89	 42000005	MOV  R2  R0      5
+  90	 83100000	LDR  R3  R1       0
+  91	 41180004	ADD  R1  R1      4
+  92	 A3000000	STR   R3  R0       0
+  93	 40080004	ADD  R0  R0      4
+  94	 42290001	SUB  R2  R2      1
+  95	 E9FFFFFA	BNE       -6
+  96	 80E00018	LDR  R0 SP      24
+  97	 81000025	LDR  R1  R0      37
+  98	 41180018	ADD  R1  R1     24
+  99	 42000005	MOV  R2  R0      5
+ 100	 83100000	LDR  R3  R1       0
+ 101	 41180004	ADD  R1  R1      4
+ 102	 A3000000	STR   R3  R0       0
+ 103	 40080004	ADD  R0  R0      4
+ 104	 42290001	SUB  R2  R2      1
+ 105	 E9FFFFFA	BNE       -6
+ 106	 80000009	LDR  R0  R0       9
+ 107	 40080018	ADD  R0  R0     24
+ 108	 81E00018	LDR  R1 SP      24
+ 109	 42000005	MOV  R2  R0      5
+ 110	 83100000	LDR  R3  R1       0
+ 111	 41180004	ADD  R1  R1      4
+ 112	 A3000000	STR   R3  R0       0
+ 113	 40080004	ADD  R0  R0      4
+ 114	 42290001	SUB  R2  R2      1
+ 115	 E9FFFFFA	BNE       -6
+ 116	 80E0001C	LDR  R0 SP      28
+ 117	 81E00014	LDR  R1 SP      20
+ 118	 01090001	SUB  R1  R0  R1
+ 119	 DA02341C	BLHI  MT
+ 120	 40010002	LSL  R0  R0      2
+ 121	 81E00010	LDR  R1 SP      16
+ 122	 00180000	ADD  R0  R1  R0
+ 123	 41000001	MOV  R1  R0      1
+ 124	 82E00008	LDR  R2 SP       8
+ 125	 02190002	SUB  R2  R1  R2
+ 126	 DA023C1C	BLHI  MT
+ 127	 41110002	LSL  R1  R1      2
+ 128	 82E00004	LDR  R2 SP       4
+ 129	 01280001	ADD  R1  R2  R1
+ 130	 81100000	LDR  R1  R1       0
+ 131	 A1000000	STR   R1  R0       0
+ 132	 80E0001C	LDR  R0 SP      28
+ 133	 81E00014	LDR  R1 SP      20
+ 134	 01090001	SUB  R1  R0  R1
+ 135	 DA02471C	BLHI  MT
+ 136	 40010002	LSL  R0  R0      2
+ 137	 81E00010	LDR  R1 SP      16
+ 138	 00180000	ADD  R0  R1  R0
+ 139	 81000021	LDR  R1  R0      33
+ 140	 8110001C	LDR  R1  R1      28
+ 141	 A1000000	STR   R1  R0       0
+ 142	 80E0001C	LDR  R0 SP      28
+ 143	 41090005	SUB  R1  R0      5
+ 144	 DA025A1C	BLHI  MT
+ 145	 40010002	LSL  R0  R0      2
+ 146	 81E00018	LDR  R1 SP      24
+ 147	 00180000	ADD  R0  R1  R0
+ 148	 41000001	MOV  R1  R0      1
+ 149	 82E00008	LDR  R2 SP       8
+ 150	 02190002	SUB  R2  R1  R2
+ 151	 DA02621C	BLHI  MT
+ 152	 41110002	LSL  R1  R1      2
+ 153	 82E00004	LDR  R2 SP       4
+ 154	 01280001	ADD  R1  R2  R1
+ 155	 81100000	LDR  R1  R1       0
+ 156	 A1000000	STR   R1  R0       0
+ 157	 8FE00000	LDR LNK SP       0
+ 158	 4EE80020	ADD SP SP     32
+ 159	 C700000F	B LNK
+ 160	 4EE90004	SUB SP SP      4
+ 161	 AFE00000	STR  LNK SP       0
+ 162	 80000017	LDR  R0  R0      23
+ 163	 80000040	LDR  R0  R0      64
+ 164	 400A0003	MUL  R0  R0      3
+ 165	 81000003	LDR  R1  R0       3
+ 166	 A0100040	STR   R0  R1      64
+ 167	 80000002	LDR  R0  R0       2
+ 168	 40080000	ADD  R0  R0      0
+ 169	 81000002	LDR  R1  R0       2
+ 170	 4118000C	ADD  R1  R1     12
+ 171	 42000003	MOV  R2  R0      3
+ 172	 83100000	LDR  R3  R1       0
+ 173	 41180004	ADD  R1  R1      4
+ 174	 A3000000	STR   R3  R0       0
+ 175	 40080004	ADD  R0  R0      4
+ 176	 42290001	SUB  R2  R2      1
+ 177	 E9FFFFFA	BNE       -6
+ 178	 80000009	LDR  R0  R0       9
+ 179	 80000040	LDR  R0  R0      64
+ 180	 4109000A	SUB  R1  R0     10
+ 181	 DA02971C	BLHI  MT
+ 182	 81000004	LDR  R1  R0       4
+ 183	 00180000	ADD  R0  R1  R0
+ 184	 81000002	LDR  R1  R0       2
+ 185	 91100001	LDR  R1  R1       1
+ 186	 B1000000	STR   R1  R0       0
+ 187	 80000003	LDR  R0  R0       3
+ 188	 4008002C	ADD  R0  R0     44
+ 189	 81000002	LDR  R1  R0       2
+ 190	 41180018	ADD  R1  R1     24
+ 191	 42000005	MOV  R2  R0      5
+ 192	 83100000	LDR  R3  R1       0
+ 193	 41180004	ADD  R1  R1      4
+ 194	 A3000000	STR   R3  R0       0
+ 195	 40080004	ADD  R0  R0      4
+ 196	 42290001	SUB  R2  R2      1
+ 197	 E9FFFFFA	BNE       -6
+ 198	 80000009	LDR  R0  R0       9
+ 199	 80000040	LDR  R0  R0      64
+ 200	 41090005	SUB  R1  R0      5
+ 201	 DA02B31C	BLHI  MT
+ 202	 40010002	LSL  R0  R0      2
+ 203	 81000005	LDR  R1  R0       5
+ 204	 00180000	ADD  R0  R1  R0
+ 205	 81000002	LDR  R1  R0       2
+ 206	 8110001C	LDR  R1  R1      28
+ 207	 A1000018	STR   R1  R0      24
+ 208	 8FE00000	LDR LNK SP       0
+ 209	 4EE80004	ADD SP SP      4
+ 210	 C700000F	B LNK
+commands:
+entries
+   640
+pointer refs
+
+fixP =        0
+fixD =      205
+fixT =        0
+entry =      640
+
+
+OM4Tool.DecObj testStore.m4c ~
+
+decode testStore.m4c
+testStore E6E3DA2C   1   636
+imports:
+type descriptors
+
+data    68
+strings
+
+code
+commands:
+entries
+   382
+pointer refs
+
+fixP =        0
+fixD =      538
+fixT =        0
+entry =      382
+   0	 F1BD0D04	SUBS SP SP #4
+   4	     B43F	PUSH R0 R1 R2 R3 R4 R5
+   6	     B500	PUSH LR
+   8	     9807	LDR R0 [SP + 28]
+  10	     2103	MOVS R1 #3
+  12	     4348	MULS R0 R1 R0
+  14	     9007	STR R0 [SP + 28]
+  16	     9806	LDR R0 [SP + 24]
+  18	     9903	LDR R1 [SP + 12]
+  20	     2203	MOVS R2 #3
+  22	 F8513B04	LDR R3 [ R1 ] + 4
+  26	 F8403B04	STR R3 [ R0 ] + 4
+  30	     1E52	SUBS R2 R2 #1
+  32	     D1F9	BNE #-14, goes to 22
+  34	     9806	LDR R0 [SP + 24]
+  36	 10000012	MOV R1 lower 16-bits base(0)
+  40	 0000D414	MOVT R1 higher 16-bits var(0)
+  44	     2203	MOVS R2 #3
+  46	 F8513B04	LDR R3 [ R1 ] + 4
+  50	 F8403B04	STR R3 [ R0 ] + 4
+  54	     1E52	SUBS R2 R2 #1
+  56	     D1F9	BNE #-14, goes to 46
+  58	 0000000B	MOV R0 lower 16-bits base(0)
+  62	 0000D414	MOVT R0 higher 16-bits var(0)
+  66	     9906	LDR R1 [SP + 24]
+  68	     2203	MOVS R2 #3
+  70	 F8513B04	LDR R3 [ R1 ] + 4
+  74	 F8403B04	STR R3 [ R0 ] + 4
+  78	     1E52	SUBS R2 R2 #1
+  80	     D1F9	BNE #-14, goes to 70
+  82	     9807	LDR R0 [SP + 28]
+  84	     9905	LDR R1 [SP + 20]
+  86	     4288	CMP R0 R1
+  88	     BF28	IT CS
+  90	 EC0024B1	TrapCS 1 at pos 331
+  94	     9904	LDR R1 [SP + 16]
+  96	     1808	ADDS R0 R1 R0
+  98	     2101	MOVS R1 #1
+ 100	     9A02	LDR R2 [SP + 8]
+ 102	     4291	CMP R1 R2
+ 104	     BF28	IT CS
+ 106	 EC002531	TrapCS 1 at pos 339
+ 110	     9A01	LDR R2 [SP + 4]
+ 112	     1851	ADDS R1 R2 R1
+ 114	     7809	LDR R1 [ R1 + 0]
+ 116	     7001	STRB R1 [ R0 + 0]
+ 118	     9807	LDR R0 [SP + 28]
+ 120	     9905	LDR R1 [SP + 20]
+ 122	     4288	CMP R0 R1
+ 124	     BF28	IT CS
+ 126	 EC0025E1	TrapCS 1 at pos 350
+ 130	     9904	LDR R1 [SP + 16]
+ 132	     1808	ADDS R0 R1 R0
+ 134	 10000026	MOV R1 lower 16-bits base(0)
+ 138	 0000D414	MOVT R1 higher 16-bits var(1)
+ 142	     7809	LDR R1 [ R1 + 0]
+ 144	     7001	STRB R1 [ R0 + 0]
+ 146	     9807	LDR R0 [SP + 28]
+ 148	     280A	CMP R0 #10
+ 150	     BF28	IT CS
+ 152	 EC002711	TrapCS 1 at pos 369
+ 156	     9906	LDR R1 [SP + 24]
+ 158	     1808	ADDS R0 R1 R0
+ 160	     2101	MOVS R1 #1
+ 162	     9A02	LDR R2 [SP + 8]
+ 164	     4291	CMP R1 R2
+ 166	     BF28	IT CS
+ 168	 EC002791	TrapCS 1 at pos 377
+ 172	     9A01	LDR R2 [SP + 4]
+ 174	     1851	ADDS R1 R2 R1
+ 176	     7809	LDR R1 [ R1 + 0]
+ 178	     7001	STRB R1 [ R0 + 0]
+ 180	 F85DEB04	LDR LR [ SP ] + 4
+ 184	 F11D0D1C	ADDS SP SP #28
+ 188	     4770	BX LR
+ 190	 F1BD0D04	SUBS SP SP #4
+ 194	     B43F	PUSH R0 R1 R2 R3 R4 R5
+ 196	     B500	PUSH LR
+ 198	     9806	LDR R0 [SP + 24]
+ 200	     9903	LDR R1 [SP + 12]
+ 202	     2205	MOVS R2 #5
+ 204	 F8513B04	LDR R3 [ R1 ] + 4
+ 208	 F8403B04	STR R3 [ R0 ] + 4
+ 212	     1E52	SUBS R2 R2 #1
+ 214	     D1F9	BNE #-14, goes to 204
+ 216	     9806	LDR R0 [SP + 24]
+ 218	 1000002A	MOV R1 lower 16-bits base(0)
+ 222	 0000D414	MOVT R1 higher 16-bits var(24)
+ 226	     2205	MOVS R2 #5
+ 228	 F8513B04	LDR R3 [ R1 ] + 4
+ 232	 F8403B04	STR R3 [ R0 ] + 4
+ 236	     1E52	SUBS R2 R2 #1
+ 238	     D1F9	BNE #-14, goes to 228
+ 240	 0000000B	MOV R0 lower 16-bits base(0)
+ 244	 0000D414	MOVT R0 higher 16-bits var(24)
+ 248	     9906	LDR R1 [SP + 24]
+ 250	     2205	MOVS R2 #5
+ 252	 F8513B04	LDR R3 [ R1 ] + 4
+ 256	 F8403B04	STR R3 [ R0 ] + 4
+ 260	     1E52	SUBS R2 R2 #1
+ 262	     D1F9	BNE #-14, goes to 252
+ 264	     9807	LDR R0 [SP + 28]
+ 266	     9905	LDR R1 [SP + 20]
+ 268	     4288	CMP R0 R1
+ 270	     BF28	IT CS
+ 272	 EC004341	TrapCS 1 at pos 564
+ 276	     9904	LDR R1 [SP + 16]
+ 278	 EB110080	ADDS R0 R1 R0 LSL #2
+ 282	     2101	MOVS R1 #1
+ 284	     9A02	LDR R2 [SP + 8]
+ 286	     4291	CMP R1 R2
+ 288	     BF28	IT CS
+ 290	 EC0043C1	TrapCS 1 at pos 572
+ 294	     9A01	LDR R2 [SP + 4]
+ 296	 EB120181	ADDS R1 R2 R1 LSL #2
+ 300	     6809	LDR R1 [ R1 + 0]
+ 302	     6001	STR R1 [ R0 + 0]
+ 304	     9807	LDR R0 [SP + 28]
+ 306	     9905	LDR R1 [SP + 20]
+ 308	     4288	CMP R0 R1
+ 310	     BF28	IT CS
+ 312	 EC004471	TrapCS 1 at pos 583
+ 316	     9904	LDR R1 [SP + 16]
+ 318	 EB110080	ADDS R0 R1 R0 LSL #2
+ 322	 10000029	MOV R1 lower 16-bits base(0)
+ 326	 0000D414	MOVT R1 higher 16-bits var(28)
+ 330	     6809	LDR R1 [ R1 + 0]
+ 332	     6001	STR R1 [ R0 + 0]
+ 334	     9807	LDR R0 [SP + 28]
+ 336	     2805	CMP R0 #5
+ 338	     BF28	IT CS
+ 340	 EC0045A1	TrapCS 1 at pos 602
+ 344	     9906	LDR R1 [SP + 24]
+ 346	 EB110080	ADDS R0 R1 R0 LSL #2
+ 350	     2101	MOVS R1 #1
+ 352	     9A02	LDR R2 [SP + 8]
+ 354	     4291	CMP R1 R2
+ 356	     BF28	IT CS
+ 358	 EC004621	TrapCS 1 at pos 610
+ 362	     9A01	LDR R2 [SP + 4]
+ 364	 EB120181	ADDS R1 R2 R1 LSL #2
+ 368	     6809	LDR R1 [ R1 + 0]
+ 370	     6001	STR R1 [ R0 + 0]
+ 372	 F85DEB04	LDR LR [ SP ] + 4
+ 376	 F11D0D1C	ADDS SP SP #28
+ 380	     4770	BX LR
+ 382	     B500	PUSH LR
+ 384	 0000001F	MOV R0 lower 16-bits base(0)
+ 388	 0000D414	MOVT R0 higher 16-bits var(64)
+ 392	     6800	LDR R0 [ R0 + 0]
+ 394	     2103	MOVS R1 #3
+ 396	     4348	MULS R0 R1 R0
+ 398	 10000007	MOV R1 lower 16-bits base(0)
+ 402	 0000D414	MOVT R1 higher 16-bits var(64)
+ 406	     6008	STR R0 [ R1 + 0]
+ 408	 00000005	MOV R0 lower 16-bits base(0)
+ 412	 0000D414	MOVT R0 higher 16-bits var(0)
+ 416	 10000004	MOV R1 lower 16-bits base(0)
+ 420	 0000D414	MOVT R1 higher 16-bits var(12)
+ 424	     2203	MOVS R2 #3
+ 426	 F8513B04	LDR R3 [ R1 ] + 4
+ 430	 F8403B04	STR R3 [ R0 ] + 4
+ 434	     1E52	SUBS R2 R2 #1
+ 436	     D1F9	BNE #-14, goes to 426
+ 438	 0000000B	MOV R0 lower 16-bits base(0)
+ 442	 0000D414	MOVT R0 higher 16-bits var(64)
+ 446	     6800	LDR R0 [ R0 + 0]
+ 448	     280A	CMP R0 #10
+ 450	     BF28	IT CS
+ 452	 EC005171	TrapCS 1 at pos 663
+ 456	 10000009	MOV R1 lower 16-bits base(0)
+ 460	 0000D414	MOVT R1 higher 16-bits var(0)
+ 464	     1808	ADDS R0 R1 R0
+ 466	 10000005	MOV R1 lower 16-bits base(0)
+ 470	 0000D414	MOVT R1 higher 16-bits var(1)
+ 474	     7809	LDR R1 [ R1 + 0]
+ 476	     7001	STRB R1 [ R0 + 0]
+ 478	 00000006	MOV R0 lower 16-bits base(0)
+ 482	 0000D414	MOVT R0 higher 16-bits var(44)
+ 486	 10000004	MOV R1 lower 16-bits base(0)
+ 490	 0000D414	MOVT R1 higher 16-bits var(24)
+ 494	     2205	MOVS R2 #5
+ 496	 F8513B04	LDR R3 [ R1 ] + 4
+ 500	 F8403B04	STR R3 [ R0 ] + 4
+ 504	     1E52	SUBS R2 R2 #1
+ 506	     D1F9	BNE #-14, goes to 496
+ 508	 0000000B	MOV R0 lower 16-bits base(0)
+ 512	 0000D414	MOVT R0 higher 16-bits var(64)
+ 516	     6800	LDR R0 [ R0 + 0]
+ 518	     2805	CMP R0 #5
+ 520	     BF28	IT CS
+ 522	 EC005331	TrapCS 1 at pos 691
+ 526	 10000009	MOV R1 lower 16-bits base(0)
+ 530	 0000D414	MOVT R1 higher 16-bits var(24)
+ 534	 EB110080	ADDS R0 R1 R0 LSL #2
+ 538	 10000006	MOV R1 lower 16-bits base(0)
+ 542	 0000D414	MOVT R1 higher 16-bits var(28)
+ 546	     6809	LDR R1 [ R1 + 0]
+ 548	     6001	STR R1 [ R0 + 0]
+ 550	 F85DEB04	LDR LR [ SP ] + 4
+ 554	     4770	BX LR
+
+*)
+
