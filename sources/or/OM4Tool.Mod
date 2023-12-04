@@ -210,6 +210,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
     RETURN imm*OM4A.C1
   END SignExtendEven8;
   
+  PROCEDURE SignExtendEven11(imm: LONGINT): LONGINT;
+  BEGIN IF imm > OM4A.C10 THEN DEC(imm, OM4A.C11) END;
+    RETURN imm*OM4A.C1
+  END SignExtendEven11;
+  
   PROCEDURE imm16(b1, b2, b3, b4: BYTE): LONGINT;
   BEGIN
     RETURN 0 + b2 MOD OM4A.C4*OM4A.C12 + b1 DIV OM4A.C2 MOD OM4A.C1*OM4A.C11 +
@@ -501,6 +506,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       AddImm8 = {13, 12};
       (*T16MSK11 010xx Arithmetic Shift Right ASR (immediate) on page A7-203*)
       ASRImmT1 = {12};
+      (*T16MSK11 000xx Logical Shift Left(a) LSL (immediate) on page A7-282*)
+      LslImmT1 = {};
 
       (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
       AddImm3 = {10..12};
@@ -1028,6 +1035,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Rd := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
             WriteOp(op, "SUB", TRUE, FALSE); WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
             Texts.WriteInt(W, b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6, 1)
+          ELSIF op*T16MSK11 = LslImmT1 THEN
+            (*T16MSK11 000xx Logical Shift Left(a) LSL (immediate) on page A7-282
+              (a) When opcode is 0b00000, and bits[8:6] are 0b000, this encoding is MOV
+                  (register), see MOV (register) on page A7-293.*)
+            (*LSLS <Rd>,<Rm>,#<imm5> Outside IT block.
+              LSL<c> <Rd>,<Rm>,#<imm5> Inside IT block.*)
+            Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+            WriteOp(op, "LSL", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6, 1)
           ELSE Texts.WriteString(W, "TODO: other ShAdSuMoCm on page A5-130")
           END
         ELSIF op*T16MSK4 = CondBrAndSVC THEN
@@ -1091,8 +1107,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
         ELSIF op*T16MSK3 = UncBr THEN
           (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
           (*B<c> <label>*)
-          WriteOp(op, "B", FALSE, FALSE); t := b1 MOD OM4A.C3*OM4A.C8 + b2;
-          IF t >= OM4A.C10 THEN DEC(t, OM4A.C11) END; WritePCOffset(i+2, t*OM4A.C1)
+          WriteOp(op, "B", FALSE, FALSE); WritePCOffset(i+2, SignExtendEven11(b1 MOD OM4A.C3*OM4A.C8 + b2))
         ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
         END
       END

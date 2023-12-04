@@ -820,7 +820,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END For1;
 
   PROCEDURE For2*(VAR x, y, w: Item);
-  BEGIN load(x); DEC(RH); OM4A.encDPImm32(mcode, OM4A.ADD, x.r, x.r, RH, w.a)
+  BEGIN load(x); OM4A.encDPImm32(mcode, OM4A.ADD, x.r, x.r, RH, w.a); DEC(RH)
   END For2;
 
   (* Branches, procedure calls, procedure prolog and epilog *)
