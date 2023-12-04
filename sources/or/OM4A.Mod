@@ -419,33 +419,6 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     Put0(c, op + a*C12 + b*C16 + formatPUWImm8(p, u, w, imm))
   END encMemImm8PUW;
   
-  PROCEDURE encMemImm12*(VAR c: ModuleCode; op, a, b: BYTE; imm: LONGINT; msg: ARRAY OF CHAR);
-  BEGIN
-    ASSERT(op <= STRB);
-    ASSERT((a < C4) & (b < C4));
-    IF (imm < 0) & (imm > -C8) THEN
-      encMemImm8PUW(c, memPUWimm8map[op], a, b, TRUE(*Pre-indexed*), 
-        FALSE(*subtract*), FALSE(*no write back*), -imm)
-    ELSIF (imm <= C7) & (imm MOD C2 = 0) & (a < C3) & (b < C3) THEN
-      (*|0110/1 im/m5 R/n Rt| LDR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
-      (*|0111/1 im/m5 R/n Rt| LDRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
-      (*|0110/0 im/m5 R/n Rt| STR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
-      (*|0111/0 im/m5 R/n Rt| STRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
-      Put1(c, memimm5map[op] + imm DIV C2*C6 + b*C3 + a)
-    ELSIF (imm <= C10) & (imm MOD C2 = 0) & (a < C3) & (b = 13) & (memimm8map[op] # 0) THEN
-      (*|1001/1 Rt/  imm8  | LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
-      (*|1001/0 Rt/  imm8  | STR<c> <Rt>,[SP{,#<imm8>}] T2*)
-      Put1(c, memimm8map[op] + a*C8 + imm DIV C2)
-    ELSIF imm < C12 THEN
-      (*|1111/1000/1101/ Rn / Rt /    /imm1/2   | LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]  T3*)
-      (*|1111/1000/1001/ Rn / Rt /    /imm1/2   | LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}] T2*)
-      (*|1111/1000/1100/ Rn / Rt /    /imm1/2   | STR<c>.W <Rt>,[<Rn>{,#<imm12>}]  T3*)
-      (*|1111/1000/1000/ Rn / Rt /    /imm1/2   | STRB<c>.W <Rt>,[<Rn>{,#<imm12>}] T2*)
-      Put0(c, memimm12map[op] + a*C12 + b*C16 + imm);
-    ELSE OM4S.Mark(msg) 
-    END;
-  END encMemImm12;
-
   PROCEDURE encDPImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: LONGINT);
     VAR tmiCode: LONGINT;
   BEGIN
@@ -483,6 +456,36 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encDPImm32;
   
+  PROCEDURE encMemImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: LONGINT);
+    VAR imm1, imm2: LONGINT;
+  BEGIN
+    ASSERT(op <= STRB);
+    ASSERT((a < C4) & (b < C4));
+    IF (imm < 0) & (imm > -C8) THEN
+      encMemImm8PUW(c, memPUWimm8map[op], a, b, TRUE(*Pre-indexed*), 
+        FALSE(*subtract*), FALSE(*no write back*), -imm)
+    ELSIF (imm <= C7) & (imm MOD C2 = 0) & (a < C3) & (b < C3) THEN
+      (*|0110/1 im/m5 R/n Rt| LDR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
+      (*|0111/1 im/m5 R/n Rt| LDRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
+      (*|0110/0 im/m5 R/n Rt| STR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
+      (*|0111/0 im/m5 R/n Rt| STRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
+      Put1(c, memimm5map[op] + imm DIV C2*C6 + b*C3 + a)
+    ELSIF (imm <= C10) & (imm MOD C2 = 0) & (a < C3) & (b = 13) & (memimm8map[op] # 0) THEN
+      (*|1001/1 Rt/  imm8  | LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
+      (*|1001/0 Rt/  imm8  | STR<c> <Rt>,[SP{,#<imm8>}] T2*)
+      Put1(c, memimm8map[op] + a*C8 + imm DIV C2)
+    ELSIF imm < C12 THEN
+      (*|1111/1000/1101/ Rn / Rt /    /imm1/2   | LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]  T3*)
+      (*|1111/1000/1001/ Rn / Rt /    /imm1/2   | LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}] T2*)
+      (*|1111/1000/1100/ Rn / Rt /    /imm1/2   | STR<c>.W <Rt>,[<Rn>{,#<imm12>}]  T3*)
+      (*|1111/1000/1000/ Rn / Rt /    /imm1/2   | STRB<c>.W <Rt>,[<Rn>{,#<imm12>}] T2*)
+      Put0(c, memimm12map[op] + a*C12 + b*C16 + imm);
+    ELSE (*imm = imm1+imm2 et 0 <= imm2 < C12*)
+      imm2 := imm MOD C12; imm1 := imm DIV C12*C12;
+      encDPImm32(c, ADD, t, b, t, imm1); encMemImm32(c, op, a, t, t, imm2)
+    END;
+  END encMemImm32;
+
   PROCEDURE encDPReg*(VAR co: ModuleCode; op, a, b, c: BYTE; shift: LONGINT);
   BEGIN
     ASSERT (op < NBOPS);
