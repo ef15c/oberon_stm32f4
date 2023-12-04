@@ -82,18 +82,20 @@ entry =       14
    8	 F11D0D08	ADDS SP SP #8
   12	     4770	BX LR
   14	     B500	PUSH LR
-  16	 00000008	LDR R0 [ MT + Base(0) ]
-  20	 10000002	LDR R1 [ MT + Base(0) ]
-  24	     310C	ADDS R1 #12
-  26	 F8512B04	LDR R2 [ R1 ] + 4
-  30	 F8402B04	STR R2 [ R0 ] + 4
-  34	     1612	ASRS R2 R2 #24
-  36	     D1F9	B NE #-14
-  38	 00000009	LDR R0 [ MT + Base(0) ]
-  42	     210A	MOVS R1 #10
-  44	 F7FFFFE8	BL #-48
-  48	 F85DEB04	LDR LR [ SP ] + 4
-  52	     4770	BX LR
+  16	 00000008	MOV R0 lower 16-bits base(0)
+  20	 0000D414	MOVT R0 higher 16-bits var(0)
+  24	 10000004	MOV R1 lower 16-bits base(0)
+  28	 0000D414	MOVT R1 higher 16-bits var(12)
+  32	 F8512B04	LDR R2 [ R1 ] + 4
+  36	 F8402B04	STR R2 [ R0 ] + 4
+  40	     1612	ASRS R2 R2 #24
+  42	     D1F9	BNE #-14, goes to 32
+  44	 0000000A	MOV R0 lower 16-bits base(0)
+  48	 0000D414	MOVT R0 higher 16-bits var(0)
+  52	     210A	MOVS R1 #10
+  54	 F7FFFFE3	BL #-58, goes to 0
+  58	 F85DEB04	LDR LR [ SP ] + 4
+  62	     4770	BX LR
 
 *)
 
