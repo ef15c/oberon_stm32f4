@@ -63,7 +63,7 @@ entry =       88
 OM4Tool.DecObj testFor.m4c ~
 
 decode testFor.m4c
-testFor 74E5D4BB   1    82
+testFor 74E5D4BB   1    80
 imports:
 type descriptors
 
@@ -73,13 +73,13 @@ strings
 code
 commands:
 entries
-    62
+    60
 pointer refs
 
 fixP =        0
 fixD =        0
 fixT =        0
-entry =       62
+entry =       60
    0	 F1BD0D08	SUBS SP SP #8
    4	     B500	PUSH LR
    6	     2001	MOVS R0 #1
@@ -96,17 +96,17 @@ entry =       62
   30	     200A	MOVS R0 #10
   32	     2101	MOVS R1 #1
   34	     4288	CMP R0 R1
-  36	 F2C08006	BLT #12, goes to 52
+  36	 F2C08005	BLT #10, goes to 50
   40	     9001	STR R0 [SP + 4]
   42	     9801	LDR R0 [SP + 4]
-  44	 F07F0101	MVNS R1 #1
-  48	     1840	ADDS R0 R0 R1
-  50	     E7F5	B #-22, goes to 32
-  52	 F85DEB04	LDR LR [ SP ] + 4
-  56	 F11D0D08	ADDS SP SP #8
-  60	     4770	BX LR
-  62	     B500	PUSH LR
-  64	 F85DEB04	LDR LR [ SP ] + 4
-  68	     4770	BX LR
+  44	 F1B00002	SUBS R0 R0 #2
+  48	     E7F6	B #-20, goes to 32
+  50	 F85DEB04	LDR LR [ SP ] + 4
+  54	 F11D0D08	ADDS SP SP #8
+  58	     4770	BX LR
+  60	     B500	PUSH LR
+  62	 F85DEB04	LDR LR [ SP ] + 4
+  66	     4770	BX LR
+
 
 *)

@@ -240,6 +240,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     reg4shmap: ARRAY NBOPS OF LONGINT;
     
     opnotmap: ARRAY NBOPS OF LONGINT;
+    opnegmap: ARRAY NBOPS OF LONGINT;
 
     shimm5map: ARRAY 4 OF LONGINT;
     shimm5wmap: ARRAY 4 OF LONGINT;
@@ -439,7 +440,10 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       c.lastInstrSetFlags := ODD(reg4shmap[op] DIV C20)
     ELSIF (opnotmap[op] < NBOPS) & formatThumbExpandImm(-(imm+1), tmiCode) THEN
       Put0(c, immthmap[opnotmap[op]] + b*C16 + a*C8 + tmiCode);
-      c.lastInstrSetFlags := ODD(reg4shmap[op] DIV C20)
+      c.lastInstrSetFlags := ODD(immthmap[opnotmap[op]] DIV C20)
+    ELSIF (opnegmap[op] < NBOPS) & formatThumbExpandImm(-imm, tmiCode) THEN
+      Put0(c, immthmap[opnegmap[op]] + b*C16 + a*C8 + tmiCode);
+      c.lastInstrSetFlags := ODD(immthmap[opnegmap[op]] DIV C20)
     ELSIF (imm >= 0) & (imm < C12)  & (imm12map[op] # 0) THEN
       Put0(c, imm12map[op] + imm DIV C11 MOD C1*C20 + b*C16 +
         imm DIV C8 MOD C3*C12 + a*C8 + imm MOD C8);
@@ -802,47 +806,47 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
 BEGIN
   imm3map[SUB] := 1E00H; imm8map[SUB] := 3800H; immthmap[SUB]  := 0F1B00000H; imm12map[SUB] := 0F2A00000H;
   reg3map[SUB] := 1A00H; reg3dnmap[SUB] := 0H;  reg4map[SUB]   := 0H;    reg4shmap[SUB]     := 0EBB00000H;
-  opnotmap[SUB] := NBOPS;
+  opnotmap[SUB] := NBOPS;  opnegmap[SUB] := ADD;
   
   imm3map[ADD] := 1C00H; imm8map[ADD] := 3000H; immthmap[ADD]  := 0F1100000H; imm12map[ADD] := 0F2000000H;
   reg3map[ADD] := 1800H; reg3dnmap[ADD] := 0H;  reg4map[ADD]   := 4400H; reg4shmap[ADD]     := 0EB100000H;
-  opnotmap[ADD] := NBOPS;
+  opnotmap[ADD] := NBOPS;  opnegmap[ADD] := SUB;
   
   imm3map[RSB] := 4240H; imm8map[RSB] := 0H;    immthmap[RSB]  := 0F1D00000H; imm12map[RSB] := 0H;
   reg3map[RSB] := 0H;    reg3dnmap[RSB] := 0H;  reg4map[RSB] := 0H;    reg4shmap[RSB] := 0EBD00000H;
-  opnotmap[RSB] := NBOPS;
+  opnotmap[RSB] := NBOPS;  opnegmap[RSB] := NBOPS;
   
   imm3map[EOR] := 0H;    imm8map[EOR] := 0H;    immthmap[EOR]  := 0F0900000H; imm12map[EOR] := 0H;
   reg3map[EOR] := 0H;    reg3dnmap[EOR] := 4040H; reg4map[EOR] := 0H;        reg4shmap[EOR] := 0EA900000H;
-  opnotmap[EOR] := NBOPS;
+  opnotmap[EOR] := NBOPS;  opnegmap[EOR] := NBOPS;
   
   imm3map[AND] := 0H;    imm8map[AND] := 0H;    immthmap[AND]  := 0F0100000H; imm12map[AND] := 0H;
   reg3map[AND] := 0H;    reg3dnmap[AND] := 4000H; reg4map[AND] := 0H;    reg4shmap[AND]     := 0EA100000H;
-  opnotmap[AND] := BIC;
+  opnotmap[AND] := BIC;  opnegmap[AND] := NBOPS;
   
   imm3map[BIC] := 0H;    imm8map[BIC] := 0H;    immthmap[BIC]  := 0F0300000H; imm12map[BIC] := 0H;
   reg3map[BIC] := 0H;    reg3dnmap[BIC] := 4380H; reg4map[BIC] := 0H;        reg4shmap[BIC] := 0EA300000H;
-  opnotmap[BIC] := AND;
+  opnotmap[BIC] := AND;  opnegmap[BIC] := NBOPS;
   
   imm3map[ORR] := 0H;    imm8map[ORR] := 0H;    immthmap[ORR]  := 0F0500000H; imm12map[ORR] := 0H;
   reg3map[ORR] := 0H;    reg3dnmap[ORR] := 4300H; reg4map[ORR] := 0H;        reg4shmap[ORR] := 0EA500000H;
-  opnotmap[ORR] := ORN;
+  opnotmap[ORR] := ORN;  opnegmap[ORR] := NBOPS;
   
   imm3map[ADc] := 0H;    imm8map[ADc] := 0H;    immthmap[ADc]  := 0F1500000H; imm12map[ADc] := 0H;
   reg3map[ADc] := 0H;    reg3dnmap[ADc] := 4140H; reg4map[ADc] := 0H;        reg4shmap[ADc] := 0EB500000H;
-  opnotmap[ADc] := NBOPS;
+  opnotmap[ADc] := NBOPS;  opnegmap[ADc] := NBOPS;
   
   imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    immthmap[SBc]  := 0F1700F00H; imm12map[SBc] := 0H;
   reg3map[SBc] := 0H;    reg3dnmap[SBc] := 4180H; reg4map[SBc] := 0H;        reg4shmap[SBc] := 0EB700000H;
-  opnotmap[SBc] := NBOPS;
+  opnotmap[SBc] := NBOPS;  opnegmap[SBc] := NBOPS;
   
   imm3map[TST] := 0H;    imm8map[TST] := 0H;    immthmap[TST]  := 0F0100F00H; imm12map[TST] := 0H;
   reg3map[TST] := 0H;    reg3dnmap[TST] := 4200H; reg4map[TST] := 0H;        reg4shmap[TST] := 0EA100F00H;
-  opnotmap[TST] := NBOPS;
+  opnotmap[TST] := NBOPS;  opnegmap[TST] := NBOPS;
   
   imm3map[ORN] := 0H;    imm8map[ORN] := 0H;    immthmap[ORN]  := 0F0700000H; imm12map[ORN] := 0H;
   reg3map[ORN] := 0H;    reg3dnmap[ORN] := 0H;    reg4map[ORN] := 0H;        reg4shmap[ORN] := 0EA700000H;
-  opnotmap[ORN] := ORR;
+  opnotmap[ORN] := ORR;  opnegmap[ORN] := NBOPS;
   
   shimm5map[LSl] :=  0000H; shimm5wmap[LSl] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
   shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
