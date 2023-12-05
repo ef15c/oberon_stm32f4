@@ -205,7 +205,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     UMULL<c><q> <RdLo>, <RdHi>, <Rn>, <Rm>*)
     
     BRSIG*   = 1EH; (*Pseudo branch op signature*)
-    BRCSIG*  = 1EH; (*Pseudo conditional branch op signature*)
+    BRCSIG*  = 1FH; (*Pseudo conditional branch op signature*)
 
     
     (*Arithmetic and logical operations*)
