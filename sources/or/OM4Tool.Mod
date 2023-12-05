@@ -1098,11 +1098,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
           ELSIF op*T16MSK52 = LdRegByteImm5 THEN
             (*T16MSK52 0111 1xx Load Register Byte LDRB (immediate) on page A7-252*)
             (*LDRB<c> <Rt>,[<Rn>{,#<imm5>}]*)
-            WriteOp(op, "LDR", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
+            WriteOp(op, "LDRB", FALSE, FALSE); WriteReg(Rt); Texts.WriteString(W, " [");
             WriteReg(Rn); Texts.WriteString(W, " + ");
             Texts.WriteInt(W, (b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2)*OM4A.C2, 1);
             Texts.Write(W, "]")
-          ELSE Texts.WriteString(W, "TODO not StRegByteImm5")
+          ELSE Texts.WriteString(W, "TODO other LdStSingleT1 on page A5-133")
           END
         ELSIF op*T16MSK3 = UncBr THEN
           (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
