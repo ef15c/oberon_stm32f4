@@ -954,7 +954,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN loadAdr(x); zr := RH; incR; OM4A.encMemImm32(mcode, OM4A.LDR, zr, x.r, RH, 0);
     IF inorex = 0 THEN op := OM4A.ORR ELSE op := OM4A.BIC END ;
     IF y.mode = OM4B.Const THEN OM4A.encDPImm32(mcode, op, zr, zr, RH, LSL(1, y.a))
-    (* considérer BFI et BFC pour gagner 4 octets par le remplacement de LSL et OM4A.ORR/OM4A.BIC par BFI/BFC*)
     ELSE load(y); OM4A.encMOVImm32(mcode, RH, 1); OM4A.encShiftReg(mcode, OM4A.LSl, y.r, RH, y.r); OM4A.encDPReg(mcode, op, zr, zr, y.r, 0); DEC(RH)
     END ;
     OM4A.encMemImm32(mcode, OM4A.STR, zr, x.r, RH, 0); DEC(RH, 2)
