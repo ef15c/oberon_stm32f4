@@ -271,6 +271,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       AndRegT2 = {};
       (*T32MSK21 0010 Rn not 1111 - - Bitwise OR ORR (register) on page A7-310*)
       OrrRegT2 = {22};
+      (*T32MSK21 1101 - Rd not 1111 - Subtract SUB (register) on page A7-404*)
+      SubOrCmp = {23..24, 21};
 
       T32MSK211 = {4..5};
       (*T32MSK211 11 00000 Rotate Right with Extend RRX on page A7-340
@@ -508,6 +510,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       ASRImmT1 = {12};
       (*T16MSK11 000xx Logical Shift Left(a) LSL (immediate) on page A7-282*)
       LslImmT1 = {};
+      (*T16MSK11 111xx Subtract 8-bit immediate SUB (immediate) on page A7-402*)
+      SubImmT2 = {11..13};
 
       (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
       AddImm3 = {10..12};
@@ -810,8 +814,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
               IF 20 IN op THEN
                 (*T32MSK21 1000 - Rd = 1111 1 Compare Negative CMN (register) on page A7-222*)
                 (*CMN<c>.W <Rn>,<Rm>{,<shift>}*)
-                WriteOp(op, "CMN", FALSE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
-                WriteShift(op)
+                WriteOp(op, "CMN", FALSE, FALSE); WriteReg(Rn); WriteReg(Rm); WriteShift(op)
               ELSE Texts.WriteString(W, "CMN (register) NOT PREDICTABLE")
               END
             ELSE
@@ -861,6 +864,21 @@ MODULE OM4Tool;  (*NW 18.2.2013
               (*ORR{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
               Rm := b4 MOD OM4A.C4;
               WriteOp(op, "ORR", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
+              WriteShift(op)
+            END
+          ELSIF op*T32MSK21 = SubOrCmp THEN
+            Rm := b4 MOD OM4A.C4;
+            IF Rd = 15 THEN
+              IF 20 IN op THEN
+                (*T32MSK21 1101 - Rd = 1111 1 Compare CMP (register) on page A7-224*)
+                (*CMP<c>.W <Rn>, <Rm> {,<shift>}*)
+                WriteOp(op, "CMP", FALSE, FALSE); WriteReg(Rn); WriteReg(Rm); WriteShift(op)
+              ELSE Texts.WriteString(W, "CMP (register) NOT PREDICTABLE")
+              END
+            ELSE
+              (*T32MSK21 1101 - Rd not 1111 - Subtract SUB (register) on page A7-404*)
+              (*SUB{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
+              WriteOp(op, "SUB", FALSE, TRUE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
               WriteShift(op)
             END
           ELSE Texts.WriteString(W, "TODO other DataProcShiftedReg on page A5-150")
@@ -1044,6 +1062,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
             WriteOp(op, "LSL", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm); Texts.WriteString(W, " #");
             Texts.WriteInt(W, b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6, 1)
+          ELSIF op*T16MSK11 = SubImmT2 THEN
+            (*T16MSK11 111xx Subtract 8-bit immediate SUB (immediate) on page A7-402*)
+            (*SUBS <Rdn>,#<imm8> Outside IT block.
+              SUB<c> <Rdn>,#<imm8> Inside IT block.*)
+            Rd := b1 MOD OM4A.C3;
+            WriteOp(op, "SUB", TRUE, FALSE); WriteReg(Rd); Texts.WriteString(W, " #"); Texts.WriteInt(W, b2, 1)
           ELSE Texts.WriteString(W, "TODO: other ShAdSuMoCm on page A5-130")
           END
         ELSIF op*T16MSK4 = CondBrAndSVC THEN
