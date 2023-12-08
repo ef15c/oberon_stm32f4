@@ -373,8 +373,14 @@ MODULE OM4Tool;  (*NW 18.2.2013
       FPDataProc = {25};
       
       T32MSK3203 = {28, 23, 20..21, 6};
-      T32MSK3204 = {28, 23, 16..21, 6..7}; T32MSK325 = {28, 23, 20..21, 17..19, 6};
+      T32MSK3204 = {28, 23, 16..21, 6..7}; T32MSK325 = {28, 23, 17..21, 6};
+      T32MSK3207 = {28, 23, 16..21, 6};
       
+      (*T32MSK3207 0 1x11 1000 x1 FP Convert VCVT, VCVTR (between floating-point and integer) on page A7-461*) 
+      VCVTFS = {23, 19..21, 6};
+      (*T32MSK325 0 1x11 110x x1 FP Convert VCVT, VCVTR (between floating-point and integer) on page A7-461*)
+      VCVTSF = {23, 18..21, 6};
+
       (*T32MSK3203 0 0x11 - x0 FP Add VADD on page A7-456*)
       VADD = {20..21};
       
@@ -391,7 +397,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       VNEG = {23, 20..21, 16, 6};
       (*T32MSK3204 0 1x11 0001 11 FP Square Root VSQRT on page A7-498*)      
       VSQRT = {23, 20..21, 16, 6..7};
-                
+      (*T32MSK3204 0 1x11 0000 11 FP Absolute VABS on page A7-455*)
+      VABS = {23, 20..21, 6..7};
+
       (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457*)
       VCMPT1 = {23, 20..21, 18, 6};
       
@@ -729,7 +737,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
                 (*VNEG<c>.F32 <Sd>, <Sm>*)
                 WriteOp(op, "VNEG", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
                 Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
-              ELSIF op*T32MSK3204 = VCMPT1 THEN
+              ELSIF op*T32MSK325 = VCMPT1 THEN
                 (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457
                   VCMP{E}<c>.F32 <Sd>, <Sm>*)
                 WriteOp(op, "VCMP", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
@@ -738,6 +746,26 @@ MODULE OM4Tool;  (*NW 18.2.2013
                 (*T32MSK3204 0 1x11 0001 11 FP Square Root VSQRT on page A7-498
                   VSQRT<c>.F32 <Sd>, <Sm>*)
                 WriteOp(op, "VSQRT", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+                Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK3207 = VCVTFS THEN
+                (*T32MSK3207 0 1x11 1000 x1 FP Convert VCVT, VCVTR (between floating-point and integer) on page A7-461*)
+                (*VCVT{<c>}{<q>}.F32.<Tm> <Sd>, <Sm> Encoded as opc2 = b000, sz = 0*)
+                WriteOp(op, "VCVT", FALSE, FALSE); Texts.WriteString(W, ".F32.");
+                IF 7 IN op THEN Texts.WriteString(W, "S32. S") ELSE Texts.WriteString(W, "U32 S") END;
+                Texts.WriteInt(W, Sd, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK325 = VCVTSF THEN
+                (*T32MSK3204 0 1x11 110x x1 FP Convert VCVT, VCVTR (between floating-point and integer) on page A7-461*)
+                (*VCVT{R}{<c>}{<q>}.S32.F32 <Sd>, <Sm> Encoded as opc2 = b101, sz = 0
+                  VCVT{R}{<c>}{<q>}.U32.F32 <Sd>, <Sm> Encoded as opc2 = b100, sz = 0*)
+                Texts.WriteString(W, "VCVT");
+                IF ~(7 IN op) THEN Texts.WriteString(W, "R") END; WriteOp(op, "", FALSE, FALSE);
+                IF 16 IN op THEN Texts.WriteString(W, ".S32.F32 S")
+                ELSE Texts.WriteString(W, ".U32.F32 S") END;
+                Texts.WriteInt(W, Sd, 1); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+              ELSIF op*T32MSK3204 = VABS THEN
+                (*T32MSK3204 0 1x11 0000 11 FP Absolute VABS on page A7-455*)
+                (*VABS{<c>}{<q>}.F32 <Sd>,<Sm>*)
+                WriteOp(op, "VABS", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
                 Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
               ELSE Texts.WriteString(W, "TODO: other FPDataProc on page A6.4-165")
               END

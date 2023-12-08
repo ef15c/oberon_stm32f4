@@ -12,7 +12,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     NBS = 32; (* Number of single float registers in the FPU bank *)
     VarORG0 = 0D0201000H;  (*for bare metal program only, 
     0D0200400H is the end address of VGA buffers*)
-    maxStrx = 2400; maxTD = 160;
+    maxStrx = 3000; maxTD = 160;
     
     Reg = 10; RegI = 11; Cond = 12; FPReg = 13; (*internal item modes*)
 
@@ -1040,7 +1040,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Abs*(VAR x: Item);
   BEGIN
     IF x.mode = OM4B.Const THEN x.a := ABS(x.a)
-    ELSE load(x);
+    ELSE IF x.type.form = OM4B.Real THEN loadFP(x); ELSE load(x) END;
       IF x.mode = FPReg THEN OM4A.encFPOpReg(mcode, OM4A.VABS, x.r, 0, x.r)
       ELSE OM4A.encCMPImm(mcode ,x.r, RH, 0); OM4A.IfThen(mcode, "T", OM4A.LT);
       OM4A.encMOVImm32(mcode, RH, 0); OM4A.encDPReg(mcode, OM4A.SUB, x.r, RH, x.r, 0)
@@ -1062,7 +1062,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Floor*(VAR x: Item);
   BEGIN loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VCVTSF, x.r, 0, x.r); 
-    incR; OM4A.encFPOpReg(mcode, OM4A.VMOVRS, RH-1, x.r, 0); x.r := RH-1; DEC(SH)
+    incR; OM4A.encFPOpReg(mcode, OM4A.VMOVRS, RH-1, x.r, 0);
+    x.mode := Reg; x.r := RH-1;DEC(SH)
   END Floor;
 
   PROCEDURE Float*(VAR x: Item);
