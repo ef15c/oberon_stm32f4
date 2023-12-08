@@ -1011,6 +1011,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Copy*(VAR x, y, z: Item);
     VAR pc0, pc1: LONGINT;
   BEGIN load(x); load(y);
+    pc0 := 0;
     IF z.mode = OM4B.Const THEN
       IF z.a > 0 THEN load(z) ELSE OM4S.Mark("bad count") END
     ELSE load(z);
@@ -1024,7 +1025,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, RH, x.r, FALSE, TRUE, TRUE, 4);
     OM4A.encMemImm8PUW(mcode, OM4A.STRIT4, RH, y.r, FALSE, TRUE, TRUE, 4);
     OM4A.encDPImm32(mcode, OM4A.SUB, z.r, z.r, RH, 1); OM4A.encBackBranch(mcode, OM4A.NE, pc1); (*BNE L1*)
-    OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4); DEC(RH, 3)
+    IF pc0 # 0 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END; DEC(RH, 3)
   END Copy;
 
   PROCEDURE LDREG*(VAR x, y: Item);
