@@ -679,7 +679,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
     VAR op: LONGINT;
-  BEGIN IF y.mode # FPReg THEN load(y) END;
+  BEGIN IF ~(y.mode IN {Reg, FPReg}) THEN
+      IF y.type.form = OM4B.Real THEN loadFP(y) ELSE load(y) END
+    END;
     IF x.type.size = 1 THEN op := OM4A.STRB ELSE op := OM4A.STR END ;
     IF x.mode = OM4B.Var THEN
       IF x.r > 0 THEN (*local*)
@@ -1042,8 +1044,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = OM4B.Const THEN x.a := ABS(x.a)
     ELSE IF x.type.form = OM4B.Real THEN loadFP(x); ELSE load(x) END;
       IF x.mode = FPReg THEN OM4A.encFPOpReg(mcode, OM4A.VABS, x.r, 0, x.r)
-      ELSE OM4A.encCMPImm(mcode ,x.r, RH, 0); OM4A.IfThen(mcode, "T", OM4A.LT);
-      OM4A.encMOVImm32(mcode, RH, 0); OM4A.encDPReg(mcode, OM4A.SUB, x.r, RH, x.r, 0)
+      ELSE OM4A.encCMPImm(mcode ,x.r, RH, 0); OM4A.IfThen(mcode, "", OM4A.LT);
+        OM4A.encDPImm32(mcode, OM4A.RSB, x.r, x.r, RH, 0)
       END
     END
   END Abs;
@@ -1061,14 +1063,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Odd;
 
   PROCEDURE Floor*(VAR x: Item);
-  BEGIN loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VCVTSF, x.r, 0, x.r); 
-    incR; OM4A.encFPOpReg(mcode, OM4A.VMOVRS, RH-1, x.r, 0);
-    x.mode := Reg; x.r := RH-1;DEC(SH)
+  BEGIN loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VCVTSF, x.r, 0, x.r);
+    x.type.form := OM4B.Int;
   END Floor;
 
   PROCEDURE Float*(VAR x: Item);
-  BEGIN load(x); incS; OM4A.encFPOpReg(mcode, OM4A.VMOVSR, x.r, SH-1, 0); x.r := SH-1;
-    x.mode := FPReg; DEC(RH); OM4A.encFPOpReg(mcode, OM4A.VCVTFS, x.r, 0, x.r)
+  BEGIN x.type.form := OM4B.Real; loadFP(x);
+    OM4A.encFPOpReg(mcode, OM4A.VCVTFS, x.r, 0, x.r)
   END Float;
 
   PROCEDURE Ord*(VAR x: Item);
