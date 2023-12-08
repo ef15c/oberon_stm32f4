@@ -598,11 +598,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
           IF op*T32MSK42 = MW16Bit THEN
             (*T32MSK42 00100 -: Move Wide, 16-bit MOV (immediate) on page A7-291*)
             WriteOp(op, "MOV", FALSE, FALSE); WriteReg(Rd); Texts.WriteString(W, " #");
-            Texts.WriteInt(W, imm16(b1, b2, b3, b4), 6)
+            Texts.WriteInt(W, imm16(b1, b2, b3, b4), 1)
           ELSIF op*T32MSK42 = MoveTop THEN
             (*T32MSK42 01100 -: Move Top, 16-bit MOVT on page A7-296*)
             WriteOp(op, "MOVT", FALSE, FALSE); WriteReg(Rd); Texts.WriteString(W, " #");
-            Texts.WriteInt(W, imm16(b1, b2, b3, b4), 6)
+            Texts.WriteInt(W, imm16(b1, b2, b3, b4), 1)
           ELSE Texts.WriteString(W, "TODO: not MW16Bit")
           END
         ELSIF op*T32MSK6 = StrSingleDataItem THEN
@@ -1067,13 +1067,16 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*SUBS <Rdn>,#<imm8> Outside IT block.
               SUB<c> <Rdn>,#<imm8> Inside IT block.*)
             Rd := b1 MOD OM4A.C3;
-            WriteOp(op, "SUB", TRUE, FALSE); WriteReg(Rd); Texts.WriteString(W, " #"); Texts.WriteInt(W, b2, 1)
+            WriteOp(op, "SUB", TRUE, FALSE); WriteReg(Rd); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, b2, 1)
           ELSE Texts.WriteString(W, "TODO: other ShAdSuMoCm on page A5-130")
           END
         ELSIF op*T16MSK4 = CondBrAndSVC THEN
           (*T16MSK4 1101xx Conditional branch, and Supervisor Call on page A5-136*)
           IF b1 MOD OM4A.C4 = 0EH THEN Texts.WriteString(W, "TODO UDF on page A7-425")
-          ELSIF b1 MOD OM4A.C4 = 0FH THEN Texts.WriteString(W, "TODO SVC on page A7-409")
+          ELSIF b1 MOD OM4A.C4 = 0FH THEN
+            (*SVC<c> #<imm8>*)
+            WriteOp(op, "SVC", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, b2, 1)
           ELSE
             (*B<c> <label> Not permitted in IT block.*)
             WriteOp(op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[b1 MOD OM4A.C4]);
