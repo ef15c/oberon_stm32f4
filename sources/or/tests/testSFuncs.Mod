@@ -1,5 +1,4 @@
 MODULE testSFuncs;
-  IMPORT SYSTEM;
   PROCEDURE p;
     VAR a, v: LONGINT;
       r, s: REAL;

@@ -248,7 +248,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       IF fct = 0 THEN (*ABS*)
         IF x.type.form IN {OM4B.Int, OM4B.Real} THEN OM4G.Abs(x); restyp := x.type ELSE OM4S.Mark("bad type") END
       ELSIF fct = 1 THEN (*ODD*) CheckInt(x); OM4G.Odd(x)
-      ELSIF fct = 2 THEN (*FLOOM4*) CheckReal(x); OM4G.Floor(x)
+      ELSIF fct = 2 THEN (*FLOOR*) CheckReal(x); OM4G.Floor(x)
       ELSIF fct = 3 THEN (*FLT*) CheckInt(x); OM4G.Float(x)
       ELSIF fct = 4 THEN (*OM4D*)
         IF x.type.form <= OM4B.Proc THEN OM4G.Ord(x)

@@ -1064,11 +1064,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Floor*(VAR x: Item);
   BEGIN loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VCVTSF, x.r, 0, x.r);
-    x.type.form := OM4B.Int;
+    x.type := OM4B.intType;
   END Floor;
 
   PROCEDURE Float*(VAR x: Item);
-  BEGIN x.type.form := OM4B.Real; loadFP(x);
+  BEGIN x.type := OM4B.realType; loadFP(x);
     OM4A.encFPOpReg(mcode, OM4A.VCVTFS, x.r, 0, x.r)
   END Float;
 
