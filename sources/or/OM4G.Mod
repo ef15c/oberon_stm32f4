@@ -1050,7 +1050,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Sqrt*(VAR x: Item);
   BEGIN
-(* TODO uncomment on target compiler 
+(* TODO uncomment only when using OM4 native compiler 
     IF x.mode = OM4B.Const THEN x.a := SQRT(x.a)
     ELSE *) loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VSQRT, x.r, 0, x.r)
 (*    END*)

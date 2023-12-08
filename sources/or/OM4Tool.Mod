@@ -449,6 +449,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       T16MSK21 = {8..9}; T16MSK22 = {6..9}; T16MSK23 = {7..9};
       
+      (*T16MSK21 10xx Move Registers MOV (register) on page A7-293*)
+      MovT1 = {9};
       (*T16MSK22 1010 Compare Registers CMP (register) on page A7-224*)
       CmpReg = {9, 7};
       (*T16MSK22 1001 Reverse Subtract from 0 RSB (immediate) on page A7-341*)
@@ -914,7 +916,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
           ELSIF op*T16MSK23 = BrLEx THEN
             (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
             WriteOp(op, "BLX", FALSE, FALSE); WriteReg(Rm)
-          ELSE Texts.WriteString(W, "TODO: other SpecDataBrEx")
+          ELSIF op*T16MSK21 = MovT1 THEN
+            (*T16MSK21 10xx Move Registers MOV (register) on page A7-293*)
+            (*MOV<c> <Rd>,<Rm> If <Rd> is the PC, must be outside or last in IT block*)
+            Rd := b2 DIV OM4A.C7*OM4A.C3 + b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C4;
+            WriteOp(op, "MOV", FALSE, FALSE); WriteReg(Rd); WriteReg(Rm)
+          ELSE Texts.WriteString(W, "TODO: other SpecDataBrEx on page A5-132")
           END
         ELSIF op*T16MSK2 = DataProc THEN
           (*T16MSK2 010000 Data processing on page A5-131*)
