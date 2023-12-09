@@ -1092,7 +1092,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN load(x);
     IF fct = 0 THEN op := OM4A.LSl ELSIF fct = 1 THEN op := OM4A.ASR ELSE op := OM4A.ROR END ;
     IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, op, x.r, x.r, y.a MOD 20H)
-    ELSE load(y); OM4A.encShiftImm5(mcode, op, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+    ELSE load(y); OM4A.encShiftReg(mcode, op, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
     END
   END Shift;
 

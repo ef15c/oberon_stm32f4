@@ -426,6 +426,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       
       (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426*)
       UnsDiv = {20..21, 4..7};
+      (*T32MSK81 010 0000 Unsigned Multiply Long UMULL on page A7-435*)
+      UnsLongMUL = {21};
 
       (*T32MSK9 11 010xxxx x Data processing (register) on page A5-152*)
       DataProcReg = {27..28, 25};
@@ -471,11 +473,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
       AndRegT1 = {};
       (*T16MSK22 1100 Logical OR ORR (register) on page A7-310*)
       OrrRegT1 = {8..9};
-     (*T16MSK22 0001 Exclusive OR EOR (register) on page A7-233*)
+      (*T16MSK22 0001 Exclusive OR EOR (register) on page A7-233*)
       EorRegT1 = {6};
-     (*T16MSK22 0111 Rotate Right ROR (register) on page A7-339*)
+      (*T16MSK22 0111 Rotate Right ROR (register) on page A7-339*)
       RorRegT1 = {6..8};
-
+      (*T16MSK22 0101 Add with Carry ADC (register) on page A7-188*)
+      AdcT1 = {8, 6};
+      (*T16MSK22 0110 Subtract with Carry SBC (register) on page A7-347*)
+      SbcT1 = {7..8};
+      
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
       (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
@@ -532,7 +538,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T16MSK12 01111 Subtract 3-bit immediate SUB (immediate) on page A7-402*)
       SubImmT1 = {9..12};
                   
-    VAR b1, b2, b3, b4, t, Rn, Rd, Rt, Rm, Sn, Sd, Sm, mno, ext, exop, proc: BYTE;
+    VAR b1, b2, b3, b4, t, Rn, Rd, RdLo, RdHi, Rt, Rm, Sn, Sd, Sm, mno, ext, exop, proc: BYTE;
       op: SET;
   BEGIN
     ext := er.ext[i];
@@ -920,7 +926,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*UDIV<c> <Rd>,<Rn>,<Rm>*)
             Rd := b3 MOD OM4A.C4; Rn := b2 MOD OM4A.C4; Rm := b4 MOD OM4A.C4;
             WriteOp(op, "UDIV", FALSE, FALSE); WriteReg(Rd); WriteReg(Rn); WriteReg(Rm);
-          ELSE Texts.WriteString(W, "TODO other LongMulAccDiv")
+          ELSIF op*T32MSK81 = UnsLongMUL THEN
+            (*T32MSK81 010 0000 Unsigned Multiply Long UMULL on page A7-435*)
+            (*UMULL<c> <RdLo>,<RdHi>,<Rn>,<Rm>*)
+            RdLo := b3 DIV OM4A.C4; RdHi := b3 MOD OM4A.C4; Rn := b2 MOD OM4A.C4; Rm := b4 MOD OM4A.C4;
+            WriteOp(op, "UMULL", FALSE, FALSE); WriteReg(RdLo); WriteReg(RdHi); WriteReg(Rn); WriteReg(Rm);
+          ELSE Texts.WriteString(W, "TODO other LongMulAccDiv on page A5-156")
           END
         ELSIF op*T32MSK9 = DataProcReg THEN
           (*T32MSK9 11 010xxxx x Data processing (register) on page A5-152*)
@@ -1001,6 +1012,18 @@ MODULE OM4Tool;  (*NW 18.2.2013
               ROR<c> <Rdn>,<Rm> Inside IT block.*)
             Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
             WriteOp(op, "ROR", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm)
+          ELSIF op*T16MSK22 = AdcT1 THEN
+            (*T16MSK22 0101 Add with Carry ADC (register) on page A7-188*)
+            (*ADCS <Rdn>,<Rm> Outside IT block.
+              ADC<c> <Rdn>,<Rm> Inside IT block.*)
+            Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+            WriteOp(op, "ADC", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm)
+          ELSIF op*T16MSK22 = SbcT1 THEN
+            (*T16MSK22 0110 Subtract with Carry SBC (register) on page A7-347*)
+            (*SBCS <Rdn>,<Rm> Outside IT block.
+              SBC<c> <Rdn>,<Rm> Inside IT block.*)
+            Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+            WriteOp(op, "SBC", TRUE, FALSE); WriteReg(Rd); WriteReg(Rm)
           ELSE Texts.WriteString(W, "TODO: other DataProc on page A5-131")
           END
         ELSIF op*T16MSK4 = Misc16bInst THEN
