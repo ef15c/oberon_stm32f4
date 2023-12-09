@@ -1,5 +1,6 @@
 Liste des modules à créer en se basant sur ORx :
-OM4P, OM4S, OM4B, OM4G, OM4A, OM4Tool, OM4L, OM4X
+Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4Tool
+A faire :  OM4L, OM4X
 
 Liste des modules à modifier :
 BootLoad, Modules, System, Kernel, BootLoad.Mod
@@ -64,10 +65,16 @@ adresse     taille   description
 
 D080 0000H           Limite de la mémoire
 D050 0000H (300000H) Début du tas
-D020 1020H (2FEFE0H) Table des modules pointée par le registre MT. Une entrée par module chargée avec desc. types, variable, code, ...
+D020 1020H (2FEFE0H) Table des modules (mais pas de registre affecté). Une entrée par module chargée avec desc. types, variable, code, ...
 D020 1004H (    1CH) Variables système (MemLim (0CH) , HeapOrg (18H)=fin de la pile , ...)
 D020 1000H (      4) Instruction de saut vers le point d'entrée du système
 
 Le STM32F429 contient une mémoire attachée au coeur offrant 64ko. C'est le candidat idéal pour contenir la pile.
 Ses limitations : utilisable uniquement par le coeur (pas de DMA) et pas de bit-banding.
 Localisation CCM : 1000 0000H - 1000 FFFFH
+
+L'instruction SVC sera utilisée pour exécuter des services matériels :
+N° de service   Nom     R0                                                  R1
+-------------   ------- --------------------------------------------------  ------------------------------------
+            1   LED     <7:0> : un bit par LED à allumer (1) ou éteindre 0
+            2   ReadSD  N° du secteur à lire sur la carte SD                Addresse de destination en mémoire

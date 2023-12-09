@@ -1002,6 +1002,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN load(x); OM4A.Put1(mcode, OM4A.SVC + 1); DEC(RH)
   END Led;
 
+  (*Call service*)
+  PROCEDURE SVC*(VAR x: Item);
+  BEGIN (*x.mode = Const*)
+    OM4A.Put1(mcode, OM4A.SVC + x.a MOD OM4A.C8)
+  END SVC;
+  
   PROCEDURE Get*(VAR x, y: Item);
   BEGIN load(x); x.type := y.type; x.mode := RegI; x.a := 0; Store(y, x)
   END Get;
@@ -1031,9 +1037,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Copy;
 
   PROCEDURE LDREG*(VAR x, y: Item);
-  BEGIN
+  BEGIN (*x.mode = OM4B.Const*)
     IF y.mode = OM4B.Const THEN OM4A.encMOVImm32(mcode, x.a, y.a)
-    ELSE load(y); OM4A.encMOVReg(mcode, x.a, y.r); DEC(RH)
+    ELSE RH := x.a; load(y); RH := 0
     END
   END LDREG;
 

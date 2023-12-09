@@ -455,7 +455,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno = 10 THEN CheckInt(x); OM4G.Get(x, y)
       ELSIF pno = 11 THEN CheckInt(x); OM4G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); OM4G.Copy(x, y, z)
-      ELSIF pno = 14 THEN CheckInt(x); OM4G.LDREG(x, y)
+      ELSIF pno = 14 THEN CheckConst(x); CheckInt(x); OM4G.LDREG(x, y)
+      ELSIF pno = 15 THEN CheckConst(x); CheckInt(x); OM4G.SVC(x)
       END
     ELSE OM4S.Mark("wrong nof parameters")
     END
