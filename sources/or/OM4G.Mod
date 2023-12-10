@@ -1147,9 +1147,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Open*(v: INTEGER);
   BEGIN NEW(mcode); OM4A.Init(mcode);
     tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
-    IF v = 0 THEN mcode.pc := 4;
-      REPEAT mcode.code[mcode.pc] := 0; INC(mcode.pc) UNTIL mcode.pc = 8*4
-    END
+    IF v = 0 THEN mcode.pc := 4; (*Make room for the jump to entry point instruction*) END
   END Open;
 
   PROCEDURE SetDataSize*(dc: LONGINT);
