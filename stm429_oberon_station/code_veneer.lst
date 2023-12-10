@@ -1,0 +1,4 @@
+08006988	ldr.w	pc, [pc]	; 0x800698c <__codeInRam_veneer+4>
+0800698C	asrs	r1, r0, #32
+
+0xD0201001

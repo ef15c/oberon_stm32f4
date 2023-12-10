@@ -1,0 +1,317 @@
+# depslib dependency file v1.0
+1696588969 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\src\stm32f4xx_hal_timebase_tim.c
+	"stm32f4xx_hal.h"
+	"stm32f4xx_hal_tim.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal.h
+	"stm32f4xx_hal_conf.h"
+
+1702110480 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\inc\stm32f4xx_hal_conf.h
+	"stm32f4xx_hal_rcc.h"
+	"stm32f4xx_hal_gpio.h"
+	"stm32f4xx_hal_exti.h"
+	"stm32f4xx_hal_dma.h"
+	"stm32f4xx_hal_cortex.h"
+	"stm32f4xx_hal_adc.h"
+	"stm32f4xx_hal_can.h"
+	"stm32f4xx_hal_can_legacy.h"
+	"stm32f4xx_hal_crc.h"
+	"stm32f4xx_hal_cryp.h"
+	"stm32f4xx_hal_dma2d.h"
+	"stm32f4xx_hal_dac.h"
+	"stm32f4xx_hal_dcmi.h"
+	"stm32f4xx_hal_eth.h"
+	"stm32f4xx_hal_eth_legacy.h"
+	"stm32f4xx_hal_flash.h"
+	"stm32f4xx_hal_sram.h"
+	"stm32f4xx_hal_nor.h"
+	"stm32f4xx_hal_nand.h"
+	"stm32f4xx_hal_pccard.h"
+	"stm32f4xx_hal_sdram.h"
+	"stm32f4xx_hal_hash.h"
+	"stm32f4xx_hal_i2c.h"
+	"stm32f4xx_hal_smbus.h"
+	"stm32f4xx_hal_i2s.h"
+	"stm32f4xx_hal_iwdg.h"
+	"stm32f4xx_hal_ltdc.h"
+	"stm32f4xx_hal_pwr.h"
+	"stm32f4xx_hal_rng.h"
+	"stm32f4xx_hal_rtc.h"
+	"stm32f4xx_hal_sai.h"
+	"stm32f4xx_hal_sd.h"
+	"stm32f4xx_hal_spi.h"
+	"stm32f4xx_hal_tim.h"
+	"stm32f4xx_hal_uart.h"
+	"stm32f4xx_hal_usart.h"
+	"stm32f4xx_hal_irda.h"
+	"stm32f4xx_hal_smartcard.h"
+	"stm32f4xx_hal_wwdg.h"
+	"stm32f4xx_hal_pcd.h"
+	"stm32f4xx_hal_hcd.h"
+	"stm32f4xx_hal_dsi.h"
+	"stm32f4xx_hal_qspi.h"
+	"stm32f4xx_hal_cec.h"
+	"stm32f4xx_hal_fmpi2c.h"
+	"stm32f4xx_hal_fmpsmbus.h"
+	"stm32f4xx_hal_spdifrx.h"
+	"stm32f4xx_hal_dfsdm.h"
+	"stm32f4xx_hal_lptim.h"
+	"stm32f4xx_hal_mmc.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_rcc.h
+	"stm32f4xx_hal_def.h"
+	"stm32f4xx_hal_rcc_ex.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_def.h
+	"stm32f4xx.h"
+	"Legacy/stm32_hal_legacy.h"
+	<stddef.h>
+
+1658495231 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\device\st\stm32f4xx\include\stm32f4xx.h
+	"stm32f405xx.h"
+	"stm32f415xx.h"
+	"stm32f407xx.h"
+	"stm32f417xx.h"
+	"stm32f427xx.h"
+	"stm32f437xx.h"
+	"stm32f429xx.h"
+	"stm32f439xx.h"
+	"stm32f401xc.h"
+	"stm32f401xe.h"
+	"stm32f410tx.h"
+	"stm32f410cx.h"
+	"stm32f410rx.h"
+	"stm32f411xe.h"
+	"stm32f446xx.h"
+	"stm32f469xx.h"
+	"stm32f479xx.h"
+	"stm32f412cx.h"
+	"stm32f412zx.h"
+	"stm32f412rx.h"
+	"stm32f412vx.h"
+	"stm32f413xx.h"
+	"stm32f423xx.h"
+	"stm32f4xx_hal.h"
+
+1658495231 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\device\st\stm32f4xx\include\stm32f429xx.h
+	"core_cm4.h"
+	"system_stm32f4xx.h"
+	<stdint.h>
+
+1658495240 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\include\core_cm4.h
+	<stdint.h>
+	"cmsis_version.h"
+	"cmsis_compiler.h"
+	"mpu_armv7.h"
+
+1658495239 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\include\cmsis_version.h
+
+1658495239 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\include\cmsis_compiler.h
+	<stdint.h>
+	"cmsis_armcc.h"
+	"cmsis_armclang.h"
+	"cmsis_gcc.h"
+	<cmsis_iccarm.h>
+	<cmsis_ccs.h>
+	<cmsis_csm.h>
+
+1658495239 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\include\cmsis_armcc.h
+
+1658495239 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\include\cmsis_armclang.h
+	<arm_compat.h>
+
+1658495239 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\include\cmsis_gcc.h
+
+1658495239 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\include\cmsis_iccarm.h
+	"iccarm_builtin.h"
+	<intrinsics.h>
+
+1658495240 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\include\mpu_armv7.h
+
+1658495231 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\cmsis\device\st\stm32f4xx\include\system_stm32f4xx.h
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\legacy\stm32_hal_legacy.h
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_rcc_ex.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_gpio.h
+	"stm32f4xx_hal_def.h"
+	"stm32f4xx_hal_gpio_ex.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_gpio_ex.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_exti.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_dma.h
+	"stm32f4xx_hal_def.h"
+	"stm32f4xx_hal_dma_ex.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_dma_ex.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_cortex.h
+	"stm32f4xx_hal_def.h"
+
+1658498925 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_crc.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_flash.h
+	"stm32f4xx_hal_def.h"
+	"stm32f4xx_hal_flash_ex.h"
+	"stm32f4xx_hal_flash_ramfunc.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_flash_ex.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_flash_ramfunc.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_sdram.h
+	"stm32f4xx_ll_fmc.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_ll_fmc.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_ltdc.h
+	"stm32f4xx_hal_def.h"
+	"stm32f4xx_hal_ltdc_ex.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_ltdc_ex.h
+	"stm32f4xx_hal_def.h"
+	"stm32f4xx_hal_dsi.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_dsi.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_pwr.h
+	"stm32f4xx_hal_def.h"
+	"stm32f4xx_hal_pwr_ex.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_pwr_ex.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_sd.h
+	"stm32f4xx_ll_sdmmc.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_ll_sdmmc.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_spi.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_tim.h
+	"stm32f4xx_hal_def.h"
+	"stm32f4xx_hal_tim_ex.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_tim_ex.h
+	"stm32f4xx_hal_def.h"
+
+1658495325 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\inc\stm32f4xx_hal_uart.h
+	"stm32f4xx_hal_def.h"
+
+1658495231 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\src\system_stm32f4xx.c
+	"stm32f4xx.h"
+
+1702027412 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\startup\startup_stm32f429zitx.s
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_cortex.c
+	"stm32f4xx_hal.h"
+
+1658498925 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_crc.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_dma.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_dma_ex.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_dsi.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_exti.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_flash.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_flash_ex.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_flash_ramfunc.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_gpio.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_ltdc.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_ltdc_ex.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_pwr.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_pwr_ex.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_rcc.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_rcc_ex.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_sd.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_sdram.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_spi.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_tim.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_tim_ex.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_hal_uart.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_ll_fmc.c
+	"stm32f4xx_hal.h"
+
+1658495325 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\drivers\stm32f4xx_hal_driver\src\stm32f4xx_ll_sdmmc.c
+	"stm32f4xx_hal.h"
+
+1702219770 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\src\stm32f4xx_hal_msp.c
+	"main.h"
+
+1702153391 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\inc\main.h
+	"stm32f4xx_hal.h"
+
+1702225796 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\src\stm32f4xx_it.c
+	"main.h"
+	"stm32f4xx_it.h"
+
+1702219768 k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\inc\stm32f4xx_it.h
+
+1702225871 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\src\main.c
+	"main.h"
+	<stdbool.h>
+	<string.h>
+	"stm32f4xx_it.h"
+
+1702209035 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\src\test_trap.s
+
+1698827116 source:k:\projets\stm32\stmicroelectronics\stm429_oberon_station\core\src\func_in_ram.c
+	<stdint.h>
+

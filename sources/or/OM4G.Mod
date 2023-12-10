@@ -68,6 +68,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF SH < NBS-1 THEN INC(SH) ELSE OM4S.Mark("FP register stack overflow") END
   END incS;
 
+  PROCEDURE SetRH*(r: BYTE);
+  BEGIN
+    ASSERT(r < OM4A.C4);
+    RH := r
+  END SetRH;
+  
   PROCEDURE CheckRegs*;
   BEGIN
     IF RH # 0 THEN OM4S.Mark("Reg Stack"); RH := 0 END ;
@@ -1036,11 +1042,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF pc0 # 0 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END; DEC(RH, 3)
   END Copy;
 
-  PROCEDURE LDREG*(VAR x, y: Item);
+  PROCEDURE LDREG*(VAR y: Item);
   BEGIN (*x.mode = OM4B.Const*)
-    IF y.mode = OM4B.Const THEN OM4A.encMOVImm32(mcode, x.a, y.a)
-    ELSE RH := x.a; load(y); RH := 0
-    END
+    load(y); RH := 0
   END LDREG;
 
   (*In-line code functions*)

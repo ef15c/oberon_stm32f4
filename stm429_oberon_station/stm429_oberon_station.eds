@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<EmBitz_debug_session>
+	<debuggerLastSession>
+		<breakpoints>
+			<break type="0" enabled="1" file="Core/Src/stm32f4xx_it.c" line="138" />
+		</breakpoints>
+		<watches>
+			<watch key="hsd" format="0" array="0" start="0" count="0" expanded="0" live="0" />
+			<watch key="lr" format="3" array="0" start="0" count="0" expanded="0" live="0" />
+			<watch key="f" format="0" array="0" start="0" count="0" expanded="0" live="0" />
+			<watch key="*f" format="3" array="0" start="0" count="0" expanded="1" live="0" />
+		</watches>
+		<memory_view address="0xD0601230" locked="0" live="0" options="290" />
+	</debuggerLastSession>
+</EmBitz_debug_session>
