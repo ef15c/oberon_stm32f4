@@ -1,5 +1,5 @@
 OM4P.Compile @  
-OM4X.WriteFile BootLoadM4.m4c 512 "D:/Verilog/RISC5/prom.mem"~
+OM4X.WriteASM BootLoadM4.m4c BootLoadM4.s ~
 
 MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC disk only*)
   IMPORT SYSTEM;
@@ -94,19 +94,22 @@ entry =       76
 *)
 
 OM4P.Compile @  ORG.Decode
-OM4X.WriteFile Counter.m4c 2048 "D:/Verilog/RISC/prom.mem"~
-OM4X.WriteFile Shifter.m4c 2048 "D:/Verilog/RISC/prom.mem"~
+OM4X.WriteASM Counter.m4c Counter.s ~
+OM4X.WriteASM Shifter.m4c Shifter.s ~
 
 MODULE* Counter;
-  VAR x, y, z: INTEGER;
-BEGIN LED(1); z := 0;
-  REPEAT LED(z); x := 1000;
-     REPEAT y := 1000;
-       REPEAT y := y-1 UNTIL y = 0;
-       x := x-1
-     UNTIL x = 0;
-     z := z+1
-   UNTIL FALSE
+  PROCEDURE count;
+    VAR x, y, z: INTEGER;
+  BEGIN LED(1); z := 0;
+    REPEAT LED(z); x := 1000;
+      REPEAT y := 1000;
+        REPEAT y := y-1 UNTIL y = 0;
+          x := x-1
+        UNTIL x = 0;
+      z := z+1
+    UNTIL FALSE
+  END count;
+BEGIN count;
 END Counter.
 
 MODULE* Shifter;

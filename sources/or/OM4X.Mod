@@ -1,7 +1,7 @@
 MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   IMPORT Files, Texts, Oberon;
   CONST CR = 0DX; noerr = 0; badfile = 4;  (*copied from Modules for use as cross development tool*)
-
+    fixup = 1;
   TYPE record = RECORD
       t, l: BYTE;
       a: ARRAY 2 OF BYTE;
@@ -68,7 +68,8 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
       name: ARRAY 32 OF CHAR;
       r: record;
       la, lah: INTEGER;
-  BEGIN F := Files.Base(R); Files.ReadString(R, name); Files.ReadInt(R, data); (*key*)
+  BEGIN res := noerr;
+    F := Files.Base(R); Files.ReadString(R, name); Files.ReadInt(R, data); (*key*)
     Files.ReadByte(R, b); (*version*) Files.ReadInt(R, data); (*size*)
     Files.ReadString(R, name); (*imports*)
     WHILE ~R.eof & (name[0] # 0X) DO Files.ReadInt(R, data); (*key*) Files.ReadString(R, name) END ;
@@ -98,15 +99,17 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     Files.ReadInt(R, n); Files.Set(R, F, Files.Pos(R) + n*4); (*entries*)
     Files.ReadInt(R, data);
     WHILE ~R.eof & (data >= 0) DO Files.ReadInt(R, data) END ; (*pointer references*)
-    Files.ReadInt(R, data); (*fixorgP*) Files.ReadInt(R, data); (*fixorgD*)
-    Files.ReadInt(R, data); (*fixorgT*) Files.ReadInt(R, entry);
+    Files.ReadInt(R, data); (*fixorgP*) IF data # 0 THEN res := fixup END;
+    Files.ReadInt(R, data); (*fixorgD*) IF data # 0 THEN res := fixup END;
+    Files.ReadInt(R, data); (*fixorgT*) IF data # 0 THEN res := fixup END;
+    Files.ReadInt(R, entry);
     (*write start linear address record (MDK-ARM only)*)
     la := loadaddress + entry + 1; (*Odd value means thumb mode*)
     r.t := 5; r.a[0] := 0; r.a[1] := 0; r.l := 4; r.d[0] := la DIV 1000000H MOD 100H;
     r.d[1] := la DIV 10000H MOD 100H; r.d[2] := la DIV 100H MOD 100H;
     r.d[3] := la MOD 100H; write(R1, r);
     Files.Read(R, ch);
-    IF ch # "O" THEN res := badfile ELSE res := noerr END;
+    IF ch # "O" THEN res := badfile END;
     (*write End-of-File (EOF) Record*)
     r.t := 1; r.l := 0; write(R1, r)
   END OutCode;
@@ -130,6 +133,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
               IF res = noerr THEN
                 Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
                 Texts.WriteString(W, "  done"); Files.Register(g)
+              ELSIF res = fixup THEN Texts.WriteString(W, "  program need fixup error")
               ELSIF res = badfile THEN Texts.WriteString(W, "  input file format error")
               END
             ELSE res := -1
@@ -162,6 +166,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
               Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
               Texts.WriteString(W, "  done"); Files.Register(g)
             ELSIF res = badfile THEN Texts.WriteString(W, "  input file format error")
+            ELSIF res = fixup THEN Texts.WriteString(W, "  program need fixup error")
             END
           ELSE Texts.WriteString(W, "  input file empty")
           END
@@ -180,7 +185,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
       S: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN name := S.s; Texts.Scan(S);
-      IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteCode "); res := -2;
+      IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteASM "); res := -2;
         Texts.WriteString(W, name); Texts.Write(W, " "); Texts.WriteString(W, S.s);
         f := Files.Old(name);
         IF f # NIL THEN
@@ -205,6 +210,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
               Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
               Texts.WriteString(W, "  done"); Files.Register(g)
             ELSIF res = badfile THEN Texts.WriteString(W, "  input file format error")
+            ELSIF res = fixup THEN Texts.WriteString(W, "  program need fixup error")
             END
           ELSE Texts.WriteString(W, "  input file empty")
           END
