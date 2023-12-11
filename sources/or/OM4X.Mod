@@ -31,6 +31,12 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     REPEAT DEC(i); Files.Write(R, a[i]) UNTIL i = 0 ;
   END WriteHex;
 
+  PROCEDURE WriteString(VAR R: Files.Rider; x: ARRAY OF CHAR);  (*write a string without trailing null character*)
+    VAR i: INTEGER;
+  BEGIN i := 0;
+    WHILE x[i] # 0X DO Files.Write(R, x[i]); INC(i) END
+  END WriteString;
+
   PROCEDURE WriteIntelHex(VAR R: Files.Rider; r: record);  (*write a record in Intel HEX file format*)
     VAR cs: BYTE;
       i: INTEGER;
@@ -40,6 +46,15 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     FOR i:= 0 TO r.l-1 DO WriteHex(R, r.d[i]); INC(cs, r.d[i]) END;
     WriteHex(R, 256-cs); Files.Write(R, CR)
   END WriteIntelHex;
+
+  PROCEDURE WriteAsmLine(VAR R: Files.Rider; r: record);  (*write a record in binary format*)
+    VAR i: INTEGER;
+  BEGIN
+    IF r.t = 0 THEN WriteString(R, "  .byte ");
+      FOR i:= 0 TO r.l-1 DO IF i # 0 THEN WriteString(R, ", ") END;
+        WriteString(R, "0X"); WriteHex(R, r.d[i]) END
+    END; Files.Write(R, CR)
+  END WriteAsmLine;
 
   PROCEDURE SetAddress(VAR a: ARRAY OF BYTE; ad: INTEGER);
   BEGIN
@@ -158,52 +173,49 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END WriteCode;
 
-  PROCEDURE MakeStream(VAR Rf, Rg: Files.Rider; blksize, destadr: INTEGER);
-    VAR i, a: INTEGER; b: BYTE;
-  BEGIN Files.ReadByte(Rf, b); i := 0; a := destadr;
-    WHILE ~Rf.eof DO
-      IF i MOD blksize = 0 THEN Files.WriteInt(Rg, blksize); Files.WriteInt(Rg, a); INC(a, blksize); i := 0 END ;
-      Files.WriteByte(Rg, b); INC(i); Files.ReadByte(Rf, b)
-    END ;
-    WHILE i < blksize DO Files.WriteByte(Rg, 0); INC(i) END ;
-    Files.WriteInt(Rg, 0)  (*size of last block*)
-  END MakeStream;
-
-  PROCEDURE WriteStream*;  (*convert boot file to stream format with specified block size and dest adr*)
+  PROCEDURE WriteASM*;  (*write code section of M.m4c in assembly format to output file*)
     VAR f, g: Files.File; Rf, Rg: Files.Rider;
-      filelen, blksize: INTEGER;
-      name, name1: ARRAY 32 OF CHAR;
+      codelen, entry, i: INTEGER;
+      name: ARRAY 32 OF CHAR;
       S: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN name := S.s; Texts.Scan(S);
-      IF S.class = Texts.Name THEN name1 := S.s; Texts.Scan(S);
-        IF S.class = Texts.Int THEN blksize := S.i; Texts.Scan(S);
-          IF S.class = Texts.Int THEN Texts.WriteString(W, "  WriteStream "); res := -2;
-            Texts.WriteString(W, name); Texts.Write(W, " "); Texts.WriteString(W, name1);
-            Texts.WriteInt(W, blksize, 5); Texts.WriteInt(W, S.i, 5);
-            IF blksize >= 0 THEN
-              IF S.i >= 0 THEN f := Files.Old(name);
-                IF f # NIL THEN filelen := Files.Length(f);
-                  IF filelen > 0 THEN g := Files.New(name1); res := noerr;
-                    IF blksize = 0 THEN blksize := filelen END ;
-                    Files.Set(Rf, f, 0); Files.Set(Rg, g, 0); MakeStream(Rf, Rg, blksize, S.i);
-                    Files.Register(g); Texts.WriteString(W, "  done")
-                  ELSE Texts.WriteString(W, "  input file empty")
-                  END
-                ELSE Texts.WriteString(W, "  input file not found")
-                END
-              ELSE Texts.WriteString(W, "  destadr must be >= 0")
-              END
-            ELSE Texts.WriteString(W, "  blocksize must be >= 0")
+      IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteCode "); res := -2;
+        Texts.WriteString(W, name); Texts.Write(W, " "); Texts.WriteString(W, S.s);
+        f := Files.Old(name);
+        IF f # NIL THEN
+          IF Files.Length(f) > 0 THEN
+            g := Files.New(S.s); Files.Set(Rf, f, 0); Files.Set(Rg, g, 0);
+            name := S.s;
+            i := 0; WHILE (name[i] # 0X) & (name[i] # ".") DO INC(i) END; name[i] := 0X;
+            
+            WriteString(Rg,"  .syntax unified"); Files.Write(Rg, CR);
+            WriteString(Rg,"  .cpu cortex-m4"); Files.Write(Rg, CR);
+            WriteString(Rg,"  .thumb"); Files.Write(Rg, CR);
+            Files.Write(Rg, CR);
+            WriteString(Rg,"  .global "); WriteString(Rg, name); Files.Write(Rg, CR);
+            Files.Write(Rg, CR);
+            WriteString(Rg,"  .thumb_func"); Files.Write(Rg, CR);
+            WriteString(Rg, name); WriteString(Rg, ":"); Files.Write(Rg, CR);
+            
+            OutCode(Rf, Rg, WriteAsmLine, 0, codelen, entry, res);
+            WriteString(Rg,"  // End of file."); Files.Write(Rg, CR);
+            
+            IF res = noerr THEN
+              Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
+              Texts.WriteString(W, "  done"); Files.Register(g)
+            ELSIF res = badfile THEN Texts.WriteString(W, "  input file format error")
             END
+          ELSE Texts.WriteString(W, "  input file empty")
           END
+        ELSE Texts.WriteString(W, "  input file not found")
         END
       END
     END ;
-    IF res = -1 THEN Texts.WriteString(W, "Usage: OM4X.WriteStream M.bin M.stream blocksize destadr") END ;
+    IF res = -1 THEN Texts.WriteString(W, "Usage: OM4X.WriteASM M.m4c M.s") END ;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
-  END WriteStream;
+  END WriteASM;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 boot converter  AP 13.6.20");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 boot converter CS 11/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
 END OM4X.
