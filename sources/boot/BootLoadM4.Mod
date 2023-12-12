@@ -4,8 +4,7 @@ OM4X.WriteASM BootLoadM4.m4c BootLoadM4.s ~
 MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC disk only*)
   IMPORT SYSTEM;
   CONST SP = 13; LR = 14; PC = 15; (*dedicated registers*)
-    VarORG0 = 0D0201000H;
-    MTOrg = VarORG0+20H; MemLim = 0D0800000H; stackOrg = 10010000H;
+    VarORG0 = 0D0201000H; MemLim = 0D0800000H; stackOrg = 10010000H;
     FSoffset = 80000H;   (*block offset*)
 
 (* ---------- disk ------------*)

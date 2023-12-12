@@ -1,0 +1,38 @@
+1/ RISC-5
+---------
+
+Paramètres de boot
+ Adresse   Contenu
+ 00000000 ( 0)  E7006F74 ; Instruction de saut vers procédure d'initialisation du module racine.
+ 00000004 ( 4)  00000000 ; 
+ 00000008 ( 8)  00000000 ; Adresse de début de chargement du ficher de boot
+ 0000000C (12)  001FFFF0 ; Adresse de fin de la mémoire
+ 00000010 (16)  000092C0 ; Adresse de fin de chargement du ficher de boot
+ 00000014 (20)  00007D40 ; Adresse du descripteur du module racine
+ 00000018 (24)  00100000 ; Adresse de fin de l'espace de chargement des modules et du début de pile
+ 0000001C ( 0)  00000000
+ 
+ Table des modules
+ 00000020	 E7006EEF 00000150 000035F0 00005630 00007D90 00009310 00009AD0 0000B010
+ 00000040	 0000C810 0000D370 000103B0 000122D0 00013CD0 00019A70 0001C1F0 00000000
+ 00000060	 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+ 00000080	 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+ 000000A0	 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+ 000000C0	 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+ 000000E0	 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+
+2/ STM32F429
+------------
+
+Paramètres de boot
+ Adresse   Contenu
+ D0201000 ( 0)  xxxxxxxx ; Instruction de saut vers la procédure d'initialisation du module racine.
+ D0201004 ( 4)  00000000 ; 
+ D0201008 ( 8)  D0201000 ; Adresse de début de chargement du ficher de boot
+ D020100C (12)  D0800000 ; Adresse de fin de la mémoire
+ D0201010 (16)  0000xxxx ; Adresse de fin de chargement du ficher de boot
+ D0201014 (20)  0000xxxx ; Adresse du descripteur du module racine
+ D0201018 (24)  10010000 ; Adresse du début de pile
+ D020101C ( 0)  00000000
+
+Pas de table des modules.

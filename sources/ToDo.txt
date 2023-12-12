@@ -1,9 +1,10 @@
 Liste des modules à créer en se basant sur ORx :
-Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4Tool
-A faire :  OM4L, OM4X
+Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4Tool, OM4X
+A faire :  OM4L
 
-Liste des modules à modifier :
-BootLoad, Modules, System, Kernel, BootLoad.Mod
+Liste des modules à créer en se basant sur la version RISC5 :
+Faits : BootLoadM4
+A faire: Modules, System, Kernel
 
 Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
 15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0   15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0
@@ -49,7 +50,8 @@ adresse     taille  description
 000E 7EF0H          Limite de la mémoire
 0008 0000H (67EF0H) Début du tas, fin de la pile
 0007 8000H ( 8000H) Pile
-0000 0020H (77FE0H) Table des modules pointée par le registre MT. Une entrée par module chargée avec desc. types, variable, code, ...
+0000 0100H (77F00H) Espace de chargement des modules avec desc. types, variable, code, ...
+0000 0020H (   E0H) Table des modules pointée par le registre MT.
 0000 0004H (   1CH) Variables système (MemLim (0CH) , HeapOrg (18H)=fin de la pile , ...)
 0000 0000H (     4) Instruction de saut vers le point d'entrée du système
 
@@ -65,9 +67,11 @@ adresse     taille   description
 
 D080 0000H           Limite de la mémoire
 D050 0000H (300000H) Début du tas
-D020 1020H (2FEFE0H) Table des modules (mais pas de registre affecté). Une entrée par module chargée avec desc. types, variable, code, ...
-D020 1004H (    1CH) Variables système (MemLim (0CH) , HeapOrg (18H)=fin de la pile , ...)
+D020 1020H (2FEFE0H) Espace de chargement des modules avec desc. types, variable, code, ...
+D020 1004H (    1CH) Variables système (MemLim (0CH) , StackOrg (18H)=fin de la pile , ...)
 D020 1000H (      4) Instruction de saut vers le point d'entrée du système
+
+Il n'y aura pas de table des modules, je vais reprendre l'idée développée dans Extended Oberon.
 
 Le STM32F429 contient une mémoire attachée au coeur offrant 64ko. C'est le candidat idéal pour contenir la pile.
 Ses limitations : utilisable uniquement par le coeur (pas de DMA) et pas de bit-banding.
