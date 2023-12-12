@@ -3,6 +3,19 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
   IMPORT SYSTEM, Files;
   CONST versionkey = 1X; DescSize = 80;
 
+    (*Powers of two*)
+    C31=80000000H; C30=40000000H; C28=10000000H; C27=8000000H; C26=4000000H;
+    C25=2000000H; C24=1000000H; C23=800000H; C22=400000H; 
+    C21=200000H; C20=100000H; C19=80000H; C18=40000H; C17=20000H;
+    C16=10000H; C15= 8000H; C13=2000H; C12=1000H; C11=800H; 
+    C10=400H; C9=200H;C8=100H; C7=80H; C6=40H; C5=20H; 
+    C4=10H; C3=8; C2=4; C1=2; C0=1;
+
+    BL = 0F000D000H;
+    (*|1111/0S  /im10/    /11J1/J   /im11/    |
+                             1  2
+      BL<c><q> <label>*)
+  
   TYPE Module* = POINTER TO ModDesc;
     Command* = PROCEDURE;
     ModuleName* = ARRAY 32 OF CHAR;
@@ -19,6 +32,34 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
     importing*, imported*: ModuleName;
     limit: INTEGER;
 
+  PROCEDURE formatEvenImm25*(disp: LONGINT): LONGINT;
+  (* |00000S   imm10  00J0J   imm11   |
+     |                  1 2
+     I1 = NOT(J1 EOR S); I2 = NOT(J2 EOR S); imm32 = SignExtend(S:I1:I2:imm10:imm11:'0', 32);
+  *) 
+  VAR res: LONGINT;
+    S, J1, J2: BYTE;
+    imm10, imm11: LONGINT;
+  BEGIN
+    disp := disp DIV C1;
+    S := disp DIV C23 MOD C1;
+    disp := disp MOD C23;
+    (*J1 = NOT(I1) EOR S
+     J2 = NOT(I2) EOR S*)
+    J1 := disp DIV C22 MOD C1;
+    disp := disp MOD C22;
+    J2 := disp DIV C21 MOD C1;
+    disp := disp MOD C21;
+    IF S=0 THEN
+      J1 := 1-J1;
+      J2 := 1-J2;
+    END;
+    imm10 := disp DIV C11 MOD C10;
+    imm11 := disp MOD C11;
+ 
+    RETURN imm11 + S*C26 + imm10*C16+J1*C13+J2*C11
+  END formatEvenImm25;
+  
   PROCEDURE ThisFile(name: ARRAY OF CHAR): Files.File;
     VAR i: INTEGER;
       filename: ModuleName;
@@ -46,7 +87,8 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
   PROCEDURE Load*(name: ARRAY OF CHAR; VAR newmod: Module);
     (*search module in list; if not found, load module.
       res = 0: already present or loaded; res = 2: file not available; res = 3: key conflict;
-      res = 4: bad file version; res = 5: corrupted file; res = 7: no space*)
+      res = 4: bad file version; res = 5: corrupted file; res = 7: no space 
+      res = 8: jump too far (TODO need trampoline aka veneer code) *)
     VAR mod, impmod: Module;
       i, n, key, impkey, mno, nofimps, size: INTEGER;
       p, u, v, w: INTEGER;  (*addresses*)
@@ -133,21 +175,24 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
         Files.Read(R, ch);
         IF ch # "O" THEN (*corrupted file*)  mod := NIL; error(4, name) END
       END ;
-      (* J'en suis là, les fixup fixorgP et fixorgD sont à modifier *)
       IF res = 0 THEN (*fixup of BL*)
-        adr := mod.code + fixorgP*4;
+        adr := mod.code + fixorgP;
         WHILE adr # mod.code DO
           SYSTEM.GET(adr, inst);
-          mno := inst DIV 100000H MOD 10H;
-          pno := inst DIV 1000H MOD 100H;
-          disp := inst MOD 1000H;
+          mno := inst DIV 10000000H MOD 10H;
+          pno := inst DIV 100000H MOD 100H;
+          disp := inst MOD 100000H*2;
           SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
           SYSTEM.GET(impmod.ent + pno*4, dest); dest := dest + impmod.code;
-          offset := (dest - adr - 4) DIV 4;
-          SYSTEM.PUT(adr, (offset MOD 1000000H) + 0F7000000H);
-          adr := adr - disp*4
+          (*dest contains the absolute address of the called procedure*)
+          offset := dest - adr - 4; (* Offset in bytes *)
+          IF (offset < -16777216) OR (offset >= 16777216) THEN error(8, name) END;
+          SYSTEM.PUT(adr, BL + formatEvenImm25(offset));
+          adr := adr - disp
         END ;
         (*fixup of LDR/STR/ADD*)
+      (* TODO J'en suis là, le fixup fixorgD est à modifier *)
+
         adr := mod.code + fixorgD*4;
         WHILE adr # mod.code DO
           SYSTEM.GET(adr, inst);

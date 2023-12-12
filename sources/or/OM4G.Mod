@@ -144,7 +144,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
                  when needed)
     BL <proc address>:
     
-    nnnnppppppppdddddddddddddddddddd
+    nnnn/pppp/pppp/dddd/dddd/dddd/dddd/dddd
 
     nnnn:     number of the module
     pppppppp: number of the procedure
