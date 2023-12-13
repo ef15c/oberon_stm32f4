@@ -87,8 +87,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
   PROCEDURE Load*(name: ARRAY OF CHAR; VAR newmod: Module);
     (*search module in list; if not found, load module.
       res = 0: already present or loaded; res = 2: file not available; res = 3: key conflict;
-      res = 4: bad file version; res = 5: corrupted file; res = 7: no space 
-      res = 8: jump too far (TODO need trampoline aka veneer code) *)
+      res = 4: bad file version; res = 5: corrupted file; res = 7: no space*)
     VAR mod, impmod: Module;
       i, n, key, impkey, mno, nofimps, size: INTEGER;
       p, u, v, w: INTEGER;  (*addresses*)
@@ -96,7 +95,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
       ch: CHAR;
       body: Command;
       fixorgP, fixorgD, fixorgT: INTEGER;
-      disp, adr, inst, pno, vno, dest, offset: INTEGER;
+      disp, adr, inst, pno, vno, dest, offset, trpbase, noftrps: INTEGER;
       name1, impname: ModuleName;
       F: Files.File; R: Files.Rider;
       import: ARRAY 16 OF Module;
@@ -149,8 +148,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
         WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END ;   (*strings*)
         mod.code := p;  (*program*)
         Files.ReadInt(R, n); (*In Cortex M4 implementation, program size is counted in bytes*)
-        WHILE n > 3 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*program code*)
-        WHILE n > 0 DO Files.ReadByte(R, b); SYSTEM.PUT(p, b); INC(p); DEC(n) END ;  (*program code, remaining bytes if any*)
+        WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*program code*)
         mod.imp := p;  (*copy imports*)
         i := 0;
         WHILE i < nofimps DO
@@ -176,6 +174,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
         IF ch # "O" THEN (*corrupted file*)  mod := NIL; error(4, name) END
       END ;
       IF res = 0 THEN (*fixup of BL*)
+        noftrps := 0; trpbase := p; (*trampoline area*)
         adr := mod.code + fixorgP;
         WHILE adr # mod.code DO
           SYSTEM.GET(adr, inst);
@@ -186,10 +185,22 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
           SYSTEM.GET(impmod.ent + pno*4, dest); dest := dest + impmod.code;
           (*dest contains the absolute address of the called procedure*)
           offset := dest - adr - 4; (* Offset in bytes *)
-          IF (offset < -16777216) OR (offset >= 16777216) THEN error(8, name) END;
+          IF (offset < -16777216) OR (offset >= 16777216) THEN
+            (*The destination is out of reachable range. Install trampoline AKA veneer code in ARM world*)
+            i := 0; u := trpbase;
+            SYSTEM.GET(u+4, w);
+            WHILE (i < noftrps) & (dest # w) DO INC(u, 8); SYSTEM.GET(u+4, w); INC(i) END;
+            IF i >= noftrps THEN (*Create trampoline, u is aligned to 4 bytes boundary*)
+              (*0DFF800F0H is object code for ldr pc, [pc] when pc MOD 4 = 0*)
+              INC(noftrps); SYSTEM.PUT(u, 0DFF800F0H); SYSTEM.PUT(u+4, dest+1)
+            END;
+            dest := u; (*branch to trampoline*)
+            offset := dest - adr - 4 (* Offset in bytes *)
+          END;
           SYSTEM.PUT(adr, BL + formatEvenImm25(offset));
           adr := adr - disp
         END ;
+        INC(p, noftrps*8);
         (*fixup of LDR/STR/ADD*)
       (* TODO J'en suis là, le fixup fixorgD est à modifier *)
 

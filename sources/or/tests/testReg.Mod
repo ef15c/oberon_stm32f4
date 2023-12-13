@@ -52,7 +52,7 @@ entry =       40
 OM4Tool.DecObj testReg.m4c ~
 
 decode testReg.m4c
-testReg 74DACAC7   1    46
+testReg 74DACAC7   1    44
 imports:
 type descriptors
 
@@ -62,25 +62,24 @@ strings
 code
 commands:
 entries
-    26
+    24
 pointer refs
 
 fixP =        0
 fixD =        0
 fixT =        0
-entry =       26
+entry =       24
    0	 F1BD0D08	SUBS SP SP #8
    4	     B500	PUSH LR
    6	     250A	MOVS R5 #10
-   8	     9801	LDR R0 [SP + 4]
-  10	     4601	MOV R1 R0
-  12	     4628	MOV R0 R5
-  14	     9002	STR R0 [SP + 8]
-  16	 F85DEB04	LDR LR [ SP ] + 4
-  20	 F11D0D08	ADDS SP SP #8
-  24	     4770	BX LR
-  26	     B500	PUSH LR
-  28	 F85DEB04	LDR LR [ SP ] + 4
-  32	     4770	BX LR
+   8	     9901	LDR R1 [SP + 4]
+  10	     4628	MOV R0 R5
+  12	     9002	STR R0 [SP + 8]
+  14	 F85DEB04	LDR LR [ SP ] + 4
+  18	 F11D0D08	ADDS SP SP #8
+  22	     4770	BX LR
+  24	     B500	PUSH LR
+  26	 F85DEB04	LDR LR [ SP ] + 4
+  30	     4770	BX LR
 
 *)

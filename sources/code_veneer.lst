@@ -4,4 +4,10 @@
   .fill 66, 1, 0
 next:
 
-0xD0201001
+Si pc MOD 4 = 0:
+0xDFF800F0 ldr.w	pc, [pc]
+0xD0201001 adresse
+
+Si pc MOD 4 = 2
+0xDFF802F0 ldr.w	pc, [pc]
+0xD0201001 adresse

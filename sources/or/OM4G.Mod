@@ -1217,7 +1217,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END ;
       obj := obj.next
     END ;
-    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + nofptrs + 1)*4 + nofusedextprocs*8;  (*varsize includes type descriptors and trampolines*)
+    
+    (*varsize includes type descriptors*)
+    size := varsize + strx + comsize + (mcode.pc+3) DIV 4*4 + (nofimps + nofent + nofptrs + 1)*4 + nofusedextprocs*8;
+    (*size is aligned on 4 bytes boundary*)
     
     OM4B.MakeFileName(name, modid, ".m4c"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.Write(R, CHR(version));
@@ -1236,6 +1239,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     FOR i := 0 TO strx-1 DO Files.Write(R, str[i]) END ;  (*strings*)
     Files.WriteInt(R, mcode.pc);  (*code len*)
     FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
+    FOR i := 1 TO mcode.pc MOD 4 DO Files.WriteByte(R, 0) END ;  (*align to 4 byte boundary*)
     obj := OM4B.topScope.next;
     WHILE obj # NIL DO  (*commands*)
       IF (obj.exno # 0) & (obj.class = OM4B.Const) & (obj.type.form = OM4B.Proc) &

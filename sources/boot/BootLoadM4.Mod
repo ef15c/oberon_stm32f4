@@ -1,5 +1,6 @@
 OM4P.Compile @  
 OM4X.WriteASM BootLoadM4.m4c BootLoadM4.s ~
+OM4X.WriteFile BootLoadM4.m4c BootLoadM4.hex 0F000000H ~
 
 MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC disk only*)
   IMPORT SYSTEM;
@@ -26,8 +27,9 @@ END BootLoadM4.
 
 (*
 OM4Tool.DecObj BootLoadM4.m4c ~
+
 decode BootLoadM4.m4c
-BootLoadM4 00000000   0   150
+BootLoadM4 00000000   0   152
 imports:
 type descriptors
 

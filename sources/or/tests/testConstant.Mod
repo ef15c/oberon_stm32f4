@@ -44,7 +44,7 @@ entry =        0
 OM4Tool.DecObj testConstant.m4c ~
 
 decode testConstant.m4c
-testConstant 5C50372B   1    68
+testConstant 5C50372B   1    64
 imports:
 type descriptors
 
@@ -58,21 +58,21 @@ entries
 pointer refs
 
 fixP =        0
-fixD =       30
+fixD =       26
 fixT =        0
 entry =        0
-   0	 F1BD0D04	SUBS SP SP # 4H
-   4	 F8CDE000	STR LR [ SP + 0H]
-   8	     200A	MOVS  R0 # 10
-  10	 10000005	LDR  R1 [ MT + Base(  0)]
-  14	 F8C10000	STR  R0 [  R1 + 0H]
-  18	 F24F50C3	MOV  R0 # 62915
-  22	 F2C40048	MOVT  R0 # 16456
-  26	 EE000A10	VMOV S0   R0
-  30	 0000000A	LDR  R0 [ MT + Base(  0)]
-  34	 ED800A01	VSTR S0 [  R0 + 4H]
-  38	 F8DDE000	LDR LR [ SP + 0H]
-  42	 F11D0D04	ADDS SP SP # 4H
-  46	     4770	BX LR
+   0	     B500	PUSH LR
+   2	     200A	MOVS R0 #10
+   4	 10000002	MOV R1 lower 16-bits base(0)
+   8	 0000D414	MOVT R1 higher 16-bits var(0)
+  12	     6008	STR R0 [ R1 + 0]
+  14	 F24F50C3	MOV R0 #62915
+  18	 F2C40048	MOVT R0 #16456
+  22	 EE000A10	VMOV S0 R0
+  26	 0000000B	MOV R0 lower 16-bits base(0)
+  30	 0000D414	MOVT R0 higher 16-bits var(4)
+  34	 ED800A00	VSTR S0 [ R0 + 0 ]
+  38	 F85DEB04	LDR LR [ SP ] + 4
+  42	     4770	BX LR
 
 *)

@@ -94,6 +94,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
       END
     END ; (*write code*)
     IF r.l # 0 THEN write(R1, r) (*data array is not empty: output the line*) END;
+    FOR n := 1 TO codelen MOD 4 DO Files.ReadByte(R, b) END; (*Skip padding bytes*)    
     Files.ReadString(R, name);
     WHILE ~R.eof & (name[0] # 0X) DO Files.ReadInt(R, data); Files.ReadString(R, name) END ; (*commands*)
     Files.ReadInt(R, n); Files.Set(R, F, Files.Pos(R) + n*4); (*entries*)

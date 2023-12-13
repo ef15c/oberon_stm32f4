@@ -1278,6 +1278,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Files.ReadInt(R, mcode.pc); i := 0;
         WHILE i < mcode.pc DO Files.ReadByte(R, mcode.code[i]); eref.ext[i] := 0; INC(i)
         END;
+        FOR i := 1 TO mcode.pc MOD 4 DO Files.ReadByte(R, bl) END; (*Skip padding bytes*)
       (* Sync(R); *)
         Texts.WriteString(W, "commands:"); Texts.WriteLn(W);
         Files.ReadString(R, name);

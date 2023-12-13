@@ -43,8 +43,10 @@ fixT =        0
 
 OM4Tool.DecObj testRegI.m4c ~
 
+decode testRegI.m4c not found
+testRegI.Mod  compiling testRegI    36     4 BDDACBC6
 decode testRegI.m4c
-testRegI BDDACBC6   1    58
+testRegI BDDACBC6   1    60
 imports:
 type descriptors
 
@@ -65,15 +67,16 @@ entry =        0
    2	     2000	MOVS R0 #0
    4	     6800	LDR R0 [ R0 + 0]
    6	 10000003	MOV R1 lower 16-bits base(0)
-  10	 0000D334	MOVT R1 higher 16-bits var(0)
+  10	 0000D414	MOVT R1 higher 16-bits var(0)
   14	     6008	STR R0 [ R1 + 0]
-  16	 F2410000	MOV R0 #  4096
-  20	 F2CD0020	MOVT R0 # 53280
+  16	 F2410000	MOV R0 #4096
+  20	 F2CD0020	MOVT R0 #53280
   24	     6800	LDR R0 [ R0 + 0]
   26	 1000000A	MOV R1 lower 16-bits base(0)
-  30	 0000D334	MOVT R1 higher 16-bits var(0)
+  30	 0000D414	MOVT R1 higher 16-bits var(0)
   34	     6008	STR R0 [ R1 + 0]
   36	 F85DEB04	LDR LR [ SP ] + 4
+  40	     4770	BX LR
 
 *)
 
