@@ -16,6 +16,14 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
                              1  2
       BL<c><q> <label>*)
   
+    MOVIT3  = 0F2400000H;
+    (*|1111/0i10/0100/imm4/0im3/ Rd / imm/8   |
+      MOVW<c> <Rd>,#<imm16>*)
+
+    MOVT    = 0F2C00000H;
+    (*|1111/0i10/1100/imm4/0im3/ Rd / imm/8   |
+      MOVT<c> <Rd>,#<imm16>*)
+
   TYPE Module* = POINTER TO ModDesc;
     Command* = PROCEDURE;
     ModuleName* = ARRAY 32 OF CHAR;
@@ -32,7 +40,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
     importing*, imported*: ModuleName;
     limit: INTEGER;
 
-  PROCEDURE formatEvenImm25*(disp: LONGINT): LONGINT;
+  PROCEDURE formatEvenImm25(disp: LONGINT): LONGINT;
   (* |00000S   imm10  00J0J   imm11   |
      |                  1 2
      I1 = NOT(J1 EOR S); I2 = NOT(J2 EOR S); imm32 = SignExtend(S:I1:I2:imm10:imm11:'0', 32);
@@ -59,6 +67,23 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
  
     RETURN imm11 + S*C26 + imm10*C16+J1*C13+J2*C11
   END formatEvenImm25;
+  
+  PROCEDURE formatImm16(reg: BYTE; val: LONGINT): LONGINT;
+  (*|xxxxxixxxxxximm4ximm reg  imm8  |
+    |                   3            |
+    val = imm4:i:imm3:imm8*)
+  BEGIN
+    RETURN val DIV C12 MOD C4*C16 + val DIV C11 MOD C1*C26 + 
+           val DIV C8 MOD C3*C12 + reg*C8 + val MOD C8
+  END formatImm16;
+
+  PROCEDURE thumbSwap(w: LONGINT): LONGINT;
+  BEGIN
+    RETURN w DIV 10000H MOD 100H*1000000H
+      +  w DIV 1000000H MOD 100H*10000H
+      +  w MOD 100H*100H
+      +  w DIV 100H MOD 100H
+  END thumbSwap;
   
   PROCEDURE ThisFile(name: ARRAY OF CHAR): Files.File;
     VAR i: INTEGER;
@@ -197,29 +222,29 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
             dest := u; (*branch to trampoline*)
             offset := dest - adr - 4 (* Offset in bytes *)
           END;
-          SYSTEM.PUT(adr, BL + formatEvenImm25(offset));
+          SYSTEM.PUT(adr, thumbSwap(BL + formatEvenImm25(offset)));
           adr := adr - disp
         END ;
         INC(p, noftrps*8);
-        (*fixup of LDR/STR/ADD*)
-      (* TODO J'en suis là, le fixup fixorgD est à modifier *)
-
-        adr := mod.code + fixorgD*4;
+        (*fixup of MOV/MOVT*)
+        adr := mod.code + fixorgD;
         WHILE adr # mod.code DO
           SYSTEM.GET(adr, inst);
-          mno := inst DIV 100000H MOD 10H;
-          disp := inst MOD 1000H;
+          pno := inst DIV 10000000H MOD 10H; (*destination register*)
+          mno := inst DIV 1000000H MOD 10H;
+          disp := inst MOD 1000000H*2;
+          SYSTEM.GET(adr+4, inst);
           IF mno = 0 THEN (*global*)
-            SYSTEM.PUT(adr, (inst DIV 1000000H * 10H + MT) * 100000H + mod.num * 4)
-          ELSE (*import*)
-            SYSTEM.GET(mod.imp + (mno-1)*4, impmod); v := impmod.num;
-            SYSTEM.PUT(adr, (inst DIV 1000000H * 10H + MT) * 100000H + v*4);
-            SYSTEM.GET(adr+4, inst); vno := inst MOD 100H;
+            dest := mod.data + inst MOD 1000000H
+          ELSE (*import*)  vno := inst MOD 100H;
+            SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
             SYSTEM.GET(impmod.ent + vno*4, offset);
-            IF ODD(inst DIV 100H) THEN offset := offset + impmod.code - impmod.data END ;
-            SYSTEM.PUT(adr+4, inst DIV 10000H * 10000H + offset)
-          END ;
-          adr := adr - disp*4
+            IF ODD(inst DIV 100H) THEN dest := impmod.code + offset
+            ELSE dest := impmod.data + offset END
+          END;
+          SYSTEM.PUT(adr, thumbSwap(MOVIT3 + formatImm16(pno, dest MOD 10000H)));
+          SYSTEM.PUT(adr+4, thumbSwap(MOVT + formatImm16(pno, dest DIV 10000H MOD 10000H)));
+          adr := adr - disp
         END ;
         (*fixup of type descriptors*)
         adr := mod.data + fixorgT*4;
@@ -275,11 +300,10 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
   END Free;
 
   PROCEDURE Init*;
-  BEGIN Files.Init; MTOrg := SYSTEM.REG(MT);
+  BEGIN Files.Init;
     SYSTEM.GET(16, AllocPtr); SYSTEM.GET(20, root); 
-    (*TODO : à reprendre : SYSTEM.GET(24, limit); DEC(limit, 8000H) *)
-    (*avec quelque chose du genre : *) SYSTEM.GET(12, limit); DEC(limit, 300000H);
-    (*pour laisser 3 Mo de mémoire pour le tas*)
+    (*3 Mb of RAM for the heap*)
+    SYSTEM.GET(12, limit); DEC(limit, 300000H);
   END Init;
 
 BEGIN Init; Load("Oberon", M);

@@ -121,7 +121,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     a/ Getting lower 16-bits of absolute address
     MOV a, #imm16:
-    aaaannnndddddddddddddddddddddddd
+    aaaa/nnnn/dddd/dddd/dddd/dddd/dddd/dddd
     
     aaaa: destination register
     nnnn: number of the module
@@ -130,14 +130,14 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     b/ Getting higher 16-bits of absolute address
     MOVT a, #imm16
      
-    if nnnn > 0
-    00000000000000000000000pvvvvvvvv
+    if nnnn < 0
+    0000/0000/0000/0000/0000/000p/vvvv/vvvv
     a:    specified in previous instruction
     p:    program based procedure
     vvv8: number of the variable or procedure
     
     else if nnnn = 0, object cannot be a constant procedure
-    00000000oooooooooooooooooooooooo
+    00000000/oooo/oooo/oooo/oooo/oooo/oooo
     oo24: offset of the variable
   
   2/ Procedures (entire address space is accessible with veneer code
@@ -186,9 +186,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.mode = OM4B.Const THEN
         IF x.type.form = OM4B.Proc THEN
           IF x.r > 0 THEN OM4S.Mark("not allowed")
-          ELSIF x.r = 0 THEN (* Put address of next statement in LR *)
-            (*Si align(PC+4, 4) - x.a < 4096 on peut utiliser l'équivalent de l'assembleur ADR RH, <label>*)
-            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); 
+          ELSIF x.r = 0 THEN 
+            (*optimisation possible : si align(PC+4, 4) - x.a < 4096 on peut 
+              utiliser l'équivalent de l'assembleur ADR RH, <label>*)
+            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); (* Put address of next statement in LR *)
             OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a)
           ELSE GetStaticVarAddress(x, RH) END;
           x.r := RH; incR

@@ -71,7 +71,7 @@ fixT =        0
 OM4Tool.DecObj testImport.m4c ~
 
 decode testImport.m4c
-testImport E4E4472F   1   166
+testImport E4E4472F   1   172
 imports:
 	testExport 633B402B
 type descriptors
@@ -86,49 +86,49 @@ entries
 pointer refs
 
 fixP =       22
-fixD =      114
+fixD =      118
 fixT =        0
 entry =        0
    0	     B500	PUSH LR
    2	 01000001	MOV R0 lower 16-bits base(1)
-   6	 0000D334	MOVT R0 higher 16-bits var(2)
+   6	 00000002	MOVT R0 higher 16-bits var(2)
   10	     6800	LDR R0 [ R0 + 0]
   12	 10000005	MOV R1 lower 16-bits base(0)
-  16	 0000D334	MOVT R1 higher 16-bits var(0)
+  16	 00000000	MOVT R1 higher 16-bits base + 0
   20	     6008	STR R0 [ R1 + 0]
   22	 1060000B	BL Mod(  1) proc(6)
   26	 01000007	MOV R0 lower 16-bits base(1)
-  30	 0000D334	MOVT R0 higher 16-bits var(6) Prog based
+  30	 00000106	MOVT R0 higher 16-bits var(6) Prog based
   34	 10000004	MOV R1 lower 16-bits base(0)
-  38	 0000D334	MOVT R1 higher 16-bits var(4)
+  38	 00000004	MOVT R1 higher 16-bits base + 4
   42	     6008	STR R0 [ R1 + 0]
   44	 00000005	MOV R0 lower 16-bits base(0)
-  48	 0000D334	MOVT R0 higher 16-bits var(4)
+  48	 00000004	MOVT R0 higher 16-bits base + 4
   52	     6800	LDR R0 [ R0 + 0]
   54	     2800	CMP R0 #0
   56	     BF08	IT EQ
   58	 EC0012D5	TrapEQ 5 at pos 173
   62	     4780	BLX R0
   64	 0100000A	MOV R0 lower 16-bits base(1)
-  68	 0000D334	MOVT R0 higher 16-bits var(4)
-  72	     6800	LDR R0 [ R0 + 0]
-  74	 10000005	MOV R1 lower 16-bits base(0)
-  78	 0000D334	MOVT R1 higher 16-bits var(8)
-  82	     6008	STR R0 [ R1 + 0]
-  84	 01000005	MOV R0 lower 16-bits base(1)
-  88	 0000D334	MOVT R0 higher 16-bits var(5)
-  92	     6800	LDR R0 [ R0 + 0]
-  94	 10000005	MOV R1 lower 16-bits base(0)
-  98	 0000D334	MOVT R1 higher 16-bits var(0)
- 102	     6008	STR R0 [ R1 + 0]
- 104	 01000005	MOV R0 lower 16-bits base(1)
- 108	 0000D334	MOVT R0 higher 16-bits var(5)
- 112	     6840	LDR R0 [ R0 + 1]
- 114	 10000005	MOV R1 lower 16-bits base(0)
- 118	 0000D334	MOVT R1 higher 16-bits var(0)
- 122	     6008	STR R0 [ R1 + 0]
- 124	 F85DEB04	LDR LR [ SP ] + 4
- 128	     4770	BX LR
+  68	 00000004	MOVT R0 higher 16-bits var(4)
+  72	 ED900A00	VLDR S0 [ R0 + 0 ]
+  76	 00000006	MOV R0 lower 16-bits base(0)
+  80	 00000008	MOVT R0 higher 16-bits base + 8
+  84	 ED800A00	VSTR S0 [ R0 + 0 ]
+  88	 01000006	MOV R0 lower 16-bits base(1)
+  92	 00000005	MOVT R0 higher 16-bits var(5)
+  96	     6800	LDR R0 [ R0 + 0]
+  98	 10000005	MOV R1 lower 16-bits base(0)
+ 102	 00000000	MOVT R1 higher 16-bits base + 0
+ 106	     6008	STR R0 [ R1 + 0]
+ 108	 01000005	MOV R0 lower 16-bits base(1)
+ 112	 00000005	MOVT R0 higher 16-bits var(5)
+ 116	     6840	LDR R0 [ R0 + 4]
+ 118	 10000005	MOV R1 lower 16-bits base(0)
+ 122	 00000000	MOVT R1 higher 16-bits base + 0
+ 126	     6008	STR R0 [ R1 + 0]
+ 128	 F85DEB04	LDR LR [ SP ] + 4
+ 132	     4770	BX LR
 
 
 *)

@@ -16,7 +16,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
     Form: INTEGER;  (*result of ReadType*)
     itB: ITBlockDesc;
     mnemo1: ARRAY 16, 3 OF CHAR;  (*condition mnemonics*)
-    RdG: BYTE;
+    RdG, mno: BYTE;
   
   PROCEDURE WriteHexVLen(VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
     VAR i: INTEGER; y: LONGINT;
@@ -39,7 +39,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
 
   PROCEDURE ReadType(VAR R: Files.Rider);
     VAR key, len, lev, size, off: INTEGER;
-      ref, mno, class, form, readonly: INTEGER;
+      ref, class, form, readonly: INTEGER;
       name, modname: ARRAY 32 OF CHAR;
   BEGIN Read(R, ref); Texts.Write(W, " "); Texts.Write(W, "[");
     IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1)
@@ -540,7 +540,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T16MSK12 01111 Subtract 3-bit immediate SUB (immediate) on page A7-402*)
       SubImmT1 = {9..12};
                   
-    VAR b1, b2, b3, b4, t, Rn, Rd, RdLo, RdHi, Rt, Rm, Sn, Sd, Sm, mno, ext, exop, proc: BYTE;
+    VAR b1, b2, b3, b4, t, Rn, Rd, RdLo, RdHi, Rt, Rm, Sn, Sd, Sm, ext, exop, proc: BYTE;
       op: SET;
   BEGIN
     ext := er.ext[i];
@@ -1213,11 +1213,16 @@ MODULE OM4Tool;  (*NW 18.2.2013
       Texts.WriteInt(W, mno, 1); Texts.WriteString(W, ")")
     ELSIF ext = 2 THEN (*Get higher 16-bits of address of the object*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
+      op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
       WriteOp(op, "MOVT", FALSE, FALSE); WriteReg(RdG);
-      Texts.WriteString(W, " higher 16-bits var("); Texts.WriteInt(W, b4, 1);
-      Texts.WriteString(W, ")");
-      IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END
+      Texts.WriteString(W, " higher 16-bits ");
+      IF mno = 0 THEN Texts.WriteString(W, "base + "); 
+        Texts.WriteInt(W, 0+b4+100H*(b3+100H*b2), 1)
+      ELSE Texts.WriteString(W, "var("); Texts.WriteInt(W, b4, 1);
+        Texts.WriteString(W, ")");
+        IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END
+      END
     ELSIF ext = 3 THEN (*BL Call external procedure*)
       b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
