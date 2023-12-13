@@ -335,37 +335,41 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
     VAR s, lim, p2: LONGINT;
-  BEGIN s := x.type.base.size; lim := x.type.len;
-    IF (y.mode = OM4B.Const) & (lim >= 0) THEN
-      IF (y.a < 0) OR (y.a >= lim) THEN OM4S.Mark("bad index") END ;
-      IF x.mode IN {OM4B.Var, RegI} THEN x.a := y.a * s + x.a
-      ELSIF x.mode = OM4B.Par THEN x.b := y.a * s + x.b
-      END
-    ELSE load(y);
-      IF check THEN  (*check array bounds*)
-        IF lim >= 0 THEN OM4A.encCMPImm(mcode, y.r, RH, lim)
-        ELSE (*open array*)
-          IF x.mode IN {OM4B.Var, OM4B.Par} THEN
-            incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + 4 + frame); DEC(RH);
-            OM4A.encCMPReg(mcode, y.r, RH)
-          ELSE OM4S.Mark("error in Index")
-          END
+  BEGIN s := x.type.base.size; 
+    IF s=0 THEN OM4S.Mark("Invalid array item size")
+    ELSE
+      lim := x.type.len;
+      IF (y.mode = OM4B.Const) & (lim >= 0) THEN
+        IF (y.a < 0) OR (y.a >= lim) THEN OM4S.Mark("bad index") END ;
+        IF x.mode IN {OM4B.Var, RegI} THEN x.a := y.a * s + x.a
+        ELSIF x.mode = OM4B.Par THEN x.b := y.a * s + x.b
+        END
+      ELSE load(y);
+        IF check THEN  (*check array bounds*)
+          IF lim >= 0 THEN OM4A.encCMPImm(mcode, y.r, RH, lim)
+          ELSE (*open array*)
+            IF x.mode IN {OM4B.Var, OM4B.Par} THEN
+              incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + 4 + frame); DEC(RH);
+              OM4A.encCMPReg(mcode, y.r, RH)
+            ELSE OM4S.Mark("error in Index")
+            END
+          END ;
+          Trap(OM4A.CS, 1) (*ARM inverts the carry with SUB and CMP instructions*)
         END ;
-        Trap(OM4A.CS, 1) (*ARM inverts the carry with SUB and CMP instructions*)
-      END ;
-      (* Compute the shift to apply when s is a power of two *)
-      IF OM4A.log2(s, p2) # 1 THEN OM4A.encMUL(mcode, y.r, y.r, s); p2 := 0 END ;
-      IF x.mode = OM4B.Var THEN
-        IF x.r > 0 THEN OM4A.encDPReg(mcode, OM4A.ADD, y.r, SP, y.r, p2); INC(x.a, frame)
-        ELSE GetStaticVarAddress(x, RH);
-          OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.a := 0
-        END ;
-        x.r := y.r; x.mode := RegI
-      ELSIF x.mode = OM4B.Par THEN
-        incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
-        OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.mode := RegI; x.r := y.r; x.a := x.b
-      ELSIF x.mode = RegI THEN
-        OM4A.encDPReg(mcode, OM4A.ADD, x.r, x.r, y.r, p2); DEC(RH)
+        (* Compute the shift to apply when s is a power of two *)
+        IF OM4A.log2(s, p2) # 1 THEN OM4A.encMUL(mcode, y.r, y.r, s); p2 := 0 END ;
+        IF x.mode = OM4B.Var THEN
+          IF x.r > 0 THEN OM4A.encDPReg(mcode, OM4A.ADD, y.r, SP, y.r, p2); INC(x.a, frame)
+          ELSE GetStaticVarAddress(x, RH);
+            OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.a := 0
+          END ;
+          x.r := y.r; x.mode := RegI
+        ELSIF x.mode = OM4B.Par THEN
+          incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
+          OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.mode := RegI; x.r := y.r; x.a := x.b
+        ELSIF x.mode = RegI THEN
+          OM4A.encDPReg(mcode, OM4A.ADD, x.r, x.r, y.r, p2); DEC(RH)
+        END
       END
     END
   END Index;
@@ -537,7 +541,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         load(x); OM4A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
       END
     ELSE (*op = OM4S.mod*)
-
       IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
         IF y.a > 0 THEN x.a := x.a MOD y.a ELSE OM4S.Mark("bad modulus") END
       ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x);

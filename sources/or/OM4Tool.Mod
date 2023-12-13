@@ -315,7 +315,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (*T32MSK42 01100 -: Move Top, 16-bit MOVT on page A7-296*)
       MoveTop = {23, 22};
       (*T32MSK42 00000 Rn not 1111 Add Wide, 12-bit ADD (immediate) on page A7-190*)
-      AddWide12Bit = {};
+      AddWide12BitOrAdr = {};
+      (*T32MSK42 01010 Rn not 1111 Subtract Wide, 12-bit SUB (immediate) on page A7-402*)
+      SubWide12BitOrAdr = {23, 21};
       
       T32MSK61 = {21..23}; T32MSK62 = {21..23, 11};
       (*T32MSK61 100 xxxxxx Store Register Byte STRB (immediate) on page A7-389*)
@@ -621,10 +623,16 @@ MODULE OM4Tool;  (*NW 18.2.2013
             (*T32MSK42 01100 -: Move Top, 16-bit MOVT on page A7-296*)
             WriteOp(op, "MOVT", FALSE, FALSE); WriteReg(Rd); Texts.WriteString(W, " #");
             Texts.WriteInt(W, imm16(b1, b2, b3, b4), 1)
-          ELSIF (op*T32MSK42 = AddWide12Bit) & (Rn # 15) THEN
+          ELSIF (op*T32MSK42 = AddWide12BitOrAdr) & (Rn # 15) THEN
             (*T32MSK42 00000 Rn not 1111 Add Wide, 12-bit ADD (immediate) on page A7-190*)
             (*ADDW<c> <Rd>,<Rn>,#<imm12> Encoding T4*)
             WriteOp(op, "ADD", FALSE, FALSE); WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, 0 + b1 DIV OM4A.C2 MOD OM4A.C1*OM4A.C11 +
+              b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C8 + b4, 1)
+          ELSIF (op*T32MSK42 = SubWide12BitOrAdr) & (Rn # 15) THEN
+            (*T32MSK42 01010 Rn not 1111 Subtract Wide, 12-bit SUB (immediate) on page A7-402*)
+            (*SUBW<c> <Rd>,<Rn>,#<imm12>*)
+            WriteOp(op, "SUB", FALSE, FALSE); WriteReg(Rd); WriteReg(Rn); Texts.WriteString(W, " #");
             Texts.WriteInt(W, 0 + b1 DIV OM4A.C2 MOD OM4A.C1*OM4A.C11 +
               b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C8 + b4, 1)
           ELSE Texts.WriteString(W, "TODO: other DataProcPlainBinImm on page A5-141")
