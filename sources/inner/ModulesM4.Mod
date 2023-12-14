@@ -90,7 +90,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
       filename: ModuleName;
   BEGIN i := 0;
     WHILE name[i] # 0X DO filename[i] := name[i]; INC(i) END ;
-    filename[i] := "."; filename[i+1] := "r"; filename[i+2] := "s"; filename[i+3] := "c"; filename[i+4] := 0X;
+    filename[i] := "."; filename[i+1] := "m"; filename[i+2] := "4"; filename[i+3] := "c"; filename[i+4] := 0X;
     RETURN Files.Old(filename)
   END ThisFile;
 

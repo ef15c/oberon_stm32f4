@@ -357,7 +357,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           Trap(OM4A.CS, 1) (*ARM inverts the carry with SUB and CMP instructions*)
         END ;
         (* Compute the shift to apply when s is a power of two *)
-        IF OM4A.log2(s, p2) # 1 THEN OM4A.encMUL(mcode, y.r, y.r, s); p2 := 0 END ;
+        IF OM4A.log2(s, p2) # 1 THEN OM4A.encMOVImm32(mcode, RH, s);
+          OM4A.encMUL(mcode, y.r, y.r, RH); p2 := 0
+        END ;
         IF x.mode = OM4B.Var THEN
           IF x.r > 0 THEN OM4A.encDPReg(mcode, OM4A.ADD, y.r, SP, y.r, p2); INC(x.a, frame)
           ELSE GetStaticVarAddress(x, RH);

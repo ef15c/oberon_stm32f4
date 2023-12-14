@@ -3,8 +3,8 @@ Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4Tool, OM4X
 A faire :  OM4L
 
 Liste des modules à créer en se basant sur la version RISC-5 :
-Faits : BootLoadM4, ModulesM4
-A faire: System, Kernel
+Faits : BootLoadM4, ModulesM4, KernelM4
+A faire: System
 
 Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
 15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0   15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0
