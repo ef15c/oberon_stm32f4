@@ -276,6 +276,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); OM4G.Condition(x)
       ELSIF fct = 20 THEN (*SQRT*) CheckReal(x); OM4G.Sqrt(x)
+      ELSIF fct = 21 THEN (*SVC*) CheckConst(x); CheckInt(x); OM4G.SVC(x)
       END ;
       x.type := restyp
     ELSE OM4S.Mark("wrong nof params")
@@ -458,7 +459,6 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno = 11 THEN CheckInt(x); OM4G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); OM4G.Copy(x, y, z)
       ELSIF pno = 14 THEN OM4G.LDREG(y)
-      ELSIF pno = 15 THEN CheckConst(x); CheckInt(x); OM4G.SVC(x)
       END
     ELSE OM4S.Mark("wrong nof parameters")
     END

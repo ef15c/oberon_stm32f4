@@ -302,8 +302,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
   PROCEDURE Init*;
   BEGIN Files.Init;
     SYSTEM.GET(16, AllocPtr); SYSTEM.GET(20, root); 
-    (*3 Mb of RAM for the heap*)
-    SYSTEM.GET(12, limit); DEC(limit, 300000H);
+    SYSTEM.GET(28, limit) (*The end of the module space is the beginning of the heap*)
   END Init;
 
 BEGIN Init; Load("Oberon", M);

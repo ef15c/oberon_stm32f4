@@ -437,5 +437,5 @@ BEGIN
   enter("COPY", SProc, noType, 123);
   enter("PUT", SProc, noType, 112);
   enter("GET", SProc, noType, 102);
-  enter("SVC", SProc, noType, 151);
+  enter("SVC", SFunc, intType, 211);
 END OM4B.

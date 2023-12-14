@@ -1015,7 +1015,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (*Call service*)
   PROCEDURE SVC*(VAR x: Item);
   BEGIN (*x.mode = Const*)
-    OM4A.Put1(mcode, OM4A.SVC + x.a MOD OM4A.C8)
+    OM4A.Put1(mcode, OM4A.SVC + x.a MOD OM4A.C8); 
+    x.mode := Reg; x.r := 0; RH := 1
   END SVC;
   
   PROCEDURE Get*(VAR x, y: Item);

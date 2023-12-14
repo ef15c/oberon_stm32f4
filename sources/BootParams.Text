@@ -10,7 +10,7 @@ Paramètres de boot
  00000010 (16)  000092C0 ; Adresse de fin de chargement du ficher de boot
  00000014 (20)  00007D40 ; Adresse du descripteur du module racine
  00000018 (24)  00100000 ; Adresse de fin de l'espace de chargement des modules et du début de pile
- 0000001C ( 0)  00000000
+ 0000001C (28)  00000000
  
  Table des modules
  00000020	 E7006EEF 00000150 000035F0 00005630 00007D90 00009310 00009AD0 0000B010
@@ -30,9 +30,9 @@ Paramètres de boot
  D0201004 ( 4)  00000000 ; 
  D0201008 ( 8)  D0201000 ; Adresse de début de chargement du ficher de boot
  D020100C (12)  D0800000 ; Adresse de fin de la mémoire
- D0201010 (16)  0000xxxx ; Adresse de fin de chargement du ficher de boot
- D0201014 (20)  0000xxxx ; Adresse du descripteur du module racine
- D0201018 (24)  10010000 ; Adresse du début de pile
- D020101C ( 0)  00000000
+ D0201010 (16)  D020xxxx ; Adresse de fin de chargement du ficher de boot
+ D0201014 (20)  D020xxxx ; Adresse du descripteur du module racine
+ D0201018 (24)  10010000 ; Adresse d'initialisation du pointeur de pile
+ D020101C (28)  D0500000 ; Adresse de début du tas
 
 Pas de table des modules.

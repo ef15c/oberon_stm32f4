@@ -2,7 +2,7 @@ Liste des modules à créer en se basant sur ORx :
 Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4Tool, OM4X
 A faire :  OM4L
 
-Liste des modules à créer en se basant sur la version RISC5 :
+Liste des modules à créer en se basant sur la version RISC-5 :
 Faits : BootLoadM4, ModulesM4
 A faire: System, Kernel
 
@@ -11,7 +11,7 @@ Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
      32-bit Thumb instruction, hw1            32-bit Thumb instruction, hw2
 Byte at Address A+1   Byte at Address A   Byte at Address A+3  Byte at Address A+2
 
-Pièce Carry :
+Piège Carry :
 "In A32/T32 code, C is set in one of the following ways:
 
 For an addition, including the comparison instruction CMN, C is set to 1
@@ -77,8 +77,16 @@ Le STM32F429 contient une mémoire attachée au coeur offrant 64ko. C'est le candi
 Ses limitations : utilisable uniquement par le coeur (pas de DMA) et pas de bit-banding.
 Localisation CCM : 1000 0000H - 1000 FFFFH
 
-L'instruction SVC sera utilisée pour exécuter des services matériels :
-N° de service   Nom     R0                                                  R1
--------------   ------- --------------------------------------------------  ------------------------------------
+L'instruction SVC sera utilisée pour exécuter des services matériels, valeur de retour dans R0 :
+N° de service   Nom     R0                                                  R1                                      R3
+-------------   ------- --------------------------------------------------  ------------------------------------    ------------------------
             1   LED     <7:0> : un bit par LED à allumer (1) ou éteindre 0
-            2   ReadSD  N° du secteur à lire sur la carte SD                Addresse de destination en mémoire
+            2   ReadSD  N° du premier secteur à lire sur la carte SD        Addresse de destination en mémoire      Nombre de blocs à lire
+                        Retourne 0 si OK
+à faire
+N° de service   Nom     R0                                                  R1                                      R3
+-------------   ------- --------------------------------------------------  ------------------------------------    ------------------------
+            3   WriteSD N° du premier secteur à écrire sur la carte SD      Addresse de destination en mémoire      Nombre de blocs à écrire
+            4   Time    Temps depuis le démarrage du système
+                        Retourne le temps en millisecondes
+

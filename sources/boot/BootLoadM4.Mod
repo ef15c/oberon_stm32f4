@@ -11,13 +11,14 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
 (* ---------- disk ------------*)
 
   PROCEDURE LoadFromDisk;
-    VAR lim: INTEGER;
+    VAR r, lim: INTEGER;
   BEGIN  
     (*start at boot block*)
-    SYSTEM.LDREG(0, FSoffset + 4); SYSTEM.LDREG(1, VarORG0); SYSTEM.LDREG(2, 1); SYSTEM.SVC(2);
+    SYSTEM.LDREG(0, FSoffset + 4); SYSTEM.LDREG(1, VarORG0); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);
     SYSTEM.GET(VarORG0+16, lim);
     (*read remaining blocks*)
-    SYSTEM.LDREG(0, FSoffset + 4 + 1); SYSTEM.LDREG(1, VarORG0+512); SYSTEM.LDREG(2, (lim+511) DIV 512 - 1); SYSTEM.SVC(2);
+    SYSTEM.LDREG(0, FSoffset + 4 + 1); SYSTEM.LDREG(1, VarORG0+512); SYSTEM.LDREG(2, (lim+511) DIV 512 - 1); 
+    r := SYSTEM.SVC(2);
   END LoadFromDisk;
 
 BEGIN
@@ -29,7 +30,7 @@ END BootLoadM4.
 OM4Tool.DecObj BootLoadM4.m4c ~
 
 decode BootLoadM4.m4c
-BootLoadM4 00000000   0   152
+BootLoadM4 00000000   0   156
 imports:
 type descriptors
 
@@ -39,15 +40,15 @@ strings
 code
 commands:
 entries
-    76
+    80
 pointer refs
 
 fixP =        0
 fixD =        0
 fixT =        0
-entry =       76
-   0	 F000B824	B #72, goes to 76
-   4	 F1BD0D04	SUBS SP SP #4
+entry =       80
+   0	 F000B826	B #76, goes to 80
+   4	 F1BD0D08	SUBS SP SP #8
    8	     B500	PUSH LR
   10	     2004	MOVS R0 #4
   12	 F2C00008	MOVT R0 #8
@@ -55,41 +56,42 @@ entry =       76
   20	 F2CD0120	MOVT R1 #53280
   24	     2201	MOVS R2 #1
   26	     DF02	SVC #2
-  28	 F2410010	MOV R0 #4112
-  32	 F2CD0020	MOVT R0 #53280
-  36	     6800	LDR R0 [ R0 + 0]
-  38	     9001	STR R0 [SP + 4]
-  40	     2005	MOVS R0 #5
-  42	 F2C00008	MOVT R0 #8
-  46	 F2412100	MOV R1 #4608
-  50	 F2CD0120	MOVT R1 #53280
-  54	     9A01	LDR R2 [SP + 4]
-  56	 F20212FF	ADD R2 R2 #511
-  60	     1252	ASRS R2 R2 #9
-  62	     1E52	SUBS R2 R2 #1
-  64	     DF02	SVC #2
-  66	 F85DEB04	LDR LR [ SP ] + 4
-  70	 F11D0D04	ADDS SP SP #4
-  74	     4770	BX LR
-  76	     2042	MOVS R0 #66
-  78	     DF01	SVC #1
-  80	 F7FFFFD8	BL #-80, goes to 4
-  84	 F241000C	MOV R0 #4108
-  88	 F2CD0020	MOVT R0 #53280
-  92	     2100	MOVS R1 #0
-  94	 F2CD0180	MOVT R1 #53376
-  98	     6001	STR R1 [ R0 + 0]
- 100	 F2410018	MOV R0 #4120
- 104	 F2CD0020	MOVT R0 #53280
- 108	     2100	MOVS R1 #0
- 110	 F2C10101	MOVT R1 #4097
- 114	     6001	STR R1 [ R0 + 0]
- 116	     2044	MOVS R0 #68
- 118	     DF01	SVC #1
- 120	 F2410000	MOV R0 #4096
- 124	 F2CD0020	MOVT R0 #53280
- 128	     4700	BX R0
-
+  28	     9001	STR R0 [SP + 4]
+  30	 F2410010	MOV R0 #4112
+  34	 F2CD0020	MOVT R0 #53280
+  38	     6800	LDR R0 [ R0 + 0]
+  40	     9002	STR R0 [SP + 8]
+  42	     2005	MOVS R0 #5
+  44	 F2C00008	MOVT R0 #8
+  48	 F2412100	MOV R1 #4608
+  52	 F2CD0120	MOVT R1 #53280
+  56	     9A02	LDR R2 [SP + 8]
+  58	 F20212FF	ADD R2 R2 #511
+  62	     1252	ASRS R2 R2 #9
+  64	     1E52	SUBS R2 R2 #1
+  66	     DF02	SVC #2
+  68	     9001	STR R0 [SP + 4]
+  70	 F85DEB04	LDR LR [ SP ] + 4
+  74	 F11D0D08	ADDS SP SP #8
+  78	     4770	BX LR
+  80	     2042	MOVS R0 #66
+  82	     DF01	SVC #1
+  84	 F7FFFFD6	BL #-84, goes to 4
+  88	 F241000C	MOV R0 #4108
+  92	 F2CD0020	MOVT R0 #53280
+  96	     2100	MOVS R1 #0
+  98	 F2CD0180	MOVT R1 #53376
+ 102	     6001	STR R1 [ R0 + 0]
+ 104	 F2410018	MOV R0 #4120
+ 108	 F2CD0020	MOVT R0 #53280
+ 112	     2100	MOVS R1 #0
+ 114	 F2C10101	MOVT R1 #4097
+ 118	     6001	STR R1 [ R0 + 0]
+ 120	     2044	MOVS R0 #68
+ 122	     DF01	SVC #1
+ 124	 F2410000	MOV R0 #4096
+ 128	 F2CD0020	MOVT R0 #53280
+ 132	     4700	BX R0
 
 
 *)
