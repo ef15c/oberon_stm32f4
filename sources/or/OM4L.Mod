@@ -258,7 +258,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
           M.ptr := M.ptr - Start + VarORG0
         END ;
         SYSTEM.GET(Start, x);  (*address of initialization body of the top module relative to Start*)
-        SYSTEM.PUT(Start, OM4A.BT4 + OM4A.formatEvenImm25(x - 4 - VarORG0));  (*branch instruction to the initialization body of the top module*)
+        SYSTEM.PUT(Start, thumbSwap(OM4A.BT4 + OM4A.formatEvenImm25(x - 4 - VarORG0)));  (*branch instruction to the initialization body of the top module*)
         SYSTEM.PUT(Start + DestAdr, VarORG0);  (*destination address of the prelinked, executable binary*)
         SYSTEM.PUT(Start + MemAdr, MemLim);  (*limit of available memory, typically overwritten by the boot loader*)
         SYSTEM.PUT(Start + AllocAdr, AllocPtr - Start + VarORG0);  (*address of the end of the module space loaded*)
