@@ -3,7 +3,9 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
   CONST versionkey = 1X; versionkey0 = 0X; 
     DescSize = 80; MnLength = 32; BootSec = 2;
     noerr* = 0; nofile* = 1; badversion* = 2; badkey* = 3; badfile* = 4; nospace* = 5;
-    VarORG0 = 0D0201000H; DestAdr = 8; MemAdr = 12; AllocAdr = 16; RootAdr = 20; StackAdr = 24; HeapOrg = 28;
+    VarORG0 = 0D0201000H; MemLim = 0D0800000H; stackOrg = 10010000H;
+    HeapOrg = 0D0500000H;
+    DestAdr = 8; MemAdr = 12; AllocAdr = 16; RootAdr = 20; StackAdr = 24; HeapOrgAdr = 28;
     ModAdr = 32;
     C4 = 10H; C6 = 40H; C8 = 100H; C10 = 400H; C12 = 1000H; C14 = 4000H; C16 = 10000H;
     C18 = 40000H; C20 = 100000H; C22 = 400000H; C24 = 1000000H; BC = 0E7000000H; BL = 0F7000000H;
@@ -24,13 +26,32 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
     importing*, imported*: ModuleName;
     W: Texts.Writer;
 
-  PROCEDURE thumbSwap(w: LONGINT): LONGINT;
+  PROCEDURE thumbSwap(w: INTEGER): INTEGER;
   BEGIN
-    RETURN w DIV 10000H MOD 100H*1000000H
-      +  w DIV 1000000H MOD 100H*10000H
-      +  w MOD 100H*100H
-      +  w DIV 100H MOD 100H
+    RETURN w DIV 100H MOD 100H*1000000H
+      + w MOD 100H*10000H
+      + w DIV 1000000H MOD 100H*100H
+      + w DIV 10000H MOD 100H
   END thumbSwap;
+
+  (* Get unaligned words *)
+  PROCEDURE GetWordAt(adr: INTEGER): INTEGER;
+    VAR b1, b2, b3, b4: BYTE;
+  BEGIN
+    SYSTEM.GET(adr, b4); SYSTEM.GET(adr+1, b3); SYSTEM.GET(adr+2, b2); SYSTEM.GET(adr+3, b1);
+    RETURN 0+b4+100H*(b3+100H*(b2+100H*b1))
+  END GetWordAt;
+  
+  (* Put unaligned words *)
+  PROCEDURE PutWordAt(adr, val: INTEGER);
+    VAR b1, b2, b3, b4: BYTE;
+  BEGIN
+    b4 := val MOD 100H; val := val DIV 100H;
+    b3 := val MOD 100H; val := val DIV 100H;
+    b2 := val MOD 100H; val := val DIV 100H;
+    b1 := val MOD 100H;
+    SYSTEM.PUT(adr, b4); SYSTEM.PUT(adr+1, b3); SYSTEM.PUT(adr+2, b2); SYSTEM.PUT(adr+3, b1)
+  END PutWordAt;
   
   PROCEDURE MakeFileName(VAR FName: ARRAY OF CHAR; name, ext: ARRAY OF CHAR);
     VAR i, j: INTEGER;
@@ -152,8 +173,10 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
       END ;
       IF res = noerr THEN (*fixup of BL*)
-        adr := mod.code + fixorgP*4;
+        adr := mod.code + fixorgP;
         WHILE adr # mod.code DO
+          inst := GetWordAt(adr);
+          inst := thumbSwap(inst); (*Put bytes in the right order*)
           mno := inst DIV 10000000H MOD 10H;
           pno := inst DIV 100000H MOD 100H;
           disp := inst MOD 100000H*2;
@@ -161,30 +184,32 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
           SYSTEM.GET(impmod.ent + pno*4, dest); dest := dest + impmod.code;
           (*dest contains the address of the called procedure relative to Start*)
           offset := dest - adr - 4; (* Offset in bytes *)
-          SYSTEM.PUT(adr, thumbSwap(OM4A.BL + OM4A.formatEvenImm25(offset)));
+          PutWordAt(adr, thumbSwap(OM4A.BL + OM4A.formatEvenImm25(offset)));
           adr := adr - disp
         END ;
-        
-        (* TODO j'en suis là *)
-        
-        (*fixup of LDR/STR/ADD*)
-        adr := mod.code + fixorgD*4;
+        (*fixup of MOV/MOVT*)
+        adr := mod.code + fixorgD;
         WHILE adr # mod.code DO
-          SYSTEM.GET(adr, inst);
-          mno := inst DIV C20 MOD C4;
-          disp := inst MOD C12;
+          inst := GetWordAt(adr);
+          inst := thumbSwap(inst); (*Put bytes in the right order*)
+          pno := inst DIV 10000000H MOD 10H; (*destination register*)
+          mno := inst DIV 1000000H MOD 10H;
+          disp := inst MOD 1000000H*2;
+          inst := GetWordAt(adr+4);
+          inst := thumbSwap(inst); (*Put bytes in the right order*)
           IF mno = 0 THEN (*global*)
-            SYSTEM.PUT(adr, (inst DIV C24 * C4 + MT) * C20 + mod.num * 4)
-          ELSE (*import*)
-            SYSTEM.GET(mod.imp + (mno-1)*4, impmod); v := impmod.num;
-            SYSTEM.PUT(adr, (inst DIV C24 * C4 + MT) * C20 + v*4);
-            SYSTEM.GET(adr+4, inst); vno := inst MOD C8;
+            dest := mod.data + inst MOD 1000000H - Start + VarORG0
+          ELSE (*import*)  vno := inst MOD 100H;
+            SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
             SYSTEM.GET(impmod.ent + vno*4, offset);
-            IF ODD(inst DIV C8) THEN offset := offset + impmod.code - impmod.data END ;
-            SYSTEM.PUT(adr+4, inst DIV C16 * C16 + offset)
-          END ;
-          adr := adr - disp*4
+            IF ODD(inst DIV 100H) THEN dest := impmod.code + offset - Start + VarORG0
+            ELSE dest := impmod.data + offset - Start + VarORG0 END
+          END;
+          PutWordAt(adr, thumbSwap(OM4A.MOVIT3 + OM4A.formatImm16(pno, dest MOD 10000H)));
+          PutWordAt(adr+4, thumbSwap(OM4A.MOVT + OM4A.formatImm16(pno, dest DIV 10000H MOD 10000H)));
+          adr := adr - disp
         END ;
+        ASSERT(adr = mod.code);
         (*fixup of type descriptors*)
         adr := mod.data + fixorgT*4;
         WHILE adr # mod.data DO
@@ -233,16 +258,16 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
           M.ptr := M.ptr - Start + VarORG0
         END ;
         SYSTEM.GET(Start, x);  (*address of initialization body of the top module relative to Start*)
-        SYSTEM.PUT(Start, BC + (x DIV 4) - 1);  (*branch instruction to the initialization body of the top module*)
-        SYSTEM.PUT(Start + DestAdr, 0);  (*destination address of the prelinked, executable binary*)
-        SYSTEM.PUT(Start + MemAdr, Kernel.MemLim);  (*limit of available memory, typically overwritten by the boot loader*)
+        SYSTEM.PUT(Start, OM4A.BT4 + OM4A.formatEvenImm25(x - 4 - VarORG0));  (*branch instruction to the initialization body of the top module*)
+        SYSTEM.PUT(Start + DestAdr, VarORG0);  (*destination address of the prelinked, executable binary*)
+        SYSTEM.PUT(Start + MemAdr, MemLim);  (*limit of available memory, typically overwritten by the boot loader*)
         SYSTEM.PUT(Start + AllocAdr, AllocPtr - Start + VarORG0);  (*address of the end of the module space loaded*)
         SYSTEM.PUT(Start + RootAdr, SYSTEM.VAL(INTEGER, root) - Start + VarORG0);  (*current root of the links of loaded modules*)
-        SYSTEM.PUT(Start + StackAdr, Kernel.stackOrg);  (*current limit of the module area, typically overwritten by the boot loader*)
-        SYSTEM.PUT(Start + FPrintAdr, FPrint);  (*à remplacer par HeapOrg*)
+        SYSTEM.PUT(Start + StackAdr, stackOrg);  (*current limit of the module area, typically overwritten by the boot loader*)
+        SYSTEM.PUT(Start + HeapOrgAdr, HeapOrg);  (*start of heeap area*)
         MakeFileName(name, S.s, ".bin"); F := Files.New(name); Files.Set(R, F, 0); i := Start;
         WHILE i < AllocPtr DO SYSTEM.GET(i, x); Files.WriteInt(R, x); INC(i, 4) END ;
-        Texts.WriteInt(W, AllocPtr - Start + VarORG0, 7); Files.Register(F)
+        Texts.WriteHex(W, AllocPtr - Start + VarORG0); Files.Register(F)
       ELSE
         Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
         IF res = nofile THEN Texts.WriteString(W, " module not found")
@@ -258,6 +283,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); root := NIL
   END Link;
 
+(* Disabled for now to avoid RISC-5 bootfile corruption
   PROCEDURE Load*;  (*load prelinked boot file M.bin onto the boot area of the local disk*)
     VAR i, secno: LONGINT; b: BYTE;
       F: Files.File; R: Files.Rider;
@@ -282,9 +308,10 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
     END ;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END Load;
+*)
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.20 / CS 14/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); 
   SYSTEM.GET(HeapOrg, limit); (*The end of the module space is the beginning of the heap*)
-  IF limit = 0 THEN limit := Kernel.stackOrg - Kernel.stackSize END; (*Hack if run by RISC-5 machine*)
+  IF limit = 0 THEN limit := Kernel.stackOrg - Kernel.stackSize END; (*Hack if ran by RISC-5 machine*)
 END OM4L.

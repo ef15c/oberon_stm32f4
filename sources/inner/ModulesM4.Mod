@@ -79,11 +79,30 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
 
   PROCEDURE thumbSwap(w: LONGINT): LONGINT;
   BEGIN
-    RETURN w DIV 10000H MOD 100H*1000000H
-      +  w DIV 1000000H MOD 100H*10000H
-      +  w MOD 100H*100H
-      +  w DIV 100H MOD 100H
+    RETURN w DIV 100H MOD 100H*1000000H
+      + w MOD 100H*10000H
+      + w DIV 1000000H MOD 100H*100H
+      + w DIV 10000H MOD 100H
   END thumbSwap;
+    
+  (* Get unaligned words *)
+  PROCEDURE GetWordAt(adr: INTEGER): INTEGER;
+    VAR b1, b2, b3, b4: BYTE;
+  BEGIN
+    SYSTEM.GET(adr, b4); SYSTEM.GET(adr+1, b3); SYSTEM.GET(adr+2, b2); SYSTEM.GET(adr+3, b1);
+    RETURN 0+b4+100H*(b3+100H*(b2+100H*b1))
+  END GetWordAt;
+  
+  (* Put unaligned words *)
+  PROCEDURE PutWordAt(adr, val: INTEGER);
+    VAR b1, b2, b3, b4: BYTE;
+  BEGIN
+    b4 := val MOD 100H; val := val DIV 100H;
+    b3 := val MOD 100H; val := val DIV 100H;
+    b2 := val MOD 100H; val := val DIV 100H;
+    b1 := val MOD 100H;
+    SYSTEM.PUT(adr, b4); SYSTEM.PUT(adr+1, b3); SYSTEM.PUT(adr+2, b2); SYSTEM.PUT(adr+3, b1)
+  END PutWordAt;
   
   PROCEDURE ThisFile(name: ARRAY OF CHAR): Files.File;
     VAR i: INTEGER;
@@ -202,7 +221,8 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
         noftrps := 0; trpbase := p; (*trampoline area*)
         adr := mod.code + fixorgP;
         WHILE adr # mod.code DO
-          SYSTEM.GET(adr, inst);
+          inst := GetWordAt(adr);
+          inst := thumbSwap(inst); (*Put bytes in the right order*)
           mno := inst DIV 10000000H MOD 10H;
           pno := inst DIV 100000H MOD 100H;
           disp := inst MOD 100000H*2;
@@ -222,18 +242,20 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
             dest := u; (*branch to trampoline*)
             offset := dest - adr - 4 (* Offset in bytes *)
           END;
-          SYSTEM.PUT(adr, thumbSwap(BL + formatEvenImm25(offset)));
+          PutWordAt(adr, thumbSwap(BL + formatEvenImm25(offset)));
           adr := adr - disp
         END ;
         INC(p, noftrps*8);
         (*fixup of MOV/MOVT*)
         adr := mod.code + fixorgD;
         WHILE adr # mod.code DO
-          SYSTEM.GET(adr, inst);
+          inst := GetWordAt(adr);
+          inst := thumbSwap(inst); (*Put bytes in the right order*)
           pno := inst DIV 10000000H MOD 10H; (*destination register*)
           mno := inst DIV 1000000H MOD 10H;
           disp := inst MOD 1000000H*2;
-          SYSTEM.GET(adr+4, inst);
+          inst := GetWordAt(adr+4);
+          inst := thumbSwap(inst); (*Put bytes in the right order*)
           IF mno = 0 THEN (*global*)
             dest := mod.data + inst MOD 1000000H
           ELSE (*import*)  vno := inst MOD 100H;
@@ -242,8 +264,8 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
             IF ODD(inst DIV 100H) THEN dest := impmod.code + offset
             ELSE dest := impmod.data + offset END
           END;
-          SYSTEM.PUT(adr, thumbSwap(MOVIT3 + formatImm16(pno, dest MOD 10000H)));
-          SYSTEM.PUT(adr+4, thumbSwap(MOVT + formatImm16(pno, dest DIV 10000H MOD 10000H)));
+          PutWordAt(adr, thumbSwap(MOVIT3 + formatImm16(pno, dest MOD 10000H)));
+          PutWordAt(adr+4, thumbSwap(MOVT + formatImm16(pno, dest DIV 10000H MOD 10000H)));
           adr := adr - disp
         END ;
         (*fixup of type descriptors*)
