@@ -1,8 +1,8 @@
 MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
   IMPORT SYSTEM, Kernel, OM4A, Files, Modules, Texts, Oberon;
   CONST versionkey = 1X; versionkey0 = 0X; 
-    DescSize = 80; MnLength = 32; BootSec = 2;
-    noerr* = 0; nofile* = 1; badversion* = 2; badkey* = 3; badfile* = 4; nospace* = 5;
+    DescSize = 80; BootSec = 2;
+    noerr = 0; nofile = 1; badversion = 2; badkey = 3; badfile = 4; nospace = 5;
     VarORG0 = 0D0201000H; MemLim = 0D0800000H; stackOrg = 10010000H;
     HeapOrg = 0D0500000H;
     DestAdr = 8; MemAdr = 12; AllocAdr = 16; RootAdr = 20; StackAdr = 24; HeapOrgAdr = 28;
@@ -10,20 +10,9 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
     C4 = 10H; C6 = 40H; C8 = 100H; C10 = 400H; C12 = 1000H; C14 = 4000H; C16 = 10000H;
     C18 = 40000H; C20 = 100000H; C22 = 400000H; C24 = 1000000H; BC = 0E7000000H; BL = 0F7000000H;
 
-  TYPE  (*copied from Modules for use as cross linker/loader*)
-    Module* = POINTER TO ModDesc;
-    Command* = PROCEDURE;
-    ModuleName* = ARRAY MnLength OF CHAR;
-    ModDesc* = RECORD
-      name*: ModuleName;
-      next*: Module;
-      key*, num*, size*, refcnt*: INTEGER;
-      data*, code*, imp*, cmd*, ent*, ptr*, unused: INTEGER  (*addresses*)
-    END ;
-
-  VAR root: Module;
-    AllocPtr, Start, limit, res*: INTEGER;
-    importing*, imported*: ModuleName;
+  VAR root: Modules.Module;
+    AllocPtr, Start, limit, res: INTEGER;
+    importing, imported: Modules.ModuleName;
     W: Texts.Writer;
 
   PROCEDURE thumbSwap(w: INTEGER): INTEGER;
@@ -56,14 +45,14 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
   PROCEDURE MakeFileName(VAR FName: ARRAY OF CHAR; name, ext: ARRAY OF CHAR);
     VAR i, j: INTEGER;
   BEGIN i := 0; j := 0;  (*assume name suffix less than 4 characters*)
-    WHILE (i < MnLength-5) & (name[i] > 0X) DO FName[i] := name[i]; INC(i) END ;
+    WHILE (i < 32-5) & (name[i] > 0X) DO FName[i] := name[i]; INC(i) END ;
     REPEAT FName[i]:= ext[j]; INC(i); INC(j) UNTIL ext[j] = 0X;
     FName[i] := 0X
   END MakeFileName;
 
   PROCEDURE ThisFile(name: ARRAY OF CHAR): Files.File;
     VAR F: Files.File;
-      filename: ModuleName;
+      filename: Modules.ModuleName;
   BEGIN MakeFileName(filename, name, ".m4c"); F := Files.Old(filename); RETURN F
   END ThisFile;
 
@@ -77,12 +66,12 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
     IF (ch >= "A") & (ch <= "Z") OR (ch >= "a") & (ch <= "z") THEN
       REPEAT ch := s[i]; INC(i)
       UNTIL ~((ch >= "0") & (ch <= "9") OR (ch >= "A") & (ch <= "Z")
-        OR (ch >= "a") & (ch <= "z") OR (ch = ".")) OR (i = MnLength);
-      IF (i < MnLength) & (ch = 0X) THEN res := 0 END
+        OR (ch >= "a") & (ch <= "z") OR (ch = ".")) OR (i = 32);
+      IF (i < 32) & (ch = 0X) THEN res := 0 END
     END
   END Check;
 
-  PROCEDURE LinkOne(name: ARRAY OF CHAR; VAR newmod: Module);
+  PROCEDURE LinkOne(name: ARRAY OF CHAR; VAR newmod: Modules.Module);
     (*search module in list; if not found, link module.
       res = noerr: already present or linked;
       res = nofile: file not available;
@@ -90,16 +79,16 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       res = badkey: key conflict;
       res = badfile: corrupted file;
       res = nospace: insufficient space*)
-    VAR mod, impmod: Module;
+    VAR mod, impmod: Modules.Module;
       i, n, key, impkey, mno, nofimps, size: INTEGER;
       p, u, v, w: INTEGER;  (*addresses*)
       ch: CHAR;
-      body: Command;
+      body: Modules.Command;
       fixorgP, fixorgD, fixorgT: INTEGER;
       disp, adr, inst, pno, vno, dest, offset: INTEGER;
-      name1, impname: ModuleName;
+      name1, impname: Modules.ModuleName;
       F: Files.File; R: Files.Rider;
-      import: ARRAY 16 OF Module;
+      import: ARRAY 16 OF Modules.Module;
   BEGIN mod := root; error(noerr, name); nofimps := 0;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
     IF mod = NIL THEN (*link*)
@@ -127,7 +116,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       IF res = noerr THEN
         INC(size, DescSize);
         IF AllocPtr + size < limit THEN (*allocate*)
-          p := AllocPtr; mod := SYSTEM.VAL(Module, p);
+          p := AllocPtr; mod := SYSTEM.VAL(Modules.Module, p);
           AllocPtr := (p + size + 3) DIV 4 * 4; mod.size := AllocPtr - p;
           IF root = NIL THEN mod.num := 1 ELSE mod.num := root.num + 1 END ;
           mod.next := root; root := mod
@@ -136,8 +125,10 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       END ;
       IF res = noerr THEN (*read file*)
         INC(p, DescSize); (*allocate descriptor*)
-        FOR i := 0 TO MnLength-1 DO mod.name[i] := 0X END ;
-        mod.name := name; mod.key := key; mod.refcnt := 0;
+        FOR i := 0 TO 32-1 DO mod.name[i] := 0X END ;
+        mod.name := name; 
+        i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
+        mod.key := key; mod.refcnt := 0;
         mod.data := p;  (*data*)
         Files.ReadInt(R, n);
         WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*type descriptors*)
@@ -168,7 +159,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
         WHILE w >= 0 DO SYSTEM.PUT(p, mod.data + w - Start + VarORG0); INC(p, 4); Files.ReadInt(R, w) END ;
         SYSTEM.PUT(p, 0); INC(p, 4);
         Files.ReadInt(R, fixorgP); Files.ReadInt(R, fixorgD); Files.ReadInt(R, fixorgT);
-        Files.ReadInt(R, w); body := SYSTEM.VAL(Command, mod.code + w - Start + VarORG0);
+        Files.ReadInt(R, w); body := SYSTEM.VAL(Modules.Command, mod.code + w - Start + VarORG0);
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
       END ;
@@ -237,8 +228,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
     VAR i, x: INTEGER;
       F: Files.File; R: Files.Rider;
       S: Texts.Scanner;
-      M, p: Module;
-      name: ModuleName;
+      M, p: Modules.Module;
+      name: Modules.ModuleName;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN
       root := NIL; Start := Modules.AllocPtr; AllocPtr :=  Start + ModAdr; i := Start;
@@ -247,7 +238,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       IF res = noerr THEN p := root; Texts.WriteString(W, "  linking");
         WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
           M := p; p := p.next;
-          IF p # NIL THEN M.next := SYSTEM.VAL(Module, SYSTEM.VAL(INTEGER, p) - Start + VarORG0) END ;
+          IF p # NIL THEN M.next := SYSTEM.VAL(Modules.Module, SYSTEM.VAL(INTEGER, p) - Start + VarORG0) END ;
           M.data := M.data - Start + VarORG0;
           M.code := M.code - Start + VarORG0;
           i := M.imp;

@@ -1,6 +1,5 @@
 Liste des modules à créer en se basant sur ORx :
-Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4Tool, OM4X
-A faire :  OM4L
+Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4X, OM4L, OM4D, OM4Tool
 
 Liste des modules à créer en se basant sur la version RISC-5 :
 Faits : BootLoadM4, ModulesM4, KernelM4
