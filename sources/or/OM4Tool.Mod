@@ -161,8 +161,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
   END Write;
 
   PROCEDURE DecObj*;   (*decode object file*)
-    VAR class, i, n, key, size, fix, adr, data, len: INTEGER;
-      bl, bh, mno: BYTE;
+    VAR class, i, n, key, size, fix, adr, data: INTEGER;
+      bl: BYTE;
       next: INTEGER;
       ch: CHAR;
       name: ARRAY 32 OF CHAR;
@@ -256,17 +256,14 @@ MODULE OM4Tool;  (*NW 18.2.2013
   END EmitWord;
   
   PROCEDURE DecBin*;   (*decode binary boot file*)
-    VAR class, i, n, key, size, fix, adr, data, len: INTEGER;
-      bl, bh, mno: BYTE;
-      next: INTEGER;
-      ch: CHAR;
-      name: ARRAY 32 OF CHAR;
+    VAR i, n, modLoc, root, ramOrg: INTEGER;
       F: Files.File; R: Files.Rider;
       S: Texts.Scanner;
       bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp: BootParams;
       mcode: OM4A.ModuleCode;
       mod: Modules.Module;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+      ok: BOOLEAN;
+  BEGIN ok := TRUE; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); Texts.WriteLn(W);
       F := Files.Old(S.s);
@@ -281,12 +278,24 @@ MODULE OM4Tool;  (*NW 18.2.2013
         EmitWord(W, bp.MemLim, n, "RAM end"); EmitWord(W, bp.BootfileLoadEnd, n, "Boot file load end");
         EmitWord(W, bp.RootModule, n, "Root module descriptor"); EmitWord(W, bp.StackOrg, n, "Stack origin"); 
         EmitWord(W, bp.HeapOrg, n, "Heap origin");
+        ramOrg := bp.BootfileLoadAOrg; root := bp.RootModule;
         REPEAT (* Decode module information *)
+          modLoc := n;
           FOR i := 0 TO SYSTEM.SIZE(Modules.ModDesc) DIV 4 - 1 DO Files.ReadInt(R, bpb[i]) END;
           mod := SYSTEM.VAL(Modules.Module, SYSTEM.ADR(bpb));
           INC(n, SYSTEM.SIZE(Modules.ModDesc));
           Texts.WriteString(W, "; Module "); Texts.WriteString(W, mod.name); Texts.WriteLn(W);
-        UNTIL n+bp.BootfileLoadAOrg > bp.RootModule
+          Texts.WriteString(W, "; Key "); Texts.WriteHex(W, mod.key); Texts.WriteLn(W);
+          Texts.WriteString(W, "; Num "); Texts.WriteInt(W, mod.num, 1); Texts.WriteLn(W);
+          Texts.WriteString(W, "; Size "); Texts.WriteInt(W, mod.size, 1); Texts.WriteLn(W);
+          Texts.WriteString(W, "; Data location "); Texts.WriteHex(W, mod.data); Texts.WriteLn(W);
+          IF n+ramOrg # mod.data THEN ok := FALSE;
+            Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
+            Texts.WriteLn(W)
+          ELSE
+            Texts.WriteString(W, "; data section found"); Texts.WriteLn(W)
+          END
+        UNTIL ~ok OR (modLoc + ramOrg = root)
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
       END;
       Texts.Append(Oberon.Log, W.buf)
