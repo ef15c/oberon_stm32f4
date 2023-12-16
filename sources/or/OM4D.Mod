@@ -155,7 +155,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     Texts.WriteString(W, ", goes to "); Texts.WriteInt(W, at+ofs, 1);
   END WritePCOffset;
   
-  PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: OM4A.ModuleCode; VAR i: LONGINT);
+  PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT);
     CONST
       (*32-bit instructions*)
       T32MSK1 = {25..28, 22}; T32MSK2 = {25..28}; T32MSK3 = {26..27};
@@ -446,10 +446,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     VAR b1, b2, b3, b4, t, Rn, Rd, RdLo, RdHi, Rt, Rm, Sn, Sd, Sm: BYTE;
       op: SET;
   BEGIN
-    b1 := c.code[i+1]; b2 := c.code[i]; INC(i, 2);
+    b1 := c[i+1]; b2 := c[i]; INC(i, 2);
     t := b1 DIV OM4A.C3; 
     IF t >= 01DH THEN (*32-bit instruction*)
-      b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
+      b3 := c[i+1]; b4 := c[i]; INC(i, 2);
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
       IF op*T32MSK4 = DataProcModImm THEN

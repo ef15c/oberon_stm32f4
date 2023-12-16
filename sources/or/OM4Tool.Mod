@@ -1,13 +1,20 @@
 MODULE OM4Tool;  (*NW 18.2.2013
   C. Schoffit 12/11/2023*)
-  IMPORT SYSTEM, Files, Texts, Oberon, OM4B, OM4A, OM4D;
+  IMPORT SYSTEM, Files, Texts, Oberon, OM4B, OM4A, OM4D, Modules;
 
   TYPE
     ExternalRefMap = POINTER TO ExternalRefMapDesc;
     ExternalRefMapDesc = RECORD
       ext: ARRAY OM4A.maxCode OF BYTE
     END;
-  
+
+    BootParams = POINTER TO BootParamsList;
+    BootParamsList = RECORD
+      BranchToRootInit: ARRAY 4 OF BYTE;
+      unused, BootfileLoadAOrg, MemLim, 
+      BootfileLoadEnd, RootModule, StackOrg, HeapOrg : INTEGER
+    END;
+    
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
     RdG, mno: BYTE;
@@ -105,7 +112,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   
 (* ---------------------------------------------------*)
 
-  PROCEDURE opcode(VAR c: OM4A.ModuleCode; VAR er: ExternalRefMap; VAR i: LONGINT);                  
+  PROCEDURE opcode(VAR c: ARRAY OF BYTE; VAR er: ExternalRefMap; VAR i: LONGINT);                  
     VAR b1, b2, b3, b4, ext, proc: BYTE;
       op: SET;
   BEGIN
@@ -113,8 +120,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
     IF ext = 0 THEN
       OM4D.opcode(W, c, i)
     ELSE
-      b1 := c.code[i+1]; b2 := c.code[i]; INC(i, 2);
-      b3 := c.code[i+1]; b4 := c.code[i]; INC(i, 2);
+      b1 := c[i+1]; b2 := c[i]; INC(i, 2);
+      b3 := c[i+1]; b4 := c[i]; INC(i, 2);
       IF ext = 1 THEN (*Get lower 16-bits of address of the object*)
         op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
         Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
@@ -231,7 +238,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
         i := 0;
         WHILE i < mcode.pc DO
           Texts.WriteInt(W, i, 4); Texts.Write(W, 9X); 
-          opcode(mcode, eref, i); Texts.WriteLn(W)
+          opcode(mcode.code, eref, i); Texts.WriteLn(W)
         END
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
       END ;
@@ -239,6 +246,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END DecObj;
 
+  PROCEDURE EmitWord(VAR W:Texts.Writer; v: INTEGER; VAR i: INTEGER;
+    msg: ARRAY OF CHAR);
+  BEGIN
+    Texts.WriteInt(W, i, 4); Texts.Write(W, 9X); 
+    Texts.WriteString(W, "    .word "); Texts.WriteHex(W, v);
+    Texts.WriteString(W, "H; "); Texts.WriteString(W, msg);
+    Texts.WriteLn(W); INC(i, 4);
+  END EmitWord;
+  
   PROCEDURE DecBin*;   (*decode binary boot file*)
     VAR class, i, n, key, size, fix, adr, data, len: INTEGER;
       bl, bh, mno: BYTE;
@@ -247,24 +263,30 @@ MODULE OM4Tool;  (*NW 18.2.2013
       name: ARRAY 32 OF CHAR;
       F: Files.File; R: Files.Rider;
       S: Texts.Scanner;
+      bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp: BootParams;
       mcode: OM4A.ModuleCode;
+      mod: Modules.Module;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); Texts.WriteLn(W);
       F := Files.Old(S.s);
       IF F # NIL THEN
         NEW(mcode);
-        Files.Set(R, F, 0); FOR i := 0 TO 3 DO Files.ReadByte(R, mcode.code[i]) END;
-        i := 0; Texts.WriteInt(W, i, 4); Texts.Write(W, 9X); 
-        OM4D.opcode(W, mcode, i); Texts.WriteLn(W);
-        Texts.WriteInt(W, i, 4); Texts.Write(W, 9X); 
-        Files.ReadInt(R, data); Texts.WriteString(W, "    .word ");
-        Texts.WriteHex(W, data); Texts.WriteString(W, "H; unused"); Texts.WriteLn(W);
-        INC(i, 4);
-        Texts.WriteInt(W, i, 4); Texts.Write(W, 9X); 
-        Files.ReadInt(R, data); Texts.WriteString(W, "    .word "); 
-        Texts.WriteHex(W, data); Texts.WriteString(W, "H; VarORG0"); Texts.WriteLn(W);
-        INC(i, 4);
+        Files.Set(R, F, 0); 
+        FOR i := 0 TO SYSTEM.SIZE(BootParamsList) DIV 4 - 1 DO Files.ReadInt(R, bpb[i]) END;
+        n := 0; Texts.WriteInt(W, n, 4); Texts.Write(W, 9X);
+        bp := SYSTEM.VAL(BootParams, SYSTEM.ADR(bpb)); 
+        OM4D.opcode(W, bp.BranchToRootInit, n); Texts.WriteLn(W);
+        EmitWord(W, bp.unused, n, "unused"); EmitWord(W, bp.BootfileLoadAOrg, n, "RAM origin");
+        EmitWord(W, bp.MemLim, n, "RAM end"); EmitWord(W, bp.BootfileLoadEnd, n, "Boot file load end");
+        EmitWord(W, bp.RootModule, n, "Root module descriptor"); EmitWord(W, bp.StackOrg, n, "Stack origin"); 
+        EmitWord(W, bp.HeapOrg, n, "Heap origin");
+        REPEAT (* Decode module information *)
+          FOR i := 0 TO SYSTEM.SIZE(Modules.ModDesc) DIV 4 - 1 DO Files.ReadInt(R, bpb[i]) END;
+          mod := SYSTEM.VAL(Modules.Module, SYSTEM.ADR(bpb));
+          INC(n, SYSTEM.SIZE(Modules.ModDesc));
+          Texts.WriteString(W, "; Module "); Texts.WriteString(W, mod.name); Texts.WriteLn(W);
+        UNTIL n+bp.BootfileLoadAOrg > bp.RootModule
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
       END;
       Texts.Append(Oberon.Log, W.buf)

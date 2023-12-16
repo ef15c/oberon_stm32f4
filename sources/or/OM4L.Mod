@@ -125,7 +125,6 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       END ;
       IF res = noerr THEN (*read file*)
         INC(p, DescSize); (*allocate descriptor*)
-        FOR i := 0 TO 32-1 DO mod.name[i] := 0X END ;
         mod.name := name; 
         i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
         mod.key := key; mod.refcnt := 0;
