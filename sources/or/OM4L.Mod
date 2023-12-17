@@ -199,8 +199,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
           PutWordAt(adr+4, thumbSwap(OM4A.MOVT + OM4A.formatImm16(pno, dest DIV 10000H MOD 10000H)));
           adr := adr - disp
         END ;
-        ASSERT(adr = mod.code);
         (*fixup of type descriptors*)
+        (* TODO : à revérifier après avoir fini de décortiquer le format .bin *)
         adr := mod.data + fixorgT*4;
         WHILE adr # mod.data DO
           SYSTEM.GET(adr, inst);

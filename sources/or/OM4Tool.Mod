@@ -246,17 +246,28 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END DecObj;
 
-  PROCEDURE EmitWord(VAR W:Texts.Writer; v: INTEGER; VAR i: INTEGER;
+  PROCEDURE EmitWord(VAR W:Texts.Writer; v: INTEGER; VAR p: INTEGER;
     msg: ARRAY OF CHAR);
   BEGIN
-    Texts.WriteInt(W, i, 4); Texts.Write(W, 9X); 
+    Texts.WriteInt(W, p, 4); Texts.Write(W, 9X); 
     Texts.WriteString(W, "    .word "); Texts.WriteHex(W, v);
     Texts.WriteString(W, "H; "); Texts.WriteString(W, msg);
-    Texts.WriteLn(W); INC(i, 4);
+    Texts.WriteLn(W); INC(p, 4);
   END EmitWord;
   
+  PROCEDURE EmitString(VAR W:Texts.Writer; s: ARRAY OF CHAR; l: INTEGER; VAR p: INTEGER;
+    msg: ARRAY OF CHAR);
+    VAR i: INTEGER;
+  BEGIN
+    Texts.WriteInt(W, p, 4); Texts.Write(W, 9X); 
+    Texts.WriteString(W, "    .ascii "); Texts.Write(W, 22X); Texts.WriteString(W, s); Texts.Write(W, 22X);
+    Texts.WriteLn(W); i := 0; WHILE s[i] # 0X DO INC(i) END;
+    Texts.WriteString(W, "        .fill "); Texts.WriteInt(W, l-i, 1); Texts.WriteString(W, ", 1, 0"); 
+    Texts.WriteLn(W); INC(p, l)
+  END EmitString;
+  
   PROCEDURE DecBin*;   (*decode binary boot file*)
-    VAR i, n, modLoc, root, ramOrg: INTEGER;
+    VAR i, n, modLoc, root, ramOrg, data: INTEGER;
       F: Files.File; R: Files.Rider;
       S: Texts.Scanner;
       bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp: BootParams;
@@ -283,17 +294,38 @@ MODULE OM4Tool;  (*NW 18.2.2013
           modLoc := n;
           FOR i := 0 TO SYSTEM.SIZE(Modules.ModDesc) DIV 4 - 1 DO Files.ReadInt(R, bpb[i]) END;
           mod := SYSTEM.VAL(Modules.Module, SYSTEM.ADR(bpb));
-          INC(n, SYSTEM.SIZE(Modules.ModDesc));
-          Texts.WriteString(W, "; Module "); Texts.WriteString(W, mod.name); Texts.WriteLn(W);
-          Texts.WriteString(W, "; Key "); Texts.WriteHex(W, mod.key); Texts.WriteLn(W);
-          Texts.WriteString(W, "; Num "); Texts.WriteInt(W, mod.num, 1); Texts.WriteLn(W);
-          Texts.WriteString(W, "; Size "); Texts.WriteInt(W, mod.size, 1); Texts.WriteLn(W);
-          Texts.WriteString(W, "; Data location "); Texts.WriteHex(W, mod.data); Texts.WriteLn(W);
+          EmitString(W, mod.name, SYSTEM.SIZE(Modules.ModuleName), n, "Module name");
+          EmitWord(W, ORD(mod.next), n, "Next module descriptor location");
+          EmitWord(W, mod.key, n, "Key");
+          EmitWord(W, mod.num, n, "Num");
+          EmitWord(W, mod.size, n, "Size");
+          EmitWord(W, mod.refcnt, n, "References count");
+          EmitWord(W, mod.data, n, "Data section");
+          EmitWord(W, mod.code, n, "Code section");
+          EmitWord(W, mod.imp, n, "Import section");
+          EmitWord(W, mod.cmd, n, "Commands section");
+          EmitWord(W, mod.ent, n, "Entries section");
+          EmitWord(W, mod.ptr, n, "Pointer section");
+          INC(n, 4); (*unused*)
+
           IF n+ramOrg # mod.data THEN ok := FALSE;
             Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
             Texts.WriteLn(W)
           ELSE
             Texts.WriteString(W, "; data section found"); Texts.WriteLn(W)
+          END;
+          WHILE (n < mod.size) & (n+ramOrg # mod.code) DO
+            Files.ReadInt(R, data); 
+            WHILE (data # 0) & (n+ramOrg # mod.code) DO Texts.WriteInt(W, n, 4); Texts.Write(W, 9X); (*type tags*) 
+              Texts.WriteString(W, "; Type tag ");
+              FOR i := 1 TO 5 DO  Texts.WriteHex(W, data); Texts.Write(W, " "); Files.ReadInt(R, data); END;
+              Texts.WriteLn(W); INC(n, 20)
+            END;
+            IF n+ramOrg # mod.code THEN (*global data*)
+              i := 0; REPEAT INC(i); Files.ReadInt(R, data); INC(n, 4) UNTIL (n >= mod.size) OR (n+ramOrg = mod.code);
+              Texts.WriteInt(W, n, 4); Texts.Write(W, 9X); Texts.WriteString(W, "    .fill ");
+              Texts.WriteString(W, "; Global data ");
+            END
           END
         UNTIL ~ok OR (modLoc + ramOrg = root)
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
