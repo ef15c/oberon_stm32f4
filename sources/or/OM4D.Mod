@@ -152,10 +152,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
   PROCEDURE WritePCOffset(VAR W: Texts.Writer; at: LONGINT; ofs: LONGINT);
   BEGIN
     Texts.WriteString(W, " #"); Texts.WriteInt(W, ofs, 1);
-    Texts.WriteString(W, ", goes to "); Texts.WriteInt(W, at+ofs, 1);
+    Texts.WriteString(W, ", goes to "); Texts.WriteHex(W, at+ofs);
   END WritePCOffset;
   
-  PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT);
+  PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; base: LONGINT);
     CONST
       (*32-bit instructions*)
       T32MSK1 = {25..28, 22}; T32MSK2 = {25..28}; T32MSK3 = {26..27};
@@ -590,7 +590,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T32MSK51 = BrWithLnk THEN
           (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
           (*BL<c> <label> Outside or last in IT block*)
-          WriteOp(W, op, "BL", FALSE, FALSE); WritePCOffset(W, i, SignExtendEven25(op))
+          WriteOp(W, op, "BL", FALSE, FALSE); WritePCOffset(W, i + base, SignExtendEven25(op))
         ELSIF op*T32MSK52 = MovFrSpReg THEN
           (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
           (*MRS<c> <Rd>,<spec_reg>*)
@@ -605,11 +605,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*B<c>.W <label>*)
           t := b1 MOD OM4A.C2*OM4A.C2 + b2 DIV OM4A.C6;
           WriteOp(W, op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[t]);
-          WritePCOffset(W, i, SignExtendEven21(op))
+          WritePCOffset(W, i + base, SignExtendEven21(op))
         ELSIF op*T32MSK51 = BranchT4 THEN
           (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
           (*B.W <label>*)
-          WriteOp(W, op, "B", FALSE, FALSE); WritePCOffset(W, i, SignExtendEven25(op))
+          WriteOp(W, op, "B", FALSE, FALSE); WritePCOffset(W, i + base, SignExtendEven25(op))
         ELSE Texts.WriteString(W, "TODO: not BranchT4")
         END
       ELSIF op*T32MSK3 = CoProc THEN
@@ -1053,7 +1053,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         ELSE
           (*B<c> <label> Not permitted in IT block.*)
           WriteOp(W, op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[b1 MOD OM4A.C4]);
-          WritePCOffset(W, i+2, SignExtendEven8(b2))
+          WritePCOffset(W, i+2 + base, SignExtendEven8(b2))
         END
       ELSIF op*T16MSK5 = LdStSingleT2 THEN
         (*T16MSK5 100xxx Load/store single data item on page A5-133*)
@@ -1107,7 +1107,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       ELSIF op*T16MSK3 = UncBr THEN
         (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
         (*B<c> <label>*)
-        WriteOp(W, op, "B", FALSE, FALSE); WritePCOffset(W, i+2, SignExtendEven11(b1 MOD OM4A.C3*OM4A.C8 + b2))
+        WriteOp(W, op, "B", FALSE, FALSE); WritePCOffset(W, i+2 + base, SignExtendEven11(b1 MOD OM4A.C3*OM4A.C8 + b2))
       ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
       END
     END
