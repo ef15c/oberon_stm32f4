@@ -246,6 +246,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END DecObj;
 
+  PROCEDURE EmitByte(VAR W:Texts.Writer; v: BYTE; VAR p: INTEGER; base: INTEGER;
+    msg: ARRAY OF CHAR);
+  BEGIN
+    Texts.WriteHex(W, p+base); Texts.Write(W, 9X); 
+    Texts.WriteString(W, "    .byte "); Texts.WriteInt(W, v, 1);
+    Texts.WriteString(W, "; "); Texts.WriteString(W, msg);
+    Texts.WriteLn(W); INC(p);
+  END EmitByte;
+  
   PROCEDURE EmitWord(VAR W:Texts.Writer; v: INTEGER; VAR p: INTEGER; base: INTEGER;
     msg: ARRAY OF CHAR);
   BEGIN
@@ -263,6 +272,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
     Texts.WriteString(W, "    .ascii "); Texts.Write(W, 22X); Texts.WriteString(W, s); Texts.Write(W, 22X);
     Texts.WriteLn(W); i := 0; WHILE s[i] # 0X DO INC(i) END;
     Texts.WriteString(W, "        .fill "); Texts.WriteInt(W, l-i, 1); Texts.WriteString(W, ", 1, 0"); 
+    Texts.WriteString(W, "; "); Texts.WriteString(W, msg);
     Texts.WriteLn(W); INC(p, l)
   END EmitString;
   
@@ -274,6 +284,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       mcode: OM4A.ModuleCode;
       mod: Modules.Module;
       ok: BOOLEAN;
+      ch: CHAR;
+      name: ARRAY 32 OF CHAR;
   BEGIN ok := TRUE; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); Texts.WriteLn(W);
@@ -354,8 +366,54 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Texts.WriteLn(W)
           END;
           IF ok THEN
-            
-          END
+            WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.cmd) DO 
+              Files.ReadInt(R, data);
+              EmitWord(W, data, n, ramOrg, "");
+            END
+          END;
+          IF ok & (n+ramOrg = mod.cmd) THEN Texts.WriteString(W, "; commands section found"); Texts.WriteLn(W)
+          ELSE
+            ok := FALSE;
+            Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
+            Texts.WriteLn(W)
+          END;
+          IF ok THEN
+            Files.Read(R, ch);
+            WHILE (n - modLoc < mod.size) & (ch # 0X) DO
+              name[0] := ch; i := 1; REPEAT Files.Read(R, ch); name[i] := ch; INC(i) UNTIL ch = 0X;
+              REPEAT Files.Read(R, ch); INC(i) UNTIL i MOD 4 = 0;
+              EmitString(W, name, i, n, ramOrg, "Name");
+              Files.ReadInt(R, data);
+              EmitWord(W, data, n, ramOrg, "Address");
+              Files.Read(R, ch);
+            END;
+            EmitByte(W, ORD(ch), n, ramOrg, "Padding");
+            REPEAT Files.Read(R, ch); EmitByte(W, ORD(ch), n, ramOrg, "Padding") UNTIL n MOD 4 = 0;
+          END;
+          IF ok & (n+ramOrg = mod.ent) THEN Texts.WriteString(W, "; entries section found"); Texts.WriteLn(W)
+          ELSE
+            ok := FALSE;
+            Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
+            Texts.WriteLn(W)
+          END;
+          IF ok THEN
+            WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.ptr) DO 
+              Files.ReadInt(R, data);
+              EmitWord(W, data, n, ramOrg, "");
+            END
+          END;
+          IF ok & (n+ramOrg = mod.ptr) THEN Texts.WriteString(W, "; pointers section found"); Texts.WriteLn(W)
+          ELSE
+            ok := FALSE;
+            Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
+            Texts.WriteLn(W)
+          END;
+          IF ok THEN
+            WHILE n - modLoc < mod.size DO 
+              Files.ReadInt(R, data);
+              EmitWord(W, data, n, ramOrg, "");
+            END
+          END;
         UNTIL ~ok OR (modLoc + ramOrg = root)
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
       END;
