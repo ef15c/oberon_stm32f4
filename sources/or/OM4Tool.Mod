@@ -327,29 +327,31 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Texts.WriteLn(W)
           END;
           IF ok THEN
-            WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.code + 4) DO
-              Files.ReadInt(R, data); INC(n, 4);
-              WHILE (data # 0) & (n+ramOrg # mod.code + 4) DO Texts.WriteHex(W, n+ramOrg); Texts.Write(W, 9X); (*type tags*) 
-                Texts.WriteString(W, "; Type tag ");
-                FOR i := 1 TO 5 DO  Texts.WriteHex(W, data); Texts.Write(W, " "); Files.ReadInt(R, data); END;
-                Texts.WriteLn(W); INC(n, 20)
-              END;
-              IF n+ramOrg # mod.code + 4 THEN (*global data*)
-                i := 0; REPEAT INC(i); Files.ReadInt(R, data); INC(n, 4) UNTIL (n - modLoc >= mod.size) OR (n+ramOrg = mod.code + 4);
-                Texts.WriteHex(W, n+ramOrg); Texts.Write(W, 9X); Texts.WriteString(W, "    .fill ");
-                Texts.WriteInt(W, i, 1); Texts.WriteString(W, ", 1, 0 ; Global data "); Texts.WriteLn(W);
+            i := 0;
+            WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.code) DO 
+              Files.ReadInt(R, data);
+              IF data # 0 THEN
+                IF i # 0 THEN Texts.WriteHex(W, ramOrg+n); Texts.Write(W, 9X);
+                  Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
+                  Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
+                END;
+                EmitWord(W, data, n, ramOrg, "")
+              ELSE i := i+1; INC(n, 4)
               END
             END;
+            IF i # 0 THEN Texts.WriteHex(W, ramOrg+n); Texts.Write(W, 9X);
+              Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
+              Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
+            END;
           END;
-          IF ok & (n+ramOrg = mod.code + 4) THEN Texts.WriteString(W, "; code section found"); Texts.WriteLn(W)
+          IF ok & (n+ramOrg = mod.code) THEN Texts.WriteString(W, "; code section found"); Texts.WriteLn(W)
           ELSE
             ok := FALSE;
             Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
             Texts.WriteLn(W)
           END;
           IF ok THEN
-            mcode.pc := 4; mcode.code[0] := data MOD 100H; mcode.code[1] := data DIV 100H MOD 100H;
-             mcode.code[2] := data DIV 10000H MOD 100H; mcode.code[3] := data DIV 1000000H MOD 100H;
+            mcode.pc := 0;
             WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.imp) DO 
               Files.ReadByte(R, mcode.code[mcode.pc]); INC(mcode.pc); INC(n)
             END;
@@ -413,7 +415,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Files.ReadInt(R, data);
               EmitWord(W, data, n, ramOrg, "");
             END
-          END;
+          END
         UNTIL ~ok OR (modLoc + ramOrg = root)
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
       END;

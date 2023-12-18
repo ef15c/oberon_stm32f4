@@ -556,7 +556,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             STR<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
           WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
           IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
-          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "- ") END;
+          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, " - ") END;
           Texts.WriteInt(W, b4, 1);
           IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
@@ -579,7 +579,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             LDR<c> <Rt>,[<Rn>,#+/-<imm8>]! T4*)
           WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
           IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
-          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "- ") END;
+          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, " - ") END;
           Texts.WriteInt(W, b4, 1);
           IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
@@ -749,7 +749,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
           WriteOp(W, op, "LDRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
           IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
-          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "- ") END;
+          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, " - ") END;
           Texts.WriteInt(W, b4, 1);
           IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END

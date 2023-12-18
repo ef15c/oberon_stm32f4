@@ -173,6 +173,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     POPT2*  = 0E8BD0000H;
     (*|1110/1000/1011/1101/PM0 /reg_/list/    |
       POP<c>.W <registers>*)
+    POPT3*  = 0F85D0B04H;
+    (*|1111/1000/0101/1101/ Rt /1011/0000/0100|
+      POP<c><q> <register>*)
     
     CMPIT1*  = 2800H;
     CMPIT2*  = 0F1B00F00H;

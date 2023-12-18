@@ -12,11 +12,14 @@ MODULE testQuickSort2;
   BEGIN
     RETURN a(Person).age < b(Person).age
   END ageCroissant;
-    PROCEDURE Sort*;
+  
+  PROCEDURE Sort*;
     VAR t: ARRAY 4 OF QuickSort.Item;
       p: Person;
       i: INTEGER;
   BEGIN
+    NEW(p); p.name := "Nounours"; p.age := 62; t[0] := p;
+
     QuickSort.Sort(t, ageCroissant);
   END Sort;
 END testQuickSort2.
@@ -25,5 +28,92 @@ END testQuickSort2.
 
 OM4Tool.DecObj testQuickSort2.m4c ~
 
-decode testQuickSort2.m4ctestQuickSort2 C8BBB510   1   180imports:	QuickSort 6C618B42type descriptors 00000020 00000001 FFFFFFFF FFFFFFFF FFFFFFFFdata     0stringscodecommands:	Sort   78entries   112    78pointer refsfixP =       98fixD =       40fixT =        1entry =      112   0	     B403	PUSH R0 R1   2	     B500	PUSH LR   4	     9801	LDR R0 [SP + 4]   6	     D007	BEQ #14, goes to 24   8	 F8501C08	LDR R1 [ R0- 8 ]  12	     6849	LDR R1 [ R1 + 4]  14	 20000007	MOV R2 lower 16-bits base(0)  18	 00000000	MOVT R2 higher 16-bits base + 0  22	     428A	CMP R2 R1  24	     BF18	IT NE  26	 EC002282	TrapNE 2 at pos 296  30	     9902	LDR R1 [SP + 8]  32	     D007	BEQ #14, goes to 50  34	 F8512C08	LDR R2 [ R1- 8 ]  38	     6852	LDR R2 [ R2 + 4]  40	 3000000D	MOV R3 lower 16-bits base(0)  44	 00000000	MOVT R3 higher 16-bits base + 0  48	     4293	CMP R3 R2  50	     BF18	IT NE  52	 EC002382	TrapNE 2 at pos 312  56	     68C0	LDR R0 [ R0 + 12]  58	     68C9	LDR R1 [ R1 + 12]  60	     4288	CMP R0 R1  62	     BFB4	ITE LT  64	     2001	MOVLT R0 #1  66	     2000	MOVGE R0 #0  68	 F85DEB04	LDR LR [ SP ] + 4  72	 F11D0D08	ADDS SP SP #8  76	     4770	BX LR  78	 F1BD0D18	SUBS SP SP #24  82	     B500	PUSH LR  84	 F11D0004	ADDS R0 SP #4  88	     2104	MOVS R1 #4  90	 F000F800	BL #0, goes to 94  94	 F1BE025E	SUBS R2 LR #94  98	 10200031	BL Mod(  1) proc(2) 102	 F85DEB04	LDR LR [ SP ] + 4 106	 F11D0D18	ADDS SP SP #24 110	     4770	BX LR 112	     B500	PUSH LR 114	 F85DEB04	LDR LR [ SP ] + 4 118	     4770	BX LRtype descriptors* avant FIXUP 00000020 00000001 FFFFFFFF FFFFFFFF FFFFFFFF* après FIXUP 00000020 D0201248 FFFFFFFF FFFFFFFF FFFFFFFF
+decode testQuickSort2.m4c
+testQuickSort2 C8BBB510   1   260
+imports:
+	QuickSort 6C618B42
+type descriptors
+ 00000020 00000001 FFFFFFFF FFFFFFFF FFFFFFFF
+data     0
+strings
+Nounours||||
+code
+commands:
+	Sort   82
+entries
+   180    82
+pointer refs
+
+fixP =      166
+fixD =      114
+fixT =        1
+entry =      180
+ 00000000	     B403	PUSH R0 R1
+ 00000002	     B500	PUSH LR
+ 00000004	     9801	LDR R0 [SP + 4]
+ 00000006	     2800	CMP R0 #0
+ 00000008	     D00A	BEQ #20, goes to  00000020
+ 0000000A	 F8501C08	LDR R1 [ R0 - 8 ]
+ 0000000E	     6849	LDR R1 [ R1 + 4]
+ 00000010	 20000008	MOV R2 lower 16-bits base(0)
+ 00000014	 00000000	MOVT R2 higher 16-bits base + 0
+ 00000018	     428A	CMP R2 R1
+ 0000001A	     BF18	IT NE
+ 0000001C	 EC002282	TrapNE 2 at pos 296
+ 00000020	     9902	LDR R1 [SP + 8]
+ 00000022	     2900	CMP R1 #0
+ 00000024	     D00A	BEQ #20, goes to  0000003C
+ 00000026	 F8512C08	LDR R2 [ R1 - 8 ]
+ 0000002A	     6852	LDR R2 [ R2 + 4]
+ 0000002C	 3000000E	MOV R3 lower 16-bits base(0)
+ 00000030	 00000000	MOVT R3 higher 16-bits base + 0
+ 00000034	     4293	CMP R3 R2
+ 00000036	     BF18	IT NE
+ 00000038	 EC002382	TrapNE 2 at pos 312
+ 0000003C	     68C0	LDR R0 [ R0 + 12]
+ 0000003E	     68C9	LDR R1 [ R1 + 12]
+ 00000040	     4288	CMP R0 R1
+ 00000042	     BFB4	ITE LT
+ 00000044	     2001	MOVLT R0 #1
+ 00000046	     2000	MOVGE R0 #0
+ 00000048	 F85DEB04	LDR LR [ SP ] + 4
+ 0000004C	 F11D0D08	ADDS SP SP #8
+ 00000050	     4770	BX LR
+ 00000052	 F1BD0D18	SUBS SP SP #24
+ 00000056	     B500	PUSH LR
+ 00000058	 F11D0014	ADDS R0 SP #20
+ 0000005C	 10000018	MOV R1 lower 16-bits base(0)
+ 00000060	 00000000	MOVT R1 higher 16-bits base + 0
+ 00000064	 EC0034B0	Trap 0 at pos 459
+ 00000068	     9805	LDR R0 [SP + 20]
+ 0000006A	     2800	CMP R0 #0
+ 0000006C	     BF08	IT EQ
+ 0000006E	 EC003524	TrapEQ 4 at pos 466
+ 00000072	 1000000B	MOV R1 lower 16-bits base(0)
+ 00000076	 00000014	MOVT R1 higher 16-bits base + 20
+ 0000007A	 F8512B04	LDR R2 [ R1 ] + 4
+ 0000007E	 F8402B04	STR R2 [ R0 ] + 4
+ 00000082	     1612	ASRS R2 R2 #24
+ 00000084	     D1F9	BNE #-14, goes to  0000007A
+ 00000086	     9805	LDR R0 [SP + 20]
+ 00000088	     2800	CMP R0 #0
+ 0000008A	     BF08	IT EQ
+ 0000008C	 EC003674	TrapEQ 4 at pos 487
+ 00000090	     213E	MOVS R1 #62
+ 00000092	     60C1	STR R1 [ R0 + 12]
+ 00000094	     9805	LDR R0 [SP + 20]
+ 00000096	     9001	STR R0 [SP + 4]
+ 00000098	 F11D0004	ADDS R0 SP #4
+ 0000009C	     2104	MOVS R1 #4
+ 0000009E	 F000F800	BL #0, goes to  000000A2
+ 000000A2	 F1BE02A1	SUBS R2 LR #161
+ 000000A6	 10200053	BL Mod(  1) proc(2)
+ 000000AA	 F85DEB04	LDR LR [ SP ] + 4
+ 000000AE	 F11D0D18	ADDS SP SP #24
+ 000000B2	     4770	BX LR
+ 000000B4	     B500	PUSH LR
+ 000000B6	 F85DEB04	LDR LR [ SP ] + 4
+ 000000BA	     4770	BX LR
+
+
 *)

@@ -189,8 +189,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSIF x.r = 0 THEN 
             (*optimisation possible : si align(PC+4, 4) - x.a < 4096 on peut 
               utiliser l'équivalent de l'assembleur ADR RH, <label>*)
-            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); (* Put address of next statement in LR *)
-            OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a)
+            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); (*Put address of next statement in LR*)
+            OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a - 1) (*Odd address for thumb mode*)
           ELSE GetStaticVarAddress(x, RH) END;
           x.r := RH; incR
         ELSE OM4A.encMOVImm32(mcode, RH, x.a);
@@ -429,18 +429,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE (*fetch tag into RH*)
       IF varpar THEN incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a+4+frame); DEC(RH)
       ELSE load(x);
+        IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, x.r, RH, 0) END ;
         pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.EQ*OM4A.C8);  (*NIL belongs to every pointer type*)
         incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, x.r, RH, -8); DEC(RH)
       END;
       incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, RH-1, RH, T.nofpar*4);
       loadTypTagAdr(T);  (*tag of T*)
       OM4A.encCMPReg(mcode, RH-1, RH-2); DEC(RH, 2);
-      IF ~varpar THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END ;
       IF isguard THEN
         IF check THEN Trap(OM4A.NE, 2) END
       ELSE SetCC(x, OM4A.EQ);
         IF ~varpar THEN DEC(RH) END
-      END
+      END;
+      IF ~varpar THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END
     END
   END TypeTest;
 
@@ -892,13 +893,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSE
       IF x.mode <= OM4B.Par THEN load(x); DEC(RH)
-      ELSE incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, 0); DEC(RH);
-        OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, 4); DEC(r); DEC(frame, 4)
-      END ;
-      IF check THEN 
-        IF ~mcode.lastInstrSetFlags THEN incR; OM4A.encCMPImm(mcode, RH-1, RH, 0); DEC(RH) END;
-        Trap(OM4A.EQ, 5) 
+      ELSE IF RH < 8 THEN (*POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + LSL(1, RH))
+        ELSE (*POP T3*) OM4A.Put0(mcode, OM4A.POPT3 + RH*OM4A.C12) END;
+        DEC(r); DEC(frame, 4)
       END;
+      (*No NIL check needed because every even address will cause an usage fault exception
+        because only thumb instruction are supported*)
       OM4A.Put1(mcode, OM4A.BLX + RH*OM4A.C3)
     END ;
     IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0; SH := 0;
