@@ -641,13 +641,6 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     dd22 : address of next forward branch to fix
 *)
 
-  PROCEDURE fix25(VAR c: ModuleCode; at, with: LONGINT);
-  (*The statement must be a wide jump with immediate offset (B.W <Label>).*)
-  BEGIN
-    IF with >= C24 THEN OM4S.Mark("forward jump too far")
-    ELSE modify(c, at, BT4 + formatEvenImm25(with)) END
-  END fix25;
-
 (*  Format of conditional forward jump (B<c>)
 
     The bits encoding displacement are scattered in ARM thumb B and B<c> instructions.
@@ -665,20 +658,20 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN
     cond := c.code[at+1] MOD C2*C2 + c.code[at] DIV C6;
     ASSERT(cond < 14);
-    with := with DIV C1;
-    IF with >= C19 THEN OM4S.Mark("forward jump too far")
-    ELSE modify(c, at, BCT3 + with DIV C19 MOD C1*C26 + cond*C22 + with DIV C11 MOD C6*C16 +
-        with DIV C17 MOD C1*C13 + with DIV C18 MOD C1*C11 + with MOD C11)
+    ASSERT (~ODD(with)); with := with DIV C1;
+    IF (with < -C19) OR (with >= C19) THEN OM4S.Mark("cond jump too far")
+    ELSE with := with MOD C20;
+      modify(c, at, BCT3 + with DIV C19 MOD C1*C26 + cond*C22 + with DIV C11 MOD C6*C16 +
+      with DIV C17 MOD C1*C13 + with DIV C18 MOD C1*C11 + with MOD C11)
     END
   END fix21;
 
   PROCEDURE fix(VAR c: ModuleCode; at, with: LONGINT);
     VAR sig: BYTE;
   BEGIN
-    ASSERT(with >= 0);
     sig := c.code[at+1] DIV C3;
     IF sig = BRCSIG THEN fix21(c, at, with)
-    ELSE ASSERT(sig = BRSIG); fix25(c, at, with) END
+    ELSE ASSERT(sig = BRSIG); modify(c, at, BT4 + formatEvenImm25(with)) END
   END fix;
   
 (*  Format of forward conditionaljump T1 :
@@ -694,9 +687,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN
     ASSERT(c.code[at+1] DIV C4 = BCT1 DIV C12); (*Check op code*)
     ASSERT (~ODD(with)); with := with DIV C1;
-    IF (with < -C7) OR (with >= C7) THEN OM4S.Mark("narrow cond jump too far");
-    IF with < 0 THEN INC(with, C8) END;
-    ELSE c.code[at] := with END
+    IF (with < -C7) OR (with >= C7) THEN OM4S.Mark("narrow cond jump too far")
+    ELSE with := with MOD C8; c.code[at] := with END
   END fix8;
 
   PROCEDURE fix11*(VAR c: ModuleCode; at, with: LONGINT);
@@ -704,9 +696,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN
     ASSERT(c.code[at+1] DIV C3 = BT2 DIV C11); (*Check op code*)
     ASSERT (~ODD(with)); with := with DIV C1;
-    IF (with < -C10) OR (with >= C10) THEN OM4S.Mark("narrow jump too far");
-    IF with < 0 THEN INC(with, C11) END;
-    ELSE c.code[at] := with MOD C8; INC(c.code[at+1], with DIV C8) END
+    IF (with < -C10) OR (with >= C10) THEN OM4S.Mark("narrow jump too far")
+    ELSE with := with MOD C11; c.code[at] := with MOD C8; INC(c.code[at+1], with DIV C8) END
   END fix11;
 
   PROCEDURE FixOne*(VAR c: ModuleCode; at: LONGINT);
@@ -724,7 +715,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN
     WHILE L0 # 0 DO
       L1 := load22(c, L0) MOD C24;
-      modify(c, L0, dst-L0-4); L0 := L1
+      fix(c, L0, dst-L0-4); L0 := L1
     END
   END FixLinkWith;
 

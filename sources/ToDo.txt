@@ -2,8 +2,13 @@ Liste des modules à créer en se basant sur ORx :
 Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4X, OM4L, OM4D, OM4Tool
 
 Liste des modules à créer en se basant sur la version RISC-5 :
-Faits : BootLoadM4, ModulesM4, KernelM4
-A faire: System
+
+Faits : 
+- loader : BootLoadM4
+- inner : ModulesM4, KernelM4. Files et FilesDir ne sont pas modifiés
+- outer : OberonM4, 
+ 
+A faire: SystemM4, ...
 
 Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
 15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0   15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0

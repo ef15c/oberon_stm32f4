@@ -4,6 +4,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     FSoffset = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*1K sectors, 64MB*)
     SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6;
+    VarORG0* = 0D0201000H;
     
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
@@ -210,7 +211,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END SetClock;
 
   PROCEDURE Install*(Padr, at: INTEGER);
-  BEGIN SYSTEM.PUT(at, Padr+1)
+  BEGIN SYSTEM.PUT(at, Padr)
   END Install;
 
   PROCEDURE* Trap(VAR f: ExceptionFrame);
@@ -225,8 +226,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
   PROCEDURE Init*;
   BEGIN Install(SYSTEM.ADR(Trap), VecTabBase+UsageFaultExcNum*4);  (*install temporary trap*)
-    SYSTEM.GET(12, MemLim); SYSTEM.GET(24, stackOrg);
-    SYSTEM.GET(28, heapOrg); stackSize := 10000H; heapLim := MemLim;
+    SYSTEM.GET(VarORG0+12, MemLim); SYSTEM.GET(VarORG0+24, stackOrg);
+    SYSTEM.GET(VarORG0+28, heapOrg); stackSize := 10000H; heapLim := MemLim;
     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
     SYSTEM.PUT(list0, heapLim - heapOrg); SYSTEM.PUT(list0+4, -1); SYSTEM.PUT(list0+8, 0);
     allocated := 0; clock := 0; hint := 32; InitSecMap
