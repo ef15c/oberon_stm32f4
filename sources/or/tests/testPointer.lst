@@ -1,0 +1,48 @@
+decode testPointer.bin
+ D0201000	 F000B846	B #140, goes to  D0201090
+ D0201004	    .word  00000000H; unused
+ D0201008	    .word  D0201000H; RAM origin
+ D020100C	    .word  D0800000H; RAM end
+ D0201010	    .word  D02010B0H; Boot file load end
+ D0201014	    .word  D0201020H; Root module descriptor
+ D0201018	    .word  10010000H; Stack origin
+ D020101C	    .word  D0500000H; Heap origin
+ D0201020	    .ascii "testPointer"
+        .fill 21, 1, 0; Module name
+ D0201040	    .word  00000000H; Next module descriptor location
+ D0201044	    .word  C7962A70H; Key
+ D0201048	    .word  00000001H; Num
+ D020104C	    .word  00000090H; Size
+ D0201050	    .word  00000000H; References count
+ D0201054	    .word  D0201070H; Data section
+ D0201058	    .word  D0201090H; Code section
+ D020105C	    .word  D0201098H; Import section
+ D0201060	    .word  D0201098H; Commands section
+ D0201064	    .word  D020109CH; Entries section
+ D0201068	    .word  D02010A8H; Pointer section
+; data section found
+ D0201070	    .word  00000020H; 
+ D0201074	    .word  FFFFFFFFH; 
+ D0201078	    .word  FFFFFFFFH; 
+ D020107C	    .word  FFFFFFFFH; 
+ D0201080	    .word  00000004H; 
+ D0201084	    .fill 1, 4, 0
+ D0201088	    .word  FFFFFFFFH; 
+ D020108C	    .fill 1, 4, 0
+; code section found
+ D0201090	     B500	PUSH LR
+ D0201092	 F85DEB04	LDR LR [ SP ] + 4
+ D0201096	     4770	BX LR
+; import section found
+; commands section found
+ D0201098	    .byte 0; Padding
+ D0201099	    .byte 0; Padding
+ D020109A	    .byte 0; Padding
+ D020109B	    .byte 0; Padding
+; entries section found
+ D020109C	    .word  00000000H; 
+ D02010A0	    .word  00000000H; 
+ D02010A4	    .word  0000001CH; 
+; pointers section found
+ D02010A8	    .word  D020108CH; 
+ D02010AC	    .word  00000000H; 

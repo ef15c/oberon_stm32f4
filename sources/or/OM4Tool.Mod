@@ -333,7 +333,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
               IF data # 0 THEN
                 IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
                   Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
-                  Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
+                  Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W); i := 0;
                 END;
                 EmitWord(W, data, n, ramOrg, "")
               ELSE i := i+1; INC(n, 4)
