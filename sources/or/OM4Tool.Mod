@@ -331,7 +331,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
             WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.code) DO 
               Files.ReadInt(R, data);
               IF data # 0 THEN
-                IF i # 0 THEN Texts.WriteHex(W, ramOrg+n); Texts.Write(W, 9X);
+                IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
                   Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
                   Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
                 END;
@@ -339,7 +339,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
               ELSE i := i+1; INC(n, 4)
               END
             END;
-            IF i # 0 THEN Texts.WriteHex(W, ramOrg+n); Texts.Write(W, 9X);
+            IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
               Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
               Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
             END;

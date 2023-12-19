@@ -262,7 +262,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
           ELSE (*import*)  vno := inst MOD 100H;
             SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
             SYSTEM.GET(impmod.ent + vno*4, offset);
-            IF ODD(inst DIV 100H) THEN dest := impmod.code + offset
+            IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 (*thumb execution state*)
             ELSE dest := impmod.data + offset END
           END;
           PutWordAt(adr, thumbSwap(MOVIT3 + formatImm16(pno, dest MOD 10000H)));

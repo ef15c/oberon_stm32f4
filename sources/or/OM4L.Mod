@@ -192,7 +192,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
           ELSE (*import*)  vno := inst MOD 100H;
             SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
             SYSTEM.GET(impmod.ent + vno*4, offset);
-            IF ODD(inst DIV 100H) THEN dest := impmod.code + offset - Start + VarORG0
+            IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 - Start + VarORG0 (*thumb execution state*)
             ELSE dest := impmod.data + offset - Start + VarORG0 END
           END;
           PutWordAt(adr, thumbSwap(OM4A.MOVIT3 + OM4A.formatImm16(pno, dest MOD 10000H)));

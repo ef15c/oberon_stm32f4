@@ -1,0 +1,152 @@
+OM4Tool 12.11.2023
+decode testImport.bin
+ D0201000	 F000B8C6	B #396, goes to  D0201190
+ D0201004	    .word  00000000H; unused
+ D0201008	    .word  D0201000H; RAM origin
+ D020100C	    .word  D0800000H; RAM end
+ D0201010	    .word  D0201228H; Boot file load end
+ D0201014	    .word  D0201134H; Root module descriptor
+ D0201018	    .word  10010000H; Stack origin
+ D020101C	    .word  D0500000H; Heap origin
+ D0201020	    .ascii "testExport"
+        .fill 22, 1, 0; Module name
+ D0201040	    .word  00000000H; Next module descriptor location
+ D0201044	    .word  633B402BH; Key
+ D0201048	    .word  00000001H; Num
+ D020104C	    .word  00000114H; Size
+ D0201050	    .word  00000001H; References count
+ D0201054	    .word  D0201070H; Data section
+ D0201058	    .word  D020109CH; Code section
+ D020105C	    .word  D0201108H; Import section
+ D0201060	    .word  D0201108H; Commands section
+ D0201064	    .word  D0201114H; Entries section
+ D0201068	    .word  D0201130H; Pointer section
+; data section found
+ D0201070	    .word  00000020H; 
+ D0201074	    .word  FFFFFFFFH; 
+ D0201078	    .word  FFFFFFFFH; 
+ D020107C	    .word  FFFFFFFFH; 
+ D0201080	    .word  FFFFFFFFH; 
+ D0201084	    .fill 6, 4, 0
+; code section found
+ D020109C	 F1BD0D0C	SUBS SP SP #12
+ D02010A0	     B500	PUSH LR
+ D02010A2	     9802	LDR R0 [SP + 8]
+ D02010A4	     9003	STR R0 [SP + 12]
+ D02010A6	     9803	LDR R0 [SP + 12]
+ D02010A8	     9001	STR R0 [SP + 4]
+ D02010AA	 F85DEB04	LDR LR [ SP ] + 4
+ D02010AE	 F11D0D0C	ADDS SP SP #12
+ D02010B2	     4770	BX LR
+ D02010B4	     B500	PUSH LR
+ D02010B6	 F7FFFFF1	BL #-30, goes to  D020109C
+ D02010BA	 F000F800	BL #0, goes to  D02010BE
+ D02010BE	 F1BE0021	SUBS R0 LR #33
+ D02010C2	 F2410188	MOV R1 #4232
+ D02010C6	 F2CD0120	MOVT R1 #53280
+ D02010CA	     6008	STR R0 [ R1 + 0]
+ D02010CC	 F2410088	MOV R0 #4232
+ D02010D0	 F2CD0020	MOVT R0 #53280
+ D02010D4	     6800	LDR R0 [ R0 + 0]
+ D02010D6	     4780	BLX R0
+ D02010D8	 F2410090	MOV R0 #4240
+ D02010DC	 F2CD0020	MOVT R0 #53280
+ D02010E0	     6800	LDR R0 [ R0 + 0]
+ D02010E2	 F2410198	MOV R1 #4248
+ D02010E6	 F2CD0120	MOVT R1 #53280
+ D02010EA	     6008	STR R0 [ R1 + 0]
+ D02010EC	 F2410098	MOV R0 #4248
+ D02010F0	 F2CD0020	MOVT R0 #53280
+ D02010F4	     6800	LDR R0 [ R0 + 0]
+ D02010F6	 F2410194	MOV R1 #4244
+ D02010FA	 F2CD0120	MOVT R1 #53280
+ D02010FE	     6008	STR R0 [ R1 + 0]
+ D0201100	 F85DEB04	LDR LR [ SP ] + 4
+ D0201104	     4770	BX LR
+ D0201106	     0000	LSLS R0 R0 #0
+; import section found
+; commands section found
+ D0201108	    .ascii "p"
+        .fill 3, 1, 0; Name
+ D020110C	    .word  00000000H; Address
+ D0201110	    .byte 0; Padding
+ D0201111	    .byte 0; Padding
+ D0201112	    .byte 0; Padding
+ D0201113	    .byte 0; Padding
+; entries section found
+ D0201114	    .word  00000018H; 
+ D0201118	    .word  00000000H; 
+ D020111C	    .word  00000014H; 
+ D0201120	    .word  00000018H; 
+ D0201124	    .word  0000001CH; 
+ D0201128	    .word  00000020H; 
+ D020112C	    .word  00000000H; 
+; pointers section found
+ D0201130	    .word  00000000H; 
+ D0201134	    .ascii "testImport"
+        .fill 22, 1, 0; Module name
+ D0201154	    .word  D0201020H; Next module descriptor location
+ D0201158	    .word  E4E4472FH; Key
+ D020115C	    .word  00000002H; Num
+ D0201160	    .word  000000F4H; Size
+ D0201164	    .word  00000000H; References count
+ D0201168	    .word  D0201184H; Data section
+ D020116C	    .word  D0201190H; Code section
+ D0201170	    .word  D0201210H; Import section
+ D0201174	    .word  D0201214H; Commands section
+ D0201178	    .word  D0201218H; Entries section
+ D020117C	    .word  D020121CH; Pointer section
+; data section found
+ D0201184	    .fill 3, 4, 0
+; code section found
+ D0201190	     B500	PUSH LR
+ D0201192	 F2410084	MOV R0 #4228
+ D0201196	 F2CD0020	MOVT R0 #53280
+ D020119A	     6800	LDR R0 [ R0 + 0]
+ D020119C	 F2411184	MOV R1 #4484
+ D02011A0	 F2CD0120	MOVT R1 #53280
+ D02011A4	     6008	STR R0 [ R1 + 0]
+ D02011A6	 F7FFFF79	BL #-270, goes to  D020109C
+ D02011AA	 F241009D	MOV R0 #4253
+ D02011AE	 F2CD0020	MOVT R0 #53280
+ D02011B2	 F2411188	MOV R1 #4488
+ D02011B6	 F2CD0120	MOVT R1 #53280
+ D02011BA	     6008	STR R0 [ R1 + 0]
+ D02011BC	 F2411088	MOV R0 #4488
+ D02011C0	 F2CD0020	MOVT R0 #53280
+ D02011C4	     6800	LDR R0 [ R0 + 0]
+ D02011C6	     4780	BLX R0
+ D02011C8	 F241008C	MOV R0 #4236
+ D02011CC	 F2CD0020	MOVT R0 #53280
+ D02011D0	 ED900A00	VLDR S0 [ R0 + 0 ]
+ D02011D4	 F241108C	MOV R0 #4492
+ D02011D8	 F2CD0020	MOVT R0 #53280
+ D02011DC	 ED800A00	VSTR S0 [ R0 + 0 ]
+ D02011E0	 F2410090	MOV R0 #4240
+ D02011E4	 F2CD0020	MOVT R0 #53280
+ D02011E8	     6800	LDR R0 [ R0 + 0]
+ D02011EA	 F2411184	MOV R1 #4484
+ D02011EE	 F2CD0120	MOVT R1 #53280
+ D02011F2	     6008	STR R0 [ R1 + 0]
+ D02011F4	 F2410090	MOV R0 #4240
+ D02011F8	 F2CD0020	MOVT R0 #53280
+ D02011FC	     6840	LDR R0 [ R0 + 4]
+ D02011FE	 F2411184	MOV R1 #4484
+ D0201202	 F2CD0120	MOVT R1 #53280
+ D0201206	     6008	STR R0 [ R1 + 0]
+ D0201208	 F85DEB04	LDR LR [ SP ] + 4
+ D020120C	     4770	BX LR
+ D020120E	     0000	LSLS R0 R0 #0
+; import section found
+ D0201210	    .word  D0201020H; 
+; commands section found
+ D0201214	    .byte 0; Padding
+ D0201215	    .byte 0; Padding
+ D0201216	    .byte 0; Padding
+ D0201217	    .byte 0; Padding
+; entries section found
+ D0201218	    .word  00000000H; 
+; pointers section found
+ D020121C	    .word  00000000H; 
+ D0201220	    .word  00000000H; 
+ D0201224	    .word  00000000H; 
