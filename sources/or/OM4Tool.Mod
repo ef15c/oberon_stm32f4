@@ -383,7 +383,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Files.Read(R, ch);
             WHILE (n - modLoc < mod.size) & (ch # 0X) DO
               name[0] := ch; i := 1; REPEAT Files.Read(R, ch); name[i] := ch; INC(i) UNTIL ch = 0X;
-              REPEAT Files.Read(R, ch); INC(i) UNTIL i MOD 4 = 0;
+              WHILE i MOD 4 # 0 DO Files.Read(R, ch); INC(i) END;
               EmitString(W, name, i, n, ramOrg, "Name");
               Files.ReadInt(R, data);
               EmitWord(W, data, n, ramOrg, "Address");
@@ -411,10 +411,19 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Texts.WriteLn(W)
           END;
           IF ok THEN
-            WHILE n - modLoc < mod.size DO 
+            REPEAT
               Files.ReadInt(R, data);
               EmitWord(W, data, n, ramOrg, "");
+            UNTIL (data = 0) OR (n - modLoc >= mod.size);
+          END;
+          IF data = 0 THEN
+            IF n - modLoc < mod.size THEN Texts.WriteString(W, "; trampoline section found"); Texts.WriteLn(W);
+              WHILE n - modLoc < mod.size DO Files.ReadInt(R, data); EmitWord(W, data, n, ramOrg, "") END
             END
+          ELSE
+            ok := FALSE;
+            Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
+            Texts.WriteLn(W)
           END
         UNTIL ~ok OR (modLoc + ramOrg = root)
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
