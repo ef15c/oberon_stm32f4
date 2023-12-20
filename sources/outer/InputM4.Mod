@@ -3,19 +3,30 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
 (* C. Schoffit: adapted to french keyboard layout *)
   IMPORT SYSTEM;
 
-  CONST msAdr = -40; kbdAdr = -36;
+  CONST BUFFERSIZE = 16;
+  
+  TYPE MKB = POINTER TO MKDataBlock;
+    MKDataBlock = RECORD
+      MW, MH: INTEGER; (*mouse limits*)
+      MD: INTEGER; (*mouse data*)
+      head, tail: INTEGER; (*Indexes of head and tail of the circular keyboard buffer*)
+      kdbBuf: ARRAY BUFFERSIZE OF BYTE
+    END;
+    
   VAR kbdCode: BYTE; (*last keyboard code read*)
     Recd, Up, Shift, Ctrl, Ext, AltGr, CapsLock: BOOLEAN;
     KTabAdr, KTabAdrAlt: INTEGER;  (*keyboard code translation tables*)
-    MW, MH: INTEGER; (*mouse limits*)
+    MKBAdr: INTEGER; (*mouse and keyboard data block*)
 
-(*FIFO implemented in hardware, because every read must be handled,
+(*FIFO implemented in firmware, because every read must be handled,
   including tracking the state of the Shift and Ctrl keys*)
 
   PROCEDURE Peek();
+    VAR mkb: MKB;
   BEGIN
-    IF SYSTEM.BIT(msAdr, 28) THEN
-      SYSTEM.GET(kbdAdr, kbdCode);
+    mkb := SYSTEM.VAL(MKB, MKBAdr);
+    IF mkb.tail # mkb.head THEN
+      kbdCode := mkb.kdbBuf[mkb.tail]; mkb.tail := (mkb.tail + 1) MOD BUFFERSIZE;
       IF kbdCode = 0F0H THEN Up := TRUE
       ELSIF kbdCode = 0E0H THEN Ext := TRUE
       ELSE
@@ -56,21 +67,22 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   END Read;
 
   PROCEDURE Mouse*(VAR keys: SET; VAR x, y: INTEGER);
-    VAR w: INTEGER;
-  BEGIN SYSTEM.GET(msAdr, w);
-    keys := SYSTEM.VAL(SET, w DIV 1000000H MOD 8);
-    x := w MOD 1000H; y := (w DIV 1000H) MOD 1000H;
-    IF x >= MW THEN x := MW-1 END;
-    IF y >= MH THEN y := MH-1 END
+    VAR mkb: MKB;
+  BEGIN mkb := SYSTEM.VAL(MKB, MKBAdr);
+    keys := SYSTEM.VAL(SET, mkb.MD DIV 1000000H MOD 8);
+    x := mkb.MD MOD 1000H; y := (mkb.MD DIV 1000H) MOD 1000H;
   END Mouse;
 
   PROCEDURE SetMouseLimits*(w, h: INTEGER);
-  BEGIN MW := w; MH := h
+    VAR mkb: MKB;
+  BEGIN mkb := SYSTEM.VAL(MKB, MKBAdr);
+    mkb.MW := w; mkb.MH := h
   END SetMouseLimits;
 
   PROCEDURE Init*;
   BEGIN Up := FALSE; Shift := FALSE; Ctrl := FALSE; Recd := FALSE;
     AltGr := FALSE; CapsLock := FALSE;
+    MKBAdr := SYSTEM.SVC(5);
     KTabAdr := SYSTEM.ADR(
     (* US key map $
       00 00 00 00 00 1A 00 00  00 00 00 00 00 09 60 00

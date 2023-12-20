@@ -89,10 +89,11 @@ N° de service   Nom     R0                                                  R1  
             1   LED     <7:0> : un bit par LED à allumer (1) ou éteindre 0
             2   ReadSD  N° du premier secteur à lire sur la carte SD        Addresse de destination en mémoire      Nombre de blocs à lire
                         Retourne 0 si OK
+            3   WriteSD N° du premier secteur à écrire sur la carte SD      Addresse de destination en mémoire      Nombre de blocs à écrire
+            4   Time    Retourne le temps en millisecondes depuis le
+                        démarrage du système
 à faire
 N° de service   Nom     R0                                                  R1                                      R3
 -------------   ------- --------------------------------------------------  ------------------------------------    ------------------------
-            3   WriteSD N° du premier secteur à écrire sur la carte SD      Addresse de destination en mémoire      Nombre de blocs à écrire
-            4   Time    Temps depuis le démarrage du système
-                        Retourne le temps en millisecondes
-
+            5   Clavier Retourne l'adresse du bloc de données du clavier
+                Souris  et de la souris
