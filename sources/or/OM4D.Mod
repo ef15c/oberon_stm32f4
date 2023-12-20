@@ -399,6 +399,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       IfThenHints = {8..11};
       (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)
       PushMultRegs = {10};
+      (*T16MSK45 110xxxx Pop Multiple Registers POP on page A7-319*)
+      PopMultRegs = {10..11};
       
       T16MSK11 = {11..13}; T16MSK12 = {9..13};
       
@@ -968,10 +970,15 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)
           (*PUSH<c> <registers>*)
           WriteOp(W, op, "PUSH", FALSE, FALSE);
-          FOR t := 0 TO 7 DO IF t IN op THEN WriteReg(W, t) END
-          END;
+          FOR t := 0 TO 7 DO IF t IN op THEN WriteReg(W, t) END END;
           IF 8 IN op THEN WriteReg(W, 14) END
-        ELSE Texts.WriteString(W, "TODO: not PushMultRegs")
+        ELSIF op*T16MSK45 = PopMultRegs THEN
+          (*T16MSK45 110xxxx Pop Multiple Registers POP on page A7-319*)
+          (*POP<c> <registers>*)
+          WriteOp(W, op, "POP", FALSE, FALSE);
+          FOR t := 0 TO 7 DO IF t IN op THEN WriteReg(W, t) END END;
+          IF 8 IN op THEN WriteReg(W, 15) END
+        ELSE Texts.WriteString(W, "TODO: other Misc16bInst on page A5-134")
         END
       ELSIF op*T16MSK1 = ShAdSuMoCm THEN
         (*T16MSK1 00xxxx: Shift (immediate), add, subtract, move, and compare on page A5-130*)
