@@ -414,16 +414,16 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       IF mod # NIL THEN Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
       Texts.WriteString(W, " at"); Texts.WriteHex(W, f.returnAddress);
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-      SYSTEM.PUT(FaultSRAdr, UFSR); (*reset UFSR flags*)
       (*Trigger abort by requesting a PendSV interrupt*)
       SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.ISB();
     END;
     IF UFSR - {NOCP, INVSTATE} # {} THEN (*other fault*)
-      LED(127); REPEAT UNTIL FALSE
+      LED(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END
+    SYSTEM.PUT(FaultSRAdr, UFSR); (*reset UFSR flags*)
   END Trap;
   
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
-  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4); Kernel.Install(SYSTEM.ADR(Oberon.Reset), 0);
+  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4); Kernel.Install(SYSTEM.ADR(Oberon.Reset), Kernel.VarORG0+0);
 END System.

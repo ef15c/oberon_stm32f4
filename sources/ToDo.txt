@@ -7,7 +7,9 @@ Faits :
 - loader : BootLoadM4
 - inner : ModulesM4, KernelM4. Files et FilesDir ne sont pas modifiés
 - outer : OberonM4, 
- 
+
+En cours : InputM4
+
 A faire: SystemM4, ...
 
 Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :

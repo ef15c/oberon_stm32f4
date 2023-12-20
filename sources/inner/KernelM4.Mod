@@ -5,7 +5,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     mapsize = 10000H; (*1K sectors, 64MB*)
     SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6;
     VarORG0* = 0D0201000H;
-    
+    CS = 2; (*Carry set Greater than, equal, or unordered*)
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
   
@@ -93,7 +93,9 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN SYSTEM.GET(pref, pvadr); (*pointers < heapOrg considered NIL*)
     WHILE pvadr # 0 DO
       SYSTEM.GET(pvadr, p); SYSTEM.GET(p-4, offadr);
-      IF (p >= heapOrg) & (offadr = 0) THEN q := p;   (*mark elements in data structure with root p*)
+      (*WARNING heapOrg is negative, so signed comparison p >= heapOrg won't work*)
+      SYSTEM.CMP(p, heapOrg);
+      IF SYSTEM.COND(CS) & (offadr = 0) THEN q := p;   (*mark elements in data structure with root p*)
         REPEAT SYSTEM.GET(p-4, offadr);
           IF offadr = 0 THEN SYSTEM.GET(p-8, tag); offadr := tag + 16 ELSE INC(offadr, 4) END ;
           SYSTEM.PUT(p-4, offadr); SYSTEM.GET(offadr, offset);

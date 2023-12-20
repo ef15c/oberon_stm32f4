@@ -645,6 +645,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* Code generation for relations *)
 
+  PROCEDURE IntCompare*(VAR x, y: Item);   (* x < y *)
+  BEGIN
+    IF (y.mode = OM4B.Const) & (y.type.form # OM4B.Proc) THEN
+      load(x); OM4A.encCMPImm(mcode, x.r, RH, y.a); DEC(RH)
+    ELSE
+      IF (x.mode = Cond) OR (y.mode = Cond) THEN OM4S.Mark("not implemented") END ;
+      load(x); load(y); OM4A.encCMPReg(mcode, x.r, y.r); DEC(RH, 2)
+    END ;
+  END IntCompare;
+
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN
     IF (y.mode = OM4B.Const) & (y.type.form # OM4B.Proc) THEN

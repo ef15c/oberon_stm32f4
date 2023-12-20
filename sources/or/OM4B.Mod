@@ -438,4 +438,5 @@ BEGIN
   enter("PUT", SProc, noType, 112);
   enter("GET", SProc, noType, 102);
   enter("SVC", SFunc, intType, 211);
+  enter("CMP", SProc, noType, 152);
 END OM4B.
