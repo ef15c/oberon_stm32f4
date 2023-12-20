@@ -433,6 +433,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       LslImmT1 = {};
       (*T16MSK11 111xx Subtract 8-bit immediate SUB (immediate) on page A7-402*)
       SubImmT2 = {11..13};
+      (*T16MSK11 001xx Logical Shift Right LSR (immediate) on page A7-284*)
+      LsrImmT1 = {11};
 
       (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
       AddImm3 = {10..12};
@@ -1034,7 +1036,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             LSL<c> <Rd>,<Rm>,#<imm5> Inside IT block.*)
           Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
           WriteOp(W, op, "LSL", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, b1 MOD OM4A.C1*OM4A.C2 + b2 DIV OM4A.C6, 1)
+          Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6, 1)
         ELSIF op*T16MSK11 = SubImmT2 THEN
           (*T16MSK11 111xx Subtract 8-bit immediate SUB (immediate) on page A7-402*)
           (*SUBS <Rdn>,#<imm8> Outside IT block.
@@ -1042,6 +1044,13 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           Rd := b1 MOD OM4A.C3;
           WriteOp(W, op, "SUB", TRUE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " #");
           Texts.WriteInt(W, b2, 1)
+        ELSIF op*T16MSK11 = LsrImmT1 THEN
+          (*T16MSK11 001xx Logical Shift Right LSR (immediate) on page A7-284*)
+          (*LSRS <Rd>,<Rm>,#<imm5> Outside IT block.
+            LSR<c> <Rd>,<Rm>,#<imm5> Inside IT block.*)
+          Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+          WriteOp(W, op, "LSR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm); Texts.WriteString(W, " #");
+          Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6, 1)
         ELSE Texts.WriteString(W, "TODO: other ShAdSuMoCm on page A5-130")
         END
       ELSIF op*T16MSK4 = CondBrAndSVC THEN

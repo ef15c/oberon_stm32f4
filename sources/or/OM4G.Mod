@@ -547,6 +547,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
         IF y.a > 0 THEN x.a := x.a MOD y.a ELSE OM4S.Mark("bad modulus") END
       ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x);
+        (* TODO : on peut gagner une instruction en utilisant BFC x.r #e, #32-e*)
         OM4A.encShiftImm5(mcode, OM4A.LSl, x.r, x.r, 32-e); OM4A.encShiftImm5(mcode, OM4A.LSR, x.r, x.r, 32-e)
       ELSIF y.mode = OM4B.Const THEN
         IF y.a > 0 THEN load(x); load(y); 
