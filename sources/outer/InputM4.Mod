@@ -7,10 +7,10 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   
   TYPE MKB = POINTER TO MKDataBlock;
     MKDataBlock = RECORD
-      MW, MH: INTEGER; (*mouse limits*)
-      MD: INTEGER; (*mouse data*)
-      head, tail: INTEGER; (*Indexes of head and tail of the circular keyboard buffer*)
+      head, tail: BYTE; (*Indexes of head and tail of the circular keyboard buffer*)
       kdbBuf: ARRAY BUFFERSIZE OF BYTE
+      MD: INTEGER; (*mouse data*)
+      MW, MH: INTEGER; (*mouse limits*)
     END;
     
   VAR kbdCode: BYTE; (*last keyboard code read*)
