@@ -250,7 +250,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 1 THEN (*ODD*) CheckInt(x); OM4G.Odd(x)
       ELSIF fct = 2 THEN (*FLOOR*) CheckReal(x); OM4G.Floor(x)
       ELSIF fct = 3 THEN (*FLT*) CheckInt(x); OM4G.Float(x)
-      ELSIF fct = 4 THEN (*OM4D*)
+      ELSIF fct = 4 THEN (*ORD*)
         IF x.type.form <= OM4B.Proc THEN OM4G.Ord(x)
         ELSIF (x.type.form = OM4B.String) & (x.b = 2) THEN OM4G.StrToChar(x)
         ELSE OM4S.Mark("bad type")
@@ -258,7 +258,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 5 THEN (*CHR*) CheckInt(x); OM4G.Ord(x)
       ELSIF fct = 6 THEN (*LEN*)
           IF x.type.form = OM4B.Array THEN OM4G.Len(x) ELSE OM4S.Mark("not an array") END
-      ELSIF fct IN {7, 8, 9} THEN (*LSL, ASR, ROM4*) CheckInt(y);
+      ELSIF fct IN {7, 8, 9} THEN (*LSL, ASR, ROR*) CheckInt(y);
         IF x.type.form IN {OM4B.Int, OM4B.Set} THEN OM4G.Shift(fct-7, x, y); restyp := x.type ELSE OM4S.Mark("bad type") END
       ELSIF fct = 11 THEN (*ADC*) OM4G.ADC(x, y)
       ELSIF fct = 12 THEN (*SBC*) OM4G.SBC(x, y)

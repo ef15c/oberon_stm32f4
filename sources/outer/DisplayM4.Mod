@@ -74,34 +74,40 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       END
     END
   END ReplConst;
-(******TODO j'en suis la*******)
 
   PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
-    VAR a0, pwd, i: INTEGER;
-      w, h, pbt: BYTE; pix, mask: SET;
+    VAR a0, pwd, pwd2, i, j, r: INTEGER;
+      w, h: BYTE; pix, mask: SET;
   BEGIN SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
-    a0 := Base + (x DIV NofPixperWord)*4 + y*Span; x := x MOD NofPixperWord; mask := SYSTEM.VAL(SET, ASR(7FFFFFFFH, (NofPixperWord-1)-x));
+    a0 := Base + (x DIV NofPixperWord)*4 + y*Span; x := x MOD NofPixperWord;
+    (* TODO a revoir*) mask := SYSTEM.VAL(SET, ASR(7FFFFFFFH, 31-x*NofBPP));
     FOR i := 1 TO h DO
-      (*build pattern line; w <= 32*)
-      SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt;
-      IF w > 8 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*100H + pwd;
-        IF w > 16 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*10000H + pwd;
-          IF w > 24 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*1000000H + pwd END
-        END
-      END ;
+      j := 0; r := w;
+      SYSTEM.GET(patadr, pwd); INC(patadr, 4);
       SYSTEM.GET(a0, pix);
-      IF mode = invert THEN SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, x)) / pix)
-      ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, x)) + pix)
-      END ;
-      IF x + w > NofPixperWord THEN (*spill over*)
-        SYSTEM.GET(a0+4, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, -x)) * mask/ pix)
-        ELSE SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, -x)) * mask+ pix)
+      IF mode = invert THEN SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, x*NofBPP)) / pix)
+      ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, x*NofBPP)) + pix)
+      END ; INC(j, 4); DEC(r, x);
+      WHILE r >= 4 DO
+        SYSTEM.GET(patadr, pwd2); INC(patadr, 4);
+        SYSTEM.GET(a0+j, pix);
+        IF mode = invert THEN SYSTEM.PUT(a0, (SYSTEM.VAL(SET, LSL(pwd2, x*NofBPP)) + SYSTEM.VAL(SET, ASR(pwd, 32-x*NofBPP)) * mask) / pix)
+        ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd2, x*NofBPP)) + SYSTEM.VAL(SET, ASR(pwd, 32-x*NofBPP)) * mask + pix)
+        END;
+        pwd := pwd2;
+        INC(j, 4); DEC(r, NofPixperWord)
+      END;
+      IF r > 0 THEN (*spill over*)
+        SYSTEM.GET(a0+j, pix);
+        IF mode = invert THEN SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, 32-x*NofBPP)) * mask / pix)
+        ELSE SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, 32-x*NofBPP)) * mask + pix)
         END
       END;
       INC(a0, Span)
     END
   END CopyPattern;
+
+(******TODO j'en suis la*******)
 
   PROCEDURE CopyBlock*(sx, sy, w, h, dx, dy, mode: INTEGER); (*only for mode = replace*)
     VAR sa, da, sa0, sa1, d, len: INTEGER;
