@@ -26,7 +26,7 @@ MODULE ShowPatterns;
 
 *)
 
-  IMPORT SYSTEM, Display, Texts, Oberon;
+  IMPORT SYSTEM, Display, Texts, Oberon, OM4D;
 
   VAR W: Texts.Writer;
   
@@ -56,6 +56,34 @@ MODULE ShowPatterns;
     
     Texts.Append(Oberon.Log, W.buf)
   END Show;
+
+  PROCEDURE Convert*;
+    VAR w, h, pbt: BYTE;
+      patadr, r, c, line: INTEGER;
+      pix: SET;
+  BEGIN
+    patadr := Display.arrow;
+    Texts.WriteString(W, "arrow := SYSTEM.ADR($");
+    SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
+    OM4D.WriteHexVLen(W, w, 2, FALSE); OM4D.WriteHexVLen(W, h, 2, FALSE); Texts.WriteLn(W);
+    FOR r := 1 TO h DO
+      (*build pattern line; w <= 32*)
+      SYSTEM.GET(patadr, pbt); INC(patadr); line := pbt;
+      IF w > 8 THEN SYSTEM.GET(patadr, pbt); INC(patadr); line := pbt*100H + line;
+        IF w > 16 THEN SYSTEM.GET(patadr, pbt); INC(patadr); line := pbt*10000H + line;
+          IF w > 24 THEN SYSTEM.GET(patadr, pbt); INC(patadr); line := pbt*1000000H + line END
+        END
+      END ;
+      FOR c := 0 TO w-1 DO
+        IF ODD(line) THEN OM4D.WriteHexVLen(W, 0FFH, 2, FALSE)
+        ELSE OM4D.WriteHexVLen(W, 0, 2, FALSE)
+        END; line := line DIV 2
+      END;
+      Texts.WriteLn(W)
+    END;
+    Texts.WriteString(W, "$);"); Texts.WriteLn(W);
+    Texts.Append(Oberon.Log, W.buf)
+  END Convert;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Show patterns 23/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)

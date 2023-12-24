@@ -526,7 +526,7 @@ MODULE ORG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler; code 
       IF x.mode = ORB.Const THEN
         IF x.a # 0 THEN Put1(Xor, y.r, y.r, -1); Put1a(And, RH-1, y.r, x.a) END ;
         x.mode := Reg; x.r := RH-1
-      ELSE DEC(RH); Put0(Ann, RH-1, x.r, y.r)
+      ELSE DEC(RH); Put0(Ann, x.r, x.r, y.r)
       END
     END
   END Set;

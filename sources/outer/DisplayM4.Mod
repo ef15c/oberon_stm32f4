@@ -76,31 +76,31 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END ReplConst;
 
   PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
-    VAR a0, pwd, pwd2, i, j, r: INTEGER;
+    VAR a0, pwd, pwd2, i, j, r, ls, rs: INTEGER;
       w, h: BYTE; pix, mask: SET;
   BEGIN SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
     a0 := Base + (x DIV NofPixperWord)*4 + y*Span; x := x MOD NofPixperWord;
-    (* TODO a revoir*) mask := SYSTEM.VAL(SET, ASR(7FFFFFFFH, 31-x*NofBPP));
+    ls := x*NofBPP; rs := 32-ls; mask := SYSTEM.VAL(SET, ASR(7FFFFFFFH, 31-ls));
     FOR i := 1 TO h DO
       j := 0; r := w;
       SYSTEM.GET(patadr, pwd); INC(patadr, 4);
       SYSTEM.GET(a0, pix);
-      IF mode = invert THEN SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, x*NofBPP)) / pix)
-      ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, x*NofBPP)) + pix)
+      IF mode = invert THEN SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, ls)) / pix)
+      ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, ls)) + pix)
       END ; INC(j, 4); DEC(r, x);
       WHILE r >= 4 DO
         SYSTEM.GET(patadr, pwd2); INC(patadr, 4);
         SYSTEM.GET(a0+j, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0, (SYSTEM.VAL(SET, LSL(pwd2, x*NofBPP)) + SYSTEM.VAL(SET, ASR(pwd, 32-x*NofBPP)) * mask) / pix)
-        ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd2, x*NofBPP)) + SYSTEM.VAL(SET, ASR(pwd, 32-x*NofBPP)) * mask + pix)
+        IF mode = invert THEN SYSTEM.PUT(a0, (SYSTEM.VAL(SET, LSL(pwd2, ls)) + SYSTEM.VAL(SET, ASR(pwd, rs)) * mask) / pix)
+        ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd2, ls)) + SYSTEM.VAL(SET, ASR(pwd, rs)) * mask + pix)
         END;
         pwd := pwd2;
         INC(j, 4); DEC(r, NofPixperWord)
       END;
       IF r > 0 THEN (*spill over*)
         SYSTEM.GET(a0+j, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, 32-x*NofBPP)) * mask / pix)
-        ELSE SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, 32-x*NofBPP)) * mask + pix)
+        IF mode = invert THEN SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, rs)) * mask / pix)
+        ELSE SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, rs)) * mask + pix)
         END
       END;
       INC(a0, Span)
@@ -121,12 +121,12 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     sa := Base + u0*4 + sy*Span; da := Base + v0*4 + dy*Span;
     d := da - sa; n := u1 - v1;   (*displacement in words and bits*)
     len := (u2 - u0) * 4;
-    m0 := {v1 .. (NofPixperWord-1)}; m2 := {v3 .. (NofPixperWord-1)}; m3 := m0 / m2;
+    m0 := {v1 .. 31}; m2 := {v3 .. 31}; m3 := m0 / m2;
     IF d >= 0 THEN (*copy up, scan down*) sa0 := sa + (h-1)*Span; end := sa-Span; step := -Span
     ELSE (*copy down, scan up*) sa0 := sa; end := sa + h*Span; step := Span
     END ;
     WHILE sa0 # end DO
-      IF n >= 0 THEN (*shift right*) m1 := {n .. (NofPixperWord-1)};
+      IF n >= 0 THEN (*shift right*) m1 := {n .. 31};
         IF v1 + w >= NofPixperWord THEN
           SYSTEM.GET(sa0+len, src); src := ROR(src, n);
           SYSTEM.GET(sa0+len+d, dst);
@@ -196,8 +196,25 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END ReplPattern;
 
-BEGIN (*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
-  arrow := SYSTEM.ADR($0F0F 0060 0070 0038 001C 000E 0007 8003 C101 E300 7700 3F00 1F00 3F00 7F00 FF00$);
+BEGIN 
+  arrow := SYSTEM.ADR($ 0F 0F
+     00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF
+     00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF
+     00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00
+     00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00
+     00 00 00 00 00 00 00 00 00 FF FF FF 00 00 00
+     00 00 00 00 00 00 00 00 FF FF FF 00 00 00 00
+     00 00 00 00 00 00 00 FF FF FF 00 00 00 00 00
+     FF 00 00 00 00 00 FF FF FF 00 00 00 00 00 00
+     FF FF 00 00 00 FF FF FF 00 00 00 00 00 00 00
+     FF FF FF 00 FF FF FF 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00
+    $);
+(*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
   updown := SYSTEM.ADR($080E 183C 7EFF 1818 1818 1818 FF7E3C18$);

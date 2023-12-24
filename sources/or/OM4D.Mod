@@ -10,7 +10,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
   VAR itB: ITBlockDesc;
     mnemo1: ARRAY 16, 3 OF CHAR;  (*condition mnemonics*)
   
-  PROCEDURE WriteHexVLen(VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
+  PROCEDURE WriteHexVLen*(VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
     VAR i: INTEGER; y: LONGINT;
       a: ARRAY 10 OF CHAR;
   BEGIN ASSERT(n<=10);
@@ -174,6 +174,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       OrrRegT2 = {22};
       (*T32MSK21 1101 - Rd not 1111 - Subtract SUB (register) on page A7-404*)
       SubOrCmp = {23..24, 21};
+      (*T32MSK21 0001 - - - Bitwise Bit Clear BIC (register) on page A7-210*)
+      BitwClear = {21};
 
       T32MSK211 = {4..5};
       (*T32MSK211 11 00000 Rotate Right with Extend RRX on page A7-340
@@ -341,6 +343,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       
       (*T32MSK91 000x 0000 Logical Shift Left LSL (register) on page A7-283*)
       LslReg = {};
+      (*T32MSK91 010x 0000 Arithmetic Shift Right ASR (register) on page A7-204*)
+      AsrReg = {22};
       
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
@@ -386,6 +390,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       AdcT1 = {8, 6};
       (*T16MSK22 0110 Subtract with Carry SBC (register) on page A7-347*)
       SbcT1 = {7..8};
+      (*T16MSK22 0010 Logical Shift Left LSL (register) on page A7-283*)
+      LslT1 = {7};
+      (*T16MSK22 0100 Arithmetic Shift Right ASR (register) on page A7-204*)
+      AsrT1 = {8};
       
       (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
       BrEx = {8..9};
@@ -836,6 +844,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteOp(W, op, "SUB", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
           END
+        ELSIF op*T32MSK21 = BitwClear THEN
+          (*T32MSK21 0001 - - - Bitwise Bit Clear BIC (register) on page A7-210*)
+          (*BIC{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
+            WriteOp(W, op, "BIC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
+            WriteShift(W, op)
         ELSE Texts.WriteString(W, "TODO other DataProcShiftedReg on page A5-150")
         END
       ELSIF op*T32MSK8 = LongMulAccDiv THEN
@@ -854,12 +867,16 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK9 = DataProcReg THEN
         (*T32MSK9 11 010xxxx x Data processing (register) on page A5-152*)
+        Rd := b3 MOD OM4A.C4; Rn := b2 MOD OM4A.C4; Rm := b4 MOD OM4A.C4;
         IF op*T32MSK91 = LslReg THEN
           (*T32MSK91 000x 0000 Logical Shift Left LSL (register) on page A7-283*)
           (*LSL{S}<c>.W <Rd>,<Rn>,<Rm>*)
-          Rd := b3 MOD OM4A.C4; Rn := b2 MOD OM4A.C4; Rm := b4 MOD OM4A.C4;
-          WriteOp(W, op, "LSL", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
-        ELSE Texts.WriteString(W, "TODO other DataProcReg")
+          WriteOp(W, op, "LSL", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm)
+        ELSIF op*T32MSK91 = AsrReg THEN
+          (*T32MSK91 010x 0000 Arithmetic Shift Right ASR (register) on page A7-204*)
+          (*ASR{S}<c>.W <Rd>,<Rn>,<Rm>*)
+          WriteOp(W, op, "ASR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm)
+        ELSE Texts.WriteString(W, "TODO other DataProcReg on page A5-152")
         END
       ELSE Texts.WriteString(W, "TODO other 32-bit thumb instruction")
       END
@@ -943,6 +960,18 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             SBC<c> <Rdn>,<Rm> Inside IT block.*)
           Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
           WriteOp(W, op, "SBC", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm)
+        ELSIF op*T16MSK22 = LslT1 THEN
+          (*T16MSK22 0010 Logical Shift Left LSL (register) on page A7-283*)
+          (*LSLS <Rdn>,<Rm> Outside IT block.
+            LSL<c> <Rdn>,<Rm> Inside IT block.*)
+          Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+          WriteOp(W, op, "LSL", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm)
+        ELSIF op*T16MSK22 = AsrT1 THEN
+          (*T16MSK22 0100 Arithmetic Shift Right ASR (register) on page A7-204*)
+          (*ASRS <Rdn>,<Rm> Outside IT block.
+            ASR<c> <Rdn>,<Rm> Inside IT block.*)
+          Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
+          WriteOp(W, op, "ASR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSE Texts.WriteString(W, "TODO: other DataProc on page A5-131")
         END
       ELSIF op*T16MSK4 = Misc16bInst THEN
