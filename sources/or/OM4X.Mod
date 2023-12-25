@@ -31,6 +31,13 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     REPEAT DEC(i); Files.Write(R, a[i]) UNTIL i = 0 ;
   END WriteHex;
 
+  PROCEDURE WriteHexWord(VAR R: Files.Rider; w: INTEGER);  (*write a word in 8 digit hex format*)
+    VAR i: INTEGER; b: ARRAY 4 OF BYTE;
+  BEGIN
+    FOR i := 0 TO 3 DO b[i] := w MOD 100H; w := w DIV 100H END;
+    FOR i := 3 TO 0 BY -1 DO WriteHex(R, b[i]) END
+  END WriteHexWord;
+  
   PROCEDURE WriteString(VAR R: Files.Rider; x: ARRAY OF CHAR);  (*write a string without trailing null character*)
     VAR i: INTEGER;
   BEGIN i := 0;
@@ -192,9 +199,6 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
         IF f # NIL THEN
           IF Files.Length(f) > 0 THEN
             g := Files.New(S.s); Files.Set(Rf, f, 0); Files.Set(Rg, g, 0);
-            name := S.s;
-            i := 0; WHILE (name[i] # 0X) & (name[i] # ".") DO INC(i) END; name[i] := 0X;
-            
             WriteString(Rg,"  .syntax unified"); Files.Write(Rg, CR);
             WriteString(Rg,"  .cpu cortex-m4"); Files.Write(Rg, CR);
             WriteString(Rg,"  .thumb"); Files.Write(Rg, CR);
@@ -222,6 +226,51 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     IF res = -1 THEN Texts.WriteString(W, "Usage: OM4X.WriteASM M.m4c M.s") END ;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END WriteASM;
+
+  PROCEDURE WritePreLinkedASM*;  (*write pre-linked (.bin) in assembly format to output file*)
+    VAR f, g: Files.File; Rf, Rg: Files.Rider;
+      base, i: INTEGER;
+      b: BYTE;
+      name: ARRAY 32 OF CHAR;
+      S: Texts.Scanner;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
+    IF S.class = Texts.Name THEN name := S.s; Texts.Scan(S);
+      IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteASM "); res := -2;
+        Texts.WriteString(W, name); Texts.Write(W, " "); Texts.WriteString(W, S.s);
+        f := Files.Old(name);
+        IF f # NIL THEN
+          Files.Set(Rf, f, 8); Files.ReadInt(Rf, base);
+          IF Files.Length(f) > 0 THEN
+            res := noerr;
+            g := Files.New(S.s); Files.Set(Rf, f, 0); Files.Set(Rg, g, 0);
+            name := S.s;
+            i := 0; WHILE (name[i] # 0X) & (name[i] # ".") DO INC(i) END; name[i] := 0X;
+            
+            WriteString(Rg,"  .syntax unified"); Files.Write(Rg, CR);
+            WriteString(Rg,"  .cpu cortex-m4"); Files.Write(Rg, CR);
+            WriteString(Rg,"  .thumb"); Files.Write(Rg, CR);
+            Files.Write(Rg, CR);
+            WriteString(Rg,"  .section .SDRamFunc"); Files.Write(Rg, CR);
+            WriteString(Rg,"  .org 0x"); WriteHexWord(Rg, base); Files.Write(Rg, CR);
+            Files.Write(Rg, CR);
+            
+            i := 0; Files.ReadByte(Rf, b);
+            WHILE ~Rf.eof DO
+              IF i MOD 16 = 0 THEN Files.Write(Rg, CR); WriteString(Rg, "  .byte") ELSE Files.Write(Rg, ",") END;
+              WriteString(Rg,"  0x"); WriteHex(Rg, b); INC(i); Files.ReadByte(Rf, b);
+            END; Files.Write(Rg, CR); 
+            Files.Write(Rg, CR); WriteString(Rg,"  // End of pre-linked file."); Files.Write(Rg, CR);
+            
+            Texts.WriteInt(W, i, 6); Texts.WriteString(W, "  done"); Files.Register(g)
+          ELSE Texts.WriteString(W, "  input file empty")
+          END
+        ELSE Texts.WriteString(W, "  input file not found")
+        END
+      END
+    END ;
+    IF res = -1 THEN Texts.WriteString(W, "Usage: OM4X.WriteASM M.bin M.s") END ;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END WritePreLinkedASM;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 boot converter CS 11/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
