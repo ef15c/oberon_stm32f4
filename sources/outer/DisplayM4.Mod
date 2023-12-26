@@ -75,38 +75,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END ReplConst;
 
-(*  PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
-    VAR a0, pwd, pwd2, i, j, r, ls, rs: INTEGER;
-      w, h: BYTE; pix, mask: SET;
-  BEGIN SYSTEM.GET(patadr, pwd); w := pwd MOD 100H; h := pwd DIV 10000H MOD 100H; INC(patadr, 4);
-    a0 := Base + (x DIV NofPixperWord)*4 + y*Span; x := x MOD NofPixperWord;
-    ls := x*NofBPP; rs := 32-ls; mask := SYSTEM.VAL(SET, ASR(7FFFFFFFH, 31-ls));
-    FOR i := 1 TO h DO
-      j := 0; r := w;
-      SYSTEM.GET(patadr, pwd); INC(patadr, 4);
-      SYSTEM.GET(a0, pix);
-      IF mode = invert THEN SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, ls)) / pix)
-      ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, ls)) + pix)
-      END ; INC(j, 4); DEC(r, NofPixperWord-x);
-      WHILE r >= 4 DO
-        SYSTEM.GET(patadr, pwd2); INC(patadr, 4);
-        SYSTEM.GET(a0+j, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0+j, (SYSTEM.VAL(SET, LSL(pwd2, ls)) + SYSTEM.VAL(SET, ASR(pwd, rs)) * mask) / pix)
-        ELSE SYSTEM.PUT(a0+j+4, SYSTEM.VAL(SET, LSL(pwd2, ls)) + SYSTEM.VAL(SET, ASR(pwd, rs)) * mask + pix)
-        END;
-        pwd := pwd2;
-        INC(j, 4); DEC(r, NofPixperWord)
-      END;
-      IF r > 0 THEN (*spill over*)
-        SYSTEM.GET(a0+j, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0+j, SYSTEM.VAL(SET, ASR(pwd, rs)) * mask / pix)
-        ELSE SYSTEM.PUT(a0+j+4, SYSTEM.VAL(SET, ASR(pwd, rs)) * mask + pix)
-        END
-      END;
-      INC(a0, Span)
-    END
-  END CopyPattern;*)
-
   PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
     VAR a0, i, j: INTEGER; line: ARRAY 32 DIV NofPixperWord + 1 OF SET;
       w, h: BYTE; ps, psn, last: INTEGER;
@@ -116,13 +84,13 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       (*build frame buffer line w<32*)
       last := (w+x+3) DIV 4 - 1;
       FOR j := 0 TO last DO SYSTEM.GET(a0+j*4, line[j]) END;
-      IF x # 0 THEN (*pattern and frame buffer are aligned*)
+      IF x = 0 THEN (*pattern and frame buffer are aligned*)
         FOR j := 0 TO last DO
           SYSTEM.GET(patadr, ps); INC(patadr, 4);
           IF mode = invert THEN line[j] := line[j] / SYSTEM.VAL(SET, ps)
           ELSE line[j] := line[j] + SYSTEM.VAL(SET, ps) END
         END
-      ELSE(*pattern must be right shifted by x pixels. Because of little endianess of
+      ELSE(*pattern must be right shifted by x pixels. Because of little endianness of
             STMF429 processor, words have to be left shifted by x*NofBPP*)
         SYSTEM.GET(patadr, ps); INC(patadr, 4);
         IF mode = invert THEN line[0] := line[0] / SYSTEM.VAL(SET, LSL(ps, x*NofBPP))
@@ -273,7 +241,7 @@ BEGIN
      FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00$);
+     FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
   (*Pour test uniquement*)
   test1;
 (*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
