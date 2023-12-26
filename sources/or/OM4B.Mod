@@ -399,6 +399,7 @@ BEGIN
   enter("ROR", SFunc, intType, 92);
   enter("ASR", SFunc, intType, 82);
   enter("LSL", SFunc, intType, 72);
+  enter("LSR", SFunc, intType, 102);
   enter("LEN", SFunc, intType, 61);
   enter("CHR", SFunc, charType, 51);
   enter("ORD", SFunc, intType, 41);

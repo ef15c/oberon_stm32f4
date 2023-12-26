@@ -176,6 +176,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       SubOrCmp = {23..24, 21};
       (*T32MSK21 0001 - - - Bitwise Bit Clear BIC (register) on page A7-210*)
       BitwClear = {21};
+      (*T32MSK21 0100 - Rd not 1111 - Bitwise Exclusive OR EOR (register) on page A7-233*)
+      (*EorOrTeq = {23}; same as below*)
 
       T32MSK211 = {4..5};
       (*T32MSK211 11 00000 Rotate Right with Extend RRX on page A7-340
@@ -345,6 +347,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       LslReg = {};
       (*T32MSK91 010x 0000 Arithmetic Shift Right ASR (register) on page A7-204*)
       AsrReg = {22};
+      (*T32MSK91 001x 0000 Logical Shift Right LSR (register) on page A7-285*)
+      LsrReg = {21};
       
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
@@ -849,6 +853,19 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*BIC{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
             WriteOp(W, op, "BIC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
+        ELSIF op*T32MSK21 = EorOrTeq THEN
+          Rm := b4 MOD OM4A.C4;
+          IF Rd = 15 THEN
+            IF 20 IN op THEN
+              (*T32MSK21 0100 - Rd = 1111 1 Test Equivalence TEQ (register) on page A7-418*) 
+              WriteOp(W, op, "TEQ", FALSE, FALSE); WriteReg(W, Rn); WriteReg(W, Rm); WriteShift(W, op)
+            ELSE Texts.WriteString(W, "TEQ (register) NOT PREDICTABLE")
+            END
+          ELSE
+            (*T32MSK21 0100 - Rd not 1111 - Bitwise Exclusive OR EOR (register) on page A7-233*)
+            WriteOp(W, op, "EOR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
+            WriteShift(W, op)
+          END
         ELSE Texts.WriteString(W, "TODO other DataProcShiftedReg on page A5-150")
         END
       ELSIF op*T32MSK8 = LongMulAccDiv THEN
@@ -876,6 +893,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T32MSK91 010x 0000 Arithmetic Shift Right ASR (register) on page A7-204*)
           (*ASR{S}<c>.W <Rd>,<Rn>,<Rm>*)
           WriteOp(W, op, "ASR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm)
+        ELSIF op*T32MSK91 = LsrReg THEN
+          (*T32MSK91 001x 0000 Logical Shift Right LSR (register) on page A7-285*)
+          (*LSR{S}<c>.W <Rd>,<Rn>,<Rm>*)
+          WriteOp(W, op, "LSR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm)
         ELSE Texts.WriteString(W, "TODO other DataProcReg on page A5-152")
         END
       ELSE Texts.WriteString(W, "TODO other 32-bit thumb instruction")
