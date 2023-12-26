@@ -18,7 +18,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   VAR arrow*, star*, hook*, updown*, block*, cross*, grey*: INTEGER;
     (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
-
+    
   PROCEDURE Handle*(F: Frame; VAR M: FrameMsg);
   BEGIN
     IF (F # NIL) & (F.handle # NIL) THEN F.handle(F, M) END
@@ -75,10 +75,10 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END ReplConst;
 
-  PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
+(*  PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
     VAR a0, pwd, pwd2, i, j, r, ls, rs: INTEGER;
       w, h: BYTE; pix, mask: SET;
-  BEGIN SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
+  BEGIN SYSTEM.GET(patadr, pwd); w := pwd MOD 100H; h := pwd DIV 10000H MOD 100H; INC(patadr, 4);
     a0 := Base + (x DIV NofPixperWord)*4 + y*Span; x := x MOD NofPixperWord;
     ls := x*NofBPP; rs := 32-ls; mask := SYSTEM.VAL(SET, ASR(7FFFFFFFH, 31-ls));
     FOR i := 1 TO h DO
@@ -87,23 +87,39 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       SYSTEM.GET(a0, pix);
       IF mode = invert THEN SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, ls)) / pix)
       ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd, ls)) + pix)
-      END ; INC(j, 4); DEC(r, x);
+      END ; INC(j, 4); DEC(r, NofPixperWord-x);
       WHILE r >= 4 DO
         SYSTEM.GET(patadr, pwd2); INC(patadr, 4);
         SYSTEM.GET(a0+j, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0, (SYSTEM.VAL(SET, LSL(pwd2, ls)) + SYSTEM.VAL(SET, ASR(pwd, rs)) * mask) / pix)
-        ELSE SYSTEM.PUT(a0, SYSTEM.VAL(SET, LSL(pwd2, ls)) + SYSTEM.VAL(SET, ASR(pwd, rs)) * mask + pix)
+        IF mode = invert THEN SYSTEM.PUT(a0+j, (SYSTEM.VAL(SET, LSL(pwd2, ls)) + SYSTEM.VAL(SET, ASR(pwd, rs)) * mask) / pix)
+        ELSE SYSTEM.PUT(a0+j+4, SYSTEM.VAL(SET, LSL(pwd2, ls)) + SYSTEM.VAL(SET, ASR(pwd, rs)) * mask + pix)
         END;
         pwd := pwd2;
         INC(j, 4); DEC(r, NofPixperWord)
       END;
       IF r > 0 THEN (*spill over*)
         SYSTEM.GET(a0+j, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, rs)) * mask / pix)
-        ELSE SYSTEM.PUT(a0+4, SYSTEM.VAL(SET, ASR(pwd, rs)) * mask + pix)
+        IF mode = invert THEN SYSTEM.PUT(a0+j, SYSTEM.VAL(SET, ASR(pwd, rs)) * mask / pix)
+        ELSE SYSTEM.PUT(a0+j+4, SYSTEM.VAL(SET, ASR(pwd, rs)) * mask + pix)
         END
       END;
       INC(a0, Span)
+    END
+  END CopyPattern;*)
+
+  PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
+    VAR a0, i, j: INTEGER;
+      w, h, ps, pd: BYTE; pixs, pixd: SET;
+  BEGIN SYSTEM.GET(patadr, i); w := i MOD 100H; h := i DIV 10000H MOD 100H; INC(patadr, 4);
+    a0 := Base + x + (Height-1-y)*Span;
+    FOR i := 1 TO h DO
+      FOR j := 0 TO w-1 DO
+        SYSTEM.GET(patadr, ps); INC(patadr); SYSTEM.GET(a0+j, pd);
+        pixs := SYSTEM.VAL(SET, 0+ps); pixd := SYSTEM.VAL(SET, 0+pd);
+        IF mode = invert THEN pixd := pixd / pixs ELSE pixd := pixs + pixs END ;
+        pd := ORD(pixd); SYSTEM.PUT(a0+j, pd)
+      END;
+      patadr := (patadr+3) DIV 4*4; DEC(a0, Span)
     END
   END CopyPattern;
 
@@ -196,24 +212,36 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END ReplPattern;
 
+  PROCEDURE test;
+    VAR x, y: INTEGER;
+  BEGIN
+    FOR y := 0 TO Height-1 - 15 DO
+      FOR x := 0 TO Width-1 - 15 DO     
+        CopyPattern(white, arrow, x, y, invert);
+        CopyPattern(white, arrow, x, y, invert)
+      END
+    END
+  END test;
+  
 BEGIN 
-  arrow := SYSTEM.ADR($ 0F 0F
-     00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF
-     00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF
-     00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00
-     00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00
-     00 00 00 00 00 00 00 00 00 FF FF FF 00 00 00
-     00 00 00 00 00 00 00 00 FF FF FF 00 00 00 00
-     00 00 00 00 00 00 00 FF FF FF 00 00 00 00 00
-     FF 00 00 00 00 00 FF FF FF 00 00 00 00 00 00
-     FF FF 00 00 00 FF FF FF 00 00 00 00 00 00 00
-     FF FF FF 00 FF FF FF 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00
-    $);
+  arrow := SYSTEM.ADR($ 0F00 0F00
+     00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
+     00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00
+     00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00
+     00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00 00
+     00 00 00 00 00 00 00 00 00 FF FF FF 00 00 00 00
+     00 00 00 00 00 00 00 00 FF FF FF 00 00 00 00 00
+     00 00 00 00 00 00 00 FF FF FF 00 00 00 00 00 00
+     FF 00 00 00 00 00 FF FF FF 00 00 00 00 00 00 00
+     FF FF 00 00 00 FF FF FF 00 00 00 00 00 00 00 00
+     FF FF FF 00 FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00$);
+  (*Pour test uniquement*)
+  test;
 (*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);

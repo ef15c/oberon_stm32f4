@@ -246,12 +246,16 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
             name := S.s;
             i := 0; WHILE (name[i] # 0X) & (name[i] # ".") DO INC(i) END; name[i] := 0X;
             
-            WriteString(Rg,"  .syntax unified"); Files.Write(Rg, CR);
-            WriteString(Rg,"  .cpu cortex-m4"); Files.Write(Rg, CR);
-            WriteString(Rg,"  .thumb"); Files.Write(Rg, CR);
+            WriteString(Rg, "  .syntax unified"); Files.Write(Rg, CR);
+            WriteString(Rg, "  .cpu cortex-m4"); Files.Write(Rg, CR);
+            WriteString(Rg, "  .thumb"); Files.Write(Rg, CR);
             Files.Write(Rg, CR);
-            WriteString(Rg,"  .section .SDRamFunc"); Files.Write(Rg, CR);
-            WriteString(Rg,"  .org 0x"); WriteHexWord(Rg, base); Files.Write(Rg, CR);
+            WriteString(Rg, "  .section .SDRamFunc,"); Files.Write(Rg, 22X);
+            WriteString(Rg, "ax"); Files.Write(Rg, 22X); WriteString(Rg, ",%progbits");
+            Files.Write(Rg, CR); Files.Write(Rg, CR);
+            WriteString(Rg,"  .global "); WriteString(Rg, name); Files.Write(Rg, CR);
+            WriteString(Rg,"  .thumb_func"); Files.Write(Rg, CR);
+            WriteString(Rg, name); WriteString(Rg, ":"); Files.Write(Rg, CR);
             Files.Write(Rg, CR);
             
             i := 0; Files.ReadByte(Rf, b);
