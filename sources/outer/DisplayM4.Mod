@@ -27,7 +27,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   (* raster ops *)
   PROCEDURE Dot*(col, x, y, mode: INTEGER);
     VAR a, pp: INTEGER; u, s: SET;
-  BEGIN a := Base + (x DIV NofPixperWord)*4 + y*Span; pp := x MOD NofPixperWord*NofBPP;
+  BEGIN a := Base + x DIV NofPixperWord*4 + (Height-1-y)*Span; pp := x MOD NofPixperWord*NofBPP;
     s := {pp .. pp+NofBPP-1}; SYSTEM.GET(a, u);
     IF mode = paint THEN SYSTEM.PUT(a, u + s)
     ELSIF mode = invert THEN SYSTEM.PUT(a, u / s)
@@ -38,9 +38,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   PROCEDURE ReplConst*(col, x, y, w, h, mode: INTEGER);
     VAR al, ar, a0, a1, i, ppl, ppr: INTEGER; left, right, mid, pix, pixl, pixr: SET;
-  BEGIN al := Base + y*Span;
-    ar := ((x+w-1) DIV NofPixperWord)*4 + al; al := (x DIV NofPixperWord)*4 + al;
-    ppl := x MOD NofPixperWord*NofBPP; ppr := x+w-1 MOD NofPixperWord*NofBPP;
+  BEGIN al := Base + (Height-1-y)*Span;
+    ar := (x+w-1) DIV NofPixperWord*4 + al; al := x DIV NofPixperWord*4 + al;
+    ppl := x MOD NofPixperWord*NofBPP; ppr := (x+w-1) MOD NofPixperWord*NofBPP;
     IF ar = al THEN
       mid := {ppl .. ppr+NofBPP-1};
       a1 := al;
@@ -50,7 +50,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         ELSIF (mode = replace) & (col = black) THEN (*erase*) SYSTEM.PUT(a1, pix - mid)
         ELSE (* (mode = paint) OR (mode = replace) & (col # black) *) SYSTEM.PUT(a1, pix + mid)
         END;
-        INC(a1, Span)
+        DEC(a1, Span)
       END
     ELSIF ar > al THEN
       left := {ppl .. 31}; right := {0 .. ppr+NofBPP-1};
@@ -70,7 +70,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
           FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, {0 .. 31}) END ;
           SYSTEM.PUT(ar, pixr + right)
         END ;
-        INC(ar, Span); INC(a0, Span)
+        DEC(ar, Span); DEC(a0, Span)
       END
     END
   END ReplConst;
@@ -233,6 +233,22 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END test2;
   
+  PROCEDURE test3;
+    VAR x, y: INTEGER;
+  BEGIN
+    Dot(white, 0, 0, paint);
+    Dot(white, 1, 20, paint);
+    Dot(white, 2, 40, paint);
+    Dot(white, 3, 60, paint)
+  END test3;
+  
+  PROCEDURE test4;
+    VAR x, y: INTEGER;
+  BEGIN
+    ReplConst(white, 100, 100, 200, 200, invert);
+    ReplConst(white, 350, 350, 200, 200, invert);
+  END test4;
+  
 BEGIN 
   arrow := SYSTEM.ADR($ 0F00 0F00
      00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
@@ -251,7 +267,7 @@ BEGIN
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
   (*Pour test uniquement*)
-  test1; test2;
+  test1; test3; test4;
 (*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
