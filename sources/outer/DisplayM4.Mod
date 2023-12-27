@@ -75,11 +75,12 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END ReplConst;
 
+(*
   PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
     VAR a0, i, j: INTEGER; line: ARRAY 32 DIV NofPixperWord + 1 OF SET;
       w, h: BYTE; ps, psn, last: INTEGER;
   BEGIN SYSTEM.GET(patadr, i); w := i MOD 100H; h := i DIV 10000H MOD 100H; INC(patadr, 4);
-    a0 := Base + x + (Height-1-y)*Span; x := x MOD NofPixperWord;
+    a0 := Base + x DIV NofPixperWord*4 + (Height-1-y)*Span; x := x MOD NofPixperWord;
     FOR i := 1 TO h DO
       (*build frame buffer line w<32*)
       last := (w+x+3) DIV 4 - 1;
@@ -116,7 +117,13 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       DEC(a0, Span)
     END
   END CopyPattern;
-
+*)
+  PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
+  BEGIN
+    SYSTEM.LDREG(0, col); SYSTEM.LDREG(1, patadr);
+    SYSTEM.LDREG(2, x*10000H+y); SYSTEM.LDREG(3, mode);
+    col := SYSTEM.SVC(6)
+  END CopyPattern;
 (******TODO j'en suis la*******)
 
   PROCEDURE CopyBlock*(sx, sy, w, h, dx, dy, mode: INTEGER); (*only for mode = replace*)
@@ -244,7 +251,7 @@ BEGIN
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
   (*Pour test uniquement*)
-  test2;
+  test1; test2;
 (*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
