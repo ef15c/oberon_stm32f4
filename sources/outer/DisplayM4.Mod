@@ -99,14 +99,14 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         j := 1;
         WHILE j < (w+3) DIV 4 DO
           SYSTEM.GET(patadr, psn); INC(patadr, 4);
-          ps := LSR(ps, NofPixperWord - x) + LSL(psn, x*NofBPP);
+          ps := LSR(ps, (NofPixperWord - x)*NofBPP) + LSL(psn, x*NofBPP);
           IF mode = invert THEN line[j] := line[j] / SYSTEM.VAL(SET, ps)
           ELSE line[j] := line[j] + SYSTEM.VAL(SET, ps) END;
           ps := psn; INC(j)
         END;
         IF j <= last THEN
           (*process last word*)
-          ps := LSR(ps, NofPixperWord - x);
+          ps := LSR(ps, (NofPixperWord - x)*NofBPP);
           IF mode = invert THEN line[j] := line[j] / SYSTEM.VAL(SET, ps)
           ELSE line[j] := line[j] + SYSTEM.VAL(SET, ps) END
         END
@@ -210,8 +210,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     VAR x, y: INTEGER;
   BEGIN
     CopyPattern(white, arrow, 0, 0, paint);
-    CopyPattern(white, arrow, 50, 50, paint);
-    CopyPattern(white, arrow, 100, 100, paint)
+    CopyPattern(white, arrow, 1, 20, paint);
+    CopyPattern(white, arrow, 2, 40, paint);
+    CopyPattern(white, arrow, 3, 60, paint)
   END test1;
   
   PROCEDURE test2;
@@ -243,7 +244,7 @@ BEGIN
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
   (*Pour test uniquement*)
-  test1;
+  test2;
 (*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
