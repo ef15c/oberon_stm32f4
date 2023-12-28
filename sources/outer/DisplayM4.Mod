@@ -124,7 +124,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     SYSTEM.LDREG(2, x*10000H+y); SYSTEM.LDREG(3, mode);
     col := SYSTEM.SVC(6)
   END CopyPattern;
-(******TODO j'en suis la*******)
 
   PROCEDURE CopyBlock*(sx, sy, w, h, dx, dy, mode: INTEGER); (*only for mode = replace*)
     VAR sa, da, sa0, sa1, d, len: INTEGER;
@@ -135,45 +134,45 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   BEGIN
     u0 := sx DIV NofPixperWord; u1 := sx MOD NofPixperWord; u2 := (sx+w) DIV NofPixperWord; u3 := (sx+w) MOD NofPixperWord;
     v0 := dx DIV NofPixperWord; v1 := dx MOD NofPixperWord; v2 := (dx+w) DIV NofPixperWord; v3 := (dx+w) MOD NofPixperWord;
-    sa := Base + u0*4 + sy*Span; da := Base + v0*4 + dy*Span;
-    d := da - sa; n := u1 - v1;   (*displacement in words and bits*)
+    sa := Base + u0*4 + (Height-1-sy)*Span; da := Base + v0*4 + (Height-1-dy)*Span;
+    d := da - sa; n := u1 - v1;   (*displacement in words and pixels*)
     len := (u2 - u0) * 4;
-    m0 := {v1 .. 31}; m2 := {v3 .. 31}; m3 := m0 / m2;
-    IF d >= 0 THEN (*copy up, scan down*) sa0 := sa + (h-1)*Span; end := sa-Span; step := -Span
-    ELSE (*copy down, scan up*) sa0 := sa; end := sa + h*Span; step := Span
+    m0 := {v1*NofBPP .. 31}; m2 := {v3*NofBPP .. 31}; m3 := m0 / m2;
+    IF d >= 0 THEN (*copy down, scan up*) sa0 := sa; end := sa - h*Span; step := -Span
+    ELSE (*copy up, scan down*) sa0 := sa - (h-1)*Span; end := sa + Span; step := Span
     END ;
     WHILE sa0 # end DO
-      IF n >= 0 THEN (*shift right*) m1 := {n .. 31};
-        IF v1 + w >= NofPixperWord THEN
-          SYSTEM.GET(sa0+len, src); src := ROR(src, n);
+      IF n >= 0 THEN (*shift right*) m1 := {n*NofBPP .. 31};
+        IF v1*NofBPP + w >= 32 THEN
+          SYSTEM.GET(sa0+len, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+len+d, dst);
           SYSTEM.PUT(sa0+len+d, (dst * m2) + (src - m2));
           spill := src - m1;
           FOR sa1 := sa0 + len-4 TO sa0+4  BY -4 DO
-            SYSTEM.GET(sa1, src); src := ROR(src, n);
+            SYSTEM.GET(sa1, src); src := ROR(src, n*NofBPP);
             SYSTEM.PUT(sa1+d, spill + (src * m1));
             spill := src - m1
           END ;
-          SYSTEM.GET(sa0, src); src := ROR(src, n);
+          SYSTEM.GET(sa0, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+d, dst);
           SYSTEM.PUT(sa0+d, (src * m0) + (dst - m0))
-        ELSE SYSTEM.GET(sa0, src); src := ROR(src, n);
+        ELSE SYSTEM.GET(sa0, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+d, dst);
           SYSTEM.PUT(sa0+d, (src * m3) + (dst - m3))
         END
-      ELSE (*shift left*) m1 := {-n .. (NofPixperWord-1)};
-        SYSTEM.GET(sa0, src); src := ROR(src, n);
+      ELSE (*shift left*) m1 := {-n*NofBPP .. 31};
+        SYSTEM.GET(sa0, src); src := ROR(src, 32+n*NofBPP);
         SYSTEM.GET(sa0+d, dst);
-        IF v1 + w < NofPixperWord THEN
+        IF v1*NofBPP + w < 32 THEN
           SYSTEM.PUT(sa0+d, (dst - m3) + (src * m3))
         ELSE SYSTEM.PUT(sa0+d, (dst - m0) + (src * m0));
           spill := src - m1;
           FOR sa1 := sa0+4 TO sa0 + len-4 BY 4 DO
-            SYSTEM.GET(sa1, src); src := ROR(src, n);
+            SYSTEM.GET(sa1, src); src := ROR(src, 32+n*NofBPP);
             SYSTEM.PUT(sa1+d, spill + (src * m1));
             spill := src - m1
           END ;
-          SYSTEM.GET(sa0+len, src); src := ROR(src, n);
+          SYSTEM.GET(sa0+len, src); src := ROR(src, 32+n*NofBPP);
           SYSTEM.GET(sa0+len+d, dst);
           SYSTEM.PUT(sa0+len+d, (src - m2) + (dst * m2))
         END
@@ -181,6 +180,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       INC(sa0, step)
     END
   END CopyBlock;
+(******TODO j'en suis la*******)
 
   PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
   (* pattern width = 32, fixed; pattern starts at patadr+4, for mode = invert only *)
@@ -200,7 +200,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         INC(a1, Span);
       END
     ELSIF ar > al THEN
-      left := {(x MOD NofPixperWord) .. (NofPixperWord-1)}; right := {0 .. ((x+w-1) MOD NofPixperWord)};
+      left := {(x MOD NofPixperWord) .. 31}; right := {0 .. ((x+w-1) MOD NofPixperWord)};
       a0 := al;
       FOR i := 1 TO h DO
         SYSTEM.GET(a0, pixl); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a0, (pixl - left) + (pixl/ptw * left));
@@ -247,7 +247,15 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   BEGIN
     ReplConst(white, 100, 100, 200, 200, invert);
     ReplConst(white, 350, 350, 200, 200, invert);
+    ReplConst(white, 2, 400, 1, 20, paint);
   END test4;
+  
+  PROCEDURE test5;
+    VAR x, y: INTEGER;
+  BEGIN
+    CopyBlock(400, 400, 100, 200, 600, 600, replace);
+    CopyBlock(0, 0, 18, 75, 19, 76, replace);
+  END test5;
   
 BEGIN 
   arrow := SYSTEM.ADR($ 0F00 0F00
