@@ -132,6 +132,12 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       src, dst, spill: SET;
       m0, m1, m2, m3: SET;
   BEGIN
+    ASSERT((w >= 0) & (h >= 0));
+    ASSERT((sx >= 0) & (sx+w < Width));
+    ASSERT((sy >= 0) & (sy+h < Height));
+    ASSERT((dx >= 0) & (dx+w < Width));
+    ASSERT((dy >= 0) & (dy+h < Height));
+    
     u0 := sx DIV NofPixperWord; u1 := sx MOD NofPixperWord; u2 := (sx+w) DIV NofPixperWord; u3 := (sx+w) MOD NofPixperWord;
     v0 := dx DIV NofPixperWord; v1 := dx MOD NofPixperWord; v2 := (dx+w) DIV NofPixperWord; v3 := (dx+w) MOD NofPixperWord;
     sa := Base + u0*4 + (Height-1-sy)*Span; da := Base + v0*4 + (Height-1-dy)*Span;
@@ -143,7 +149,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END ;
     WHILE sa0 # end DO
       IF n >= 0 THEN (*shift right*) m1 := {n*NofBPP .. 31};
-        IF v1*NofBPP + w >= 32 THEN
+        IF v1 + w >= NofPixperWord THEN
           SYSTEM.GET(sa0+len, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+len+d, dst);
           SYSTEM.PUT(sa0+len+d, (dst * m2) + (src - m2));
@@ -161,20 +167,21 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
           SYSTEM.PUT(sa0+d, (src * m3) + (dst - m3))
         END
       ELSE (*shift left*) m1 := {-n*NofBPP .. 31};
-        SYSTEM.GET(sa0, src); src := ROR(src, 32+n*NofBPP);
+        SYSTEM.GET(sa0, src); src := ROR(src, 32-n*NofBPP);
         SYSTEM.GET(sa0+d, dst);
-        IF v1*NofBPP + w < 32 THEN
+        IF v1 + w < NofPixperWord THEN
           SYSTEM.PUT(sa0+d, (dst - m3) + (src * m3))
         ELSE SYSTEM.PUT(sa0+d, (dst - m0) + (src * m0));
           spill := src - m1;
-          FOR sa1 := sa0+4 TO sa0 + len-4 BY 4 DO
-            SYSTEM.GET(sa1, src); src := ROR(src, 32+n*NofBPP);
+          FOR sa1 := sa0+4 TO sa0 + len BY 4 DO
+            SYSTEM.GET(sa1, src); src := ROR(src, 32-n*NofBPP);
             SYSTEM.PUT(sa1+d, spill + (src * m1));
             spill := src - m1
           END ;
-          SYSTEM.GET(sa0+len, src); src := ROR(src, 32+n*NofBPP);
-          SYSTEM.GET(sa0+len+d, dst);
-          SYSTEM.PUT(sa0+len+d, (src - m2) + (dst * m2))
+          IF len+v1 > w THEN
+            SYSTEM.GET(sa0+len+d, dst);
+            SYSTEM.PUT(sa0+len+d, (spill - m2) + (dst * m2))
+          END
         END
       END ;
       INC(sa0, step)
@@ -253,8 +260,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   PROCEDURE test5;
     VAR x, y: INTEGER;
   BEGIN
-    CopyBlock(400, 400, 100, 200, 600, 600, replace);
+    CopyBlock(400, 400, 100, 200, 600, 550, replace);
     CopyBlock(0, 0, 18, 75, 19, 76, replace);
+    CopyBlock(19, 76, 18, 75, 37, 151, replace);
   END test5;
   
 BEGIN 
@@ -275,7 +283,7 @@ BEGIN
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
   (*Pour test uniquement*)
-  test1; test3; test4;
+  test1; test3; test4; test5;
 (*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
