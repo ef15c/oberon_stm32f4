@@ -6,7 +6,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   CONST black* = 0; white* = 255;  (*black = background*)
     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
     Base* = 0D0000000H; Width* = 1366; Height* = 768; NofBPP = 8;
-    NofPixperWord = 32 DIV NofBPP; Span = Width*8 DIV NofBPP;
+    NofPixperWord = 32 DIV NofBPP; Span = (Width*8 DIV NofBPP+3) DIV 4*4;
 
   TYPE Frame* = POINTER TO FrameDesc;
     FrameMsg* = RECORD END ;
@@ -127,7 +127,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   PROCEDURE CopyBlock*(sx, sy, w, h, dx, dy, mode: INTEGER); (*only for mode = replace*)
     VAR sa, da, sa0, sa1, d, len: INTEGER;
-      u0, u1, u2, u3, v0, v1, v2, v3, n: INTEGER;
+      u0, u1, u2, v0, v1, v3, n: INTEGER;
       end, step: INTEGER;
       src, dst, spill: SET;
       m0, m1, m2, m3: SET;
@@ -138,8 +138,8 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     ASSERT((dx >= 0) & (dx+w < Width));
     ASSERT((dy >= 0) & (dy+h < Height));
     
-    u0 := sx DIV NofPixperWord; u1 := sx MOD NofPixperWord; u2 := (sx+w) DIV NofPixperWord; u3 := (sx+w) MOD NofPixperWord;
-    v0 := dx DIV NofPixperWord; v1 := dx MOD NofPixperWord; v2 := (dx+w) DIV NofPixperWord; v3 := (dx+w) MOD NofPixperWord;
+    u0 := sx DIV NofPixperWord; u1 := sx MOD NofPixperWord; u2 := (sx+w) DIV NofPixperWord;
+    v0 := dx DIV NofPixperWord; v1 := dx MOD NofPixperWord; v3 := (dx+w) MOD NofPixperWord;
     sa := Base + u0*4 + (Height-1-sy)*Span; da := Base + v0*4 + (Height-1-dy)*Span;
     d := da - sa; n := u1 - v1;   (*displacement in words and pixels*)
     len := (u2 - u0) * 4;
@@ -153,34 +153,34 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
           SYSTEM.GET(sa0+len, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+len+d, dst);
           SYSTEM.PUT(sa0+len+d, (dst * m2) + (src - m2));
-          spill := src - m1;
+          spill := src * m1;
           FOR sa1 := sa0 + len-4 TO sa0+4  BY -4 DO
             SYSTEM.GET(sa1, src); src := ROR(src, n*NofBPP);
-            SYSTEM.PUT(sa1+d, spill + (src * m1));
-            spill := src - m1
+            SYSTEM.PUT(sa1+d, spill + (src - m1));
+            spill := src * m1
           END ;
           SYSTEM.GET(sa0, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+d, dst);
-          SYSTEM.PUT(sa0+d, (src * m0) + (dst - m0))
+          SYSTEM.PUT(sa0+d, ((spill + (src - m1)) * m0) + (dst - m0))
         ELSE SYSTEM.GET(sa0, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+d, dst);
           SYSTEM.PUT(sa0+d, (src * m3) + (dst - m3))
         END
       ELSE (*shift left*) m1 := {-n*NofBPP .. 31};
-        SYSTEM.GET(sa0, src); src := ROR(src, 32-n*NofBPP);
+        SYSTEM.GET(sa0, src); src := ROR(src, 32+n*NofBPP);
         SYSTEM.GET(sa0+d, dst);
         IF v1 + w < NofPixperWord THEN
           SYSTEM.PUT(sa0+d, (dst - m3) + (src * m3))
         ELSE SYSTEM.PUT(sa0+d, (dst - m0) + (src * m0));
           spill := src - m1;
           FOR sa1 := sa0+4 TO sa0 + len BY 4 DO
-            SYSTEM.GET(sa1, src); src := ROR(src, 32-n*NofBPP);
+            SYSTEM.GET(sa1, src); src := ROR(src, 32+n*NofBPP);
             SYSTEM.PUT(sa1+d, spill + (src * m1));
             spill := src - m1
           END ;
           IF len+v1 > w THEN
-            SYSTEM.GET(sa0+len+d, dst);
-            SYSTEM.PUT(sa0+len+d, (spill - m2) + (dst * m2))
+            SYSTEM.GET(sa0+len+4+d, dst);
+            SYSTEM.PUT(sa0+len+4+d, (spill - m2) + (dst * m2))
           END
         END
       END ;
