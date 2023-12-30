@@ -57,15 +57,17 @@ MODULE ShowPatterns;
     Texts.Append(Oberon.Log, W.buf)
   END Show;
 
-  PROCEDURE Convert*;
+  PROCEDURE Convert*(patadr: LONGINT; name: ARRAY OF CHAR);
     VAR w, h, pbt: BYTE;
-      patadr, r, c, line: INTEGER;
+      r, c, line: INTEGER;
       pix: SET;
   BEGIN
-    patadr := Display.arrow;
-    Texts.WriteString(W, "arrow := SYSTEM.ADR($");
+    Texts.WriteString(W, "  "); Texts.WriteString(W, name);
+    Texts.WriteString(W, " := SYSTEM.ADR($");
     SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
-    OM4D.WriteHexVLen(W, w, 2, FALSE); OM4D.WriteHexVLen(W, h, 2, FALSE); Texts.WriteLn(W);
+    OM4D.WriteHexVLen(W, w, 2, FALSE); Texts.WriteString(W, "00 "); 
+    OM4D.WriteHexVLen(W, h, 2, FALSE); Texts.WriteString(W, "00 "); Texts.WriteLn(W);
+    Texts.WriteString(W, "    "); 
     FOR r := 1 TO h DO
       (*build pattern line; w <= 32*)
       SYSTEM.GET(patadr, pbt); INC(patadr); line := pbt;
@@ -74,16 +76,28 @@ MODULE ShowPatterns;
           IF w > 24 THEN SYSTEM.GET(patadr, pbt); INC(patadr); line := pbt*1000000H + line END
         END
       END ;
-      FOR c := 0 TO w-1 DO
+      c := 0;
+      WHILE c <= w-1 DO
         IF ODD(line) THEN OM4D.WriteHexVLen(W, 0FFH, 2, FALSE)
         ELSE OM4D.WriteHexVLen(W, 0, 2, FALSE)
-        END; line := line DIV 2
+        END; line := line DIV 2; INC(c)
       END;
-      Texts.WriteLn(W)
+      WHILE c MOD 4 # 0 DO OM4D.WriteHexVLen(W, 0, 2, FALSE); INC(c) END;
+      IF r # h THEN Texts.WriteLn(W); Texts.WriteString(W, "    ") END
     END;
     Texts.WriteString(W, "$);"); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END Convert;
+
+  PROCEDURE ConvertAll*;
+  BEGIN Convert(Display.arrow, "arrow");
+    Convert(Display.star, "star");
+    Convert(Display.hook, "hook");
+    Convert(Display.updown, "updown");
+    Convert(Display.block, "block");
+    Convert(Display.cross, "cross");
+    Convert(Display.grey, "grey")
+  END ConvertAll;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Show patterns 23/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)

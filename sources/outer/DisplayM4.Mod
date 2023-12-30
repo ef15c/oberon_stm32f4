@@ -75,7 +75,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END ReplConst;
 
-(*
+(*Implemented in firmware
   PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
     VAR a0, i, j: INTEGER; line: ARRAY 32 DIV NofPixperWord + 1 OF SET;
       w, h: BYTE; ps, psn, last: INTEGER;
@@ -187,16 +187,18 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       INC(sa0, step)
     END
   END CopyBlock;
-(******TODO j'en suis la*******)
 
   PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
   (* pattern width = 32, fixed; pattern starts at patadr+4, for mode = invert only *)
+  BEGIN ASSERT(FALSE)
+  END ReplPattern;
+(*Seems no more used:
     VAR al, ar, a0, a1, i: INTEGER;
       pta0, pta1: INTEGER;  (*pattern addresses*)
       ph: BYTE;
       left, right, mid, pix, pixl, pixr, ptw: SET;
-  BEGIN al := Base + y*Span; SYSTEM.GET(patadr+1, ph);
-    pta0 := patadr+4; pta1 := ph*4 + pta0;
+  BEGIN al := Base + y*Span; SYSTEM.GET(patadr, i); ph := i DIV 10000H MOD 100H
+    pta0 := patadr+4; pta1 := ph*4 + pta0; (*à quoi sert pta1?????*)
     ar := ((x+w-1) DIV NofPixperWord)*4 + al; al := (x DIV NofPixperWord)*4 + al;
     IF ar = al THEN
       mid := {(x MOD NofPixperWord) .. ((x+w-1) MOD NofPixperWord)};
@@ -219,14 +221,18 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       END
     END
   END ReplPattern;
+*)
 
   PROCEDURE test1;
     VAR x, y: INTEGER;
   BEGIN
     CopyPattern(white, arrow, 0, 0, paint);
-    CopyPattern(white, arrow, 1, 20, paint);
-    CopyPattern(white, arrow, 2, 40, paint);
-    CopyPattern(white, arrow, 3, 60, paint)
+    CopyPattern(white, star, 1, 20, paint);
+    CopyPattern(white, hook, 2, 40, paint);
+    CopyPattern(white, updown, 3, 60, paint);
+    CopyPattern(white, block, 0, 80, paint);
+    CopyPattern(white, cross, 0, 100, paint);
+    CopyPattern(white, grey, 0, 300, paint)
   END test1;
   
   PROCEDURE test2;
@@ -244,8 +250,8 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     VAR x, y: INTEGER;
   BEGIN
     Dot(white, 0, 0, paint);
-    Dot(white, 1, 20, paint);
-    Dot(white, 2, 40, paint);
+    Dot(white, 4, 20, paint);
+    Dot(white, 5, 40, paint);
     Dot(white, 3, 60, paint)
   END test3;
   
@@ -283,13 +289,79 @@ BEGIN
      FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
+  star := SYSTEM.ADR($ 0F00  0F00 
+     00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00
+     00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00
+     00 00 FF 00 00 00 00 FF 00 00 00 00 FF 00 00 00
+     00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 00
+     00 00 00 00 FF 00 00 FF 00 00 FF 00 00 00 00 00
+     00 00 00 00 00 FF 00 FF 00 FF 00 00 00 00 00 00
+     00 00 00 00 00 00 FF FF FF 00 00 00 00 00 00 00
+     FF FF FF FF FF FF FF 00 FF FF FF FF FF FF FF 00
+     00 00 00 00 00 00 FF FF FF 00 00 00 00 00 00 00
+     00 00 00 00 00 FF 00 FF 00 FF 00 00 00 00 00 00
+     00 00 00 00 FF 00 00 FF 00 00 FF 00 00 00 00 00
+     00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 00
+     00 00 FF 00 00 00 00 FF 00 00 00 00 FF 00 00 00
+     00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00
+     00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00$);
+  hook := SYSTEM.ADR($ 0C00  0C00 
+     FF FF FF 00 00 00 00 00 FF FF FF FF
+     FF FF FF 00 00 00 00 FF FF FF FF 00
+     FF FF FF 00 00 00 FF FF FF FF 00 00
+     FF FF FF 00 00 FF FF FF FF 00 00 00
+     FF FF FF 00 FF FF FF FF 00 00 00 00
+     FF FF FF FF FF FF FF 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00
+     FF FF FF FF FF 00 00 00 00 00 00 00
+     FF FF FF FF 00 00 00 00 00 00 00 00
+     FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF 00 00 00 00 00 00 00 00 00 00
+     FF 00 00 00 00 00 00 00 00 00 00 00$);
+  updown := SYSTEM.ADR($ 0800  0E00 
+     00 00 00 FF FF 00 00 00
+     00 00 FF FF FF FF 00 00
+     00 FF FF FF FF FF FF 00
+     FF FF FF FF FF FF FF FF
+     00 00 00 FF FF 00 00 00
+     00 00 00 FF FF 00 00 00
+     00 00 00 FF FF 00 00 00
+     00 00 00 FF FF 00 00 00
+     00 00 00 FF FF 00 00 00
+     00 00 00 FF FF 00 00 00
+     FF FF FF FF FF FF FF FF
+     00 FF FF FF FF FF FF 00
+     00 00 FF FF FF FF 00 00
+     00 00 00 FF FF 00 00 00$);
+  block := SYSTEM.ADR($ 0800  0800 
+     FF FF FF FF FF FF FF FF
+     FF FF FF FF FF FF FF FF
+     FF FF 00 00 00 00 FF FF
+     FF FF 00 00 00 00 FF FF
+     FF FF 00 00 00 00 FF FF
+     FF FF 00 00 00 00 FF FF
+     FF FF FF FF FF FF FF FF
+     FF FF FF FF FF FF FF FF$);
+  cross := SYSTEM.ADR($ 0F00  0F00 
+     FF 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00
+     00 FF 00 00 00 00 00 00 00 00 00 00 00 FF 00 00
+     00 00 FF 00 00 00 00 00 00 00 00 00 FF 00 00 00
+     00 00 00 FF 00 00 00 00 00 00 00 FF 00 00 00 00
+     00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00
+     00 00 00 00 00 FF 00 00 00 FF 00 00 00 00 00 00
+     00 00 00 00 00 00 FF 00 FF 00 00 00 00 00 00 00
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+     00 00 00 00 00 00 FF 00 FF 00 00 00 00 00 00 00
+     00 00 00 00 00 FF 00 00 00 FF 00 00 00 00 00 00
+     00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00
+     00 00 00 FF 00 00 00 00 00 00 00 FF 00 00 00 00
+     00 00 FF 00 00 00 00 00 00 00 00 00 FF 00 00 00
+     00 FF 00 00 00 00 00 00 00 00 00 00 00 FF 00 00
+     FF 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00$);
+  grey := SYSTEM.ADR($ 2000  0200 
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00
+     FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF$);
+
   (*Pour test uniquement*)
-  test1; test3; test4; test5; test2;
-(*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
-  star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
-  hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
-  updown := SYSTEM.ADR($080E 183C 7EFF 1818 1818 1818 FF7E3C18$);
-  block := SYSTEM.ADR($0808 FFFF C3C3 C3C3 FFFF$);
-  cross := SYSTEM.ADR($0F0F 0140 0220 0410 0808 1004 2002 4001 0000 4001 2002 1004 0808 0410 0220 0140$);
-  grey := SYSTEM.ADR($2002 0000 5555 5555 AAAA AAAA$)
+  test1; test3; test4; test5;
 END Display.
