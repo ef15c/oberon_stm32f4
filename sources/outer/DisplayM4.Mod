@@ -152,7 +152,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         IF v1 + w >= NofPixperWord THEN
           SYSTEM.GET(sa0+len, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+len+d, dst);
-          SYSTEM.PUT(sa0+len+d, (dst * m2) + (src - m2));
+          SYSTEM.PUT(sa0+len+d, (dst * m2) + (src - m1 - m2));
           spill := src * m1;
           FOR sa1 := sa0 + len-4 TO sa0+4  BY -4 DO
             SYSTEM.GET(sa1, src); src := ROR(src, n*NofBPP);
@@ -262,6 +262,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   BEGIN
     CopyBlock(400, 400, 100, 200, 600, 550, replace);
     CopyBlock(0, 0, 18, 75, 19, 76, replace);
+    CopyBlock(19, 76, 18, 16, 37, 76, replace);
     CopyBlock(19, 76, 18, 75, 37, 151, replace);
   END test5;
   
