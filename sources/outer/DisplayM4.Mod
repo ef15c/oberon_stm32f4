@@ -284,7 +284,7 @@ BEGIN
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
   (*Pour test uniquement*)
-  test1; test3; test4; test5;
+  test1; test3; test4; test5; test2;
 (*TODO: à reprendre pour passer de 1 bpp à 8 bpp*)
   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
