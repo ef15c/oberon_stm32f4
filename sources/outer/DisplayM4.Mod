@@ -5,8 +5,8 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   CONST black* = 0; white* = 255;  (*black = background*)
     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
-    Base* = 0D0000000H; Width* = 1366; Height* = 768; NofBPP = 8;
-    NofPixperWord = 32 DIV NofBPP; Span = (Width*8 DIV NofBPP+3) DIV 4*4;
+    Base* = 0D0000000H; Width* = 1366; Height* = 768; NofBPP* = 8;
+    NofPixperWord* = 32 DIV NofBPP; Span = (Width*8 DIV NofBPP+3) DIV 4*4;
 
   TYPE Frame* = POINTER TO FrameDesc;
     FrameMsg* = RECORD END ;
@@ -223,6 +223,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END ReplPattern;
 *)
 
+(*only for testing:
   PROCEDURE test1;
     VAR x, y: INTEGER;
   BEGIN
@@ -271,7 +272,8 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     CopyBlock(19, 76, 18, 16, 37, 76, replace);
     CopyBlock(19, 76, 18, 75, 37, 151, replace);
   END test5;
-  
+*)
+
 BEGIN 
   arrow := SYSTEM.ADR($ 0F00 0F00
      00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
@@ -362,6 +364,6 @@ BEGIN
      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00
      FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF$);
 
-  (*Pour test uniquement*)
-  test1; test3; test4; test5;
+  (*only for testing:
+  test1; test3; test4; test5;*)
 END Display.
