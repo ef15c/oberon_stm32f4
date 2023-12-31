@@ -1,6 +1,8 @@
+(*
 OM4P.Compile @  
 OM4X.WriteASM BootLoadM4.m4c BootLoadM4.s ~
 OM4X.WriteFile BootLoadM4.m4c BootLoadM4.hex 0F000000H ~
+*)
 
 MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC disk only*)
   IMPORT SYSTEM;
@@ -17,7 +19,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     SYSTEM.LDREG(0, FSoffset + 4); SYSTEM.LDREG(1, VarORG0); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);
     SYSTEM.GET(VarORG0+16, lim);
     (*read remaining blocks*)
-    SYSTEM.LDREG(0, FSoffset + 4 + 1); SYSTEM.LDREG(1, VarORG0+512); SYSTEM.LDREG(2, (lim+511) DIV 512 - 1); 
+    SYSTEM.LDREG(0, FSoffset + 4 + 1); SYSTEM.LDREG(1, VarORG0+512); SYSTEM.LDREG(2, (lim + (511-VarORG0)) DIV 512 - 1); 
     r := SYSTEM.SVC(2);
   END LoadFromDisk;
 
@@ -96,6 +98,7 @@ entry =       80
 
 *)
 
+(*
 OM4P.Compile @  ORG.Decode
 OM4X.WriteASM Counter.m4c Counter.s ~
 OM4X.WriteASM Shifter.m4c Shifter.s ~
@@ -127,3 +130,4 @@ BEGIN  z := 1; d := 1;
      IF d = 1 THEN z := LSL(z, 1) ELSE z := ASR(z, 1) END
    UNTIL FALSE
 END Shifter.
+*)

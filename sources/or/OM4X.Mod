@@ -199,6 +199,9 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
         IF f # NIL THEN
           IF Files.Length(f) > 0 THEN
             g := Files.New(S.s); Files.Set(Rf, f, 0); Files.Set(Rg, g, 0);
+            name := S.s;
+            i := 0; WHILE (name[i] # 0X) & (name[i] # ".") DO INC(i) END; name[i] := 0X;
+            
             WriteString(Rg,"  .syntax unified"); Files.Write(Rg, CR);
             WriteString(Rg,"  .cpu cortex-m4"); Files.Write(Rg, CR);
             WriteString(Rg,"  .thumb"); Files.Write(Rg, CR);

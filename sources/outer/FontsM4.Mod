@@ -112,5 +112,19 @@ PROCEDURE Free*;  (*remove all but first two from font list*)
 BEGIN IF root.next # NIL THEN root.next.next := NIL END
 END Free;
 
-BEGIN root := NIL; Default := This("Oberon10.Scn.Fnt")
+(*For testing only:*)
+PROCEDURE test;
+  VAR dx, x, y, w, h, patadr: INTEGER;
+BEGIN
+  GetPat(Default, "a", dx, x, y, w, h, patadr);
+  Display.CopyPattern(Display.white, patadr, 100, 100, Display.paint)
+END test;
+
+BEGIN (*For testing only:*)
+  Files.Init;
+  
+  root := NIL; Default := This("Oberon10.Scn.Fnt");
+  
+  (*For testing only:*)
+  test
 END Fonts.
