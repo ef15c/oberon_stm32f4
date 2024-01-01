@@ -9,8 +9,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
   
-    ExceptionFrame* = POINTER TO ExceptionFrameContent;
-    ExceptionFrameContent* = RECORD
+    ExceptionFrame* = RECORD
       r0*, r1*, r2*, r3*, r12*, lr*: LONGINT;
       returnAddress*, xpsr*: LONGINT
     END;
