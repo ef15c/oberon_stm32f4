@@ -189,8 +189,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSIF x.r = 0 THEN 
             (*optimisation possible : si align(PC+4, 4) - x.a < 4096 on peut 
               utiliser l'équivalent de l'assembleur ADR RH, <label>*)
-            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); (*Put address of next statement in LR*)
-            OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a - 1) (*Odd address for thumb mode*)
+            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); (*Put address+1 of next statement in LR*)
+            OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a)
           ELSE GetStaticVarAddress(x, RH) END;
           x.r := RH; incR
         ELSE OM4A.encMOVImm32(mcode, RH, x.a);

@@ -121,6 +121,7 @@ BEGIN
 END test;
 
 BEGIN (*For testing only:*)
+  SYSTEM.PUT(0D0201000H+12, 0D0800000H); SYSTEM.PUT(0D0201000H+24, 10010000H);
   Files.Init;
   
   root := NIL; Default := This("Oberon10.Scn.Fnt");
