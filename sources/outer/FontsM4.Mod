@@ -1,6 +1,6 @@
 MODULE Fonts; (*JG 18.11.90; PDR 8.6.12; NW 18.1.2019
   CS 30/12/2023 adapted to 8 bits per pixel*)
-  IMPORT SYSTEM, Files, Display;
+  IMPORT SYSTEM, FileDir (* pour debug*), Files, Display;
 
   CONST FontFileId = 0DBH; boxHeaderSize = 8;
 
@@ -17,7 +17,7 @@ MODULE Fonts; (*JG 18.11.90; PDR 8.6.12; NW 18.1.2019
     LargeFont = POINTER TO LargeFontDesc;
     RunRec = RECORD beg, end: BYTE END ;
     BoxRec = RECORD dx, x, y, w, h: BYTE END ;
-    
+
 VAR Default*, root*: Font;
 
 PROCEDURE GetPat*(fnt: Font; ch: CHAR; VAR dx, x, y, w, h, patadr: INTEGER);
@@ -100,9 +100,9 @@ BEGIN F := root;
         END;
         WHILE m < 128 DO F.T[m] := a0; INC(m) END ;
         F.next := root; root := F
-      ELSE (*bad file id*) F := Default
+      ELSE LED(6); (*bad file id*) F := Default
       END
-    ELSE (*font file not available*) F := Default
+    ELSE (*font file not available*) LED(8); F := Default
     END
   END;
   RETURN F
@@ -120,12 +120,36 @@ BEGIN
   Display.CopyPattern(Display.white, patadr, 100, 100, Display.paint)
 END test;
 
+(*Debug FileDir.Search*)  
+PROCEDURE debugFDSearch;
+  VAR A: INTEGER; namebuf: FileDir.FileName;
+    i: INTEGER;
+BEGIN
+  LED(10H);
+  namebuf := "Oberon10.Scn.Fnt";
+  i := 0; WHILE (i < FileDir.FnLength) & (namebuf[i] # 0X) DO INC(i) END;
+  WHILE i < FileDir.FnLength DO namebuf[i] := 0X; INC(i) END;
+  FileDir.Search(namebuf, A);
+  ASSERT(A # 0);
+END debugFDSearch;
+
 BEGIN (*For testing only:*)
+  LED(0);
   SYSTEM.PUT(0D0201000H+12, 0D0800000H); SYSTEM.PUT(0D0201000H+24, 10010000H);
   Files.Init;
+
+  LED(2);
   
+  debugFDSearch;
+  
+  LED(4);
+  
+  Default := NIL;
   root := NIL; Default := This("Oberon10.Scn.Fnt");
+  ASSERT(Default # NIL);
+  LED(16H);
   
   (*For testing only:*)
-  test
+  test;
+  LED(18H)
 END Fonts.

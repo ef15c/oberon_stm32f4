@@ -221,7 +221,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SYSTEM.GET(f.returnAddress, u);
     w := u MOD 10H; (*trap number*)
     IF w = 0 THEN New(f.r0, f.r1); INC(f.returnAddress, 4); (*move to next instruction*)
-    ELSE (*stop*) LED(w + 192); REPEAT UNTIL FALSE
+    ELSE (*stop*) (*LED(w + 192);*) REPEAT UNTIL FALSE
     END
   END Trap;
 
