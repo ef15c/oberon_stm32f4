@@ -473,13 +473,13 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     IF (imm < 0) & (imm > -C8) THEN
       encMemImm8PUW(c, memPUWimm8map[op], a, b, TRUE(*Pre-indexed*), 
         FALSE(*subtract*), FALSE(*no write back*), -imm)
-    ELSIF (imm <= C7) & (imm MOD C2 = 0) & (a < C3) & (b < C3) THEN
+    ELSIF (imm < C7) & (imm MOD C2 = 0) & (a < C3) & (b < C3) THEN
       (*|0110/1 im/m5 R/n Rt| LDR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
       (*|0111/1 im/m5 R/n Rt| LDRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
       (*|0110/0 im/m5 R/n Rt| STR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
       (*|0111/0 im/m5 R/n Rt| STRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
       Put1(c, memimm5map[op] + imm DIV C2*C6 + b*C3 + a)
-    ELSIF (imm <= C10) & (imm MOD C2 = 0) & (a < C3) & (b = 13) & (memimm8map[op] # 0) THEN
+    ELSIF (imm < C10) & (imm MOD C2 = 0) & (a < C3) & (b = 13) & (memimm8map[op] # 0) THEN
       (*|1001/1 Rt/  imm8  | LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
       (*|1001/0 Rt/  imm8  | STR<c> <Rt>,[SP{,#<imm8>}] T2*)
       Put1(c, memimm8map[op] + a*C8 + imm DIV C2)
