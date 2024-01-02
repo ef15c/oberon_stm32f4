@@ -927,18 +927,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR r: LONGINT;
   BEGIN frame := 0;
     IF locblksize >= OM4A.C16 THEN OM4S.Mark("too many locals") END;
+    r := (parblksize-4) DIV 4;
     IF int THEN (*interrupt procedure, lot of registers are already saved in interrupt frame*)
       (*Store interrupt frame address in R0*)
-      OM4A.encDPImm32(mcode, OM4A.TST, 0, LR, RH, 4);
+      OM4A.encDPImm32(mcode, OM4A.TST, 0, LR, r, 4);
       OM4A.IfThen(mcode, "E", OM4A.EQ);
       OM4A.encMRS(mcode, 0, MSP);
       OM4A.encMRS(mcode, 0, PSP)
     END;
 
     IF locblksize - parblksize # 0 THEN
-      OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, RH, locblksize - parblksize) END;
+      OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, r, locblksize - parblksize) END;
 
-    r := LSL(1, (parblksize-4) DIV 4) - 1;
+    r := LSL(1, r) - 1;
     IF r > 0 THEN
       IF r < OM4A.C8 THEN (*PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r)
       ELSE (*PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r) END
