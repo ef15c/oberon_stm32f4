@@ -401,8 +401,12 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   BEGIN
     SYSTEM.GET(FaultSRAdr, UFSR);
     SYSTEM.GET(f.returnAddress, inst);
+    inst := inst DIV 100H MOD 100H*1000000H
+      + inst MOD 100H*10000H
+      + inst DIV 1000000H MOD 100H*100H
+      + inst DIV 10000H MOD 100H; (*thumb swap*)
     IF NOCP IN UFSR THEN (*Trap*)
-      w := inst MOD 10H;
+       w := inst MOD 10H;
     ELSIF INVSTATE IN UFSR THEN w := 5 (*probably illegal procedure call*)
     END;
     IF w = 0 THEN Kernel.New(f.r0, f.r1); INC(f.returnAddress, 4); (*move to next instruction*)

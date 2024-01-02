@@ -6,6 +6,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6;
     VarORG0* = 0D0201000H;
     CS = 2; (*Carry set Greater than, equal, or unordered*)
+    CC = 3; (* Carry clear Less than*)
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
   
@@ -81,6 +82,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     END ;
     IF p = 0 THEN ptr := 0
     ELSE ptr := p+8; SYSTEM.PUT(p, tag); lim := p + size; INC(p, 4); INC(allocated, size);
+    (*SYSTEM.CMP(p, lim);
+      WHILE COND(CC)*) 
       WHILE p < lim DO SYSTEM.PUT(p, 0); INC(p, 4) END
     END
   END New;
@@ -132,10 +135,11 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
           SYSTEM.PUT(q, size); SYSTEM.PUT(q+4, -1); SYSTEM.PUT(q+8, list0); list0 := q; INC(q, size)
         END
       END ;
-      IF mark > 0 THEN SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); SYSTEM.PUT(p+4, 0); INC(p, size)
+      IF mark > 0 (*cela va-t-il fonctionner ?*) THEN SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); SYSTEM.PUT(p+4, 0); INC(p, size)
       ELSE (*free*) SYSTEM.GET(p, size); INC(p, size)
-      END
-    UNTIL p >= heapLim
+      END;
+      SYSTEM.CMP(p, heapLim);
+    UNTIL (*p >= heapLim*) SYSTEM.COND(CS)
   END Scan;
 
 (* ---------- Disk storage management ----------*)
@@ -219,8 +223,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     VAR u, v, w: INTEGER;
   BEGIN 
     SYSTEM.GET(f.returnAddress, u);
-    w := u MOD 10H; (*trap number*)
-    IF w = 0 THEN New(f.r0, f.r1); INC(f.returnAddress, 4); (*move to next instruction*)
+    w := u DIV 10000H MOD 10H; (*trap number*)
+    IF w = 0 THEN New(v, f.r1); SYSTEM.PUT(f.r0, v); INC(f.returnAddress, 4); (*move to next instruction*)
     ELSE (*stop*) (*LED(w + 192);*) REPEAT UNTIL FALSE
     END
   END Trap;
