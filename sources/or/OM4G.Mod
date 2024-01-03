@@ -533,7 +533,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF op = OM4S.div THEN
       IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
         IF y.a > 0 THEN x.a := x.a DIV y.a ELSE OM4S.Mark("bad divisor") END
-      ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x); OM4A.encShiftImm5(mcode, OM4A.ASR, x.r, x.r, e)
+      ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x); OM4A.encShiftImm5(mcode, OM4A.ASr, x.r, x.r, e)
       ELSIF y.mode = OM4B.Const THEN
         IF y.a > 0 THEN load(x); load(y); OM4A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1 ELSE OM4S.Mark("bad divisor") END
       ELSE load(y);
@@ -548,7 +548,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF y.a > 0 THEN x.a := x.a MOD y.a ELSE OM4S.Mark("bad modulus") END
       ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x);
         (* TODO : on peut gagner une instruction en utilisant BFC x.r #e, #32-e*)
-        OM4A.encShiftImm5(mcode, OM4A.LSl, x.r, x.r, 32-e); OM4A.encShiftImm5(mcode, OM4A.LSR, x.r, x.r, 32-e)
+        OM4A.encShiftImm5(mcode, OM4A.LSl, x.r, x.r, 32-e); OM4A.encShiftImm5(mcode, OM4A.LSr, x.r, x.r, 32-e)
       ELSIF y.mode = OM4B.Const THEN
         IF y.a > 0 THEN load(x); load(y); 
           OM4A.encUDIV(mcode, RH, x.r, y.r); OM4A.encMUL(mcode, RH, RH, y.r); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, x.r, RH, 0);
@@ -609,8 +609,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE In*(VAR x, y: Item);  (* x := x IN y *)
   BEGIN load(y);
-    IF x.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROR, y.r, y.r, (x.a + 1) MOD 20H); DEC(RH)
-    ELSE load(x); OM4A.encDPImm32(mcode, OM4A.ADD, x.r, x.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROR, y.r, y.r, x.r); DEC(RH, 2)
+    IF x.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROr, y.r, y.r, (x.a + 1) MOD 20H); DEC(RH)
+    ELSE load(x); OM4A.encDPImm32(mcode, OM4A.ADD, x.r, x.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROr, y.r, y.r, x.r); DEC(RH, 2)
     END ;
     SetCC(x, OM4A.MI)
   END In;
@@ -758,7 +758,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           END
         ELSE (*y  open array*) incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, y.a+4); DEC(RH); s := y.type.base.size;  (*element size*)
           incR; OM4A.encCMPImm(mcode ,RH-1, RH, 0); DEC(RH); pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.EQ*OM4A.C8); (*BEQ L0*)
-          IF s = 1 THEN incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, 3); DEC(RH); OM4A.encShiftImm5(mcode, OM4A.ASR, RH, RH, 2)
+          IF s = 1 THEN incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, 3); DEC(RH); OM4A.encShiftImm5(mcode, OM4A.ASr, RH, RH, 2)
           ELSIF s # 4 THEN ASSERT(s MOD 4 = 0); incR; OM4A.encMOVImm32(mcode, RH, s DIV 4); OM4A.encMUL(mcode, RH-1, RH-1, RH); DEC(RH)
           END;
           IF check THEN
@@ -791,7 +791,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*L0:*) pc0 := mcode.pc;
     OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, RH, y.r, FALSE, TRUE, TRUE, 4);
     OM4A.encMemImm8PUW(mcode, OM4A.STRIT4, RH, x.r, FALSE, TRUE, TRUE, 4);
-    OM4A.encShiftImm5(mcode, OM4A.ASR, RH, RH, 24); OM4A.encBackBranch(mcode, OM4A.NE, pc0); (*BNE L0*)
+    OM4A.encShiftImm5(mcode, OM4A.ASr, RH, RH, 24); OM4A.encBackBranch(mcode, OM4A.NE, pc0); (*BNE L0*)
     RH := 0
    END CopyString;
   
@@ -1013,7 +1013,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR z, e0: Item;
   BEGIN (*Load x in a core register*)
     z := x; load(x); e0.mode := Reg; e0.r := RH; e0.type := OM4B.intType;
-    OM4A.encShiftImm5(mcode, OM4A.ASR, RH, x.r, 23); 
+    OM4A.encShiftImm5(mcode, OM4A.ASr, RH, x.r, 23); 
     incR; OM4A.encDPImm32(mcode, OM4A.SUB, RH-1, RH-1, RH, 127); DEC(RH);
     Store(y, e0); incR; OM4A.encDPReg(mcode, OM4A.SUB, x.r, x.r, RH, 23); Store(z, x);
   END Unpk;
@@ -1088,7 +1088,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Sqrt;
 
   PROCEDURE Odd*(VAR x: Item);
-  BEGIN load(x); OM4A.encShiftImm5(mcode, OM4A.ROR, x.r, x.r, 1); SetCC(x, OM4A.MI); DEC(RH)
+  BEGIN load(x); OM4A.encShiftImm5(mcode, OM4A.ROr, x.r, x.r, 1); SetCC(x, OM4A.MI); DEC(RH)
   END Odd;
 
   PROCEDURE Floor*(VAR x: Item);
@@ -1119,7 +1119,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item);
     VAR op: LONGINT;
   BEGIN load(x);
-    IF fct = 0 THEN op := OM4A.LSl ELSIF fct = 1 THEN op := OM4A.ASR ELSIF fct = 2 THEN op := OM4A.ROR ELSE op := OM4A.LSR END ;
+    IF fct = 0 THEN op := OM4A.LSl ELSIF fct = 1 THEN op := OM4A.ASr ELSIF fct = 2 THEN op := OM4A.ROr ELSE op := OM4A.LSr END ;
     IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, op, x.r, x.r, y.a MOD 20H)
     ELSE load(y); OM4A.encShiftReg(mcode, op, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
     END
@@ -1139,8 +1139,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Bit*(VAR x, y: Item);
   BEGIN load(x); OM4A.encMemImm32(mcode, OM4A.LDR, x.r, x.r, RH, 0);
-    IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROR, x.r, x.r, y.a+1); DEC(RH)
-    ELSE load(y); OM4A.encDPImm32(mcode, OM4A.ADD, y.r, y.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROR, x.r, x.r, y.r); DEC(RH, 2)
+    IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROr, x.r, x.r, y.a+1); DEC(RH)
+    ELSE load(y); OM4A.encDPImm32(mcode, OM4A.ADD, y.r, y.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROr, x.r, x.r, y.r); DEC(RH, 2)
     END ;
     SetCC(x, OM4A.MI)
   END Bit;

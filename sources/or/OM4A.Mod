@@ -216,7 +216,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     SUB*=0; ADD*=1; RSB*=2; EOR*=3; AND*=4; BIC*=5; ORR*=6; ADc*=7; SBc*=8; TST*=9; ORN*=10;
 
     (*Shift operations*)
-    LSl*=0; ASR*=1; LSR*=2; ROR*=3;
+    LSl*=0; ASr*=1; LSr*=2; ROr*=3;
     
     (*Memory operations*)
     LDR*=0; LDRB*=1; STR*=2; STRB*=3;
@@ -252,6 +252,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     shreg4map: ARRAY 4 OF LONGINT;
 
     memimm5map: ARRAY 4 OF LONGINT;
+    memimm5shift: ARRAY 4 OF LONGINT;
     memimm8map: ARRAY 4 OF LONGINT;
     memPUWimm8map: ARRAY 4 OF LONGINT;
     memimm12map: ARRAY 4 OF LONGINT;
@@ -473,7 +474,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     IF (imm < 0) & (imm > -C8) THEN
       encMemImm8PUW(c, memPUWimm8map[op], a, b, TRUE(*Pre-indexed*), 
         FALSE(*subtract*), FALSE(*no write back*), -imm)
-    ELSIF (imm < C7) & (imm MOD C2 = 0) & (a < C3) & (b < C3) THEN
+    ELSIF (imm < LSL(C5, memimm5shift[op])) & (imm = LSL(ASR(imm, memimm5shift[op]), memimm5shift[op]))
+        & (a < C3) & (b < C3) THEN
       (*|0110/1 im/m5 R/n Rt| LDR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
       (*|0111/1 im/m5 R/n Rt| LDRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
       (*|0110/0 im/m5 R/n Rt| STR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
@@ -514,7 +516,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   
   PROCEDURE encShiftImm5*(VAR c: ModuleCode; op, a, b: BYTE; shift: LONGINT);
   BEGIN
-    ASSERT (op <= ROR);
+    ASSERT (op <= ROr);
     ASSERT ((a < 15) & (b < C4) & (shift < C5));
     IF (a < C3) & (b < C3) & (shimm5map[op] # 0FFFFH) THEN Put1(c, shimm5map[op] + shift*C6 + b*C3 + a);
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
@@ -525,7 +527,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   
   PROCEDURE encShiftReg*(VAR co: ModuleCode; op, a, b, c: BYTE);
   BEGIN
-    ASSERT (op <= ROR);
+    ASSERT (op <= ROr);
     ASSERT((a < 15) & (a # 13) & (b < 15) & (b # 13) & (c < 15) & (c # 13));
     IF (a < C3) & (a = b) THEN Put1(co, shreg3map[op] + c*C3 + a);
       co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0; (* not in IT block *)
@@ -836,12 +838,19 @@ BEGIN
   opnotmap[ORN] := ORR;  opnegmap[ORN] := NBOPS;
   
   shimm5map[LSl] :=  0000H; shimm5wmap[LSl] := 0EA5F0000H; shreg3map[LSl] := 4080H; shreg4map[LSl] := 0FA10F000H;
-  shimm5map[ASR] :=  1000H; shimm5wmap[ASR] := 0EA5F0020H; shreg3map[ASR] := 4100H; shreg4map[ASR] := 0FA50F000H;
-  shimm5map[LSR] :=  0800H; shimm5wmap[LSR] := 0EA5F0010H; shreg3map[LSR] := 40C0H; shreg4map[LSR] := 0FA30F000H;
-  shimm5map[ROR] := 0FFFFH; shimm5wmap[ROR] := 0EA5F0030H; shreg3map[ROR] := 41C0H; shreg4map[ROR] := 0FA70F000H;
+  shimm5map[ASr] :=  1000H; shimm5wmap[ASr] := 0EA5F0020H; shreg3map[ASr] := 4100H; shreg4map[ASr] := 0FA50F000H;
+  shimm5map[LSr] :=  0800H; shimm5wmap[LSr] := 0EA5F0010H; shreg3map[LSr] := 40C0H; shreg4map[LSr] := 0FA30F000H;
+  shimm5map[ROr] := 0FFFFH; shimm5wmap[ROr] := 0EA5F0030H; shreg3map[ROr] := 41C0H; shreg4map[ROr] := 0FA70F000H;
   
   memimm5map[LDR]  := 6800H; memimm8map[LDR]  := 9800H;  memPUWimm8map[LDR] := LDRIT4;   memimm12map[LDR]  := 0F8D00000H;
+  memimm5shift[LDR] := 2; (*offset = ZeroExtend(imm5:'00', 32);*)
+  
   memimm5map[LDRB] := 7800H; memimm8map[LDRB] := 0H;     memPUWimm8map[LDRB] := LDRBIT3; memimm12map[LDRB] := 0F8900000H;
+  memimm5shift[LDRB] := 0; (*offset = ZeroExtend(imm5, 32);*)
+  
   memimm5map[STR]  := 6000H; memimm8map[STR]  := 9000H;  memPUWimm8map[STR] := STRIT4;   memimm12map[STR]  := 0F8C00000H;
+  memimm5shift[STR] := 2; (*offset = ZeroExtend(imm5:'00', 32);*)
+  
   memimm5map[STRB] := 7000H; memimm8map[STRB] := 0H;     memPUWimm8map[STRB] := STRBIT3; memimm12map[STRB] := 0F8800000H;
+  memimm5shift[STRB] := 0; (*offset = ZeroExtend(imm5, 32);*)
 END OM4A.
