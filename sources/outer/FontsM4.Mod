@@ -87,8 +87,8 @@ BEGIN F := root;
             WHILE n # 0 DO DEC(n); Files.ReadByte(R, b); 
               (*Convert pixels from 1 BPP to Display.NofBPP BPP*)
               o := 8;
-              WHILE o >= 0 DO pw := 0; 
-                FOR j := 1 TO Display.NofPixperWord DO
+              WHILE o > 0 DO pw := 0; 
+                FOR i := 1 TO Display.NofPixperWord DO
                   IF ODD(b) THEN INC(pw, Display.white) END; pw := ROR(pw, Display.NofBPP); b := b DIV 2
                 END;
                 SYSTEM.PUT(a, pw); INC(a, 4); DEC(o, Display.NofPixperWord)
@@ -100,9 +100,9 @@ BEGIN F := root;
         END;
         WHILE m < 128 DO F.T[m] := a0; INC(m) END ;
         F.next := root; root := F
-      ELSE LED(6); (*bad file id*) F := Default
+      ELSE (*bad file id*) F := Default
       END
-    ELSE (*font file not available*) LED(8); F := Default
+    ELSE (*font file not available*) F := Default
     END
   END;
   RETURN F
@@ -115,41 +115,42 @@ END Free;
 (*For testing only:*)
 PROCEDURE test;
   VAR dx, x, y, w, h, patadr: INTEGER;
+    arrow: INTEGER;
 BEGIN
+  arrow := SYSTEM.ADR($ 0F00 0F00
+     00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
+     00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00
+     00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00
+     00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00 00
+     00 00 00 00 00 00 00 00 00 FF FF FF 00 00 00 00
+     00 00 00 00 00 00 00 00 FF FF FF 00 00 00 00 00
+     00 00 00 00 00 00 00 FF FF FF 00 00 00 00 00 00
+     FF 00 00 00 00 00 FF FF FF 00 00 00 00 00 00 00
+     FF FF 00 00 00 FF FF FF 00 00 00 00 00 00 00 00
+     FF FF FF 00 FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
+
+  Display.CopyPattern(Display.white, arrow, 50, 50, Display.paint);
+
   GetPat(Default, "a", dx, x, y, w, h, patadr);
   Display.CopyPattern(Display.white, patadr, 100, 100, Display.paint)
 END test;
 
-(*Debug FileDir.Search*)  
-PROCEDURE debugFDSearch;
-  VAR A: INTEGER; namebuf: FileDir.FileName;
-    i: INTEGER;
-BEGIN
-  LED(10H);
-  namebuf := "Oberon10.Scn.Fnt";
-  i := 0; WHILE (i < FileDir.FnLength) & (namebuf[i] # 0X) DO INC(i) END;
-  WHILE i < FileDir.FnLength DO namebuf[i] := 0X; INC(i) END;
-  FileDir.Search(namebuf, A);
-  ASSERT(A # 0);
-END debugFDSearch;
-
 BEGIN (*For testing only:*)
-  LED(0);
   SYSTEM.PUT(0D0201000H+12, 0D0800000H); SYSTEM.PUT(0D0201000H+24, 10010000H);
   Files.Init;
 
   LED(2);
   
-  debugFDSearch;
-  
-  LED(4);
-  
-  Default := NIL;
-  root := NIL; Default := This("Oberon10.Scn.Fnt");
+  root := NIL; Default := NIL; Default := This("Oberon10.Scn.Fnt");
   ASSERT(Default # NIL);
-  LED(16H);
+  LED(4);
   
   (*For testing only:*)
   test;
-  LED(18H)
+  LED(6)
 END Fonts.
