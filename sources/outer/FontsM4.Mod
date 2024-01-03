@@ -34,7 +34,7 @@ PROCEDURE This*(name: ARRAY OF CHAR): Font;
     NofRuns, NofBoxes: BYTE;
     NofBytes: INTEGER;
     height, minX, maxX, minY, maxY: BYTE;
-    i, j, k, m, n, o, pw: INTEGER;
+    i, j, k, m, n, o, w, pw: INTEGER;
     a, a0: INTEGER;
     b, beg, end: BYTE;
     run: ARRAY 16 OF RunRec;
@@ -84,15 +84,17 @@ BEGIN F := root;
             INC(a, 4); F.T[m] := a;
             SYSTEM.PUT(a, 0 + box[j].h*10000H + box[j].w); INC(a, 4);
             n := (box[j].w + 7) DIV 8 * box[j].h;
+            w := box[j].w;
             WHILE n # 0 DO DEC(n); Files.ReadByte(R, b); 
               (*Convert pixels from 1 BPP to Display.NofBPP BPP*)
-              o := 8;
+              o := w; IF o > 8 THEN o := 8 END;
               WHILE o > 0 DO pw := 0; 
                 FOR i := 1 TO Display.NofPixperWord DO
                   IF ODD(b) THEN INC(pw, Display.white) END; pw := ROR(pw, Display.NofBPP); b := b DIV 2
                 END;
-                SYSTEM.PUT(a, pw); INC(a, 4); DEC(o, Display.NofPixperWord)
-              END
+                SYSTEM.PUT(a, pw); INC(a, 4); DEC(o, Display.NofPixperWord); DEC(w, Display.NofPixperWord);
+              END;
+              IF w <= 0 THEN w := box[j].w END
             END ;
             INC(j); INC(m)
           END;
