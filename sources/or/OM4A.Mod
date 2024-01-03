@@ -480,7 +480,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       (*|0111/1 im/m5 R/n Rt| LDRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
       (*|0110/0 im/m5 R/n Rt| STR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
       (*|0111/0 im/m5 R/n Rt| STRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
-      Put1(c, memimm5map[op] + imm DIV C2*C6 + b*C3 + a)
+      Put1(c, memimm5map[op] + ASR(imm, memimm5shift[op])*C6 + b*C3 + a)
     ELSIF (imm < C10) & (imm MOD C2 = 0) & (a < C3) & (b = 13) & (memimm8map[op] # 0) THEN
       (*|1001/1 Rt/  imm8  | LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
       (*|1001/0 Rt/  imm8  | STR<c> <Rt>,[SP{,#<imm8>}] T2*)
