@@ -1159,14 +1159,14 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*STRB<c> <Rt>,[<Rn>,#<imm5>]*)
           WriteOp(W, op, "STRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
-          Texts.WriteInt(W, (b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2)*OM4A.C2, 1);
+          Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
           Texts.Write(W, "]")
         ELSIF op*T16MSK52 = LdRegByteImm5 THEN
           (*T16MSK52 0111 1xx Load Register Byte LDRB (immediate) on page A7-252*)
           (*LDRB<c> <Rt>,[<Rn>{,#<imm5>}]*)
           WriteOp(W, op, "LDRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
-          Texts.WriteInt(W, (b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2)*OM4A.C2, 1);
+          Texts.WriteInt(W, b1 MOD OM4A.C3*OM4A.C2 + b2 DIV OM4A.C6 MOD OM4A.C2, 1);
           Texts.Write(W, "]")
         ELSE Texts.WriteString(W, "TODO other LdStSingleT1 on page A5-133")
         END
