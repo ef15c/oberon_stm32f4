@@ -239,10 +239,12 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END ParamList;
 
   PROCEDURE StandFunc(VAR x: OM4G.Item; fct: LONGINT; restyp: OM4B.Type);
-    VAR y: OM4G.Item; n, npar: LONGINT;
+    VAR y, z: OM4G.Item; n, npar: LONGINT;
   BEGIN Check(OM4S.lparen, "no (");
     npar := fct MOD 10; fct := fct DIV 10; expression(x); n := 1;
-    WHILE sym = OM4S.comma DO OM4S.Get(sym); expression(y); INC(n) END ;
+    IF sym = OM4S.comma THEN OM4S.Get(sym); expression(y); n := 2;
+      WHILE sym = OM4S.comma DO OM4S.Get(sym); expression(z); INC(n) END ;
+    END;
     Check(OM4S.rparen, "no )");
     IF n = npar THEN
       IF fct = 0 THEN (*ABS*)
@@ -277,6 +279,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); OM4G.Condition(x)
       ELSIF fct = 20 THEN (*SQRT*) CheckReal(x); OM4G.Sqrt(x)
       ELSIF fct = 21 THEN (*SVC*) CheckConst(x); CheckInt(x); OM4G.SVC(x)
+      ELSIF fct = 22 THEN (*Int Compare*)
+        CheckInt(x); CheckInt(y); CheckConst(z); CheckInt(z); OM4G.IntCompare(x, y, z)
       END ;
       x.type := restyp
     ELSE OM4S.Mark("wrong nof params")
@@ -459,7 +463,6 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno = 11 THEN CheckInt(x); OM4G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); OM4G.Copy(x, y, z)
       ELSIF pno = 14 THEN OM4G.LDREG(y)
-      ELSIF pno = 15 THEN (*Int Compare*) CheckInt(x); CheckInt(y); OM4G.IntCompare(x, y)
       END
     ELSE OM4S.Mark("wrong nof parameters")
     END

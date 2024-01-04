@@ -82,9 +82,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     END ;
     IF p = 0 THEN ptr := 0
     ELSE ptr := p+8; SYSTEM.PUT(p, tag); lim := p + size; INC(p, 4); INC(allocated, size);
-    (*SYSTEM.CMP(p, lim);
-      WHILE COND(CC)*) 
-      WHILE p < lim DO SYSTEM.PUT(p, 0); INC(p, 4) END
+    (*Perform unsigned comparison*) 
+      WHILE (*p < lim*) SYSTEM.CMP(p, lim, CC) DO SYSTEM.PUT(p, 0); INC(p, 4) END
     END
   END New;
 
@@ -96,8 +95,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     WHILE pvadr # 0 DO
       SYSTEM.GET(pvadr, p); SYSTEM.GET(p-4, offadr);
       (*WARNING heapOrg is negative, so signed comparison p >= heapOrg won't work*)
-      SYSTEM.CMP(p, heapOrg);
-      IF SYSTEM.COND(CS) & (offadr = 0) THEN q := p;   (*mark elements in data structure with root p*)
+      IF (*p >= heapOrg*) SYSTEM.CMP(p, heapOrg, CS) & (offadr = 0) THEN q := p;   (*mark elements in data structure with root p*)
         REPEAT SYSTEM.GET(p-4, offadr);
           IF offadr = 0 THEN SYSTEM.GET(p-8, tag); offadr := tag + 16 ELSE INC(offadr, 4) END ;
           SYSTEM.PUT(p-4, offadr); SYSTEM.GET(offadr, offset);
@@ -138,8 +136,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       IF mark > 0 (*cela va-t-il fonctionner ?*) THEN SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); SYSTEM.PUT(p+4, 0); INC(p, size)
       ELSE (*free*) SYSTEM.GET(p, size); INC(p, size)
       END;
-      SYSTEM.CMP(p, heapLim);
-    UNTIL (*p >= heapLim*) SYSTEM.COND(CS)
+    UNTIL (*p >= heapLim*) SYSTEM.CMP(p, heapLim, CS)
   END Scan;
 
 (* ---------- Disk storage management ----------*)

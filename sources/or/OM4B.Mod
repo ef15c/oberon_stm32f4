@@ -429,6 +429,7 @@ BEGIN
   
   system := NIL;  (* initialize "unsafe" pseudo-module SYSTEM*)
   enter("COND", SFunc, boolType, 191);
+  enter("CMP", SFunc, boolType, 223);
   enter("SIZE", SFunc, intType, 181);
   enter("ADR", SFunc, intType, 171);
   enter("VAL", SFunc, intType, 162);
@@ -439,5 +440,4 @@ BEGIN
   enter("PUT", SProc, noType, 112);
   enter("GET", SProc, noType, 102);
   enter("SVC", SFunc, intType, 211);
-  enter("CMP", SProc, noType, 152);
 END OM4B.
