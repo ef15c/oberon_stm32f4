@@ -259,6 +259,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       BMCNotUDFOrBOrBL = {};
       (*T32MSK52A 0x0 0111010 - Hint instructions on page A5-143*)
       Hint = {21};
+      (*T32MSK52A 0x0 0111011 - Miscellaneous control instructions on page A5-143*)
+      MiscCtrlInst = {20..21};
+
       T32MSK52A1 = {0..10};
       (*T32MSK52A1 000 00000000 No Operation hint NOP on page A7-306*)
       NopT2 = {};
@@ -636,6 +639,14 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
               (*NOP<c>.W*)
               WriteOp(W, op, "NOP", FALSE, FALSE)
             ELSE Texts.WriteString(W, "TODO: other Hint on page A7-143")
+            END
+          ELSIF op*T32MSK52A = MiscCtrlInst THEN
+            (*T32MSK52A 0x0 0111011 - Miscellaneous control instructions on page A5-143*)
+            t := b4 DIV OM4A.C4;
+            IF t = 4 THEN WriteOp(W, op, "DSB", FALSE, FALSE)
+            ELSIF t = 5 THEN WriteOp(W, op, "DMB", FALSE, FALSE)
+            ELSIF t = 6 THEN WriteOp(W, op, "ISB", FALSE, FALSE)
+            ELSE Texts.WriteString(W, "TODO: other MiscCtrlInst on page A7-143")
             END
           ELSE Texts.WriteString(W, "TODO: other BMCNotUDFOrBOrBL on page A7-142")
           END

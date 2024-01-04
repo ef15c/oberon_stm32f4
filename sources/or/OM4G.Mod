@@ -1063,7 +1063,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Copy;
 
   PROCEDURE LDREG*(VAR y: Item);
-  BEGIN (*x.mode = OM4B.Const*)
+  BEGIN
     load(y); RH := 0
   END LDREG;
 
@@ -1137,6 +1137,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE UML*(VAR x, y: Item);
   BEGIN load(x); load(y); OM4A.Put0(mcode, OM4A.UMULL + x.r*OM4A.C16 + x.r*OM4A.C12 + y.r*OM4A.C8 + y.r); DEC(RH)
   END UML;
+
+  PROCEDURE MBI*(VAR i: INTEGER);
+  BEGIN (*x.mode = OM4B.Const*)
+    IF i = 1 THEN OM4A.Put0(mcode, OM4A.DMB)
+    ELSIF i = 2 THEN OM4A.Put0(mcode, OM4A.DSB)
+    ELSIF i = 3 THEN OM4A.Put0(mcode, OM4A.ISB)
+    ELSE OM4S.Mark("bad MBI")
+    END
+  END MBI;
 
   PROCEDURE Bit*(VAR x, y: Item);
   BEGIN load(x); OM4A.encMemImm32(mcode, OM4A.LDR, x.r, x.r, RH, 0);

@@ -396,8 +396,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END
   END ExtendDisplay;
 
-  PROCEDURE Trap(VAR f: ExceptionFrame);
-    VAR UFSR, ICSR: SET; w, inst: INTEGER;
+  PROCEDURE Trap(VAR f: Kernel.ExceptionFrame);
+    VAR UFSR, ICSR: SET; w, inst: INTEGER; mod: Modules.Module;
   BEGIN
     SYSTEM.GET(FaultSRAdr, UFSR);
     SYSTEM.GET(f.returnAddress, inst);
@@ -409,7 +409,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
        w := inst MOD 10H;
     ELSIF INVSTATE IN UFSR THEN w := 5 (*probably illegal procedure call*)
     END;
-    IF w = 0 THEN Kernel.New(f.r0, f.r1); INC(f.returnAddress, 4); (*move to next instruction*)
+    IF w = 0 THEN Kernel.New(w, f.r1); SYSTEM.PUT(f.r0, w); INC(f.returnAddress, 4); (*move to next instruction*)
     ELSE (*trap*) 
       inst := inst DIV 10H; (*inst contains p/pppp/pppp/pppp/0ppp/pppp*)
       Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst DIV 100H*80H + inst MOD 80H, 4);
@@ -419,11 +419,11 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       Texts.WriteString(W, " at"); Texts.WriteHex(W, f.returnAddress);
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
       (*Trigger abort by requesting a PendSV interrupt*)
-      SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.ISB();
+      SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*)
     END;
     IF UFSR - {NOCP, INVSTATE} # {} THEN (*other fault*)
-      LED(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
-    END
+      (*LED(127)*); REPEAT UNTIL FALSE (*Other faults need debugging*)
+    END;
     SYSTEM.PUT(FaultSRAdr, UFSR); (*reset UFSR flags*)
   END Trap;
   

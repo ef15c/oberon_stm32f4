@@ -206,9 +206,24 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     (*|1111/1011/1011/ Rn /1111/ Rd /1111/ Rm |
       UDIV<c><q> {<Rd>,} <Rn>, <Rm>*)
     UMULL* = 0FBA00000H;
-  (*|1111/1011/1010/ Rn /RdLo/RdHi/0000/ Rm |
-    UMULL<c><q> <RdLo>, <RdHi>, <Rn>, <Rm>*)
+    (*|1111/1011/1010/ Rn /RdLo/RdHi/0000/ Rm |
+      UMULL<c><q> <RdLo>, <RdHi>, <Rn>, <Rm>*)
     
+    DMB*   = 0F3BF8F5FH;
+    (*|1111/0011/1011/1111/1000/1111/0101/opti|
+      DMB<c><q> {<opt>}
+      opti must be 1111*)
+
+    DSB*   = 0F3BF8F4FH;
+    (*|1111/0011/1011/1111/1000/1111/0100/opti|
+      DSB<c> #<option>
+      opti musb be 1111*)
+      
+    ISB*   = 0F3BF8F6FH;
+    (*|1111/0011/1011/1111/1000/1111/0110/opti|
+      ISB<c><q> {<opt>}
+      opti musb be 1111*)
+
     BRSIG*   = 1EH; (*Pseudo branch op signature*)
     BRCSIG*  = 1FH; (*Pseudo conditional branch op signature*)
 
