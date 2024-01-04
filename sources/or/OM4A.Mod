@@ -52,6 +52,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     (*|0100/0111/0 Rm/ 000|
       BX<c><q> <Rm>*)
 
+    NOPT2 = 0F3AF8000H;
+    (*1111/0011/1010/1111/1000/0000/0000/0000*)
 
     MOVIT1*  = 2000H;
     (*|0010/0 Rd/  im/m8  |
@@ -661,12 +663,15 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     VAR cond: BYTE;
   BEGIN
     cond := c.code[at+1] MOD C2*C2 + c.code[at] DIV C6;
-    ASSERT(cond < 14);
-    ASSERT (~ODD(with)); with := with DIV C1;
-    IF (with < -C19) OR (with >= C19) THEN OM4S.Mark("cond jump too far")
-    ELSE with := with MOD C20;
-      modify(c, at, BCT3 + with DIV C19 MOD C1*C26 + cond*C22 + with DIV C11 MOD C6*C16 +
-      with DIV C17 MOD C1*C13 + with DIV C18 MOD C1*C11 + with MOD C11)
+    IF cond = NV THEN modify(c, at, NOPT2) (*branch never is equivalent to NOP*)
+    ELSE
+      ASSERT(cond < 14);
+      ASSERT (~ODD(with)); with := with DIV C1;
+      IF (with < -C19) OR (with >= C19) THEN OM4S.Mark("cond jump too far")
+      ELSE with := with MOD C20;
+        modify(c, at, BCT3 + with DIV C19 MOD C1*C26 + cond*C22 + with DIV C11 MOD C6*C16 +
+        with DIV C17 MOD C1*C13 + with DIV C18 MOD C1*C11 + with MOD C11)
+      END
     END
   END fix21;
 

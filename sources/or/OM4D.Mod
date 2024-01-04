@@ -255,15 +255,21 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       LdrRegImm1UV = {10..11};
       
       
-      T32MSK51 = {12, 14}; T32MSK52 = {21..26, 12, 14}; T32MSK53 = {23..25};
+      T32MSK51 = {12, 14}; T32MSK52 = {26, 21..22}; T32MSK52A = {26, 20..22}; T32MSK53 = {23..25};
+      BMCNotUDFOrBOrBL = {};
+      (*T32MSK52A 0x0 0111010 - Hint instructions on page A5-143*)
+      Hint = {21};
+      T32MSK52A1 = {0..10};
+      (*T32MSK52A1 000 00000000 No Operation hint NOP on page A7-306*)
+      NopT2 = {};
+
       (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
       BrWithLnk = {12, 14};
       (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
-      BranchT3 = {};
       BranchT4 = {12};
       
       (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
-      MovFrSpReg = {21..25};
+      MovFrSpReg = {21..22};
       
       (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
       CoProc = {26..27};
@@ -607,21 +613,32 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T32MSK51 1x1 xxxxxxx: Branch with Link BL on page A7-213*)
           (*BL<c> <label> Outside or last in IT block*)
           WriteOp(W, op, "BL", FALSE, FALSE); WritePCOffset(W, i + base, SignExtendEven25(op))
-        ELSIF op*T32MSK52 = MovFrSpReg THEN
-          (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
-          (*MRS<c> <Rd>,<spec_reg>*)
-          Rd := b3 MOD OM4A.C4;
-          WriteOp(W, op, "MRS", FALSE, FALSE); WriteReg(W, Rd);
-          IF b4 = 8 THEN Texts.WriteString(W, " MSP")
-          ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
-          ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
-          END
-        ELSIF op*T32MSK51 = BranchT3 THEN
-          (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
-          (*B<c>.W <label>*)
+        ELSIF op*T32MSK51 = BMCNotUDFOrBOrBL THEN
           t := b1 MOD OM4A.C2*OM4A.C2 + b2 DIV OM4A.C6;
-          WriteOp(W, op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[t]);
-          WritePCOffset(W, i + base, SignExtendEven21(op))
+          IF t < 14 THEN
+            (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
+            (*B<c>.W <label>*)
+            WriteOp(W, op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[t]);
+            WritePCOffset(W, i + base, SignExtendEven21(op))
+          ELSIF op*T32MSK52 = MovFrSpReg THEN
+            (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
+            (*MRS<c> <Rd>,<spec_reg>*)
+            Rd := b3 MOD OM4A.C4;
+            WriteOp(W, op, "MRS", FALSE, FALSE); WriteReg(W, Rd);
+            IF b4 = 8 THEN Texts.WriteString(W, " MSP")
+            ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
+            ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
+            END
+          ELSIF op*T32MSK52A = Hint THEN
+            (*T32MSK52A 0x0 0111010 - Hint instructions on page A7-143*)
+            IF op*T32MSK52A1 = NopT2 THEN
+              (*T32MSK52A1 000 00000000 No Operation hint NOP on page A7-306*)
+              (*NOP<c>.W*)
+              WriteOp(W, op, "NOP", FALSE, FALSE)
+            ELSE Texts.WriteString(W, "TODO: other Hint on page A7-143")
+            END
+          ELSE Texts.WriteString(W, "TODO: other BMCNotUDFOrBOrBL on page A7-142")
+          END
         ELSIF op*T32MSK51 = BranchT4 THEN
           (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
           (*B.W <label>*)
