@@ -1,6 +1,6 @@
 MODULE Fonts; (*JG 18.11.90; PDR 8.6.12; NW 18.1.2019
   CS 30/12/2023 adapted to 8 bits per pixel*)
-  IMPORT SYSTEM, FileDir (* pour debug*), Files, Display;
+  IMPORT SYSTEM, Files, Display;
 
   CONST FontFileId = 0DBH; boxHeaderSize = 8;
 
@@ -114,7 +114,7 @@ PROCEDURE Free*;  (*remove all but first two from font list*)
 BEGIN IF root.next # NIL THEN root.next.next := NIL END
 END Free;
 
-(*For testing only:*)
+(*For testing only:
 PROCEDURE test;
   VAR dx, x, y, w, h, patadr: INTEGER;
     arrow: INTEGER;
@@ -139,20 +139,18 @@ BEGIN
   Display.CopyPattern(Display.white, arrow, 50, 50, Display.paint);
 
   GetPat(Default, "a", dx, x, y, w, h, patadr);
-  Display.CopyPattern(Display.white, patadr, 100, 100, Display.paint)
+  Display.CopyPattern(Display.white, patadr, 100, 100, Display.paint);
+  GetPat(Default, "@", dx, x, y, w, h, patadr);
+  Display.CopyPattern(Display.white, patadr, 110, 100, Display.paint)
 END test;
+*)
 
-BEGIN (*For testing only:*)
+BEGIN (*For testing only:
   SYSTEM.PUT(0D0201000H+12, 0D0800000H); SYSTEM.PUT(0D0201000H+24, 10010000H);
-  Files.Init;
-
-  LED(2);
-  
+  Files.Init; *)
   root := NIL; Default := NIL; Default := This("Oberon10.Scn.Fnt");
   ASSERT(Default # NIL);
-  LED(4);
   
-  (*For testing only:*)
-  test;
-  LED(6)
+  (*For testing only:
+  test;*)
 END Fonts.
