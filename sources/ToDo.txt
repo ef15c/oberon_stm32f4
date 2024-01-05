@@ -6,11 +6,10 @@ Liste des modules à créer en se basant sur la version RISC-5 :
 Faits : 
 - loader : BootLoadM4
 - inner : ModulesM4, KernelM4. Files et FilesDir ne sont pas modifiés
-- outer : OberonM4, InputM4
+- outer : DisplayM4.Mod, FontsM4.Mod, MenuViewers.Mod, SystemM4.Mod, TextFrames.Mod,
+          Viewers.Mod, Edit.Mod, InputM4.Mod, OberonM4.Mod, Texts.Mod
 
 En cours : 
-
-A faire: SystemM4, ...
 
 Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
 15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0   15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0
@@ -31,6 +30,8 @@ Piège exécution dans SDRAM :
 MPU or default memory map
 -mismatch:on instruction access IACCVIOL(1)
 1. Occurs on an access to an XN region even if the MPU is disabled.
+- Sous debogueur, LDR R0, [R0] donne un résultat corrompu sur les 16 bits de poids faible
+en mode handler si R0 conient une adresse SDRAM.
 
 Possibilité pour implémenter le mécanisme Trap : générer une instruction illégale
 pour un coprocesseur non extistant, c'est à dire ni 10 ni 11
