@@ -17,3 +17,7 @@ Hardware side:
 
 Base board is tested:
 SD Card, VGA, PS2 mouse and keyboard and nRF24L01+ interface are OK.
+
+![equippedBaseBoard](https://github.com/ef15c/oberon_stm32f4/assets/8286839/a8bed1ea-580c-429d-b511-b619743729e1)
+
+![populatedBaseBoard](https://github.com/ef15c/oberon_stm32f4/assets/8286839/60b433b5-c5a2-4ea3-9ac8-12d0c1df88bf)
