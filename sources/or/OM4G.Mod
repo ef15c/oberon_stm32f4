@@ -1224,7 +1224,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN  (*exit code*)
     IF version = 0 THEN
       (*OM4A.BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)
-      OM4A.encMOVImm32(mcode, 0, VarORG0); OM4A.Put1(mcode, OM4A.BX)
+      OM4A.encMOVImm32(mcode, 0, VarORG0+1); (*odd address to thumb mode*) OM4A.Put1(mcode, OM4A.BX)
     ELSE (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4);
       OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3)
     END ;
