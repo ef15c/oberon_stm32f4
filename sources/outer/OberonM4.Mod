@@ -403,7 +403,7 @@ BEGIN User[0] := 0X;
   OpenCursor(Mouse); OpenCursor(Pointer);
 
   DW := Display.Width; DH := Display.Height; CL := DW;
-  OpenDisplay(DW DIV 8 * 5, DW DIV 8 * 3, DH);
+  OpenDisplay(DW DIV 8 * 5, Display.Width - DW DIV 8 * 5, DH);
   FocusViewer := Viewers.This(0, 0);
   CurFnt := Fonts.Default; CurCol := Display.white; CurOff := 0;
 
