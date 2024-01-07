@@ -396,7 +396,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END
   END ExtendDisplay;
 
-  PROCEDURE Trap(VAR f: Kernel.ExceptionFrame);
+  PROCEDURE* Trap(VAR f: Kernel.ExceptionFrame);
     VAR UFSR, ICSR: SET; w, inst: INTEGER; mod: Modules.Module;
   BEGIN
     SYSTEM.GET(FaultSRAdr, UFSR);
