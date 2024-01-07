@@ -213,7 +213,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
         WHILE w >= 0 DO SYSTEM.PUT(p, mod.data + w); INC(p, 4); Files.ReadInt(R, w) END ;
         SYSTEM.PUT(p, 0); INC(p, 4);
         Files.ReadInt(R, fixorgP); Files.ReadInt(R, fixorgD); Files.ReadInt(R, fixorgT);
-        Files.ReadInt(R, w); body := SYSTEM.VAL(Command, mod.code + w);
+        Files.ReadInt(R, w); body := SYSTEM.VAL(Command, mod.code + w + 1);
         Files.Read(R, ch);
         IF ch # "O" THEN (*corrupted file*)  mod := NIL; error(4, name) END
       END ;

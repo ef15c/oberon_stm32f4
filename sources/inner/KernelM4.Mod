@@ -101,7 +101,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
           SYSTEM.PUT(p-4, offadr); SYSTEM.GET(offadr, offset);
           IF offset # -1 THEN (*down*)
             SYSTEM.GET(p+offset, r); SYSTEM.GET(r-4, offadr);
-            IF (r >= heapOrg) & (offadr = 0) THEN SYSTEM.PUT(p+offset, q); q := p; p := r END
+            IF (*r >= heapOrg*) SYSTEM.CMP(r, heapOrg, CS) & (offadr = 0) THEN SYSTEM.PUT(p+offset, q); q := p; p := r END
           ELSE (*up*) SYSTEM.GET(q-4, offadr); SYSTEM.GET(offadr, offset);
             IF p # q THEN SYSTEM.GET(q+offset, r); SYSTEM.PUT(q+offset, p); p := q; q := r END
           END
