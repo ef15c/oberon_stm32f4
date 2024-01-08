@@ -7,7 +7,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     LogMenu = "Edit.Locate System.Copy System.Grow System.Clear Edit.Store";
     
     FaultSRAdr = 0E000ED28H; NOCP = 19; INVSTATE = 17;
-    IntCtrlSRAdr = 0E000ED04H; PENDSVSET = 26;
+    IntCtrlSRAdr = 0E000ED04H; PENDSVSET = 28;
 
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
