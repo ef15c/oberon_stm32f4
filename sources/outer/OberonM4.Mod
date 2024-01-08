@@ -393,10 +393,9 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE Reset*;
   BEGIN
-    (*the stack pointer reset is moved in the System.Trap handler*)
     IF CurTask.state = active THEN Remove(CurTask) END ; Loop
   END Reset;
-
+  
 BEGIN User[0] := 0X;
   Arrow.Fade := FlipArrow; Arrow.Draw := FlipArrow;
   Star.Fade := FlipStar; Star.Draw := FlipStar;

@@ -11,6 +11,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
+    TrappedAdr: INTEGER; UFSR: SET;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
     VAR T: Texts.Text; beg, end, time: LONGINT;
@@ -397,27 +398,17 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END ExtendDisplay;
 
   PROCEDURE* Trap(VAR f: Kernel.ExceptionFrame);
-    VAR UFSR, ICSR: SET; w, inst: INTEGER; mod: Modules.Module;
+    VAR ICSR: SET; w, inst: INTEGER;
   BEGIN
     SYSTEM.GET(FaultSRAdr, UFSR);
-    SYSTEM.GET(f.returnAddress, inst);
-    inst := inst DIV 100H MOD 100H*1000000H
-      + inst MOD 100H*10000H
-      + inst DIV 1000000H MOD 100H*100H
-      + inst DIV 10000H MOD 100H; (*thumb swap*)
     IF NOCP IN UFSR THEN (*Trap*)
-       w := inst MOD 10H;
+      SYSTEM.GET(f.returnAddress, inst);
+      w := inst DIV 10000H MOD 10H;
     ELSIF INVSTATE IN UFSR THEN w := 5 (*probably illegal procedure call*)
     END;
     IF w = 0 THEN Kernel.New(w, f.r1); SYSTEM.PUT(f.r0, w); INC(f.returnAddress, 4); (*move to next instruction*)
     ELSE (*trap*) 
-      inst := inst DIV 10H; (*inst contains p/pppp/pppp/pppp/0ppp/pppp*)
-      Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst DIV 100H*80H + inst MOD 80H, 4);
-      Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4); mod := Modules.root;
-      WHILE (mod # NIL) & ((f.returnAddress < mod.code) OR (f.returnAddress >= mod.imp)) DO mod := mod.next END ;
-      IF mod # NIL THEN Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
-      Texts.WriteString(W, " at"); Texts.WriteHex(W, f.returnAddress);
-      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+      TrappedAdr := f.returnAddress;
       (*Trigger abort by requesting a PendSV interrupt*)
       SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*)
     END;
@@ -426,8 +417,34 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END;
     SYSTEM.PUT(FaultSRAdr, UFSR); (*reset UFSR flags*)
   END Trap;
+
+  PROCEDURE Reset;
+    VAR inst, w, base: INTEGER; mod: Modules.Module;
+  BEGIN
+    IF TrappedAdr # 0 THEN
+      IF NOCP IN UFSR THEN (*Trap*)      
+        SYSTEM.GET(TrappedAdr, inst);
+        inst := inst DIV 100H MOD 100H*1000000H
+          + inst MOD 100H*10000H
+          + inst DIV 1000000H MOD 100H*100H
+          + inst DIV 10000H MOD 100H; (*thumb swap*)
+
+        w := inst MOD 10H;
+        inst := inst DIV 10H; (*inst contains p/pppp/pppp/pppp/0ppp/pppp*)
+        Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst DIV 100H*80H + inst MOD 80H, 4)
+      ELSIF INVSTATE IN UFSR THEN w := 5 (*probably illegal procedure call*)
+      END;
+      base := 0; Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4); mod := Modules.root;
+      WHILE (mod # NIL) & ((TrappedAdr < mod.code) OR (TrappedAdr >= mod.imp)) DO mod := mod.next END ;
+      IF mod # NIL THEN base := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
+      Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - base);
+      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+      TrappedAdr := 0; UFSR := {}
+    END;
+    Oberon.Reset;
+  END Reset;
   
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
-  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4); Kernel.Install(SYSTEM.ADR(Oberon.Reset), Kernel.VarORG0+0);
+  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4); Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
 END System.
