@@ -430,8 +430,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
           + inst DIV 10000H MOD 100H; (*thumb swap*)
 
         w := inst MOD 10H;
-        inst := inst DIV 10H; (*inst contains p/pppp/pppp/pppp/0ppp/pppp*)
-        Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst DIV 100H*80H + inst MOD 80H, 4)
+        inst := inst DIV 10H; (*inst contains 1110/110p/pppp/pppp/pppp/0ppp/pppp*)
+        inst := (inst DIV 100H*80H + inst MOD 80H) MOD 100000H;
+        Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
       ELSIF INVSTATE IN UFSR THEN w := 5 (*probably illegal procedure call*)
       END;
       base := 0; Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4); mod := Modules.root;
