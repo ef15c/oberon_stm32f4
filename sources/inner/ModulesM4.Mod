@@ -303,7 +303,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
         s[k] := 0X;
         REPEAT INC(adr) UNTIL adr MOD 4 = 0;
         SYSTEM.GET(adr, k); INC(adr, 4);
-        IF s = name THEN res := 0; w := mod.code + k ELSE SYSTEM.GET(adr, ch) END
+        IF s = name THEN res := 0; w := mod.code + k + 1 (*thumb execution state*) ELSE SYSTEM.GET(adr, ch) END
       END
     END
     RETURN SYSTEM.VAL(Command, w)
