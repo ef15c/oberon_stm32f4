@@ -21,7 +21,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     clock: INTEGER;
     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
     sectorMap: ARRAY mapsize DIV 32 OF SET;
-    hint: INTEGER; (*helps to reduce the allocation frequency of a sector, to reduces SD card wear*)
     
 (* ---------- New: heap allocation ----------*)
 
@@ -163,7 +162,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     VAR sec: INTEGER;
   BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
     INCL(sectorMap[sec DIV 32], sec MOD 32); INC(NofSectors);
-    IF sec > hint THEN hint := sec END
   END MarkSector;
 
   PROCEDURE FreeSector*(sec29: INTEGER);
@@ -175,13 +173,12 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE AllocSector*(hint29: INTEGER; VAR sec29: INTEGER);
     VAR hint, s: INTEGER;
   BEGIN (*find free sector, starting after hint*)
-    (*hint := hint29 DIV 29; ASSERT(hint29 = hint*29);*) s := hint;
+    hint := hint29 DIV 29; ASSERT(hint29 = hint*29); s := hint;
     REPEAT INC(s);
-      IF s = mapsize THEN s := 1 END ;
+      IF s >= mapsize THEN s := 1 END ;
     UNTIL ~(s MOD 32 IN sectorMap[s DIV 32]) OR (s = hint);
     ASSERT (~(s MOD 32 IN sectorMap[s DIV 32]));
-    INCL(sectorMap[s DIV 32], s MOD 32); INC(NofSectors); sec29 := s * 29;
-    hint := s
+    INCL(sectorMap[s DIV 32], s MOD 32); INC(NofSectors); sec29 := s * 29
   END AllocSector;
 
   PROCEDURE GetSector*(src29: INTEGER; VAR dst: Sector);
@@ -232,7 +229,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SYSTEM.GET(VarORG0+28, heapOrg); stackSize := 10000H; heapLim := MemLim;
     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
     SYSTEM.PUT(list0, heapLim - heapOrg); SYSTEM.PUT(list0+4, -1); SYSTEM.PUT(list0+8, 0);
-    allocated := 0; clock := 0; hint := 32; InitSecMap
+    allocated := 0; clock := 0; InitSecMap
   END Init;
 
 END Kernel.
