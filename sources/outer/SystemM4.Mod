@@ -299,10 +299,13 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   (* ------------- Toolbox for system inspection ---------------*)
 
   PROCEDURE Watch*;
+    VAR modUsed, modSize: INTEGER;
   BEGIN Texts.WriteString(W, "System.Watch"); Texts.WriteLn(W);
-    Texts.WriteString(W, "  Modules space (bytes)"); Texts.WriteInt(W, Modules.AllocPtr, 8);
-    Texts.WriteInt(W, Modules.AllocPtr * 100 DIV Kernel.heapOrg, 4); Texts.Write(W, "%"); EndLine;
-    Texts.WriteString(W, "  Heap speace"); Texts.WriteInt(W, Kernel.allocated, 8);
+    modUsed := Modules.AllocPtr - Kernel.VarORG0;
+    Texts.WriteString(W, "  Modules space (bytes)"); Texts.WriteInt(W, modUsed, 8);
+    modSize := Kernel.heapOrg - Kernel.VarORG0;
+    Texts.WriteInt(W, modUsed * 100 DIV modSize, 4); Texts.Write(W, "%"); EndLine;
+    Texts.WriteString(W, "  Heap space"); Texts.WriteInt(W, Kernel.allocated, 8);
     Texts.WriteInt(W, Kernel.allocated * 100 DIV (Kernel.heapLim - Kernel.heapOrg), 4); Texts.Write(W, "%"); EndLine;
     Texts.WriteString(W, "  Disk sectors "); Texts.WriteInt(W, Kernel.NofSectors, 4);
     Texts.WriteInt(W, Kernel.NofSectors * 100 DIV 10000H, 4); Texts.Write(W, "%"); EndLine;

@@ -148,7 +148,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
   PROCEDURE WriteSD(dst, src, nofblocks: INTEGER);
     VAR r: INTEGER;
-  BEGIN SYSTEM.LDREG(0, src); SYSTEM.LDREG(1, dst);
+  BEGIN SYSTEM.LDREG(0, dst); SYSTEM.LDREG(1, src);
     SYSTEM.LDREG(2, nofblocks); r := SYSTEM.SVC(3);
   END WriteSD;
 
