@@ -99,3 +99,19 @@ N° de service   Nom     R0                                                  R1  
 à faire
 N° de service   Nom     R0                                                  R1                                      R2 et suivants
 -------------   ------- --------------------------------------------------  ------------------------------------    ------------------------
+
+Runtime checks:
+
+trap number trap cause
+1           array index out of range
+2           type guard failure
+3           array or string copy overflow
+4           access via NIL pointer
+5           illegal procedure call
+6           integer division by zero
+7           assertion violated
+8           Bus Fault: data access precise error
+9           Bus Fault: stack overflow
+
+
+

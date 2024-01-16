@@ -6,12 +6,13 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     StandardMenu = "System.Close System.Copy System.Grow Edit.Search Edit.Store";
     LogMenu = "Edit.Locate System.Copy System.Grow System.Clear Edit.Store";
     
-    FaultSRAdr = 0E000ED28H; NOCP = 19; INVSTATE = 17;
+    FaultSRAdr = 0E000ED28H; UFSRMask = {16..31}; BFSRMask = {8..15}; NOCP = 19; INVSTATE = 17; PRECISERR = 9; STKERR = 12;
+    BusFaultExcNum = 5;
     IntCtrlSRAdr = 0E000ED04H; PENDSVSET = 28;
 
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
-    TrappedAdr: INTEGER; UFSR: SET;
+    TrappedAdr: INTEGER; CFSR: SET;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
     VAR T: Texts.Text; beg, end, time: LONGINT;
@@ -403,11 +404,11 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   PROCEDURE* Trap(VAR f: Kernel.ExceptionFrame);
     VAR ICSR: SET; w, inst: INTEGER;
   BEGIN
-    SYSTEM.GET(FaultSRAdr, UFSR);
-    IF NOCP IN UFSR THEN (*Trap*)
+    SYSTEM.GET(FaultSRAdr, CFSR);
+    IF NOCP IN CFSR THEN (*Trap*)
       SYSTEM.GET(f.returnAddress, inst);
       w := inst DIV 10000H MOD 10H;
-    ELSIF INVSTATE IN UFSR THEN w := 5 (*probably illegal procedure call*)
+    ELSIF INVSTATE IN CFSR THEN w := 5 (*probably illegal procedure call*)
     END;
     IF w = 0 THEN Kernel.New(w, f.r1); SYSTEM.PUT(f.r0, w); INC(f.returnAddress, 4); (*move to next instruction*)
     ELSE (*trap*) 
@@ -415,17 +416,27 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       (*Trigger abort by requesting a PendSV interrupt*)
       SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*)
     END;
-    IF UFSR - {NOCP, INVSTATE} # {} THEN (*other fault*)
+    IF CFSR - {NOCP, INVSTATE} # {} THEN (*other fault*)
       (*LED(127)*); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
-    SYSTEM.PUT(FaultSRAdr, UFSR); (*reset UFSR flags*)
+    SYSTEM.PUT(FaultSRAdr, CFSR*UFSRMask) (*reset UFSR flags*)
   END Trap;
 
+  PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrame);
+    VAR ICSR: SET; w, inst: INTEGER;
+  BEGIN
+    SYSTEM.GET(FaultSRAdr, CFSR);
+    TrappedAdr := f.returnAddress;
+    (*Trigger abort by requesting a PendSV interrupt*)
+    SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*);
+    SYSTEM.PUT(FaultSRAdr, CFSR*BFSRMask) (*reset BFSR flags*)
+  END BusFaultHandler;
+  
   PROCEDURE Reset;
     VAR inst, w, base: INTEGER; mod: Modules.Module;
   BEGIN
     IF TrappedAdr # 0 THEN
-      IF NOCP IN UFSR THEN (*Trap*)      
+      IF NOCP IN CFSR THEN (*Trap*)      
         SYSTEM.GET(TrappedAdr, inst);
         inst := inst DIV 100H MOD 100H*1000000H
           + inst MOD 100H*10000H
@@ -436,19 +447,24 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
         inst := inst DIV 10H; (*inst contains 1110/110p/pppp/pppp/pppp/0ppp/pppp*)
         inst := (inst DIV 100H*80H + inst MOD 80H) MOD 100000H;
         Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
-      ELSIF INVSTATE IN UFSR THEN w := 5 (*probably illegal procedure call*)
+      ELSIF INVSTATE IN CFSR THEN w := 5 (*probably illegal procedure call*)
+      ELSIF PRECISERR IN CFSR THEN w := 8 (*Bus Fault: data access precise error*)
+      ELSIF STKERR IN CFSR THEN w := 9 (*Bus Fault: stack overflow*)
+      ELSE w := 10 (*TODO Fault to be characterized*)
       END;
       base := 0; Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4); mod := Modules.root;
       WHILE (mod # NIL) & ((TrappedAdr < mod.code) OR (TrappedAdr >= mod.imp)) DO mod := mod.next END ;
       IF mod # NIL THEN base := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
       Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - base);
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-      TrappedAdr := 0; UFSR := {}
+      TrappedAdr := 0; CFSR := {}
     END;
     Oberon.Reset;
   END Reset;
   
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
-  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4); Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
+  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4); 
+  Kernel.Install(SYSTEM.ADR(BusFaultHandler), Kernel.VecTabBase+BusFaultExcNum*4); 
+  Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
 END System.
