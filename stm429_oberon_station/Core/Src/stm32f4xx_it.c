@@ -22,6 +22,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "raster.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,11 +64,9 @@ extern DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 extern LTDC_HandleTypeDef hltdc;
 extern DMA_HandleTypeDef hdma_sdio_rx;
 extern DMA_HandleTypeDef hdma_sdio_tx;
-extern TIM_HandleTypeDef htim6;
-
-/* USER CODE BEGIN EV */
 extern SD_HandleTypeDef hsd;
-
+/* USER CODE BEGIN EV */
+extern MSKBData mskbBlock;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -165,6 +164,7 @@ void PendSV_Handler(void)
     /* Abort current command by resetting stack
        and reentering the main loop */
     sContextStateFrame *f;
+    uint32_t *abortAdr = (uint32_t *) 0xD0201000;
     uint32_t lr = __get_LR();
     size_t sz = (lr & 0x10)?0x20:0x68;
 
@@ -182,7 +182,8 @@ void PendSV_Handler(void)
     f->r3 = 0;
     f->r12 = 0;
     f->lr = 0xFFFFFFFF;
-    f->return_address = (uint32_t) mainLoop;
+    /* mettre ici l'adresse de la procédure ABORT qui est disponible à l'adress 0xD0201000 */
+    f->return_address = *abortAdr;
     f->xpsr = 0x01000000; /* Bit 24 as 1 to indicate thumb mode */
 
     /* Reinit process stack pointer */
@@ -202,7 +203,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
   /* USER CODE END SysTick_IRQn 0 */
-
+  HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
 
   /* USER CODE END SysTick_IRQn 1 */
@@ -216,17 +217,59 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles TIM6 global interrupt, DAC1 and DAC2 underrun error interrupts.
+  * @brief This function handles EXTI line2 interrupt.
   */
-void TIM6_DAC_IRQHandler(void)
+void EXTI2_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
+  /* USER CODE BEGIN EXTI2_IRQn 0 */
 
-  /* USER CODE END TIM6_DAC_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim6);
-  /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
+  /* USER CODE END EXTI2_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(PS2_CLOCK_1_Pin);
+  /* USER CODE BEGIN EXTI2_IRQn 1 */
 
-  /* USER CODE END TIM6_DAC_IRQn 1 */
+  /* USER CODE END EXTI2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles EXTI line4 interrupt.
+  */
+void EXTI4_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI4_IRQn 0 */
+
+  /* USER CODE END EXTI4_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(PS2_CLOCK_2_Pin);
+  /* USER CODE BEGIN EXTI4_IRQn 1 */
+
+  /* USER CODE END EXTI4_IRQn 1 */
+}
+
+/**
+  * @brief This function handles EXTI line[9:5] interrupts.
+  */
+void EXTI9_5_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+
+  /* USER CODE END EXTI9_5_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(NRF24L01P_IRQ_Pin);
+  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
+
+  /* USER CODE END EXTI9_5_IRQn 1 */
+}
+
+/**
+  * @brief This function handles SDIO global interrupt.
+  */
+void SDIO_IRQHandler(void)
+{
+  /* USER CODE BEGIN SDIO_IRQn 0 */
+
+  /* USER CODE END SDIO_IRQn 0 */
+  HAL_SD_IRQHandler(&hsd);
+  /* USER CODE BEGIN SDIO_IRQn 1 */
+
+  /* USER CODE END SDIO_IRQn 1 */
 }
 
 /**
@@ -267,7 +310,6 @@ void DMA2_Stream6_IRQHandler(void)
   /* USER CODE END DMA2_Stream6_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_sdio_tx);
   /* USER CODE BEGIN DMA2_Stream6_IRQn 1 */
-
   /* USER CODE END DMA2_Stream6_IRQn 1 */
 }
 
@@ -311,6 +353,8 @@ void Oberon_UsageFault_Handler(sContextStateFrame *frame)
     {
     }
   }
+  SCB->CFSR |= SCB_CFSR_NOCP_Msk; /*Reset flag*/
+
   instr = (uint32_t *) frame->return_address;
   frame->return_address += 4;
   __ISB();
@@ -323,7 +367,9 @@ void Oberon_UsageFault_Handler(sContextStateFrame *frame)
 void Oberon_SVC_Handler(sContextStateFrame *frame)
 {
     uint8_t param = *((uint8_t *)(frame->return_address)-2);
-    uint32_t x;
+    int32_t x, y, w, h, dx, dy;
+    uint8_t buf[16*512], *pbuf;
+    uint32_t *wsrc, *wdst;
     int i;
 
     switch (param) {
@@ -340,17 +386,127 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
         }
         break;
     case 2:
-        /* Process SD card block read */
-        frame->r0 = HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)frame->r1, frame->r0, frame->r2);
-        if (frame->r0 == HAL_OK) {
-            frame->r0 = 300;
-            while (frame->r0-- && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
-                HAL_Delay(100);
-            }
-            if (frame->r0) {
-                frame->r0 = HAL_OK;
-            }
-        }
+        /* Process SD card multi blocks read */
+    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
+    	if (frame->r1 >= 0x20000000) { /*Memory region accessible to DMA*/
+    		pbuf =  (uint8_t *)frame->r1;
+    	} else {
+    		if (frame->r2 > 16) {
+    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+    			frame->r0 = HAL_ERROR;
+    			return ;
+    		}
+    		pbuf = buf;
+    	}
+
+		frame->r0 = HAL_SD_ReadBlocks_DMA(&hsd, pbuf, frame->r0, frame->r2);
+		if (frame->r0 == HAL_OK) {
+			frame->r0 = 300;
+			while (frame->r0-- && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
+				HAL_Delay(1);
+			}
+			if (frame->r0) {
+				frame->r0 = HAL_OK;
+			} else {
+				frame->r0 = 1;
+			}
+		}
+		if (frame->r0 == HAL_OK) {
+	    	if (frame->r1 < 0x20000000) {
+	    		wsrc = (uint32_t *) buf; wdst = (uint32_t *) frame->r1;
+	    		for (i = 0; i < frame->r2*512/4; i++) {
+	    			*wdst++ = *wsrc++;
+	    		}
+	    	}
+		} else {
+	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+		}
+    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+        break;
+    case 3:
+        /* Process SD card multi blocks write */
+        HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
+
+    	if (frame->r1 >= 0x20000000) { /*Memory region accessible to DMA*/
+    		pbuf =  (uint8_t *)frame->r1;
+    	} else {
+    		if (frame->r2 > 16) {
+    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+    			frame->r0 = HAL_ERROR;
+    			return ;
+    		}
+    		wdst = (uint32_t *) buf; wsrc = (uint32_t *) frame->r1;
+    		for (i = 0; i < frame->r2*512/4; i++) {
+    			*wdst++ = *wsrc++;
+    		}
+
+    		pbuf = buf;
+    	}
+
+#if 1
+		frame->r0 = HAL_SD_WriteBlocks_DMA(&hsd, pbuf, frame->r0, frame->r2);
+		if (frame->r0 == HAL_OK) {
+			frame->r0 = 300;
+			while (frame->r0-- && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
+				HAL_Delay(1);
+			}
+			if (frame->r0) {
+				frame->r0 = HAL_OK;
+			} else {
+				frame->r0 = 1;
+			}
+		}
+		if (frame->r0 != HAL_OK) {
+	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+		}
+#else
+    	while (frame->r2) {
+    		i = HAL_SD_WriteBlocks_DMA(&hsd, pbuf, frame->r0, 1);
+    		if (i == HAL_OK) {
+    			i = 300;
+    			while (i-- && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
+    				HAL_Delay(1);
+    			}
+    			if (i) {
+    				i = HAL_OK;
+    			} else {
+    				i = 1;
+    			}
+    		}
+    		if (i != HAL_OK) {
+    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+    		}
+    		frame->r2--; frame->r0++; pbuf += 512;
+    	}
+#endif
+    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+    	frame->r0 = i;
+        break;
+    case 4:
+        /* Return millisecond counter */
+        frame->r0 = HAL_GetTick();
+        break;
+    case 5:
+        /* Return mouse and keyboard data block address */
+        frame->r0 = (uint32_t) &mskbBlock;
+        break;
+    case 6:
+        /* Draw pattern on screen */
+        x = frame->r2 >> 16;
+        y = frame->r2 & 0xFFFF;
+        CopyPattern(frame->r0, (uint32_t *) frame->r1, x, y, frame->r3);
+        break;
+    case 7:
+        /* Copy block on screen */
+        x = frame->r0 >> 16;
+        y = frame->r0 & 0xFFFF;
+        w = frame->r1 >> 16;
+        h = frame->r1 & 0xFFFF;
+        dx = frame->r2 >> 16;
+        dy = frame->r3 & 0xFFFF;
+        CopyBlock(x, y, w, h, dx, dy, frame->r3);
         break;
     }
 }

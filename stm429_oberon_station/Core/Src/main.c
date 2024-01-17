@@ -24,6 +24,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "stm32f4xx_it.h"
+#include "raster.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define FB_SIZE (1366*768)
+#define FB_SIZE (1368*768)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,8 +49,6 @@ DMA_HandleTypeDef hdma_sdio_rx;
 DMA_HandleTypeDef hdma_sdio_tx;
 
 SPI_HandleTypeDef hspi3;
-
-TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart1;
 
@@ -98,6 +97,15 @@ static const uint32_t clut[256] = {
 static uint8_t *fb, *bb, *dmaBuf;
 static size_t tranfSize;
 static int color;
+
+/* Si un jour j'arrive à intégrer le préchargement des modules en FLASH/SRAM */
+/* space provision for Oberon modules static data
+uint8_t modulesData[0x20000]; */
+PS2_HandleTypeDef ps2_1;
+PS2_HandleTypeDef ps2_2;
+MSKBData mskbBlock;
+
+volatile float a;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,14 +114,14 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_FMC_Init(void);
 static void MX_LTDC_Init(void);
-static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_SDIO_SD_Init(void);
 static void MX_SPI3_Init(void);
 /* USER CODE BEGIN PFP */
+static void BSP_PS2_Init(void);
 static void TransferComplete(DMA_HandleTypeDef *DmaHandle);
 static void TransferError(DMA_HandleTypeDef *DmaHandle);
-
+static void PS2_PINS_Output_OD_High(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -126,6 +134,7 @@ void led(uint32_t l);
 uint32_t ReadSD(uint32_t blockNum, uint8_t* dest, uint32_t nofBlocks);
 static void powerDown24(void);
 static void stackOverflow(void);
+void BootLoadM4(void);
 /* USER CODE END 0 */
 
 /**
@@ -135,7 +144,8 @@ static void stackOverflow(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk|SCB_SHCSR_BUSFAULTENA_Msk;
+SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk|SCB_SHCSR_BUSFAULTENA_Msk;
+SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -144,13 +154,26 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+    a = 1.0; /*Contournement bug EMBitz quand PSP est utilisé*/
+    a = a+2.0; /*Activate LSP */
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+
+    /* Enable microseconds delay via DWT */
+    /* Disable TRC */
+    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
+    /* Enable TRC */
+    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
+    /* Disable clock cycle counter */
+    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
+    /* Reset the clock cycle counter value */
+    DWT->CYCCNT = 0;
+    /* Enable  clock cycle counter */
+    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
 
   /* USER CODE END SysInit */
 
@@ -159,12 +182,12 @@ int main(void)
   MX_DMA_Init();
   MX_FMC_Init();
   MX_LTDC_Init();
-  MX_TIM1_Init();
   MX_USART1_UART_Init();
   MX_SDIO_SD_Init();
   MX_SPI3_Init();
   /* USER CODE BEGIN 2 */
-
+  PS2_PINS_Output_OD_High();
+  BSP_PS2_Init();
   // COnfigure MPU to allow execution in range 0xD0201000 - 0xD0800000
   MPU_RegionConfig();
 //#define NO_DMA
@@ -174,15 +197,15 @@ int main(void)
 
   fb = (uint8_t *) 0xD0000000;
   bb = fb+FB_SIZE;
-#ifdef VGA_DMA
-#else
+#ifndef VGA_DMA
   uint8_t *tmp = fb;
+  uint32_t *tmp4 = (uint32_t *) fb;
 #endif
   uint32_t n=0;
 
 #if 1
-    for (n=0; n<FB_SIZE; n++) {
-        *tmp++ = 0;
+    for (n=0; n<FB_SIZE/4; n++) {
+        *tmp4++ = 0;
     }
 
     // Draw cross
@@ -196,110 +219,94 @@ int main(void)
     tmp = fb + 1366/2;
     for (n=0; n<768; n++) {
         *tmp = 255;
-        tmp += 1366;
+        tmp += 1368;
     }
 
     // Draw blue square
     // Hrozontal top line
-    tmp = fb + FB_SIZE/2 - 1366*100 + 1366/2 -100;
+    tmp = fb + FB_SIZE/2 - 1368*100 + 1366/2 -100;
     for (n=0; n<200; n++) {
         *tmp++ = 3;
     }
 
     // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + 1366*100 + 1366/2 -100;
+    tmp = fb + FB_SIZE/2 + 1368*100 + 1366/2 -100;
     for (n=0; n<200; n++) {
         *tmp++ = 3;
     }
 
     // Vertical left line
-    tmp = fb + FB_SIZE/2 - 1366*100 + 1366/2 -100;
+    tmp = fb + FB_SIZE/2 - 1368*100 + 1366/2 -100;
     for (n=0; n<200; n++) {
         *tmp = 3;
-        tmp += 1366;
+        tmp += 1368;
     }
 
     // Vertical right line
-    tmp = fb + FB_SIZE/2 - 1366*100 + 1366/2 +100;
+    tmp = fb + FB_SIZE/2 - 1368*100 + 1366/2 +100;
     for (n=0; n<200; n++) {
         *tmp = 3;
-        tmp += 1366;
+        tmp += 1368;
     }
 
     // Draw green square
     // Hrozontal top line
-    tmp = fb + FB_SIZE/2 - 1366*200 + 1366/2 -200;
+    tmp = fb + FB_SIZE/2 - 1368*200 + 1366/2 -200;
     for (n=0; n<400; n++) {
         *tmp++ = 0x1C;
     }
 
     // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + 1366*200 + 1366/2 -200;
+    tmp = fb + FB_SIZE/2 + 1368*200 + 1366/2 -200;
     for (n=0; n<400; n++) {
         *tmp++ = 0x1C;
     }
 
     // Vertical left line
-    tmp = fb + FB_SIZE/2 - 1366*200 + 1366/2 -200;
+    tmp = fb + FB_SIZE/2 - 1368*200 + 1366/2 -200;
     for (n=0; n<400; n++) {
         *tmp = 0x1C;
-        tmp += 1366;
+        tmp += 1368;
     }
 
     // Vertical right line
-    tmp = fb + FB_SIZE/2 - 1366*200 + 1366/2 +200;
+    tmp = fb + FB_SIZE/2 - 1368*200 + 1366/2 +200;
     for (n=0; n<400; n++) {
         *tmp = 0x1C;
-        tmp += 1366;
+        tmp += 1368;
     }
 
     // Draw green square
-    // Hrozontal top line
-    tmp = fb + FB_SIZE/2 - 1366*300 + 1366/2 -300;
+    // Hrozontal t line
+    tmp = fb + FB_SIZE/2 - 1368*300 + 1366/2 -300;
     for (n=0; n<600; n++) {
         *tmp++ = 0xE0;
     }
 
     // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + 1366*300 + 1366/2 -300;
+    tmp = fb + FB_SIZE/2 + 1368*300 + 1366/2 -300;
     for (n=0; n<600; n++) {
         *tmp++ = 0xE0;
     }
 
     // Vertical left line
-    tmp = fb + FB_SIZE/2 - 1366*300 + 1366/2 -300;
+    tmp = fb + FB_SIZE/2 - 1368*300 + 1366/2 -300;
     for (n=0; n<600; n++) {
         *tmp = 0xE0;
-        tmp += 1366;
+        tmp += 1368;
     }
 
     // Vertical right line
-    tmp = fb + FB_SIZE/2 - 1366*300 + 1366/2 +300;
+    tmp = fb + FB_SIZE/2 - 1368*300 + 1366/2 +300;
     for (n=0; n<600; n++) {
         *tmp = 0xE0;
-        tmp += 1366;
+        tmp += 1368;
     }
 #endif
 
-    copyFunction();
-
-    tmp = (uint8_t *) 0xD0601000;
-    n = ReadSD(0, tmp, 100);
-    if (n) {
-        while (1) {
-
-        }
-    }
-//    n = HAL_SD_ReadBlocks_DMA(&hsd, sector, 0, 1);
-//    if (n == HAL_OK) {
-//        n = 300;
-//        while (n-- && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
-//            HAL_Delay(100);
-//        }
-//        if (n) {
-//            n = HAL_OK;
-//        }
-//    }
+//    copyFunction();
+    //    codeInRam();
+    BootLoadM4();
 
     n = 0;
 
@@ -420,6 +427,8 @@ static void MX_LTDC_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN LTDC_Init 2 */
+  /* Sets the Layer1 (index 0 refers to Layer1) Pitch to 1368 pixels to be a pmultple of 4 */
+  HAL_LTDC_SetPitch(&hltdc, 1368, 0);
   /* Install and enable CLUT */
   if (HAL_LTDC_ConfigCLUT(&hltdc, (uint32_t *) clut, 256, 0))
   {
@@ -527,52 +536,6 @@ static void MX_SPI3_Init(void)
 }
 
 /**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65535;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-
-}
-
-/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -620,10 +583,10 @@ static void MX_DMA_Init(void)
   hdma_memtomem_dma2_stream0.Instance = DMA2_Stream0;
   hdma_memtomem_dma2_stream0.Init.Channel = DMA_CHANNEL_0;
   hdma_memtomem_dma2_stream0.Init.Direction = DMA_MEMORY_TO_MEMORY;
-  hdma_memtomem_dma2_stream0.Init.PeriphInc = DMA_PINC_DISABLE;
+  hdma_memtomem_dma2_stream0.Init.PeriphInc = DMA_PINC_ENABLE;
   hdma_memtomem_dma2_stream0.Init.MemInc = DMA_MINC_ENABLE;
-  hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-  hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+  hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+  hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
   hdma_memtomem_dma2_stream0.Init.Mode = DMA_NORMAL;
   hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_LOW;
   hdma_memtomem_dma2_stream0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
@@ -637,13 +600,13 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
 }
@@ -674,7 +637,7 @@ static void MX_FMC_Init(void)
   hsdram1.Init.CASLatency = FMC_SDRAM_CAS_LATENCY_3;
   hsdram1.Init.WriteProtection = FMC_SDRAM_WRITE_PROTECTION_DISABLE;
   hsdram1.Init.SDClockPeriod = FMC_SDRAM_CLOCK_PERIOD_2;
-  hsdram1.Init.ReadBurst = FMC_SDRAM_RBURST_DISABLE;
+  hsdram1.Init.ReadBurst = FMC_SDRAM_RBURST_ENABLE;
   hsdram1.Init.ReadPipeDelay = FMC_SDRAM_RPIPE_DELAY_1;
   /* SdramTiming */
   SdramTiming.LoadToActiveDelay = 2;
@@ -813,7 +776,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PS2_CLOCK_1_Pin PS2_CLOCK_2_Pin */
   GPIO_InitStruct.Pin = PS2_CLOCK_1_Pin|PS2_CLOCK_2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
@@ -902,7 +865,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : NRF24L01P_IRQ_Pin */
   GPIO_InitStruct.Pin = NRF24L01P_IRQ_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(NRF24L01P_IRQ_GPIO_Port, &GPIO_InitStruct);
 
@@ -913,11 +876,99 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(NRF24L01P_CS_GPIO_Port, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+
+/**
+  * @brief GPIO Open drain default high
+  * @param None
+  * @retval None
+  */
+void PS2_PINS_Output_OD_High(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(PS2_CLOCK_1_GPIO_Port, PS2_CLOCK_1_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(PS2_DATA_1_GPIO_Port, PS2_DATA_1_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(PS2_CLOCK_2_GPIO_Port, PS2_CLOCK_2_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(PS2_DATA_2_GPIO_Port, PS2_DATA_2_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin : PS2_CLOCK_1_Pin, PS2_DATA_1_Pin, PS2_CLOCK_2_Pin, PS2_DATA_2_Pin */
+  GPIO_InitStruct.Pin = PS2_CLOCK_1_Pin | PS2_DATA_1_Pin | PS2_CLOCK_2_Pin | PS2_DATA_2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(PS2_CLOCK_1_GPIO_Port, &GPIO_InitStruct);
+}
+
+
+/**
+  * @brief Initialize PS/2 handlers for the board
+  * @param None
+  * @retval None
+  */
+static void BSP_PS2_Init(void)
+{
+    /* Wait for completion of PS/2 devices self tests */
+    HAL_Delay(500);
+
+    /* Probe PS/2 devices */
+    ps2_1.clockPort = PS2_CLOCK_1_GPIO_Port;
+    ps2_1.clockPin = PS2_CLOCK_1_Pin;
+    ps2_1.dataPort = PS2_DATA_1_GPIO_Port;
+    ps2_1.dataPin = PS2_DATA_1_Pin;
+    ps2_1.KBLedPort = LD3_GPIO_Port;
+    ps2_1.KBLedPin = LD3_Pin;
+    ps2_1.MouseLedPort = LD4_GPIO_Port;
+    ps2_1.MouseLedPin = LD4_Pin;
+    ps2_1.answerBlock = &mskbBlock;
+    PS2_initHandle(&ps2_1);
+
+    ps2_2.clockPort = PS2_CLOCK_2_GPIO_Port;
+    ps2_2.clockPin = PS2_CLOCK_2_Pin;
+    ps2_2.dataPort = PS2_DATA_2_GPIO_Port;
+    ps2_2.dataPin = PS2_DATA_2_Pin;
+    ps2_2.KBLedPort = LD3_GPIO_Port;
+    ps2_2.KBLedPin = LD3_Pin;
+    ps2_2.MouseLedPort = LD4_GPIO_Port;
+    ps2_2.MouseLedPin = LD4_Pin;
+    ps2_2.answerBlock = &mskbBlock;
+    PS2_initHandle(&ps2_2);
+}
+
+
+/**
+  * @brief  EXTI line detection callbacks.
+  * @param  GPIO_Pin: Specifies the pins connected EXTI line
+  * @retval None
+  */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  switch(GPIO_Pin) {
+  case PS2_CLOCK_1_Pin:
+    /* First PS/2 port */
+    PS2_ProcessData(&ps2_1);
+    break;
+  case PS2_CLOCK_2_Pin:
+    /* Second PS/2 port */
+    PS2_ProcessData(&ps2_2);
+    break;
+  }
+}
 
 /**
   * @brief  DMA conversion complete callback
@@ -934,13 +985,13 @@ static void TransferComplete(DMA_HandleTypeDef *DmaHandle)
     if (tranfSize>0) {
         int l;
 
-        if (tranfSize>64000) {
-            l = 64000;
+        if (tranfSize>64000*4) {
+            l = 64000*4;
         } else {
             l = tranfSize;
         }
 
-        if(HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, (uint32_t)&color, (uint32_t)dmaBuf, l) != HAL_OK)
+        if(HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, (uint32_t)&color, (uint32_t)dmaBuf, l/4) != HAL_OK)
         {
             Error_Handler();
         }
@@ -986,7 +1037,7 @@ void MPU_RegionConfig(void)
     MPU_Region_InitTypeDef MPU_InitStruct;
     /* Disable MPU */
     HAL_MPU_Disable();
-    /* Configure RAM region as Region N°0, 8kB of size and R/W region */
+    /* Configure SDRAM region as Region N°0, 4M of size and R/W region */
     MPU_InitStruct.Number = MPU_REGION_NUMBER0;
     MPU_InitStruct.Enable = MPU_REGION_ENABLE;
     MPU_InitStruct.BaseAddress = 0xD0201000;
@@ -999,7 +1050,7 @@ void MPU_RegionConfig(void)
     MPU_InitStruct.SubRegionDisable = 0x00;
     MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
     HAL_MPU_ConfigRegion(&MPU_InitStruct);
-    /* Configure FLASH region as REGION N°1, 1MB of size and R/W region */
+    /* Configure SDRAM region as REGION N°1, 4MB of size and R/W region */
     MPU_InitStruct.BaseAddress = 0xD0400000;
     MPU_InitStruct.Size = MPU_REGION_SIZE_4MB;
     MPU_InitStruct.Number = MPU_REGION_NUMBER1;
@@ -1081,7 +1132,9 @@ static void stackOverflow(void)
 
 void mainLoop(void)
 {
+#if 0
   volatile uint32_t ticks;
+#endif
   uint32_t n=0;
 
   while (1)
@@ -1108,44 +1161,23 @@ void mainLoop(void)
 
     *tmp++ = n++;
     HAL_Delay(1);
-#endif
+
     ticks = HAL_GetTick();
     codeInRam();
     ticks = HAL_GetTick() - ticks;
-
+#endif
     if (n >= 256) {
         n = 0;
     }
 
     led(++n);
-    testTrap(n);
+//    testTrap(n);
 
     HAL_Delay(1000);
 #endif
   }
 }
 /* USER CODE END 4 */
-
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM6 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6) {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
-
-  /* USER CODE END Callback 1 */
-}
 
 /**
   * @brief  This function is executed in case of error occurrence.

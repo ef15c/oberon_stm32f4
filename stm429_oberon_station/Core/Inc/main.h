@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "ps2_protocol.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -54,16 +54,21 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void UsageFault_Handler(void);
+void Display(void);
+void Fonts(void);
 void mainLoop(void) __attribute__ ((noreturn));
+void Counter(void) __attribute__ ((noreturn));
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
 #define PS2_CLOCK_1_Pin GPIO_PIN_2
 #define PS2_CLOCK_1_GPIO_Port GPIOE
+#define PS2_CLOCK_1_EXTI_IRQn EXTI2_IRQn
 #define PS2_DATA_1_Pin GPIO_PIN_3
 #define PS2_DATA_1_GPIO_Port GPIOE
 #define PS2_CLOCK_2_Pin GPIO_PIN_4
 #define PS2_CLOCK_2_GPIO_Port GPIOE
+#define PS2_CLOCK_2_EXTI_IRQn EXTI4_IRQn
 #define PS2_DATA_2_Pin GPIO_PIN_5
 #define PS2_DATA_2_GPIO_Port GPIOE
 #define PB3_Pin GPIO_PIN_6
@@ -220,6 +225,7 @@ void mainLoop(void) __attribute__ ((noreturn));
 #define NRF24L01P_MOSI_GPIO_Port GPIOD
 #define NRF24L01P_IRQ_Pin GPIO_PIN_7
 #define NRF24L01P_IRQ_GPIO_Port GPIOD
+#define NRF24L01P_IRQ_EXTI_IRQn EXTI9_5_IRQn
 #define NRF24L01P_CE_Pin GPIO_PIN_9
 #define NRF24L01P_CE_GPIO_Port GPIOG
 #define G3_Pin GPIO_PIN_10

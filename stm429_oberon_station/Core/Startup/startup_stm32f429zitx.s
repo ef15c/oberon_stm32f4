@@ -32,7 +32,7 @@
 .global  g_pfnVectors
 .global  Default_Handler
 
-/* Process stach */
+/* Process stack */
 .word  _epstack
 
 /* start address for the initialization values of the .isr_vector section.
