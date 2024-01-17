@@ -115,7 +115,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       END ;
       IF res = noerr THEN
         INC(size, DescSize);
-        IF AllocPtr + size < limit THEN (*allocate*)
+        IF AllocPtr < limit - size THEN (*allocate*)
           p := AllocPtr; mod := SYSTEM.VAL(Modules.Module, p);
           AllocPtr := (p + size + 3) DIV 4 * 4; mod.size := AllocPtr - p;
           IF root = NIL THEN mod.num := 1 ELSE mod.num := root.num + 1 END ;
@@ -302,6 +302,6 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.20 / CS 14/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); 
-  SYSTEM.GET(HeapOrg, limit); (*The end of the module space is the beginning of the heap*)
+  limit := Kernel.heapOrg; (*The end of the module space is the beginning of the heap*)
   IF limit = 0 THEN limit := Kernel.stackOrg - Kernel.stackSize END; (*Hack if ran by RISC-5 machine*)
 END OM4L.
