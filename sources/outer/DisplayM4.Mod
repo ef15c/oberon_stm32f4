@@ -152,16 +152,16 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         IF v1 + w >= NofPixperWord THEN
           SYSTEM.GET(sa0+len, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+len+d, dst);
-          SYSTEM.PUT(sa0+len+d, (dst * m2) + (src - m1 - m2));
-          spill := src * m1;
+          SYSTEM.PUT(sa0+len+d, (dst * m2) + (src * m1 - m2));
+          spill := src - m1;
           FOR sa1 := sa0 + len-4 TO sa0+4  BY -4 DO
             SYSTEM.GET(sa1, src); src := ROR(src, n*NofBPP);
-            SYSTEM.PUT(sa1+d, spill + (src - m1));
-            spill := src * m1
+            SYSTEM.PUT(sa1+d, spill + (src * m1));
+            spill := src - m1
           END ;
           SYSTEM.GET(sa0, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+d, dst);
-          SYSTEM.PUT(sa0+d, ((spill + (src - m1)) * m0) + (dst - m0))
+          SYSTEM.PUT(sa0+d, ((spill + (src * m1)) * m0) + (dst - m0))
         ELSE SYSTEM.GET(sa0, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+d, dst);
           SYSTEM.PUT(sa0+d, (src * m3) + (dst - m3))
