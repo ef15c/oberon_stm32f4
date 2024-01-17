@@ -115,7 +115,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       END ;
       IF res = noerr THEN
         INC(size, DescSize);
-        IF AllocPtr < limit - size THEN (*allocate*)
+        IF size < limit - AllocPtr THEN (*allocate*)
           p := AllocPtr; mod := SYSTEM.VAL(Modules.Module, p);
           AllocPtr := (p + size + 3) DIV 4 * 4; mod.size := AllocPtr - p;
           IF root = NIL THEN mod.num := 1 ELSE mod.num := root.num + 1 END ;
