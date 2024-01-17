@@ -3,6 +3,6 @@ bin/
 .cproject
 .mxproject
 .project
-**/*.bak
+*.bak
 Debug/
 Release/
