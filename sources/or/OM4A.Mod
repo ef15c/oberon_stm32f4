@@ -356,7 +356,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   PROCEDURE format2Reg4*(a, b: BYTE): LONGINT;
   BEGIN
     ASSERT ((a < C4) & (b < C4));
-    RETURN 0 + a DIV 3*C7 + b*C3 + a MOD 3
+    RETURN 0 + a DIV C3*C7 + b*C3 + a MOD C3
   END format2Reg4;
   
   PROCEDURE format3Reg4*(a, b, c: BYTE): LONGINT;
@@ -584,7 +584,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   PROCEDURE encMOVReg*(VAR c: ModuleCode; a, b: BYTE);
   BEGIN
     ASSERT((a # 15) OR (c.nbRmnITBlockInsts <= 1));
-    Put1(c, MOVRT1 + a DIV 3*C7 + b*C3 + a MOD 3)
+    Put1(c, MOVRT1 + a DIV C3*C7 + b*C3 + a MOD C3)
   END encMOVReg;
   
   PROCEDURE encMUL*(VAR co: ModuleCode; a, b, c: BYTE);
