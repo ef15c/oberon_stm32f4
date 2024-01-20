@@ -7,7 +7,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     LogMenu = "Edit.Locate System.Copy System.Grow System.Clear Edit.Store";
     
     FaultSRAdr = 0E000ED28H; UFSRMask = {16..31}; BFSRMask = {8..15}; NOCP = 19; INVSTATE = 17; PRECISERR = 9; STKERR = 12;
-    BusFaultExcNum = 5;
+    BusFaultExcNum = 5; BFARAdr = 0E000ED38H;
     IntCtrlSRAdr = 0E000ED04H; PENDSVSET = 28;
 
   VAR W: Texts.Writer;
@@ -426,7 +426,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     VAR ICSR: SET; w, inst: INTEGER;
   BEGIN
     SYSTEM.GET(FaultSRAdr, CFSR);
-    TrappedAdr := f.returnAddress;
+    IF ~(STKERR IN CFSR) THEN TrappedAdr := f.returnAddress 
+    ELSIF PRECISERR IN CFSR THEN SYSTEM.GET(BFARAdr, TrappedAdr)
+    END;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*);
     SYSTEM.PUT(FaultSRAdr, CFSR*BFSRMask) (*reset BFSR flags*)
@@ -435,31 +437,30 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   PROCEDURE Reset;
     VAR inst, w, base: INTEGER; mod: Modules.Module;
   BEGIN
-    IF TrappedAdr # 0 THEN
-      IF NOCP IN CFSR THEN (*Trap*)      
-        SYSTEM.GET(TrappedAdr, inst);
-        inst := inst DIV 100H MOD 100H*1000000H
-          + inst MOD 100H*10000H
-          + inst DIV 1000000H MOD 100H*100H
-          + inst DIV 10000H MOD 100H; (*thumb swap*)
+    IF NOCP IN CFSR THEN (*Trap*)      
+      SYSTEM.GET(TrappedAdr, inst);
+      inst := inst DIV 100H MOD 100H*1000000H
+        + inst MOD 100H*10000H
+        + inst DIV 1000000H MOD 100H*100H
+        + inst DIV 10000H MOD 100H; (*thumb swap*)
 
-        w := inst MOD 10H;
-        inst := inst DIV 10H; (*inst contains 1110/110p/pppp/pppp/pppp/0ppp/pppp*)
-        inst := (inst DIV 100H*80H + inst MOD 80H) MOD 100000H;
-        Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
-      ELSIF INVSTATE IN CFSR THEN w := 5 (*probably illegal procedure call*)
-      ELSIF PRECISERR IN CFSR THEN w := 8 (*Bus Fault: data access precise error*)
-      ELSIF STKERR IN CFSR THEN w := 9 (*Bus Fault: stack overflow*)
-      ELSE w := 10 (*TODO Fault to be characterized*)
-      END;
-      base := 0; Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4); mod := Modules.root;
+      w := inst MOD 10H;
+      inst := inst DIV 10H; (*inst contains 1110/110p/pppp/pppp/pppp/0ppp/pppp*)
+      inst := (inst DIV 100H*80H + inst MOD 80H) MOD 100000H;
+      Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
+    ELSIF INVSTATE IN CFSR THEN w := 5 (*probably illegal procedure call*)
+    ELSIF STKERR IN CFSR THEN w := 9 (*Bus Fault: stack overflow*)
+    ELSIF PRECISERR IN CFSR THEN w := 8 (*Bus Fault: data access precise error*)
+    ELSE w := 10 (*TODO Fault to be characterized*)
+    END;
+    Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4);
+    IF TrappedAdr # 0 THEN
+      base := 0; mod := Modules.root;
       WHILE (mod # NIL) & ((TrappedAdr < mod.code) OR (TrappedAdr >= mod.imp)) DO mod := mod.next END ;
       IF mod # NIL THEN base := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
       Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - base);
-      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-      TrappedAdr := 0; CFSR := {}
-    END;
-    Oberon.Reset;
+      TrappedAdr := 0
+    END; Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); CFSR := {}; Oberon.Reset
   END Reset;
   
 BEGIN Texts.OpenWriter(W);

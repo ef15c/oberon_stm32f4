@@ -71,7 +71,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END GetBlock32;
 
    PROCEDURE New*(VAR ptr: LONGINT; tag: LONGINT);
-    (*called by NEW via MT[0]; ptr and tag are pointers*)
+    (*called by NEW via Trap 0; ptr and tag are pointers*)
     VAR p, size, lim: LONGINT;
   BEGIN SYSTEM.GET(tag, size);
     IF size = 32 THEN GetBlock32(p)

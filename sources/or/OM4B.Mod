@@ -35,6 +35,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     ModDesc* = RECORD (ObjDesc) orgname*: OM4S.Ident END ;
 
     TypeDesc* = RECORD
+      signature: LONGINT;
       form*, ref*, mno*: INTEGER;  (*ref is only used for import/export*)
       nofpar*: INTEGER;  (*for procedures, extension level for records*)
       len*: LONGINT;  (*for arrays, len < 0 => open array; for records: adr of descriptor*)
@@ -69,6 +70,11 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
 
+  PROCEDURE isValidType*(typ: Type): BOOLEAN;
+  BEGIN
+    RETURN (typ = NIL) OR (typ.signature = 0)
+  END isValidType;
+  
   PROCEDURE NewObj*(VAR obj: Object; id: OM4S.Ident; class: INTEGER);  (*insert new Object with name id*)
     VAR new, x: Object;
   BEGIN x := topScope;

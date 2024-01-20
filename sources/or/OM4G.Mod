@@ -162,6 +162,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     fixORGD := mcode.pc-4;
     (*If x.r = 0, x.a contains the offset of the variable computed at compile time,
       else if x.r < 0, x.a contains the variable or procedure number and the base indicator*)
+    ASSERT(OM4B.isValidType(x.type));
     IF (x.type # NIL) & (x.type.form = OM4B.Proc) & (x.r < 0) THEN progbaseIndic := OM4A.C8 
     ELSE progbaseIndic := 0 END;
     (* MOVT a, #imm16 *)
@@ -191,7 +192,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
               utiliser l'équivalent de l'assembleur ADR RH, <label>*)
             OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); (*Put address+1 of next statement in LR*)
             OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a)
-          ELSE GetStaticVarAddress(x, RH) END;
+          ELSE ASSERT(OM4B.isValidType(x.type));
+            GetStaticVarAddress(x, RH) 
+          END;
           x.r := RH; incR
         ELSE OM4A.encMOVImm32(mcode, RH, x.a);
           IF target = FPReg THEN
@@ -208,7 +211,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
             x.r := SH; incS
           ELSE incR; OM4A.encMemImm32(mcode, op, RH-1, SP, RH, x.a + frame); x.r := RH-1
           END
-        ELSE GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := 0; incR; doLoad(x, target)
+        ELSE ASSERT(OM4B.isValidType(x.type));
+          GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := 0; incR; doLoad(x, target)
         END
       ELSIF x.mode = OM4B.Par THEN
         incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
@@ -256,7 +260,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode = OM4B.Var THEN
       IF x.r > 0 THEN (*local*) OM4A.encDPImm32(mcode, OM4A.ADD, RH, SP, RH, x.a + frame)
-      ELSE GetStaticVarAddress(x, RH) END;
+      ELSE ASSERT(OM4B.isValidType(x.type));
+        GetStaticVarAddress(x, RH) 
+      END;
       x.r := RH; incR
     ELSIF x.mode = OM4B.Par THEN incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
       IF x.b # 0 THEN incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, x.b); DEC(RH) END;
@@ -283,11 +289,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE loadTypTagAdr(T: OM4B.Type);
     VAR x: Item;
-  BEGIN x.mode := OM4B.Var; x.a := T.len; x.r := -T.mno; loadAdr(x)
+  BEGIN x.mode := OM4B.Var; x.type := NIL; x.a := T.len; x.r := -T.mno; loadAdr(x)
   END loadTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
-  BEGIN x.r := 0; x.a := varsize+x.a; GetStaticVarAddress(x, RH);
+  BEGIN x.r := 0; x.a := varsize+x.a; ASSERT(OM4B.isValidType(x.type));
+    GetStaticVarAddress(x, RH);
     incR; x.mode := Reg; x.r := RH-1
   END loadStringAdr;
 
@@ -362,7 +369,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END ;
         IF x.mode = OM4B.Var THEN
           IF x.r > 0 THEN OM4A.encDPReg(mcode, OM4A.ADD, y.r, SP, y.r, p2); INC(x.a, frame)
-          ELSE GetStaticVarAddress(x, RH);
+          ELSE ASSERT(OM4B.isValidType(x.type));
+            GetStaticVarAddress(x, RH);
             OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.a := 0
           END ;
           x.r := y.r; x.mode := RegI
@@ -718,7 +726,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
             (x.a + frame) DIV OM4A.C2)
         ELSE OM4A.encMemImm32(mcode, op, y.r, SP, RH, x.a + frame)
         END
-      ELSE GetStaticVarAddress(x, RH);
+      ELSE ASSERT(OM4B.isValidType(x.type));
+          GetStaticVarAddress(x, RH);
         IF y.mode = FPReg THEN
           OM4A.Put0(mcode, OM4A.VSTRT2 + 1*OM4A.C23(*ADD*) +
             y.r MOD OM4A.C1*OM4A.C22 + RH*OM4A.C16 + y.r DIV OM4A.C1*OM4A.C12)
