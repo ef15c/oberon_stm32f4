@@ -505,7 +505,7 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
         w = frame->r1 >> 16;
         h = frame->r1 & 0xFFFF;
         dx = frame->r2 >> 16;
-        dy = frame->r3 & 0xFFFF;
+        dy = frame->r2 & 0xFFFF;
         CopyBlock(x, y, w, h, dx, dy, frame->r3);
         break;
     }

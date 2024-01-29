@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <EmBitz_layout_file>
 	<ActiveTarget name="Debug" />
-	<File name="Core\Inc\main.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Core\Inc\main.h" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1752" topLine="37" />
+			<Cursor1 position="6348" topLine="190" />
 		</Cursor>
 	</File>
-	<File name="Core\Inc\ps2_protocol.h" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Core\Inc\ps2_protocol.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="1622" topLine="40" />
 		</Cursor>
@@ -31,7 +31,7 @@
 			<Cursor1 position="2207" topLine="46" />
 		</Cursor>
 	</File>
-	<File name="Core\Src\BootLoadM4.s" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Core\Src\BootLoadM4.s" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="98" topLine="0" />
 		</Cursor>
@@ -51,7 +51,7 @@
 			<Cursor1 position="462" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="Core\Src\main.c" open="1" top="1" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Core\Src\main.c" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="9859" topLine="249" />
 		</Cursor>
@@ -66,12 +66,12 @@
 			<Cursor1 position="10271" topLine="213" />
 		</Cursor>
 	</File>
-	<File name="Core\Src\stm32f4xx_hal_msp.c" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Core\Src\stm32f4xx_hal_msp.c" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="12" topLine="0" />
+			<Cursor1 position="4791" topLine="131" />
 		</Cursor>
 	</File>
-	<File name="Core\Src\stm32f4xx_it.c" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Core\Src\stm32f4xx_it.c" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="2545" topLine="51" />
 		</Cursor>
@@ -81,12 +81,12 @@
 			<Cursor1 position="5890" topLine="156" />
 		</Cursor>
 	</File>
-	<File name="Core\Src\test_trap.s" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Core\Src\test_trap.s" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="700" topLine="13" />
 		</Cursor>
 	</File>
-	<File name="Core\Startup\startup_stm32f429zitx.s" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Core\Startup\startup_stm32f429zitx.s" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="3449" topLine="87" />
 		</Cursor>
@@ -226,9 +226,14 @@
 			<Cursor1 position="18830" topLine="494" />
 		</Cursor>
 	</File>
-	<File name="STM32F429ZITX_FLASH.ld" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="STM32F429ZITX_FLASH.ld" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="1375" topLine="23" />
+		</Cursor>
+	</File>
+	<File name="stm429_oberon_station.ioc" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="7817" topLine="239" />
 		</Cursor>
 	</File>
 </EmBitz_layout_file>

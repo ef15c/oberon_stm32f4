@@ -33,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define FB_SIZE (1368*768)
+#define FB_SIZE (Span*768)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,6 +42,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+CRC_HandleTypeDef hcrc;
+
 LTDC_HandleTypeDef hltdc;
 
 SD_HandleTypeDef hsd;
@@ -117,6 +119,7 @@ static void MX_LTDC_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_SDIO_SD_Init(void);
 static void MX_SPI3_Init(void);
+static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
 static void BSP_PS2_Init(void);
 static void TransferComplete(DMA_HandleTypeDef *DmaHandle);
@@ -185,6 +188,7 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   MX_USART1_UART_Init();
   MX_SDIO_SD_Init();
   MX_SPI3_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   PS2_PINS_Output_OD_High();
   BSP_PS2_Init();
@@ -219,88 +223,88 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
     tmp = fb + 1366/2;
     for (n=0; n<768; n++) {
         *tmp = 255;
-        tmp += 1368;
+        tmp += Span;
     }
 
     // Draw blue square
     // Hrozontal top line
-    tmp = fb + FB_SIZE/2 - 1368*100 + 1366/2 -100;
+    tmp = fb + FB_SIZE/2 - Span*100 + 1366/2 -100;
     for (n=0; n<200; n++) {
         *tmp++ = 3;
     }
 
     // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + 1368*100 + 1366/2 -100;
+    tmp = fb + FB_SIZE/2 + Span*100 + 1366/2 -100;
     for (n=0; n<200; n++) {
         *tmp++ = 3;
     }
 
     // Vertical left line
-    tmp = fb + FB_SIZE/2 - 1368*100 + 1366/2 -100;
+    tmp = fb + FB_SIZE/2 - Span*100 + 1366/2 -100;
     for (n=0; n<200; n++) {
         *tmp = 3;
-        tmp += 1368;
+        tmp += Span;
     }
 
     // Vertical right line
-    tmp = fb + FB_SIZE/2 - 1368*100 + 1366/2 +100;
+    tmp = fb + FB_SIZE/2 - Span*100 + 1366/2 +100;
     for (n=0; n<200; n++) {
         *tmp = 3;
-        tmp += 1368;
+        tmp += Span;
     }
 
     // Draw green square
     // Hrozontal top line
-    tmp = fb + FB_SIZE/2 - 1368*200 + 1366/2 -200;
+    tmp = fb + FB_SIZE/2 - Span*200 + 1366/2 -200;
     for (n=0; n<400; n++) {
         *tmp++ = 0x1C;
     }
 
     // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + 1368*200 + 1366/2 -200;
+    tmp = fb + FB_SIZE/2 + Span*200 + 1366/2 -200;
     for (n=0; n<400; n++) {
         *tmp++ = 0x1C;
     }
 
     // Vertical left line
-    tmp = fb + FB_SIZE/2 - 1368*200 + 1366/2 -200;
+    tmp = fb + FB_SIZE/2 - Span*200 + 1366/2 -200;
     for (n=0; n<400; n++) {
         *tmp = 0x1C;
-        tmp += 1368;
+        tmp += Span;
     }
 
     // Vertical right line
-    tmp = fb + FB_SIZE/2 - 1368*200 + 1366/2 +200;
+    tmp = fb + FB_SIZE/2 - Span*200 + 1366/2 +200;
     for (n=0; n<400; n++) {
         *tmp = 0x1C;
-        tmp += 1368;
+        tmp += Span;
     }
 
     // Draw green square
     // Hrozontal t line
-    tmp = fb + FB_SIZE/2 - 1368*300 + 1366/2 -300;
+    tmp = fb + FB_SIZE/2 - Span*300 + 1366/2 -300;
     for (n=0; n<600; n++) {
         *tmp++ = 0xE0;
     }
 
     // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + 1368*300 + 1366/2 -300;
+    tmp = fb + FB_SIZE/2 + Span*300 + 1366/2 -300;
     for (n=0; n<600; n++) {
         *tmp++ = 0xE0;
     }
 
     // Vertical left line
-    tmp = fb + FB_SIZE/2 - 1368*300 + 1366/2 -300;
+    tmp = fb + FB_SIZE/2 - Span*300 + 1366/2 -300;
     for (n=0; n<600; n++) {
         *tmp = 0xE0;
-        tmp += 1368;
+        tmp += Span;
     }
 
     // Vertical right line
-    tmp = fb + FB_SIZE/2 - 1368*300 + 1366/2 +300;
+    tmp = fb + FB_SIZE/2 - Span*300 + 1366/2 +300;
     for (n=0; n<600; n++) {
         *tmp = 0xE0;
-        tmp += 1368;
+        tmp += Span;
     }
 #endif
 
@@ -371,6 +375,32 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
+
+}
+
+/**
   * @brief LTDC Initialization Function
   * @param None
   * @retval None
@@ -427,8 +457,8 @@ static void MX_LTDC_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN LTDC_Init 2 */
-  /* Sets the Layer1 (index 0 refers to Layer1) Pitch to 1368 pixels to be a pmultple of 4 */
-  HAL_LTDC_SetPitch(&hltdc, 1368, 0);
+  /* Sets the Layer1 (index 0 refers to Layer1) Pitch to Span pixels to be a pmultple of 4 */
+  HAL_LTDC_SetPitch(&hltdc, Span, 0);
   /* Install and enable CLUT */
   if (HAL_LTDC_ConfigCLUT(&hltdc, (uint32_t *) clut, 256, 0))
   {

@@ -6,7 +6,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   CONST black* = 0; white* = 255;  (*black = background*)
     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
     Base* = 0D0000000H; Width* = 1366; Height* = 768; NofBPP* = 8;
-    NofPixperWord* = 32 DIV NofBPP; Span = (Width*8 DIV NofBPP+3) DIV 4*4;
+    NofPixperWord* = 32 DIV NofBPP; Span = (Width*8 DIV NofBPP+63) DIV 64*64;
 
   TYPE Frame* = POINTER TO FrameDesc;
     FrameMsg* = RECORD END ;

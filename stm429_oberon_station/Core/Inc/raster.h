@@ -11,6 +11,8 @@
 #define Width 1366
 #define Height 768
 
+#define NofBPP 8
+#define Span ((((Width*8) / NofBPP)+63)/64*64)
 
 void CopyPattern(int col, uint32_t *patadr, int x, int y, int mode);  /*only for modes = paint, invert*/
 void CopyBlock(int sx, int sy, int w, int h, int dx, int dy, int mode); /*only for mode = replace*/

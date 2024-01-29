@@ -2,9 +2,7 @@
 
 #include "stm32f4xx_hal.h"
 
-#define NofBPP 8
 #define NofPixperWord  (32 / NofBPP)
-#define Span ((((Width*8) / NofBPP)+3)/4*4)
 
 extern DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 /*
@@ -142,16 +140,16 @@ void CopyPattern(int col, uint32_t *patadr, int x, int y, int mode)  /*only for 
         IF v1 + w >= NofPixperWord THEN
           SYSTEM.GET(sa0+len, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+len+d, dst);
-          SYSTEM.PUT(sa0+len+d, (dst * m2) + (src - m1 - m2));
-          spill := src * m1;
+          SYSTEM.PUT(sa0+len+d, (dst * m2) + (src * m1 - m2));
+          spill := src - m1;
           FOR sa1 := sa0 + len-4 TO sa0+4  BY -4 DO
             SYSTEM.GET(sa1, src); src := ROR(src, n*NofBPP);
-            SYSTEM.PUT(sa1+d, spill + (src - m1));
-            spill := src * m1
+            SYSTEM.PUT(sa1+d, spill + (src * m1));
+            spill := src - m1
           END ;
           SYSTEM.GET(sa0, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+d, dst);
-          SYSTEM.PUT(sa0+d, ((spill + (src - m1)) * m0) + (dst - m0))
+          SYSTEM.PUT(sa0+d, ((spill + (src * m1)) * m0) + (dst - m0))
         ELSE SYSTEM.GET(sa0, src); src := ROR(src, n*NofBPP);
           SYSTEM.GET(sa0+d, dst);
           SYSTEM.PUT(sa0+d, (src * m3) + (dst - m3))
@@ -209,17 +207,17 @@ void CopyBlock(int sx, int sy, int w, int h, int dx, int dy, int mode) /*only fo
           src = sa0[len/4];
           src = (src << (32-n*NofBPP)) | (src >> (n*NofBPP));
           dst = sa0[(len+d)/4];
-          sa0[(len+d)/4] = (dst & m2) | (src & (~m1 & ~m2));
-          spill = src & m1;
+          sa0[(len+d)/4] = (dst & m2) | (src & m1 & ~m2);
+          spill = src & ~m1;
           for (sa1 = sa0+(len-4)/4; sa1 >= sa0+1; sa1--) {
             src = *sa1;
             src = (src << (32-n*NofBPP)) | (src >> (n*NofBPP));
-            sa1[d/4] = spill | (src & ~m1);
-            spill = src & m1;
+            sa1[d/4] = spill | (src & m1);
+            spill = src & ~m1;
           }
           src = *sa0; src = (src << (32-n*NofBPP)) | (src >> (n*NofBPP));
           dst = sa0[d/4];
-          sa0[d/4] = ((spill | (src & ~m1)) & m0) | (dst & ~m0);
+          sa0[d/4] = ((spill | (src & m1)) & m0) | (dst & ~m0);
         } else { src = *sa0; src = (src << (32-n*NofBPP)) | (src >> (n*NofBPP));
           dst = sa0[d/4];
           sa0[d/4] = (src & m3) | (dst & ~m3);

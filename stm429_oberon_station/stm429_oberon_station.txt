@@ -1,6 +1,6 @@
 Configuration	stm429_oberon_station
-STM32CubeMX 	6.9.2
-Date	11/17/2023
+STM32CubeMX 	6.10.0
+Date	01/29/2024
 MCU	STM32F429ZITx
 
 
@@ -77,8 +77,7 @@ SPI3	Full-Duplex Master	SPI3_MOSI	PD6
 SPI3	Full-Duplex Master	SPI3_SCK	PB3
 SYS	Serial Wire	SYS_JTCK-SWCLK	PA14
 SYS	Serial Wire	SYS_JTMS-SWDIO	PA13
-SYS	TIM6	SYS_VS_tim6	VP_SYS_VS_tim6
-TIM1	Internal Clock	TIM1_VS_ClockSourceINT	VP_TIM1_VS_ClockSourceINT
+SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
 USART1	Asynchronous	USART1_RX	PA10
 USART1	Asynchronous	USART1_TX	PA9
 
@@ -260,8 +259,7 @@ SPI3	Full-Duplex Master	SPI3_MOSI	PD6
 SPI3	Full-Duplex Master	SPI3_SCK	PB3
 SYS	Serial Wire	SYS_JTCK-SWCLK	PA14
 SYS	Serial Wire	SYS_JTMS-SWDIO	PA13
-SYS	TIM6	SYS_VS_tim6	VP_SYS_VS_tim6
-TIM1	Internal Clock	TIM1_VS_ClockSourceINT	VP_TIM1_VS_ClockSourceINT
+SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
 USART1	Asynchronous	USART1_RX	PA10
 USART1	Asynchronous	USART1_TX	PA9
 
