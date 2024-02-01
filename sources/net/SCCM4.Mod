@@ -3,8 +3,6 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   IMPORT SYSTEM, Kernel;
 
   CONST
-(*    swi = -60; spiData = -48; spiCtrl = -44;*)
-
     (*STM32F429*)
     
     (*Unique device ID register (96 bits)*)
@@ -23,7 +21,11 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     (*SPI*)
     SPI3Base = 40003C00H; DR = 0CH; SR = 8;
     spiData = SPI3Base + DR; spiSR = SPI3Base + SR;
-    RXNE = 0; TXE = 1;
+    RXNE = 0; TXE = 1; BSY = 7;
+
+    (*CRC*)
+    CRCBase = 40023000H; CRCDR = 0; CR = 8;
+    CRCReset = PeriphBBAlias + (CRCBase + CR - PeriphBase)*32;
     
     HdrSize = 8; MaxPayload = 512; SubPacket = 32; Wait = 50; SendTries = 50;
     MaxPacket = (HdrSize + MaxPayload + SubPacket-1) DIV SubPacket * SubPacket;
@@ -48,57 +50,82 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     REPEAT UNTIL Kernel.Time() - beg > d
   END Delayms;
   
-  PROCEDURE SPIWrite(n: BYTE);
-  BEGIN (*send into shift reg one byte*)
-    REPEAT UNTIL SYSTEM.BIT(spiSR, TXE) (*wait until TX buffer is empty*); SYSTEM.PUT(spiData, n);
-  END SPIWrite;
+  PROCEDURE SPIn(src, dst, n: INTEGER);
+    VAR sc, rc: INTEGER; data: BYTE;
+  BEGIN (*send/rcv n bytes to/from SPI*) ASSERT(n>0);
+    sc := 0; rc := 0;
+    REPEAT 
+      IF SYSTEM.BIT(spiSR, TXE) & (sc < n) THEN (*TX buffer is empty*) 
+        SYSTEM.GET(src+sc, data); SYSTEM.PUT(spiData, data); INC(sc)
+      END;
+      IF SYSTEM.BIT(spiSR, RXNE) & (rc < n) THEN (*RX buffer is not empty*)
+        SYSTEM.GET(spiData, data); SYSTEM.PUT(dst+rc, data); INC(sc)
+      END
+    UNTIL (sc = n) & (rc = n);
+    REPEAT UNTIL ~SYSTEM.BIT(spiSR, BSY) (*Wait until SPI is not busy*)
+  END SPIn;
 
-  PROCEDURE SPIRead(VAR n: BYTE);
-  BEGIN (*rcv form shift reg one byte, at current speed*)
-    REPEAT UNTIL SYSTEM.BIT(spiSR, RXNE) (*wait until TX buffer is empty*); SYSTEM.PUT(spiData, n);
-  END SPIRead;
+  PROCEDURE SPIw(n: BYTE);
+  BEGIN (*send into shift reg one byte*)
+    SPIn(SYSTEM.ADR(n), SYSTEM.ADR(n), 1)
+  END SPIw;
+
+  PROCEDURE SPIr(VAR n: BYTE);
+    VAR nop: BYTE;
+  BEGIN (*rcv from shift reg one byte*)
+    nop := 0FFH;
+    SPIn(SYSTEM.ADR(nop), SYSTEM.ADR(n), 1)
+  END SPIr;
+
+  PROCEDURE SPIrw(n: BYTE; VAR r: BYTE);
+  BEGIN (*send/rcv into/from shift reg one byte*)
+    SPIn(SYSTEM.ADR(n), SYSTEM.ADR(r), 1)
+  END SPIrw;
 
   PROCEDURE StartCmd(cmd: INTEGER);
-  BEGIN SYSTEM.PUT(netSelectOut, 0); SPIWrite(cmd)
+  BEGIN SYSTEM.PUT(netSelectOut, 0); SPIw(cmd)
   END StartCmd;
 
-  PROCEDURE WriteReg1(reg, dat: BYTE); (*disables radio!*)
-  BEGIN SYSTEM.PUT(netEnableOut, 0); StartCmd(reg + 20H); SPIWrite(dat); SYSTEM.PUT(netSelectOut, 1) (*W_REGISTER*)
+  PROCEDURE WriteReg1(reg, dat: BYTE);
+  BEGIN StartCmd(reg + 20H); SPIw(dat); SYSTEM.PUT(netSelectOut, 1) (*W_REGISTER*)
   END WriteReg1;
 
   PROCEDURE WriteRegN(reg: BYTE; dat: ARRAY OF CHAR; len: INTEGER); (*disables radio!*)
     VAR i: INTEGER;
-  BEGIN SYSTEM.PUT(netEnableOut, 0); StartCmd(reg + 20H);
-    FOR i := 0 TO len - 1 DO SPIWrite(ORD(dat[i])) END; SYSTEM.PUT(netSelectOut, 1) (*W_REGISTER*)
+  BEGIN StartCmd(reg + 20H);
+    FOR i := 0 TO len - 1 DO SPIw(ORD(dat[i])) END; SYSTEM.PUT(netSelectOut, 1) (*W_REGISTER*)
   END WriteRegN;
 
-  PROCEDURE SubRcv(dst: INTEGER);
+  PROCEDURE SubRcv(dst: INTEGER; VAR len: BYTE);
     VAR i: INTEGER; dat: BYTE;
   BEGIN
-    StartCmd(61H); (*R_RX_PAYLOAD, disables radio*)
-    FOR i := 0 TO SubPacket-1 DO
-      SPIWrite(-1); SPIRead(dat); SYSTEM.PUT(dst+i, dat)
+    StartCmd(60H); SPIr(len); (*R_RX_PL_WID*)
+    StartCmd(61H); (*R_RX_PAYLOAD*)
+    FOR i := 0 TO len-1 DO
+      SPIr(dat); SYSTEM.PUT(dst+i, dat)
     END;
     SYSTEM.PUT(netSelectOut, 1); WriteReg1(7, 40H); (*done; STATUS <= clear RX_DR*); 
-    SYSTEM.PUT(netSelectOut, 1); SYSTEM.PUT(netEnableOut, 1); (*enable radio*)
+    SYSTEM.PUT(netSelectOut, 1)
   END SubRcv;
 
-  PROCEDURE SubSnd(src: INTEGER; VAR timeout: BOOLEAN);
+  PROCEDURE doSubSend(src, len: INTEGER; VAR timeout: BOOLEAN);
     VAR i, res, t1, try: INTEGER; x, dat, status: BYTE;
   BEGIN (*already in xmit mode*)
+    ASSERT(len-1 IN {0..SubPacket-1});
     StartCmd(0A0H); (*W_TX_PAYLOAD*)
-    FOR i := 0 TO SubPacket-1 DO
-      SYSTEM.GET(src+i, dat); SPIWrite(dat)
+    FOR i := 0 TO len-1 DO
+      SYSTEM.GET(src+i, dat); SPIw(dat)
     END;
     SYSTEM.PUT(netSelectOut, 1); (*end W_TX_PAYLOAD command*)
     try := 0;
-    SYSTEM.PUT(netSelectOut, 0); SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse, start NOP cmd*)
+    SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse, start NOP cmd*)
     REPEAT
       t1 := Kernel.Time();
       REPEAT (*wait for sent or retransmits exceeded*);
-        SPIWrite(0FFH); SPIRead(status); (*NOP*)
+        SYSTEM.PUT(netSelectOut, 0); 
+        SPIr(status); (*NOP*)
         res := status DIV 10H MOD 4;
-        SYSTEM.PUT(netEnableOut, 0); SYSTEM.PUT(netSelectOut, 1); SYSTEM.PUT(netSelectOut, 0); (*end & restart NOP cmd, end =10us pulse on enable*)
+        SYSTEM.PUT(netEnableOut, 0); SYSTEM.PUT(netSelectOut, 1); (*end & restart NOP cmd, end =10us pulse on enable*)
       UNTIL res # 0;
       IF res = 2 THEN WriteReg1(7, 20H) (*TX_DS: sent, ack received; reset it*)
       ELSIF res = 1 THEN WriteReg1(7, 10H); INC(try); (*MAX_RT: retransmits exceeded; reset it*)
@@ -109,8 +136,25 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       END
     UNTIL res # 1;
     timeout := (res # 2)
+  END doSubSend;
+
+  PROCEDURE SubSnd(src: INTEGER; VAR timeout: BOOLEAN);
+    VAR i, dat: INTEGER;
+  BEGIN
+    doSubSend(src, SubPacket, timeout);
+    IF ~timeout THEN 
+      FOR i := 0 TO SubPacket-4 BY 4 DO (*Compute CRC*)
+        SYSTEM.GET(src+i, dat); SYSTEM.PUT(CRCBase+CRCDR, dat)
+      END
+    END
   END SubSnd;
 
+  PROCEDURE SubRcVReq(VAR timeout: BOOLEAN);
+    VAR payload: ARRAY 1 OF BYTE;
+  BEGIN
+    payload[0] := 0; doSubSend(SYSTEM.ADR(payload), 1, timeout);
+  END SubRcVReq;
+  
   PROCEDURE Flush;
   BEGIN StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1); StartCmd(0E2H); SYSTEM.PUT(netSelectOut, 1)
 (*FLUSH_TX, FLUSH_RX*)
@@ -130,12 +174,12 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     VAR len: INTEGER;
   BEGIN SYSTEM.PUT(netEnableOut, 0); Delayms(5);
     len := 0; WHILE (len < LEN(pipeName)) & (pipeName[len] # 0X) DO INC(len) END;
-    WriteReg1(0, 07CH); (*CONFIG <= mask ints; EN_CRC(2 byte), PWR_DOWN, PTX*)
+    WriteReg1(0, 7CH); (*CONFIG <= mask ints; EN_CRC(2 byte), PWR_DOWN, PTX*)
     Flush; WriteReg1(7, 70H); (*STATUS <= clear ints*)
     WriteReg1(5, channel); (*RF_CH <= channel: 5, 15, 25...*)
     WriteReg1(6, 22H); (*RF_SETUP = 250kb for better range, -12dBm*)
     WriteReg1(1, 3FH); (*EN_AA enable Enable 'Auto Acknowledgment' on all pipes*)
-    WriteReg1(2, 1H); (*EN_RXADDR enable pipe 0*)
+    WriteReg1(2, 1); (*EN_RXADDR enable pipe 0*)
     ASSERT(len IN {3..5});
     WriteReg1(3, len-2); (*SETUP_AW setup address length*)
     WriteRegN(0AH, pipeName, len); (*RX_ADDR_P0 define pipe 0 receive address*)
@@ -143,21 +187,15 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     WriteReg1(11H, 0); (*RX_PW_P0 <= pipe 0 payload width = 0 to allow ACK payload*)
     WriteReg1(1CH, 1); (*DYNPD Enable dynamic payload length data pipe 0. (Requires EN_DPL and ENAA_P0)*)
     WriteReg1(1DH, 6); (*FEATURE Enables Dynamic Payload Length and Payload with ACK*)
-    Flush(); Listen(TRUE); ResetRcv
+    WriteReg1(4, 63H); (*SETUP_RETR ARD = 1750µs, ARC = 3*)
+    Flush(); ResetRcv
   END Start;
-
-(*j'en suis lÃ *)
 
   PROCEDURE SendPacket*(VAR head: Header; dat: ARRAY OF BYTE);
     VAR len, i, off: INTEGER; timeout: BOOLEAN; 
     payload: ARRAY SubPacket OF BYTE;
-  BEGIN (*let any receive ack finish before turning radio off*)
-    i := Kernel.Time();
-    REPEAT SPICtrl({netEnable, netSelect}); SPIWrite(0FFH); SPICtrl({netEnable}) (*NOP*)
-    UNTIL Kernel.Time() - i >= Wait;
-    IF Adr = 0 THEN Adr := i MOD 100H END;
-    Listen(FALSE);
-    head.sadr := Adr; head.valid := TRUE;
+  BEGIN Listen(FALSE); (*Power up nRF24L01+*)
+    head.valid := TRUE; SYSTEM.PUT(CRCReset, 1); (*Reset STM32 CRC Unit*)
     SYSTEM.COPY(SYSTEM.ADR(head), SYSTEM.ADR(payload), HdrSize DIV 4);
     i := HdrSize; off := 0; len := head.len;
     WHILE (len > 0) & (i < SubPacket) DO payload[i] := dat[off]; INC(i); INC(off); DEC(len) END;
@@ -168,7 +206,9 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
       SubSnd(SYSTEM.ADR(payload), timeout)
     END;
-    Listen(TRUE)
+    SYSTEM.GET(CRCBase + CRCDR, off); SYSTEM.PUT(SYSTEM.ADR(payload), off); (*send CRC*)
+    i := 4; WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
+    SubSnd(SYSTEM.ADR(payload), timeout)
   END SendPacket;
 
   PROCEDURE Available*(): INTEGER;
@@ -182,27 +222,31 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   END Receive;
 
   PROCEDURE Rcvd(time: INTEGER): BOOLEAN;
-    VAR status, fifoStatus: BYTE; rcvd: BOOLEAN;
+    VAR status, fifoStatus: BYTE; rcvd, timeout: BOOLEAN;
       t1: INTEGER;
   BEGIN t1 := Kernel.Time();
     REPEAT
-      SPICtrl({netEnable, netSelect}); SPIWrite(17H); (*R_REGISTER FIFO_STATUS*)
-      SYSTEM.GET(spiData, status); SPIWrite(-1); SYSTEM.GET(spiData, fifoStatus); SPICtrl({netEnable});
-      rcvd := ODD(status DIV 40H) OR ~ODD(fifoStatus) (*RX_DR (data ready) or RX FIFO not empty*)
+      SubRcVReq(timeout);
+      IF ~timeout THEN
+        SYSTEM.PUT(netSelectOut, 0); SPIrw(17H, status); (*R_REGISTER FIFO_STATUS*)
+        SPIr(fifoStatus); SYSTEM.PUT(netSelectOut, 1);
+        rcvd := ODD(status DIV 40H) OR ~ODD(fifoStatus) (*RX_DR (data ready) or RX FIFO not empty*)
+      END
     UNTIL rcvd OR (Kernel.Time() - t1 >= time);
     RETURN rcvd
   END Rcvd;
 
+(*TODO CRC*)
   PROCEDURE ReceiveHead*(VAR head: Header);  (*actually, recv whole packet*)
-    VAR adr, n: INTEGER;
+    VAR adr, n: INTEGER; len: BYTE;
   BEGIN head.valid := FALSE;
     IF Rcvd(0) THEN
-      ResetRcv; adr := SYSTEM.ADR(rx); SubRcv(adr);
-      n := (rx.hd.len + HdrSize - 1) DIV SubPacket;
+      ResetRcv; adr := SYSTEM.ADR(rx); SubRcv(adr, len);
+      n := rx.hd.len + HdrSize - len;
       IF (rx.hd.len <= MaxPayload)
           & ((rx.hd.dadr = 0FFH) OR ~filter OR (Adr = 0) OR (rx.hd.dadr = Adr)) THEN
         WHILE (n > 0) & Rcvd(Wait) DO
-          INC(adr, SubPacket); SubRcv(adr); DEC(n)
+          INC(adr, len); SubRcv(adr, len); DEC(n, len)
         END;
         rx.hd.valid := (n = 0)
       ELSE WHILE Rcvd(Wait) DO SubRcv(adr) END; ResetRcv  (*discard packet*)
@@ -210,6 +254,8 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       head := rx.hd
     END
   END ReceiveHead;
+
+(*j'en suis là*)
 
   PROCEDURE Skip*(m: INTEGER);
     VAR dmy: BYTE;
