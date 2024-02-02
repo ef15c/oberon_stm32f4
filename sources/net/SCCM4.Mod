@@ -85,15 +85,27 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   BEGIN SYSTEM.PUT(netSelectOut, 0); SPIw(cmd)
   END StartCmd;
 
+  PROCEDURE ReadReg1*(reg: BYTE; VAR dat: BYTE);
+  BEGIN ASSERT((reg <= 17H) OR (reg = 1CH) OR (reg = 1DH));
+    StartCmd(reg); SPIr(dat); SYSTEM.PUT(netSelectOut, 1) (*R_REGISTER*)
+  END ReadReg1;
+
   PROCEDURE WriteReg1(reg, dat: BYTE);
   BEGIN StartCmd(reg + 20H); SPIw(dat); SYSTEM.PUT(netSelectOut, 1) (*W_REGISTER*)
   END WriteReg1;
 
-  PROCEDURE WriteRegN(reg: BYTE; dat: ARRAY OF CHAR; len: INTEGER); (*disables radio!*)
+  PROCEDURE ReadRegN*(reg: BYTE; VAR dat: ARRAY OF BYTE; len: INTEGER);
+    VAR i: INTEGER;
+  BEGIN ASSERT((reg <= 17H) OR (reg = 1CH) OR (reg = 1DH));
+    StartCmd(reg);
+    FOR i := 0 TO len - 1 DO SPIr(dat[i]) END; SYSTEM.PUT(netSelectOut, 1) (*W_REGISTER*)
+  END ReadRegN;
+
+  PROCEDURE WriteRegNC(reg: BYTE; dat: ARRAY OF CHAR; len: INTEGER);
     VAR i: INTEGER;
   BEGIN StartCmd(reg + 20H);
     FOR i := 0 TO len - 1 DO SPIw(ORD(dat[i])) END; SYSTEM.PUT(netSelectOut, 1) (*W_REGISTER*)
-  END WriteRegN;
+  END WriteRegNC;
 
   PROCEDURE SubRcv(dst: INTEGER; VAR len: BYTE);
     VAR i, data: INTEGER; dat: BYTE;
@@ -183,8 +195,8 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     WriteReg1(2, 1); (*EN_RXADDR enable pipe 0*)
     ASSERT(len IN {3..5});
     WriteReg1(3, len-2); (*SETUP_AW setup address length*)
-    WriteRegN(0AH, pipeName, len); (*RX_ADDR_P0 define pipe 0 receive address*)
-    WriteRegN(10H, pipeName, len); (*TX_ADDR define pipe transmit address*)
+    WriteRegNC(0AH, pipeName, len); (*RX_ADDR_P0 define pipe 0 receive address*)
+    WriteRegNC(10H, pipeName, len); (*TX_ADDR define pipe transmit address*)
     WriteReg1(11H, 0); (*RX_PW_P0 <= pipe 0 payload width = 0 to allow ACK payload*)
     WriteReg1(1CH, 1); (*DYNPD Enable dynamic payload length data pipe 0. (Requires EN_DPL and ENAA_P0)*)
     WriteReg1(1DH, 6); (*FEATURE Enables Dynamic Payload Length and Payload with ACK*)

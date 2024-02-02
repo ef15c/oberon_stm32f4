@@ -341,11 +341,20 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END GetTime;
 
   PROCEDURE StartServer*;
-  BEGIN protected := TRUE; partner[0] := 0X; SCC.Start(TRUE);
-    Oberon.Remove(Server); Oberon.Install(Server);
-    Texts.WriteString(W, " Server started as "); Texts.WriteString(W,
-      Oberon.User);
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+    VAR S: Texts.Scanner;
+      end: LONGINT;
+      channel: BYTE;
+  BEGIN GetPar1(S);
+    IF S.class = Texts.Int THEN
+      channel := S.i; GetPar(S, end);
+      IF (Texts.Pos(S) < end) & (S.class = Texts.Name) THEN
+        protected := TRUE; partner[0] := 0X; SCC.Start(channel, S.s);
+        Oberon.Remove(Server); Oberon.Install(Server);
+        Texts.WriteString(W, " Server started as "); Texts.WriteString(W, S.s);
+        Texts.WriteString(W, " on channel "); Texts.WriteInt(W, channel, 1);
+        Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+      END
+    END
   END StartServer;
 
   PROCEDURE Unprotect*;
