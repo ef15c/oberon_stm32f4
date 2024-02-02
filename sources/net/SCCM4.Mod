@@ -32,8 +32,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   TYPE Header* =
     RECORD valid*: BOOLEAN;
-      typ*: BYTE;
-      fil1, fil2: BYTE;
+      dadr*, sadr*, typ*: BYTE;
       len*: INTEGER (*of data following header*)
     END ;
 
@@ -97,12 +96,16 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   END WriteRegN;
 
   PROCEDURE SubRcv(dst: INTEGER; VAR len: BYTE);
-    VAR i: INTEGER; dat: BYTE;
+    VAR i, data: INTEGER; dat: BYTE;
   BEGIN
     StartCmd(60H); SPIr(len); (*R_RX_PL_WID*)
+    ASSERT(len MOD 4 = 0);
     StartCmd(61H); (*R_RX_PAYLOAD*)
     FOR i := 0 TO len-1 DO
       SPIr(dat); SYSTEM.PUT(dst+i, dat)
+    END;
+    FOR i := 0 TO len-4 BY 4 DO (*Compute CRC*)
+      SYSTEM.GET(dst+i, data); SYSTEM.PUT(CRCBase+CRCDR, data)
     END;
     SYSTEM.PUT(netSelectOut, 1); WriteReg1(7, 40H); (*done; STATUS <= clear RX_DR*); 
     SYSTEM.PUT(netSelectOut, 1)
@@ -139,12 +142,12 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   END doSubSend;
 
   PROCEDURE SubSnd(src: INTEGER; VAR timeout: BOOLEAN);
-    VAR i, dat: INTEGER;
+    VAR i, data: INTEGER;
   BEGIN
     doSubSend(src, SubPacket, timeout);
     IF ~timeout THEN 
       FOR i := 0 TO SubPacket-4 BY 4 DO (*Compute CRC*)
-        SYSTEM.GET(src+i, dat); SYSTEM.PUT(CRCBase+CRCDR, dat)
+        SYSTEM.GET(src+i, data); SYSTEM.PUT(CRCBase+CRCDR, data)
       END
     END
   END SubSnd;
@@ -164,11 +167,9 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   BEGIN SYSTEM.PUT(SYSTEM.ADR(rx), 0); rx.hd.len := 0; rcvd := 0
   END ResetRcv;
 
-  PROCEDURE Listen(b: BOOLEAN);
-  BEGIN
-    WriteReg1(0, 07EH + ORD(b)); (*CONFIG <= mask ints; EN_CRC(2 byte), PWR_UP, PRX/PTX*)
-    IF b THEN SYSTEM.PUT(netEnableOut, 1); END (*turn radio on*)
-  END Listen;
+  PROCEDURE PowerUp;
+  BEGIN WriteReg1(0, 7EH); (*CONFIG <= mask ints; EN_CRC(2 byte), PWR_UP, PTX*)
+  END PowerUp;
 
   PROCEDURE Start*(channel: BYTE; pipeName: ARRAY OF CHAR);
     VAR len: INTEGER;
@@ -194,7 +195,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   PROCEDURE SendPacket*(VAR head: Header; dat: ARRAY OF BYTE);
     VAR len, i, off: INTEGER; timeout: BOOLEAN; 
     payload: ARRAY SubPacket OF BYTE;
-  BEGIN Listen(FALSE); (*Power up nRF24L01+*)
+  BEGIN PowerUp;
     head.valid := TRUE; SYSTEM.PUT(CRCReset, 1); (*Reset STM32 CRC Unit*)
     SYSTEM.COPY(SYSTEM.ADR(head), SYSTEM.ADR(payload), HdrSize DIV 4);
     i := HdrSize; off := 0; len := head.len;
@@ -236,26 +237,24 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     RETURN rcvd
   END Rcvd;
 
-(*TODO CRC*)
   PROCEDURE ReceiveHead*(VAR head: Header);  (*actually, recv whole packet*)
-    VAR adr, n: INTEGER; len: BYTE;
-  BEGIN head.valid := FALSE;
+    VAR adr, data, n: INTEGER; len: BYTE;
+  BEGIN PowerUp;
+    head.valid := FALSE; SYSTEM.PUT(CRCReset, 1); (*Reset STM32 CRC Unit*)
     IF Rcvd(0) THEN
       ResetRcv; adr := SYSTEM.ADR(rx); SubRcv(adr, len);
       n := rx.hd.len + HdrSize - len;
-      IF (rx.hd.len <= MaxPayload)
-          & ((rx.hd.dadr = 0FFH) OR ~filter OR (Adr = 0) OR (rx.hd.dadr = Adr)) THEN
+      IF rx.hd.len <= MaxPayload THEN
         WHILE (n > 0) & Rcvd(Wait) DO
           INC(adr, len); SubRcv(adr, len); DEC(n, len)
         END;
-        rx.hd.valid := (n = 0)
-      ELSE WHILE Rcvd(Wait) DO SubRcv(adr) END; ResetRcv  (*discard packet*)
+        SubRcv(adr, len); SYSTEM.GET(CRCBase+CRCDR, data); (*Check CRC*)
+        IF data = 0 THEN rx.hd.valid := (n = 0) ELSE rx.hd.valid := FALSE END
+      ELSE WHILE Rcvd(Wait) DO SubRcv(adr, len) END; ResetRcv  (*discard packet*)
       END;
       head := rx.hd
     END
   END ReceiveHead;
-
-(*j'en suis là*)
 
   PROCEDURE Skip*(m: INTEGER);
     VAR dmy: BYTE;
@@ -263,8 +262,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   END Skip;
 
   PROCEDURE Stop*;
-  BEGIN SPICtrl({}); Flush(); ResetRcv
+  BEGIN SYSTEM.PUT(netSelectOut, 1); SYSTEM.PUT(netEnableOut, 0); Flush(); ResetRcv
   END Stop;
 
-BEGIN Start(TRUE)
 END SCC.
