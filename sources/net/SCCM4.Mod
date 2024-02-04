@@ -1,6 +1,6 @@
 MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.12.13
   CS 21/01/2024*)
-  IMPORT SYSTEM, Kernel;
+  IMPORT SYSTEM, Kernel, Texts, TextsEx;
 
   CONST
     (*STM32F429*)
@@ -197,13 +197,36 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     WriteReg1(3, len-2); (*SETUP_AW setup address length*)
     WriteRegNC(0AH, pipeName, len); (*RX_ADDR_P0 define pipe 0 receive address*)
     WriteRegNC(10H, pipeName, len); (*TX_ADDR define pipe transmit address*)
-    WriteReg1(11H, 0); (*RX_PW_P0 <= pipe 0 payload width = 0 to allow ACK payload*)
+    WriteReg1(11H, 0); (*RX_PW_P0 <= pipe 0 payload width = 0 because of dynamic payload*)
     WriteReg1(1CH, 1); (*DYNPD Enable dynamic payload length data pipe 0. (Requires EN_DPL and ENAA_P0)*)
     WriteReg1(1DH, 6); (*FEATURE Enables Dynamic Payload Length and Payload with ACK*)
     WriteReg1(4, 63H); (*SETUP_RETR ARD = 1750µs, ARC = 3*)
     Flush(); ResetRcv
   END Start;
 
+  PROCEDURE PrintReg1(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; VAR dat: BYTE);
+  BEGIN ReadReg1(n, dat); Texts.WriteString(W, t);  Texts.WriteString(W, " = "); 
+    TextsEx.WriteHexVLen(W, dat, 1, FALSE); Texts.WriteLn(W)
+  END PrintReg1;
+  
+  PROCEDURE PrintRegN(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; len: INTEGER);
+    VAR dat: ARRAY 5 OF BYTE; i: INTEGER;
+  BEGIN ReadRegN(n, dat, len); Texts.WriteString(W, t);  Texts.WriteString(W, " = "); 
+    FOR i := 0 TO len-1 DO TextsEx.WriteHexVLen(W, dat[i], 1, FALSE) END; Texts.WriteLn(W)
+  END PrintRegN;
+  
+  PROCEDURE PrintConfig*(VAR W: Texts.Writer);
+    VAR dat: BYTE;
+  BEGIN Texts.WriteString(W, "nRF24l01+:"); Texts.WriteLn(W);
+    PrintReg1(W, 0, "CONFIG", dat); PrintReg1(W, 7, "STATUS", dat);
+    PrintReg1(W, 5, "RF_CH", dat); PrintReg1(W, 6, "RF_SETUP", dat);
+    PrintReg1(W, 1, "EN_AA", dat); PrintReg1(W, 2, "EN_RXADDR", dat);
+    PrintReg1(W, 3, "SETUP_AW", dat); PrintRegN(W, 0AH, "RX_ADDR_P0", dat);
+    PrintRegN(W, 10H, "TX_ADDR", dat); PrintReg1(W, 11H, "RX_PW_P0", dat);
+    PrintReg1(W, 1CH, "DYNPD", dat); PrintReg1(W, 1DH, "FEATURE", dat);
+    PrintReg1(W, 4, "SETUP_RETR", dat)
+  END PrintConfig;
+  
   PROCEDURE SendPacket*(VAR head: Header; dat: ARRAY OF BYTE);
     VAR len, i, off: INTEGER; timeout: BOOLEAN; 
     payload: ARRAY SubPacket OF BYTE;

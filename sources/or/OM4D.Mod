@@ -1,5 +1,5 @@
 MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
-  IMPORT SYSTEM, Texts, OM4B, OM4A;
+  IMPORT SYSTEM, Texts, TextsEx, OM4B, OM4A;
 
   TYPE
     ITBlockDesc = RECORD
@@ -9,19 +9,6 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
 
   VAR itB: ITBlockDesc;
     mnemo1: ARRAY 16, 3 OF CHAR;  (*condition mnemonics*)
-  
-  PROCEDURE WriteHexVLen*(VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
-    VAR i: INTEGER; y: LONGINT;
-      a: ARRAY 10 OF CHAR;
-  BEGIN ASSERT(n<=10);
-    i := 0; Texts.Write(W, " ");
-    REPEAT y := x MOD 10H;
-      IF y < 10 THEN a[i] := CHR(y + 30H) ELSE a[i] := CHR(y + 37H) END;
-      x := x DIV 10H; IF x < 0 THEN INC(x, OM4A.C28) END; INC(i)
-    UNTIL (i >= n) & (x = 0);
-    IF leadingZero & (a[i-1] > "9") THEN Texts.Write(W, "0") END; (*Add a leading 0 if first hex digit is a letter*)
-    REPEAT DEC(i); Texts.Write(W, a[i]) UNTIL i = 0
-  END WriteHexVLen;
   
 (* ---------------------------------------------------*)
 
@@ -930,7 +917,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       ELSE Texts.WriteString(W, "TODO other 32-bit thumb instruction")
       END
     ELSE op := SYSTEM.VAL(SET, 0+b2+100H*b1);
-      Texts.WriteString(W, "    "); WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
+      Texts.WriteString(W, "    "); TextsEx.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
       IF op*T16MSK2 = SpecDataBrEx THEN
         (*T16MSK2 010001: Special data instructions and branch and exchange on page A5-132*)
         Rm := b2 DIV OM4A.C3 MOD OM4A.C4;

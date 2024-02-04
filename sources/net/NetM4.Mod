@@ -1,5 +1,5 @@
 MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
-  IMPORT SCC, Files, Texts, Oberon;
+  IMPORT Files, Texts, SCC, Oberon;
 
   CONST PakSize = 512;
     (*T0 = 300; T1 = 1000; (*timeouts*)*)
@@ -366,7 +366,19 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END WProtect;
 
   PROCEDURE Reset*;
-  BEGIN SCC.Start(TRUE)
+    VAR S: Texts.Scanner;
+      end: LONGINT;
+      channel: BYTE;
+  BEGIN GetPar1(S);
+    IF S.class = Texts.Int THEN
+      channel := S.i; GetPar(S, end);
+      IF (Texts.Pos(S) < end) & (S.class = Texts.Name) THEN
+        SCC.Start(channel, S.s);
+        Texts.WriteString(W, " Client set as "); Texts.WriteString(W, S.s);
+        Texts.WriteString(W, " on channel "); Texts.WriteInt(W, channel, 1);
+        Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+      END
+    END
   END Reset;
 
   PROCEDURE StopServer*;
@@ -381,6 +393,10 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END SCCStatus;
+
+  PROCEDURE SCCPrintConfig*;
+  BEGIN SCC.PrintConfig(W); Texts.Append(Oberon.Log, W.buf)
+  END SCCPrintConfig;
 
 BEGIN Texts.OpenWriter(W); Server := Oberon.NewTask(Serve, 500)
 END Net.
