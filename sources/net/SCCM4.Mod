@@ -19,9 +19,11 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     netIRQIn = PeriphBBAlias + (GPIODBase + IDR - PeriphBase + netIRQ DIV 8)*32 + netIRQ MOD 8*4;
     
     (*SPI*)
-    SPI3Base = 40003C00H; DR = 0CH; SR = 8;
-    spiData = SPI3Base + DR; spiSR = SPI3Base + SR;
+    SPI3Base = 40003C00H; DR = 0CH; SR = 8; CR1 = 0;
+    spiData = SPI3Base + DR; spiSR = SPI3Base + SR; spiCR1 = SPI3Base + CR1;
     RXNE = 0; TXE = 1; BSY = 7;
+    SPE = 6;
+    spiEnable = PeriphBBAlias + (spiCR1 - PeriphBase + SPE DIV 8)*32 + SPE MOD 8*4;
 
     (*CRC*)
     CRCBase = 40023000H; CRCDR = 0; CR = 8;
@@ -58,7 +60,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
         SYSTEM.GET(src+sc, data); SYSTEM.PUT(spiData, data); INC(sc)
       END;
       IF SYSTEM.BIT(spiSR, RXNE) & (rc < n) THEN (*RX buffer is not empty*)
-        SYSTEM.GET(spiData, data); SYSTEM.PUT(dst+rc, data); INC(sc)
+        SYSTEM.GET(spiData, data); SYSTEM.PUT(dst+rc, data); INC(rc)
       END
     UNTIL (sc = n) & (rc = n);
     REPEAT UNTIL ~SYSTEM.BIT(spiSR, BSY) (*Wait until SPI is not busy*)
@@ -206,7 +208,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE PrintReg1(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; VAR dat: BYTE);
   BEGIN ReadReg1(n, dat); Texts.WriteString(W, t);  Texts.WriteString(W, " = "); 
-    TextsEx.WriteHexVLen(W, dat, 1, FALSE); Texts.WriteLn(W)
+    TextsEx.WriteHexVLen(W, dat, 2, FALSE); Texts.WriteLn(W)
   END PrintReg1;
   
   PROCEDURE PrintRegN(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; len: INTEGER);
@@ -221,8 +223,8 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     PrintReg1(W, 0, "CONFIG", dat); PrintReg1(W, 7, "STATUS", dat);
     PrintReg1(W, 5, "RF_CH", dat); PrintReg1(W, 6, "RF_SETUP", dat);
     PrintReg1(W, 1, "EN_AA", dat); PrintReg1(W, 2, "EN_RXADDR", dat);
-    PrintReg1(W, 3, "SETUP_AW", dat); PrintRegN(W, 0AH, "RX_ADDR_P0", dat);
-    PrintRegN(W, 10H, "TX_ADDR", dat); PrintReg1(W, 11H, "RX_PW_P0", dat);
+    PrintReg1(W, 3, "SETUP_AW", dat); PrintRegN(W, 0AH, "RX_ADDR_P0", dat+2);
+    PrintRegN(W, 10H, "TX_ADDR", dat+2); PrintReg1(W, 11H, "RX_PW_P0", dat);
     PrintReg1(W, 1CH, "DYNPD", dat); PrintReg1(W, 1DH, "FEATURE", dat);
     PrintReg1(W, 4, "SETUP_RETR", dat)
   END PrintConfig;
@@ -300,4 +302,5 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   BEGIN SYSTEM.PUT(netSelectOut, 1); SYSTEM.PUT(netEnableOut, 0); Flush(); ResetRcv
   END Stop;
 
+BEGIN SYSTEM.PUT(spiEnable, TRUE)
 END SCC.
