@@ -28,6 +28,10 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     (*CRC*)
     CRCBase = 40023000H; CRCDR = 0; CR = 8;
     CRCReset = PeriphBBAlias + (CRCBase + CR - PeriphBase)*32;
+
+    (*DWT*)
+    DWTBase = 0E0001000H;  CYCCNT = 4;
+    HCLCFREQ = 168;
     
     HdrSize = 8; MaxPayload = 512; SubPacket = 32; Wait = 50; SendTries = 50;
     MaxPacket = (HdrSize + MaxPayload + SubPacket-1) DIV SubPacket * SubPacket;
@@ -51,6 +55,12 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     REPEAT UNTIL Kernel.Time() - beg > d
   END Delayms;
   
+  PROCEDURE Delayus(d: INTEGER);
+    VAR beg, now: INTEGER;
+  BEGIN SYSTEM.GET(DWTBase + CYCCNT, beg);
+    REPEAT SYSTEM.GET(DWTBase + CYCCNT, now) UNTIL now - beg >= HCLCFREQ*d
+  END  Delayus;
+
   PROCEDURE SPIn(src, dst, n: INTEGER);
     VAR sc, rc: INTEGER; data: BYTE;
   BEGIN (*send/rcv n bytes to/from SPI*) ASSERT(n>0);
@@ -111,7 +121,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE SubRcv(dst: INTEGER; VAR len: BYTE);
     VAR i, data: INTEGER; dat: BYTE;
-  BEGIN
+  BEGIN LED(4);
     StartCmd(60H); SPIr(len); (*R_RX_PL_WID*)
     ASSERT(len MOD 4 = 0);
     StartCmd(61H); (*R_RX_PAYLOAD*)
@@ -122,12 +132,12 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       SYSTEM.GET(dst+i, data); SYSTEM.PUT(CRCBase+CRCDR, data)
     END;
     SYSTEM.PUT(netSelectOut, 1); WriteReg1(7, 40H); (*done; STATUS <= clear RX_DR*); 
-    SYSTEM.PUT(netSelectOut, 1)
+    SYSTEM.PUT(netSelectOut, 1); LED(0)
   END SubRcv;
 
   PROCEDURE doSubSend(src, len: INTEGER; VAR timeout: BOOLEAN);
     VAR i, res, t1, try: INTEGER; x, dat, status: BYTE;
-  BEGIN (*already in xmit mode*)
+  BEGIN LED(2); (*already in xmit mode*)
     ASSERT(len-1 IN {0..SubPacket-1});
     StartCmd(0A0H); (*W_TX_PAYLOAD*)
     FOR i := 0 TO len-1 DO
@@ -139,20 +149,21 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     REPEAT
       t1 := Kernel.Time();
       REPEAT (*wait for sent or retransmits exceeded*);
-        SYSTEM.PUT(netSelectOut, 0); 
-        SPIr(status); (*NOP*)
-        res := status DIV 10H MOD 4;
-        SYSTEM.PUT(netEnableOut, 0); SYSTEM.PUT(netSelectOut, 1); (*end & restart NOP cmd, end =10us pulse on enable*)
+        SYSTEM.PUT(netSelectOut, 0);
+        SPIr(status); (*NOP*);
+        res := status DIV 10H MOD 4; Delayus(10);
+        SYSTEM.PUT(netEnableOut, 0); SYSTEM.PUT(netSelectOut, 1); Delayus(1); (*end & restart NOP cmd, end =10us pulse on enable*)
       UNTIL res # 0;
       IF res = 2 THEN WriteReg1(7, 20H) (*TX_DS: sent, ack received; reset it*)
       ELSIF res = 1 THEN WriteReg1(7, 10H); INC(try); (*MAX_RT: retransmits exceeded; reset it*)
         IF try = SendTries THEN res := 0
         ELSE REPEAT UNTIL Kernel.Time() - t1 >= Wait;
-          SYSTEM.PUT(netEnableOut, 1); SYSTEM.PUT(netSelectOut, 0); (*start xmit pulse, start NOP cmd again*)
+          SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse, start NOP cmd again*)
         END
       END
     UNTIL res # 1;
-    timeout := (res # 2)
+    timeout := (res # 2);
+    LED(0)
   END doSubSend;
 
   PROCEDURE SubSnd(src: INTEGER; VAR timeout: BOOLEAN);
@@ -183,6 +194,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE PowerUp;
   BEGIN WriteReg1(0, 7EH); (*CONFIG <= mask ints; EN_CRC(2 byte), PWR_UP, PTX*)
+    Delayms(5)
   END PowerUp;
 
   PROCEDURE Start*(channel: BYTE; pipeName: ARRAY OF CHAR);
@@ -218,7 +230,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   END PrintRegN;
   
   PROCEDURE PrintConfig*(VAR W: Texts.Writer);
-    VAR dat: BYTE;
+    VAR dat: BYTE; data: INTEGER;
   BEGIN Texts.WriteString(W, "nRF24l01+:"); Texts.WriteLn(W);
     PrintReg1(W, 0, "CONFIG", dat); PrintReg1(W, 7, "STATUS", dat);
     PrintReg1(W, 5, "RF_CH", dat); PrintReg1(W, 6, "RF_SETUP", dat);
@@ -226,7 +238,8 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     PrintReg1(W, 3, "SETUP_AW", dat); PrintRegN(W, 0AH, "RX_ADDR_P0", dat+2);
     PrintRegN(W, 10H, "TX_ADDR", dat+2); PrintReg1(W, 11H, "RX_PW_P0", dat);
     PrintReg1(W, 1CH, "DYNPD", dat); PrintReg1(W, 1DH, "FEATURE", dat);
-    PrintReg1(W, 4, "SETUP_RETR", dat)
+    PrintReg1(W, 4, "SETUP_RETR", dat);
+    SYSTEM.GET(DWTBase + CYCCNT, data); Texts.WriteString(W, "CYCCNT = "); Texts.WriteInt(W, data, 1); Texts.WriteLn(W)
   END PrintConfig;
   
   PROCEDURE SendPacket*(VAR head: Header; dat: ARRAY OF BYTE);
@@ -244,9 +257,11 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
       SubSnd(SYSTEM.ADR(payload), timeout)
     END;
-    SYSTEM.GET(CRCBase + CRCDR, off); SYSTEM.PUT(SYSTEM.ADR(payload), off); (*send CRC*)
-    i := 4; WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
-    SubSnd(SYSTEM.ADR(payload), timeout)
+    IF ~timeout THEN
+      SYSTEM.GET(CRCBase + CRCDR, off); SYSTEM.PUT(SYSTEM.ADR(payload), off); (*send CRC*)
+      i := 4; WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
+      SubSnd(SYSTEM.ADR(payload), timeout)
+    END
   END SendPacket;
 
   PROCEDURE Available*(): INTEGER;
