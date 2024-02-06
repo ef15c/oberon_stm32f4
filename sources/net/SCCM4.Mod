@@ -278,6 +278,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     VAR status, fifoStatus: BYTE; rcvd, timeout: BOOLEAN;
       t1: INTEGER;
   BEGIN t1 := Kernel.Time();
+    rcvd := FALSE;
     REPEAT
       SubRcVReq(timeout);
       IF ~timeout THEN
