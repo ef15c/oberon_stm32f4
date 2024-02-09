@@ -67,15 +67,11 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017*)
   END ReplConst;
 
   PROCEDURE FlipSM(X, Y: INTEGER);
-    VAR DW, DH, CL: INTEGER;
-  BEGIN DW := Display.Width; DH := Display.Height; CL := DW;
-    IF X < CL THEN
-      IF X < 3 THEN X := 3 ELSIF X > DW - 4 THEN X := DW - 4 END
-    ELSE
-      IF X < CL + 3 THEN X := CL + 4 ELSIF X > CL + DW - 4 THEN X := CL + DW - 4 END
-    END ;
+    VAR DW, DH: INTEGER;
+  BEGIN DW := Display.Width; DH := Display.Height
+    IF X < 3 THEN X := 3 ELSIF X > DW - 4 THEN X := DW - 4 END;
     IF Y < 6 THEN Y := 6 ELSIF Y > DH - 6 THEN Y := DH - 6 END;
-    Display.CopyPattern(Display.white, Display.updown, X-4, Y-4, Display.invert)
+    Display.CopyPattern(Display.white, Display.updown, X-3, Y-3, Display.invert)
   END FlipSM;
 
   PROCEDURE UpdateMark (F: Frame);  (*in scroll bar*)

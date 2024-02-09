@@ -57,8 +57,8 @@ void CopyPattern(int col, uint32_t *patadr, int x, int y, int mode)  /*only for 
 
     i = *patadr; w = i & 0xFF; h = (i >> 16) & 0xFF; patadr++;
 
-    if ((x < 0) || (x+w >= Width)) return;
-    if ((y < 0) || (y+h >= Height)) return;
+//    if ((x < 0) || (x+w >= Width)) return;
+//    if ((y < 0) || (y+h >= Height)) return;
 
     HAL_DMA_Start(&hdma_memtomem_dma2_stream0, (uint32_t) patadr, (uint32_t) pattern,
     		(w+3)/4*4/NofPixperWord*h);

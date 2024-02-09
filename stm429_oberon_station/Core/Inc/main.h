@@ -77,6 +77,7 @@ void Counter(void) __attribute__ ((noreturn));
 #define PB4_GPIO_Port GPIOC
 #define PB1_Pin GPIO_PIN_14
 #define PB1_GPIO_Port GPIOC
+#define PB1_EXTI_IRQn EXTI15_10_IRQn
 #define PB2_Pin GPIO_PIN_15
 #define PB2_GPIO_Port GPIOC
 #define A0_Pin GPIO_PIN_0

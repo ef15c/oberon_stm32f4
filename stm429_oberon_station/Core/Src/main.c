@@ -96,9 +96,11 @@ static const uint32_t clut[256] = {
 0XFFDA00,0XFFDA55,0XFFDAAA,0XFFDAFF,0XFFFF00,0XFFFF55,0XFFFFAA,0XFFFFFF,
 };
 
+#if 0
 static uint8_t *fb, *bb, *dmaBuf;
 static size_t tranfSize;
 static int color;
+#endif
 
 /* Si un jour j'arrive à intégrer le préchargement des modules en FLASH/SRAM */
 /* space provision for Oberon modules static data
@@ -122,8 +124,10 @@ static void MX_SPI3_Init(void);
 static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
 static void BSP_PS2_Init(void);
+#if 0
 static void TransferComplete(DMA_HandleTypeDef *DmaHandle);
 static void TransferError(DMA_HandleTypeDef *DmaHandle);
+#endif
 static void PS2_PINS_Output_OD_High(void);
 /* USER CODE END PFP */
 
@@ -135,8 +139,10 @@ void copyFunction(void);
 static void MPU_RegionConfig(void);
 void led(uint32_t l);
 uint32_t ReadSD(uint32_t blockNum, uint8_t* dest, uint32_t nofBlocks);
+#if 0
 static void powerDown24(void);
 static void stackOverflow(void);
+#endif
 void BootLoadM4(void);
 /* USER CODE END 0 */
 
@@ -196,6 +202,7 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   MPU_RegionConfig();
 //#define NO_DMA
 
+#if 0
   HAL_DMA_RegisterCallback(&hdma_memtomem_dma2_stream0, HAL_DMA_XFER_CPLT_CB_ID, TransferComplete);
   HAL_DMA_RegisterCallback(&hdma_memtomem_dma2_stream0, HAL_DMA_XFER_ERROR_CB_ID, TransferError);
 
@@ -207,7 +214,6 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
 #endif
   uint32_t n=0;
 
-#if 1
     for (n=0; n<FB_SIZE/4; n++) {
         *tmp4++ = 0;
     }
@@ -312,6 +318,7 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
     //    codeInRam();
     BootLoadM4();
 
+#if 0
     n = 0;
 
     /* Test communication nrf24l01p */
@@ -323,6 +330,7 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
     mainLoop();
+#endif
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -822,11 +830,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(PB3_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB4_Pin PB1_Pin PB2_Pin */
-  GPIO_InitStruct.Pin = PB4_Pin|PB1_Pin|PB2_Pin;
+  /*Configure GPIO pins : PB4_Pin PB2_Pin */
+  GPIO_InitStruct.Pin = PB4_Pin|PB2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB1_Pin */
+  GPIO_InitStruct.Pin = PB1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(PB1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB6_Pin PB8_Pin PB7_Pin */
   GPIO_InitStruct.Pin = PB6_Pin|PB8_Pin|PB7_Pin;
@@ -916,6 +930,9 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
@@ -997,9 +1014,42 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     /* Second PS/2 port */
     PS2_ProcessData(&ps2_2);
     break;
+  case PB1_Pin:
+	/* Trigger pendSV interrupt for abort processing */
+	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
+	__ISB();
+    break;
   }
 }
 
+void MPU_RegionConfig(void)
+{
+    MPU_Region_InitTypeDef MPU_InitStruct;
+    /* Disable MPU */
+    HAL_MPU_Disable();
+    /* Configure SDRAM region as Region N°0, 4M of size and R/W region */
+    MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+    MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+    MPU_InitStruct.BaseAddress = 0xD0201000;
+    MPU_InitStruct.Size = MPU_REGION_SIZE_4MB;
+    MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+    MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+    MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
+    MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+    MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+    MPU_InitStruct.SubRegionDisable = 0x00;
+    MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+    HAL_MPU_ConfigRegion(&MPU_InitStruct);
+    /* Configure SDRAM region as REGION N°1, 4MB of size and R/W region */
+    MPU_InitStruct.BaseAddress = 0xD0400000;
+    MPU_InitStruct.Size = MPU_REGION_SIZE_4MB;
+    MPU_InitStruct.Number = MPU_REGION_NUMBER1;
+    HAL_MPU_ConfigRegion(&MPU_InitStruct);
+    /* Enable MPU */
+    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+}
+
+#if 0
 /**
   * @brief  DMA conversion complete callback
   * @note   This function is executed when the transfer complete interrupt
@@ -1062,33 +1112,6 @@ void HAL_LTDC_ReloadEventCallback(LTDC_HandleTypeDef *hltdc)
     HAL_LTDC_SetAddress(hltdc, (uint32_t) fb, 0);
 }
 
-void MPU_RegionConfig(void)
-{
-    MPU_Region_InitTypeDef MPU_InitStruct;
-    /* Disable MPU */
-    HAL_MPU_Disable();
-    /* Configure SDRAM region as Region N°0, 4M of size and R/W region */
-    MPU_InitStruct.Number = MPU_REGION_NUMBER0;
-    MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-    MPU_InitStruct.BaseAddress = 0xD0201000;
-    MPU_InitStruct.Size = MPU_REGION_SIZE_4MB;
-    MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-    MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
-    MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-    MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
-    MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-    MPU_InitStruct.SubRegionDisable = 0x00;
-    MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-    HAL_MPU_ConfigRegion(&MPU_InitStruct);
-    /* Configure SDRAM region as REGION N°1, 4MB of size and R/W region */
-    MPU_InitStruct.BaseAddress = 0xD0400000;
-    MPU_InitStruct.Size = MPU_REGION_SIZE_4MB;
-    MPU_InitStruct.Number = MPU_REGION_NUMBER1;
-    HAL_MPU_ConfigRegion(&MPU_InitStruct);
-    /* Enable MPU */
-    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
-}
-
 /* Commandes */
 #define NOP24 0xFF
 #define R_REGISTER24 0
@@ -1133,7 +1156,6 @@ void talk24(int sz, unsigned char *cmd, unsigned char *rep)
 	/* Libération de la communication SPI avec le module */
 	HAL_GPIO_WritePin(NRF24L01P_CS_GPIO_Port, NRF24L01P_CS_Pin, GPIO_PIN_SET); // NRF_CS is going LOW
 }
-
 
 static void powerDown24(void)
 {
@@ -1207,6 +1229,7 @@ void mainLoop(void)
 #endif
   }
 }
+#endif
 /* USER CODE END 4 */
 
 /**

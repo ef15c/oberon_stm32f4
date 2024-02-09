@@ -366,6 +366,7 @@ static void PS2_ReadId(PS2_HandleTypeDef *dev) {
     int nbTries = 3;
     /* Send read ID command */
     do {
+        HAL_Delay(10);
         PS2_SendByteAsync(dev, 0xF2);
         HAL_Delay(1);
     } while (--nbTries && PS2_WaitForAnswer(dev, 20) != 0xfa);

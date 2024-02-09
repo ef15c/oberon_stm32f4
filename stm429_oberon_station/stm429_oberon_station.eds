@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <EmBitz_debug_session>
 	<debuggerLastSession>
-		<breakpoints>
-			<break type="0" enabled="1" file="Core/Src/main.c" line="308" />
-			<break type="0" enabled="1" address="0x08000276" />
-			<break type="0" enabled="1" address="0xD0207480" />
-		</breakpoints>
 		<memory_view address="0xD0207480" locked="0" live="0" options="290" />
 	</debuggerLastSession>
 </EmBitz_debug_session>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <EmBitz_project_file>
-	<EmBitzVersion release="2.60" revision="0" />
+	<EmBitzVersion release="2.62" revision="0" />
 	<FileVersion major="2" minor="0" />
 	<Project>
 		<Option title="stm429_oberon_station" />
@@ -188,6 +188,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_cortex.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_crc.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_dma.c">
