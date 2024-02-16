@@ -386,6 +386,17 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END StopServer;
 
+  PROCEDURE tstFindPartner*;
+    VAR S: Texts.Scanner;
+      res: INTEGER;
+  BEGIN GetPar1(S);
+    IF S.class = Texts.Name THEN
+      FindPartner(S.s, res);
+      Texts.WriteString(W, "tstFindPartner:"); Texts.WriteInt(W, res, 1);
+      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+    END
+  END tstFindPartner;
+
   PROCEDURE SCCStatus*;
   BEGIN
     Texts.WriteString(W, "SCC.Available() ");
@@ -397,6 +408,11 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   PROCEDURE SCCPrintConfig*;
   BEGIN SCC.PrintConfig(W); Texts.Append(Oberon.Log, W.buf)
   END SCCPrintConfig;
+
+
+  PROCEDURE SCCShowRxPacket*;
+  BEGIN SCC.ShowRxPacket(W); Texts.Append(Oberon.Log, W.buf)
+  END SCCShowRxPacket;
 
 BEGIN Texts.OpenWriter(W); Server := Oberon.NewTask(Serve, 500)
 END Net.
