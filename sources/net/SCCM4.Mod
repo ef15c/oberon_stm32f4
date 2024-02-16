@@ -155,13 +155,11 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     END;
     SYSTEM.PUT(netSelectOut, 1); (*end W_TX_PAYLOAD command*)
     SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); Delayus(12); SYSTEM.PUT(netEnableOut, 0);
- 
-
-   REPEAT Delayms(1); SYSTEM.PUT(netSelectOut, 0); SPIr(status); (*NOP*); SYSTEM.PUT(netSelectOut, 1);
+    REPEAT Delayms(1); SYSTEM.PUT(netSelectOut, 0); SPIr(status); (*NOP*); SYSTEM.PUT(netSelectOut, 1);
       res := status DIV 10H MOD 4
     UNTIL res # 0;
     WriteReg1(7, 30H); (*reset TX_DS and/or MAX-RT*)
-	IF res = 1 THEN (*MAX-RT*) StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1) END;
+    IF res = 1 THEN (*MAX-RT*) StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1) END;
     timeout := (res # 2)
   END doSubSend;
 
@@ -273,19 +271,19 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   BEGIN
       SYSTEM.PUT(netSelectOut, 0); SPIrw(17H, status); (*R_REGISTER FIFO_STATUS*)
       SPIr(fifoStatus); SYSTEM.PUT(netSelectOut, 1);
-      RETURN (status DIV  1 MOD 8 # 7) & (ODD(status DIV 40H) OR ~ODD(fifoStatus)) (*RX_DR (data ready) or RX FIFO not empty*)
+      RETURN (status DIV 2 MOD 8 # 7) & (ODD(status DIV 40H) OR ~ODD(fifoStatus)) (*RX_DR (data ready) or RX FIFO not empty*)
   END RXFIFOAvail;
 
   PROCEDURE Rcvd(time: INTEGER): BOOLEAN;
     VAR status, fifoStatus: BYTE; rcvd, timeout: BOOLEAN;
       t1: INTEGER;
   BEGIN t1 := Kernel.Time();
-	IF ~RXFIFOAvail() THEN rcvd := TRUE
-    ELSE rcvd := FALSE; REPEAT  SubRcVReq(timeout);
-        IF ~timeout THEN rcvd := RXFIFOAvail() END; (*RX_DR (data ready) or RX FIFO not empty*)
+    IF RXFIFOAvail() THEN rcvd := TRUE
+    ELSE rcvd := FALSE;
+      REPEAT SubRcVReq(timeout);
+        IF ~timeout THEN rcvd := RXFIFOAvail() END;
         IF ~rcvd THEN Delayms(100) END
-  
-    UNTIL rcvd OR (Kernel.Time() - t1 >= time)
+      UNTIL rcvd OR (Kernel.Time() - t1 >= time)
     END;
     RETURN rcvd
   END Rcvd;
