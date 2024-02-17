@@ -292,7 +292,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     VAR adr, data, n: INTEGER; len: BYTE;
   BEGIN PowerUp;
     head.valid := FALSE; SYSTEM.PUT(CRCReset, 1); (*Reset STM32 CRC Unit*)
-    IF Rcvd(0) THEN
+    IF Rcvd(10) THEN
       ResetRcv; adr := SYSTEM.ADR(rx); SubRcv(adr, len); LED(len);
       n := rx.hd.len + HdrSize - len;
       IF rx.hd.len <= MaxPayload THEN
