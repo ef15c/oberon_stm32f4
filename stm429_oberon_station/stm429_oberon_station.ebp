@@ -104,20 +104,11 @@
 		<Unit filename="Core\Src\BootLoadM4.s">
 			<Option compilerVar="ASM" />
 		</Unit>
-		<Unit filename="Core\Src\Counter.s">
-			<Option compilerVar="ASM" />
-		</Unit>
-		<Unit filename="Core\Src\Display.s">
-			<Option compilerVar="ASM" />
-		</Unit>
-		<Unit filename="Core\Src\Fonts.s">
-			<Option compilerVar="ASM" />
-		</Unit>
-		<Unit filename="Core\Src\func_in_ram.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="Core\Src\main.c">
 			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="Core\Src\oberon_handlers.s">
+			<Option compilerVar="ASM" />
 		</Unit>
 		<Unit filename="Core\Src\ps2_protocol.c">
 			<Option compilerVar="CC" />
@@ -133,9 +124,6 @@
 		</Unit>
 		<Unit filename="Core\Src\system_stm32f4xx.c">
 			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="Core\Src\test_trap.s">
-			<Option compilerVar="ASM" />
 		</Unit>
 		<Unit filename="Core\Startup\startup_stm32f429zitx.s">
 			<Option compilerVar="ASM" />
@@ -166,6 +154,8 @@
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pwr_ex.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_rcc.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_rcc_ex.h" />
+		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_rtc.h" />
+		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_rtc_ex.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_sd.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_sdram.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_spi.h" />
@@ -180,6 +170,7 @@
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_gpio.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_pwr.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_rcc.h" />
+		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_rtc.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_sdmmc.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_system.h" />
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usart.h" />
@@ -235,6 +226,12 @@
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_rcc_ex.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_rtc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_rtc_ex.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_sd.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -267,10 +264,10 @@
 			<code_completion />
 			<debugger>
 				<target_debugging_settings target="Debug">
-					<debug_interface description="STM32F429.svd" options="2" reg_filter="0" probe="STlink" device="stm32-auto" speed="" bus_address="" serial="" defines="" scripts="" flash_size="" ram_size="" vcc_voltage="" verbose="4" unwind="1" rstType="0" use_jtag="false" disable_cache="false" enable_semi="false" close_eblink="false" gdb_reset="" gdb_reset_remote="reset;" gdb_before_conn="" gdb_after_conn="" use_remote="false" ip_address="" ip_port="" path="" executable="" start_server="false" arguments="" flash_verify="false" flash_run="false" />
+					<debug_interface description="STM32F429.svd" options="2" reg_filter="0" probe="STlink" device="stm32" speed="" bus_address="" serial="" defines="" scripts="" flash_size="" ram_size="" vcc_voltage="" verbose="4" unwind="1" rstType="0" use_jtag="false" disable_cache="false" enable_semi="false" close_eblink="false" gdb_reset="" gdb_reset_remote="reset;" gdb_before_conn="" gdb_after_conn="" use_remote="false" ip_address="" ip_port="" path="" executable="" start_server="false" arguments="" flash_verify="false" flash_run="false" />
 				</target_debugging_settings>
 				<target_debugging_settings target="Release">
-					<debug_interface description="STM32F429.svd" options="2" reg_filter="0" probe="STlink" device="stm32-auto" speed="" bus_address="" serial="" defines="" scripts="" flash_size="" ram_size="" vcc_voltage="" verbose="4" unwind="2" rstType="0" use_jtag="false" disable_cache="false" enable_semi="false" close_eblink="false" gdb_reset="" gdb_reset_remote="reset" gdb_before_conn="" gdb_after_conn="" use_remote="false" ip_address="" ip_port="" path="" executable="" start_server="false" arguments="" flash_verify="false" flash_run="false" />
+					<debug_interface description="STM32F429.svd" options="2" reg_filter="0" probe="STlink" device="stm32" speed="" bus_address="" serial="" defines="" scripts="" flash_size="" ram_size="" vcc_voltage="" verbose="4" unwind="2" rstType="0" use_jtag="false" disable_cache="false" enable_semi="false" close_eblink="false" gdb_reset="" gdb_reset_remote="reset;" gdb_before_conn="" gdb_after_conn="" use_remote="false" ip_address="" ip_port="" path="" executable="" start_server="false" arguments="" flash_verify="false" flash_run="false" />
 				</target_debugging_settings>
 			</debugger>
 			<envvars />

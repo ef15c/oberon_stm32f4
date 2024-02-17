@@ -361,29 +361,36 @@ static void PS2_ParseReadIdAnswer(PS2_HandleTypeDef *dev)
     }
 }
 
+static void PS2_Reset(PS2_HandleTypeDef *dev) {
+    int nbTries = 3;
+    int16_t res;
+    /* Send the reset command */
+    do {
+        PS2_SendByteAsync(dev, 0xFF);
+        res = PS2_WaitForAnswer(dev, 20);
+        if (res == 0xfa) {
+            HAL_Delay(500); /*Wait for BAT to be completed*/
+        	res = PS2_WaitForAnswer(dev, 20);
+        }
+    } while (--nbTries && res != 0xaa);
+    PS2_WaitForAnswer(dev, 20);
+}
 
 static void PS2_ReadId(PS2_HandleTypeDef *dev) {
     int nbTries = 3;
-    /* Send read ID command */
+    int16_t res;
+    /* Send the read ID command */
     do {
         HAL_Delay(10);
         PS2_SendByteAsync(dev, 0xF2);
         HAL_Delay(1);
-    } while (--nbTries && PS2_WaitForAnswer(dev, 20) != 0xfa);
+        res = PS2_WaitForAnswer(dev, 20);
+        if (res != 0xfa) {
+        	PS2_Reset(dev);
+        }
+    } while (--nbTries && res != 0xfa);
 }
 
-
-#if 0
-static void PS2_Reset(PS2_HandleTypeDef *dev) {
-    /* Send reset command */
-    int nbTries = 3;
-    /* Send read ID command */
-    do {
-        PS2_SendByteAsync(dev, 0xFF);
-        HAL_Delay(500); /*Wait for BAT to be completed*/
-    } while (--nbTries && PS2_WaitForAnswer(dev, 20) != 0xfa);
-}
-#endif
 
 /**
   * @brief  Check if a device is connected on a PS/2 port.

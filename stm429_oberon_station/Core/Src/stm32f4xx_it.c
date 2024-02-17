@@ -339,26 +339,6 @@ __STATIC_FORCEINLINE uint32_t __get_LR(void)
   __ASM volatile ("MOV %0, LR\n" : "=r" (result) );
   return(result);
 }
-/**
-  * @brief This function handles Undefined instruction or illegal state.
-  */
-void Oberon_UsageFault_Handler(sContextStateFrame *frame)
-{
-  uint32_t *instr;
-
-  UNUSED(instr);
-  if (SCB->CFSR & ~SCB_CFSR_NOCP_Msk) {
-    while (1)
-    {
-    }
-  }
-  SCB->CFSR |= SCB_CFSR_NOCP_Msk; /*Reset flag*/
-
-  instr = (uint32_t *) frame->return_address;
-  frame->return_address += 4;
-  __ISB();
-}
-
 
 /**
   * @brief This function handles SVC calls.
@@ -444,7 +424,6 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
     		pbuf = buf;
     	}
 
-#if 1
 		frame->r0 = HAL_SD_WriteBlocks_DMA(&hsd, pbuf, frame->r0, frame->r2);
 		if (frame->r0 == HAL_OK) {
 			frame->r0 = 300;
@@ -460,27 +439,6 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
 		if (frame->r0 != HAL_OK) {
 	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
 		}
-#else
-    	while (frame->r2) {
-    		i = HAL_SD_WriteBlocks_DMA(&hsd, pbuf, frame->r0, 1);
-    		if (i == HAL_OK) {
-    			i = 300;
-    			while (i-- && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
-    				HAL_Delay(1);
-    			}
-    			if (i) {
-    				i = HAL_OK;
-    			} else {
-    				i = 1;
-    			}
-    		}
-    		if (i != HAL_OK) {
-    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
-    		}
-    		frame->r2--; frame->r0++; pbuf += 512;
-    	}
-    	frame->r0 = i;
-#endif
     	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
         break;
     case 4:

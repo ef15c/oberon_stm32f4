@@ -46,6 +46,8 @@ CRC_HandleTypeDef hcrc;
 
 LTDC_HandleTypeDef hltdc;
 
+RTC_HandleTypeDef hrtc;
+
 SD_HandleTypeDef hsd;
 DMA_HandleTypeDef hdma_sdio_rx;
 DMA_HandleTypeDef hdma_sdio_tx;
@@ -96,20 +98,10 @@ static const uint32_t clut[256] = {
 0XFFDA00,0XFFDA55,0XFFDAAA,0XFFDAFF,0XFFFF00,0XFFFF55,0XFFFFAA,0XFFFFFF,
 };
 
-#if 0
-static uint8_t *fb, *bb, *dmaBuf;
-static size_t tranfSize;
-static int color;
-#endif
-
-/* Si un jour j'arrive à intégrer le préchargement des modules en FLASH/SRAM */
-/* space provision for Oberon modules static data
-uint8_t modulesData[0x20000]; */
 PS2_HandleTypeDef ps2_1;
 PS2_HandleTypeDef ps2_2;
 MSKBData mskbBlock;
 
-volatile float a;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -122,27 +114,15 @@ static void MX_USART1_UART_Init(void);
 static void MX_SDIO_SD_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_CRC_Init(void);
+static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 static void BSP_PS2_Init(void);
-#if 0
-static void TransferComplete(DMA_HandleTypeDef *DmaHandle);
-static void TransferError(DMA_HandleTypeDef *DmaHandle);
-#endif
 static void PS2_PINS_Output_OD_High(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void testTrap(uint32_t n);
-void codeInRam(void);
-void copyFunction(void);
 static void MPU_RegionConfig(void);
-void led(uint32_t l);
-uint32_t ReadSD(uint32_t blockNum, uint8_t* dest, uint32_t nofBlocks);
-#if 0
-static void powerDown24(void);
-static void stackOverflow(void);
-#endif
 void BootLoadM4(void);
 /* USER CODE END 0 */
 
@@ -163,8 +143,6 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-    a = 1.0; /*Contournement bug EMBitz quand PSP est utilisé*/
-    a = a+2.0; /*Activate LSP */
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -172,17 +150,17 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
 
   /* USER CODE BEGIN SysInit */
 
-    /* Enable microseconds delay via DWT */
-    /* Disable TRC */
-    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
-    /* Enable TRC */
-    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
-    /* Disable clock cycle counter */
-    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
-    /* Reset the clock cycle counter value */
-    DWT->CYCCNT = 0;
-    /* Enable  clock cycle counter */
-    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
+  /* Enable microseconds delay via DWT */
+  /* Disable TRC */
+  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
+  /* Enable TRC */
+  CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
+  /* Disable clock cycle counter */
+  DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
+  /* Reset the clock cycle counter value */
+  DWT->CYCCNT = 0;
+  /* Enable  clock cycle counter */
+  DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
 
   /* USER CODE END SysInit */
 
@@ -195,145 +173,22 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   MX_SDIO_SD_Init();
   MX_SPI3_Init();
   MX_CRC_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   PS2_PINS_Output_OD_High();
   BSP_PS2_Init();
-  // COnfigure MPU to allow execution in range 0xD0201000 - 0xD0800000
+  // Configure MPU to allow execution in range 0xD0201000 - 0xD0800000
   MPU_RegionConfig();
-//#define NO_DMA
 
-#if 0
-  HAL_DMA_RegisterCallback(&hdma_memtomem_dma2_stream0, HAL_DMA_XFER_CPLT_CB_ID, TransferComplete);
-  HAL_DMA_RegisterCallback(&hdma_memtomem_dma2_stream0, HAL_DMA_XFER_ERROR_CB_ID, TransferError);
+  BootLoadM4();
 
-  fb = (uint8_t *) 0xD0000000;
-  bb = fb+FB_SIZE;
-#ifndef VGA_DMA
-  uint8_t *tmp = fb;
-  uint32_t *tmp4 = (uint32_t *) fb;
-#endif
-  uint32_t n=0;
-
-    for (n=0; n<FB_SIZE/4; n++) {
-        *tmp4++ = 0;
-    }
-
-    // Draw cross
-    // Hrozontal line
-    tmp = fb + FB_SIZE/2;
-    for (n=0; n<1366; n++) {
-        *tmp++ = 255;
-    }
-
-    // Vertical line
-    tmp = fb + 1366/2;
-    for (n=0; n<768; n++) {
-        *tmp = 255;
-        tmp += Span;
-    }
-
-    // Draw blue square
-    // Hrozontal top line
-    tmp = fb + FB_SIZE/2 - Span*100 + 1366/2 -100;
-    for (n=0; n<200; n++) {
-        *tmp++ = 3;
-    }
-
-    // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + Span*100 + 1366/2 -100;
-    for (n=0; n<200; n++) {
-        *tmp++ = 3;
-    }
-
-    // Vertical left line
-    tmp = fb + FB_SIZE/2 - Span*100 + 1366/2 -100;
-    for (n=0; n<200; n++) {
-        *tmp = 3;
-        tmp += Span;
-    }
-
-    // Vertical right line
-    tmp = fb + FB_SIZE/2 - Span*100 + 1366/2 +100;
-    for (n=0; n<200; n++) {
-        *tmp = 3;
-        tmp += Span;
-    }
-
-    // Draw green square
-    // Hrozontal top line
-    tmp = fb + FB_SIZE/2 - Span*200 + 1366/2 -200;
-    for (n=0; n<400; n++) {
-        *tmp++ = 0x1C;
-    }
-
-    // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + Span*200 + 1366/2 -200;
-    for (n=0; n<400; n++) {
-        *tmp++ = 0x1C;
-    }
-
-    // Vertical left line
-    tmp = fb + FB_SIZE/2 - Span*200 + 1366/2 -200;
-    for (n=0; n<400; n++) {
-        *tmp = 0x1C;
-        tmp += Span;
-    }
-
-    // Vertical right line
-    tmp = fb + FB_SIZE/2 - Span*200 + 1366/2 +200;
-    for (n=0; n<400; n++) {
-        *tmp = 0x1C;
-        tmp += Span;
-    }
-
-    // Draw green square
-    // Hrozontal t line
-    tmp = fb + FB_SIZE/2 - Span*300 + 1366/2 -300;
-    for (n=0; n<600; n++) {
-        *tmp++ = 0xE0;
-    }
-
-    // Hrozontal bottom line
-    tmp = fb + FB_SIZE/2 + Span*300 + 1366/2 -300;
-    for (n=0; n<600; n++) {
-        *tmp++ = 0xE0;
-    }
-
-    // Vertical left line
-    tmp = fb + FB_SIZE/2 - Span*300 + 1366/2 -300;
-    for (n=0; n<600; n++) {
-        *tmp = 0xE0;
-        tmp += Span;
-    }
-
-    // Vertical right line
-    tmp = fb + FB_SIZE/2 - Span*300 + 1366/2 +300;
-    for (n=0; n<600; n++) {
-        *tmp = 0xE0;
-        tmp += Span;
-    }
-#endif
-
-//    copyFunction();
-    //    codeInRam();
-    BootLoadM4();
-
-#if 0
-    n = 0;
-
-    /* Test communication nrf24l01p */
-    powerDown24();
-
-    stackOverflow();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-    mainLoop();
-#endif
-    /* USER CODE END WHILE */
+  /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+  /* USER CODE BEGIN 3 */
   /* USER CODE END 3 */
 }
 
@@ -481,6 +336,69 @@ static void MX_LTDC_Init(void)
   __HAL_LTDC_LAYER_ENABLE(&hltdc, 0);
   __HAL_LTDC_ENABLE_IT(&hltdc, LTDC_IT_RR);
   /* USER CODE END LTDC_Init 2 */
+
+}
+
+/**
+  * @brief RTC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RTC_Init(void)
+{
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+
+  /** Initialize RTC Only
+  */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+  */
+  sTime.Hours = 0x0;
+  sTime.Minutes = 0x0;
+  sTime.Seconds = 0x0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_ADD1H;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+  sDate.Month = RTC_MONTH_JANUARY;
+  sDate.Date = 0x1;
+  sDate.Year = 0x0;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 
 }
 
@@ -1049,187 +967,6 @@ void MPU_RegionConfig(void)
     HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 }
 
-#if 0
-/**
-  * @brief  DMA conversion complete callback
-  * @note   This function is executed when the transfer complete interrupt
-  *         is generated
-  * @retval None
-  */
-static void TransferComplete(DMA_HandleTypeDef *DmaHandle)
-{
-    if (DmaHandle != &hdma_memtomem_dma2_stream0) {
-        return;
-    }
-
-    if (tranfSize>0) {
-        int l;
-
-        if (tranfSize>64000*4) {
-            l = 64000*4;
-        } else {
-            l = tranfSize;
-        }
-
-        if(HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, (uint32_t)&color, (uint32_t)dmaBuf, l/4) != HAL_OK)
-        {
-            Error_Handler();
-        }
-
-        tranfSize -= l;
-        dmaBuf += l;
-    } else {
-        HAL_LTDC_Reload(&hltdc, LTDC_RELOAD_VERTICAL_BLANKING);
-    }
-}
-
-/**
-  * @brief  DMA conversion error callback
-  * @note   This function is executed when the transfer error interrupt
-  *         is generated during DMA transfer
-  * @retval None
-  */
-static void TransferError(DMA_HandleTypeDef *DmaHandle)
-{
-  Error_Handler();
-}
-
-/**
-  * @brief  Reload Event callback.
-  * @param  hltdc  pointer to a LTDC_HandleTypeDef structure that contains
-  *                the configuration information for the LTDC.
-  * @retval None
-  */
-void HAL_LTDC_ReloadEventCallback(LTDC_HandleTypeDef *hltdc)
-{
-    uint8_t *tmp;
-
-    /* Switch frame buffers */
-    tmp = fb;
-    fb = bb;
-    bb = tmp;
-
-    HAL_LTDC_SetAddress(hltdc, (uint32_t) fb, 0);
-}
-
-/* Commandes */
-#define NOP24 0xFF
-#define R_REGISTER24 0
-#define W_REGISTER24 0x20
-#define R_RX_PL_WID24 0x60
-#define R_RX_PAYLOAD24 0x61
-#define W_TX_PAYLOAD24 0xA0
-#define FLUSH_TX24 0xE1
-#define FLUSH_RX24 0xE2
-#define W_ACK_PAYLOAD24 0xA8
-
-/* Registres */
-#define CONFIG24 0
-#define EN_RXADDR24 0x02
-#define SETUP_AW24 0x03
-#define SETUP_RETR24 0x04
-#define RF_CH24 0x05
-#define RF_SETUP24 0x06
-#define STATUS24 0x07
-#define RX_ADDR_P024 0x0A
-#define TX_ADDR24 0x10
-#define RX_PW_P024 0x11
-#define FIFO_STATUS24 0x17
-#define DYNPD24 0x1C
-#define FEATURE24 0x1D
-
-void talk24(int sz, unsigned char *cmd, unsigned char *rep)
-{
-
-    if (cmd==0 || rep==0) {
-        /* Trap wrong buffer pointers */
-        while (1) {}
-    }
-
-	/* Sélection de la communication SPI avec le module */
-	HAL_GPIO_WritePin(NRF24L01P_CS_GPIO_Port, NRF24L01P_CS_Pin, GPIO_PIN_RESET); // NRF_CS is going LOW
-
-	HAL_Delay(1);
-    HAL_SPI_TransmitReceive(&hspi3, cmd, rep, sz, HAL_MAX_DELAY);
-	HAL_Delay(1);
-
-	/* Libération de la communication SPI avec le module */
-	HAL_GPIO_WritePin(NRF24L01P_CS_GPIO_Port, NRF24L01P_CS_Pin, GPIO_PIN_SET); // NRF_CS is going LOW
-}
-
-static void powerDown24(void)
-{
-    unsigned char cmd[33];
-    unsigned char rep[33];
-
-    /* Power down */
-    cmd[1] = 0x0D;
-    do {
-        *cmd = W_REGISTER24+CONFIG24;
-        talk24(2, cmd, rep);
-        *cmd = R_REGISTER24+CONFIG24;
-        talk24(2, cmd, rep);
-    } while (rep[1] != cmd[1]);
-}
-
-static void stackOverflow(void)
-{
-    int a;
-
-    UNUSED(a);
-
-    /* Cause a stack overflow to test recovery code */
-    stackOverflow();
-}
-
-void mainLoop(void)
-{
-#if 0
-  volatile uint32_t ticks;
-#endif
-  uint32_t n=0;
-
-  while (1)
-  {
-#ifdef VGA_DMA
-    for (color=0; color<256; color++) {
-        tranfSize = FB_SIZE;
-        dmaBuf = bb;
-        TransferComplete(&hdma_memtomem_dma2_stream0);
-
-        HAL_Delay(1000);
-
-        n++;
-    }
-#else
-#if 0
-    if (n >= 256) {
-        n = 0;
-    }
-
-    if (tmp >= fb+FB_SIZE) {
-        tmp = fb;
-    }
-
-    *tmp++ = n++;
-    HAL_Delay(1);
-
-    ticks = HAL_GetTick();
-    codeInRam();
-    ticks = HAL_GetTick() - ticks;
-#endif
-    if (n >= 256) {
-        n = 0;
-    }
-
-    led(++n);
-//    testTrap(n);
-
-    HAL_Delay(1000);
-#endif
-  }
-}
-#endif
 /* USER CODE END 4 */
 
 /**
