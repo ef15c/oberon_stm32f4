@@ -8,6 +8,11 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     CS = 2; (*Carry set Greater than, equal, or unordered*)
     CC = 3; (* Carry clear Less than*)
 
+    PeriphBase = 40000000H; PeriphBBAlias = 42000000H;
+    RTCBase =  40002800H; TR = 0; DR = 4; SSR = 28H; WPR = 24H; ISR = 0CH;
+    INIT = 7; INITF = 6; RSF = 5;
+    rtcInit = PeriphBBAlias + (RTCBase + ISR - PeriphBase + INIT DIV 8)*32 + INIT MOD 8*4;
+
   TYPE Sector* = ARRAY SectorLength OF BYTE;
   
     ExceptionFrame* = RECORD
@@ -18,7 +23,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   VAR allocated*, NofSectors*: INTEGER;
     heapOrg*, heapLim*: INTEGER; 
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
-    clock: INTEGER;
+
     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
     sectorMap: ARRAY mapsize DIV 32 OF SET;
     
@@ -202,11 +207,38 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END Time;
 
   PROCEDURE Clock*(): INTEGER;
-  BEGIN RETURN clock
+    VAR d,  h, newss, ss: INTEGER;
+  BEGIN
+      REPEAT SYSTEM.GET(RTCBase + SSR, ss); SYSTEM.GET(RTCBase + TR, h);
+        SYSTEM.GET(RTCBase + DR, d); SYSTEM.GET(RTCBase + SSR, newss)
+      UNTIL ss = newss;
+      SYSTEM.GET(RTCBase + DR, newss); (*dummy date read to unlock registers*)
+      RETURN (((((LSR(d, 20) MOD 16*10 + LSR(d, 16) MOD 16)*16 +
+        LSR(d, 12) MOD 2*10 + LSR(d, 8) MOD 16)*32 +
+          LSR(d, 4) MOD 2*10 + d MOD 16)*32 +
+            LSR(h, 20) MOD 4*10 + LSR(h, 16) MOD 16)*64 +
+              LSR(h, 12) MOD 8*10 + LSR(h, 8) MOD 16)*64 +
+                LSR(h, 4) MOD 8*10 + h MOD 16
   END Clock;
 
   PROCEDURE SetClock*(dt: INTEGER);
-  BEGIN clock := dt
+    VAR d,  h, hr, min, sec, yr, mo, day: INTEGER;
+  BEGIN yr := LSR(dt, 26); mo := LSR(dt, 22) MOD 16; day := LSR(dt, 17) MOD 32;
+    d := LSL(yr DIV 10, 20) + LSL(yr MOD 10, 16) +
+      LSL(mo DIV 10, 12) + LSL(mo MOD 10, 8) +
+      LSL(day DIV 10, 4) + day MOD 10;
+
+    hr := LSR(dt, 12) MOD 32; min := LSR(dt, 6) MOD 64; sec := dt MOD 64;
+    h := LSL(hr DIV 10, 20) + LSL(hr MOD 10, 16) +
+      LSL(min DIV 10, 12) + LSL(min MOD 10, 8) +
+      LSL(sec DIV 10, 4) + sec MOD 10;
+
+    SYSTEM.PUT(RTCBase + WPR, 0CAH); SYSTEM.PUT(RTCBase + WPR, 53H); (*disable write protection on RTC registers*)
+    SYSTEM.PUT(rtcInit, TRUE); (*put RTC in init mode*)
+    REPEAT UNTIL SYSTEM.BIT(RTCBase + ISR, INITF); (*RTC is now in init mode*)
+    SYSTEM.PUT(RTCBase + TR, h); SYSTEM.PUT(RTCBase + DR, d); (*set time and date*)
+    SYSTEM.PUT(rtcInit, FALSE); (*exit RTC from init mode*)
+    SYSTEM.PUT(RTCBase + WPR, 0FFH); (*enable write protection on RTC registers*)
   END SetClock;
 
   PROCEDURE Install*(Padr, at: INTEGER);
@@ -229,7 +261,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SYSTEM.GET(VarORG0+28, heapOrg); stackSize := 10000H; heapLim := MemLim;
     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
     SYSTEM.PUT(list0, heapLim - heapOrg); SYSTEM.PUT(list0+4, -1); SYSTEM.PUT(list0+8, 0);
-    allocated := 0; clock := 0; InitSecMap
+    allocated := 0; InitSecMap
   END Init;
 
 END Kernel.
