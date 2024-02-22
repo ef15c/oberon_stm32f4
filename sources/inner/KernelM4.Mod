@@ -2,7 +2,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   IMPORT SYSTEM;
   CONST SectorLength* = 1024;
     FSoffset = 80000H; (*256MB in 512-byte blocks*)
-    mapsize = 10000H; (*1K sectors, 64MB*)
+    mapsize = 10000H; (*64K sectors, 64MB*)
     SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6;
     VarORG0* = 0D0201000H;
     CS = 2; (*Carry set Greater than, equal, or unordered*)
@@ -215,7 +215,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       SYSTEM.GET(RTCBase + DR, newss); (*dummy date read to unlock registers*)
       RETURN (((((LSR(d, 20) MOD 16*10 + LSR(d, 16) MOD 16)*16 +
         LSR(d, 12) MOD 2*10 + LSR(d, 8) MOD 16)*32 +
-          LSR(d, 4) MOD 2*10 + d MOD 16)*32 +
+          LSR(d, 4) MOD 4*10 + d MOD 16)*32 +
             LSR(h, 20) MOD 4*10 + LSR(h, 16) MOD 16)*64 +
               LSR(h, 12) MOD 8*10 + LSR(h, 8) MOD 16)*64 +
                 LSR(h, 4) MOD 8*10 + h MOD 16

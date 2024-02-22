@@ -9,10 +9,12 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     FaultSRAdr = 0E000ED28H; UFSRMask = {16..31}; BFSRMask = {8..15}; NOCP = 19; INVSTATE = 17; PRECISERR = 9; STKERR = 12;
     BusFaultExcNum = 5; BFARAdr = 0E000ED38H;
     IntCtrlSRAdr = 0E000ED04H; PENDSVSET = 28;
+    Exti15to10IrqNum = 16+40; ABORTKEY = 2; (*Reserved in CFSR*)
+    EXTIBase = 40013C00H; extiPR = 14H;
 
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
-    TrappedAdr: INTEGER; CFSR: SET;
+    TrappedAdr, DebounceTime: INTEGER; CFSR: SET;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
     VAR T: Texts.Text; beg, end, time: LONGINT;
@@ -433,7 +435,22 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*);
     SYSTEM.PUT(FaultSRAdr, CFSR*BFSRMask) (*reset BFSR flags*)
   END BusFaultHandler;
-  
+
+  PROCEDURE* AbortHandler(VAR f: Kernel.ExceptionFrame);
+    VAR ICSR, pr: SET;
+  BEGIN CFSR := {ABORTKEY}; TrappedAdr := f.returnAddress;
+    (* Clear pending IRQ*)
+    SYSTEM.GET(EXTIBase + extiPR, pr); SYSTEM.PUT(EXTIBase + extiPR, pr);
+    IF 14 IN pr THEN
+      (*IF Kernel.Time() - DebounceTime < 30 THEN INC(DebounceTime, 30)
+      ELSE
+        DebounceTime := Kernel.Time();*)
+        (*Trigger abort by requesting a PendSV interrupt*)
+        SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*)
+      (*END*)
+    END
+  END AbortHandler;
+
   PROCEDURE Reset;
     VAR inst, w, base: INTEGER; mod: Modules.Module;
   BEGIN
@@ -451,7 +468,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     ELSIF INVSTATE IN CFSR THEN w := 5 (*probably illegal procedure call*)
     ELSIF STKERR IN CFSR THEN w := 9 (*Bus Fault: stack overflow*)
     ELSIF PRECISERR IN CFSR THEN w := 8 (*Bus Fault: data access precise error*)
-    ELSE w := 10 (*TODO Fault to be characterized*)
+    ELSIF ABORTKEY IN CFSR THEN w := 10 (*User pressed the abort key*)
+    ELSE w := 11 (*TODO Fault to be characterized*)
     END;
     Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4);
     IF TrappedAdr # 0 THEN
@@ -465,7 +483,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
-  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4); 
-  Kernel.Install(SYSTEM.ADR(BusFaultHandler), Kernel.VecTabBase+BusFaultExcNum*4); 
+  DebounceTime := Kernel.Time();
+  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4);
+  Kernel.Install(SYSTEM.ADR(BusFaultHandler), Kernel.VecTabBase+BusFaultExcNum*4);
+  Kernel.Install(SYSTEM.ADR(AbortHandler), Kernel.VecTabBase+Exti15to10IrqNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
 END System.

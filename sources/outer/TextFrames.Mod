@@ -1,4 +1,5 @@
-MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017*)
+MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
+    CS 09/02/2024: Fix FlipSM*)
   IMPORT Modules, Input, Display, Viewers, Fonts, Texts, Oberon, MenuViewers;
 
   CONST replace* = 0; insert* = 1; delete* = 2; unmark* = 3; (*message id*)
@@ -68,7 +69,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017*)
 
   PROCEDURE FlipSM(X, Y: INTEGER);
     VAR DW, DH: INTEGER;
-  BEGIN DW := Display.Width; DH := Display.Height
+  BEGIN DW := Display.Width; DH := Display.Height;
     IF X < 3 THEN X := 3 ELSIF X > DW - 4 THEN X := DW - 4 END;
     IF Y < 6 THEN Y := 6 ELSIF Y > DH - 6 THEN Y := DH - 6 END;
     Display.CopyPattern(Display.white, Display.updown, X-3, Y-3, Display.invert)

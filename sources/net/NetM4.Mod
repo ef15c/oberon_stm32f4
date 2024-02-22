@@ -82,7 +82,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END PickQ;
 
   PROCEDURE SendData(F: Files.File);
-    VAR k, seqno: INTEGER;
+    VAR k, retry, seqno, nseqno: INTEGER;
       x: BYTE;
       len: LONGINT;
       R: Files.Rider;
@@ -91,10 +91,11 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     REPEAT k := 0;
       REPEAT Files.ReadByte(R, x);
         IF ~R.eof THEN buf[k] := x; INC(k) END
-      UNTIL R.eof OR (k = PakSize);
-      REPEAT Send(seqno, k, buf); ReceiveHead(T1)
-      UNTIL head1.typ # seqno + ACK;
-      seqno := (seqno + 1) MOD 8; len := len + k;
+      UNTIL R.eof OR (k = PakSize); retry := 3; nseqno := (seqno + 1) MOD 8;
+      REPEAT Send(seqno, k, buf); ReceiveHead(T1); DEC(retry);
+        IF head1.typ # nseqno + ACK THEN SCC.Delayms(500); END
+      UNTIL (head1.typ = nseqno + ACK) OR (retry = 0);
+      seqno := nseqno; len := len + k;
       IF head1.typ # seqno + ACK THEN
         Texts.WriteString(W, " failed"); k := 0
       END
@@ -414,5 +415,14 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   BEGIN SCC.ShowRxPacket(W); Texts.Append(Oberon.Log, W.buf)
   END SCCShowRxPacket;
 
-BEGIN Texts.OpenWriter(W); Server := Oberon.NewTask(Serve, 500)
+
+  PROCEDURE ShowHead1*;
+  BEGIN Texts.WriteString(W, "Valid "); Texts.WriteInt(W, ORD(head1.valid), 1);
+    Texts.WriteString(W, ", type "); Texts.WriteInt(W, head1.typ, 1);
+    Texts.WriteString(W, ", length "); Texts.WriteInt(W, head1.len, 1);
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END ShowHead1;
+
+BEGIN Texts.OpenWriter(W); Server := Oberon.NewTask(Serve, 500);
+  SCC.SetWriter(W, Oberon.Log)
 END Net.
