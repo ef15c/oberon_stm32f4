@@ -132,7 +132,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
     (*search module in list; if not found, load module.
       res = 0: already present or loaded; res = 2: file not available; res = 3: key conflict;
       res = 4: bad file version; res = 5: corrupted file; res = 7: no space*)
-    VAR mod, impmod: Module;
+    VAR mod!, impmod!: Module;
       i, n, key, impkey, mno, nofimps, size: INTEGER;
       p, u, v, w: INTEGER;  (*addresses*)
       b: BYTE;
@@ -141,7 +141,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
       fixorgP, fixorgD, fixorgT: INTEGER;
       disp, adr, inst, pno, vno, dest, offset, trpbase, noftrps: INTEGER;
       name1, impname: ModuleName;
-      F: Files.File; R: Files.Rider;
+      F!: Files.File; R: Files.Rider;
       import: ARRAY 16 OF Module;
   BEGIN mod := root; error(0, name); nofimps := 0;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
@@ -310,7 +310,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
   END ThisCommand;
 
   PROCEDURE Free*(name: ARRAY OF CHAR);
-    VAR mod, imp: Module; p, q: INTEGER;
+    VAR mod!, imp!: Module; p, q: INTEGER;
   BEGIN mod := root; res := 0;
     WHILE (mod # NIL) & (mod.name # name) DO mod := mod.next END ;
     IF mod # NIL THEN

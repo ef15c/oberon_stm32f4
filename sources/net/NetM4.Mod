@@ -42,6 +42,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   BEGIN SCC.Skip(SCC.Available()); res := 0; k := 0;
     WHILE (k < 7) & (name[k] # 0X) DO Id[k] := name[k]; IdB[k] := ORD(Id[k]); INC(k) END;
     Id[k] := 0X; IdB[k] := 0; (* <-- also terminate IdB *)
+
     IF Id # partner THEN
       head0.dadr := 0FFH; Send(NRQ, k+1, IdB); time := Oberon.Time() + T1;
       REPEAT

@@ -273,7 +273,6 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); root := NIL
   END Link;
 
-(* Disabled for now to avoid RISC-5 bootfile corruption
   PROCEDURE Load*;  (*load prelinked boot file M.bin onto the boot area of the local disk*)
     VAR i, secno: LONGINT; b: BYTE;
       F: Files.File; R: Files.Rider;
@@ -298,7 +297,6 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
     END ;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END Load;
-*)
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.20 / CS 14/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); 

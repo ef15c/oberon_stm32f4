@@ -24,7 +24,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
     ObjDesc*= RECORD
       class*, exno*: BYTE;
-      expo*, rdo*, used*: BOOLEAN;   (*exported / read-only / used*)
+      expo*, unsafe*, rdo*, used*: BOOLEAN;   (*exported / read-only / used*)
       lev*: INTEGER;
       next*, dsc*: Object;
       type*: Type;

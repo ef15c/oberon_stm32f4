@@ -489,3 +489,4 @@ BEGIN Texts.OpenWriter(W);
   Kernel.Install(SYSTEM.ADR(AbortHandler), Kernel.VecTabBase+Exti15to10IrqNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
 END System.
+
