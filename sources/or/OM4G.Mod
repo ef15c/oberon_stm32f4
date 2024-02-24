@@ -284,7 +284,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END loadCond;
 
   PROCEDURE loadTypTagAdr(T: OM4B.Type);
-    VAR x: Item;
+    VAR x!: Item;
   BEGIN x.mode := OM4B.Var; x.type := NIL; x.a := T.len; x.r := -T.mno; loadAdr(x)
   END loadTypTagAdr;
 
@@ -394,7 +394,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Q;
 
   PROCEDURE FindPtrFlds(typ: OM4B.Type; off: LONGINT; VAR dcw: LONGINT);
-    VAR fld: OM4B.Object; i, s: LONGINT;
+    VAR fld!: OM4B.Object; i, s: LONGINT;
   BEGIN
     IF (typ.form = OM4B.Pointer) OR (typ.form = OM4B.NilTyp) THEN data[dcw] := off; INC(dcw)
     ELSIF typ.form = OM4B.Record THEN
@@ -1006,14 +1006,14 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END New;
 
   PROCEDURE Pack*(VAR x, y: Item);
-    VAR z: Item;
+    VAR z!: Item;
   BEGIN (*Load x in a core register*)
     z := x; load(x); load(y);
     OM4A.encDPReg(mcode, OM4A.ADD, x.r, x.r, y.r, 23); DEC(RH); Store(z, x);
   END Pack;
 
   PROCEDURE Unpk*(VAR x, y: Item);
-    VAR z, e0: Item;
+    VAR z!, e0!: Item;
   BEGIN (*Load x in a core register*)
     z := x; load(x); e0.mode := Reg; e0.r := RH; e0.type := OM4B.intType;
     OM4A.encShiftImm5(mcode, OM4A.ASr, RH, x.r, 23); 
@@ -1193,7 +1193,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Header;
 
   PROCEDURE NofPtrs(typ: OM4B.Type): LONGINT;
-    VAR fld: OM4B.Object; n: LONGINT;
+    VAR fld!: OM4B.Object; n: LONGINT;
   BEGIN
     IF (typ.form = OM4B.Pointer) OR (typ.form = OM4B.NilTyp) THEN n := 1
     ELSIF typ.form = OM4B.Record THEN
@@ -1206,7 +1206,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END NofPtrs;
 
   PROCEDURE FindPtrs(VAR R: Files.Rider; typ: OM4B.Type; adr: LONGINT);
-    VAR fld: OM4B.Object; i, s: LONGINT;
+    VAR fld!: OM4B.Object; i, s: LONGINT;
   BEGIN
     IF (typ.form = OM4B.Pointer) OR (typ.form = OM4B.NilTyp) THEN Files.WriteInt(R, adr)
     ELSIF typ.form = OM4B.Record THEN
@@ -1219,10 +1219,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END FindPtrs;
 
   PROCEDURE Close*(VAR modid: OM4S.Ident; key, nofent: LONGINT);
-    VAR obj, obj2: OM4B.Object;
+    VAR obj!, obj2!: OM4B.Object;
       i, comsize, nofimps, nofptrs, nofusedextprocs, size: LONGINT;
       name: OM4S.Ident;
-      F: Files.File; R: Files.Rider;
+      F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*)
     IF version = 0 THEN
       (*OM4A.BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)

@@ -51,7 +51,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
   END MakeFileName;
 
   PROCEDURE ThisFile(name: ARRAY OF CHAR): Files.File;
-    VAR F: Files.File;
+    VAR F!: Files.File;
       filename: Modules.ModuleName;
   BEGIN MakeFileName(filename, name, ".m4c"); F := Files.Old(filename); RETURN F
   END ThisFile;
@@ -79,7 +79,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       res = badkey: key conflict;
       res = badfile: corrupted file;
       res = nospace: insufficient space*)
-    VAR mod, impmod: Modules.Module;
+    VAR mod!, impmod!: Modules.Module;
       i, n, key, impkey, mno, nofimps, size: INTEGER;
       p, u, v, w: INTEGER;  (*addresses*)
       ch: CHAR;
@@ -87,7 +87,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       fixorgP, fixorgD, fixorgT: INTEGER;
       disp, adr, inst, pno, vno, dest, offset: INTEGER;
       name1, impname: Modules.ModuleName;
-      F: Files.File; R: Files.Rider;
+      F!: Files.File; R!: Files.Rider;
       import: ARRAY 16 OF Modules.Module;
   BEGIN mod := root; error(noerr, name); nofimps := 0;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
@@ -225,9 +225,9 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
 
   PROCEDURE Link*;  (*link multiple object files together and create a single boot file M.bin from them*)
     VAR i, x: INTEGER;
-      F: Files.File; R: Files.Rider;
-      S: Texts.Scanner;
-      M, p: Modules.Module;
+      F!: Files.File; R!: Files.Rider;
+      S!: Texts.Scanner;
+      M!, p!: Modules.Module;
       name: Modules.ModuleName;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN
@@ -275,8 +275,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
 
   PROCEDURE Load*;  (*load prelinked boot file M.bin onto the boot area of the local disk*)
     VAR i, secno: LONGINT; b: BYTE;
-      F: Files.File; R: Files.Rider;
-      S: Texts.Scanner;
+      F!: Files.File; R!: Files.Rider;
+      S!: Texts.Scanner;
       buf: ARRAY Kernel.SectorLength OF BYTE;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN

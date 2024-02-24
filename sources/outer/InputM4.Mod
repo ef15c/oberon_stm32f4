@@ -22,7 +22,7 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   including tracking the state of the Shift and Ctrl keys*)
 
   PROCEDURE Peek();
-    VAR mkb: MKB;
+    VAR mkb!: MKB;
   BEGIN
     mkb := SYSTEM.VAL(MKB, MKBAdr);
     IF mkb.tail # mkb.head THEN
@@ -67,14 +67,14 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   END Read;
 
   PROCEDURE Mouse*(VAR keys: SET; VAR x, y: INTEGER);
-    VAR mkb: MKB;
+    VAR mkb!: MKB;
   BEGIN mkb := SYSTEM.VAL(MKB, MKBAdr);
     keys := SYSTEM.VAL(SET, mkb.MD DIV 1000000H MOD 8);
     x := mkb.MD MOD 1000H; y := (mkb.MD DIV 1000H) MOD 1000H;
   END Mouse;
 
   PROCEDURE SetMouseLimits*(w, h: INTEGER);
-    VAR mkb: MKB;
+    VAR mkb!: MKB;
   BEGIN mkb := SYSTEM.VAL(MKB, MKBAdr);
     mkb.MW := w; mkb.MH := h
   END SetMouseLimits;

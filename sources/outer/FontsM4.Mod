@@ -20,13 +20,6 @@ MODULE Fonts; (*JG 18.11.90; PDR 8.6.12; NW 18.1.2019
 
 VAR Default*, root*: Font;
 
-(*Check if the font is loaded*)
-  PROCEDURE IsLoaded*(fnt: Font): BOOLEAN;
-    VAR f: Font;
-  BEGIN f := root;
-    WHILE (f # NIL) & (f # fnt) DO f := f.next END;
-    RETURN f = fnt
-  END IsLoaded;
   
 PROCEDURE GetPat*(fnt: Font; ch: CHAR; VAR dx, x, y, w, h, patadr: INTEGER);
   VAR pa: INTEGER;  dxb, xb, yb: BYTE;
@@ -37,8 +30,8 @@ BEGIN pa := fnt.T[ORD(ch) MOD 80H]; patadr := pa;
 END GetPat;
 
 PROCEDURE This*(name: ARRAY OF CHAR): Font;
-  VAR F: Font; LF: LargeFont;
-    f: Files.File; R: Files.Rider;
+  VAR F!: Font; LF!: LargeFont;
+    f!: Files.File; R!: Files.Rider;
     NofRuns, NofBoxes: BYTE;
     NofBytes: INTEGER;
     height, minX, maxX, minY, maxY: BYTE;

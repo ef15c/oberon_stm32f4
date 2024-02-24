@@ -187,7 +187,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END HandleFiller;
 
   PROCEDURE OpenDisplay* (UW, SW, H: INTEGER);
-    VAR Filler: Viewers.Viewer;
+    VAR Filler!: Viewers.Viewer;
   BEGIN
      Input.SetMouseLimits(Viewers.curW + UW + SW, H);
      Display.ReplConst(Display.black, Viewers.curW, 0, UW + SW, H, Display.replace);
@@ -206,7 +206,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END DisplayHeight;
 
   PROCEDURE OpenTrack* (X, W: INTEGER);
-    VAR Filler: Viewers.Viewer;
+    VAR Filler!: Viewers.Viewer;
   BEGIN
     NEW(Filler); Filler.handle := HandleFiller;
     Viewers.OpenTrack(X, W, Filler)
@@ -222,7 +222,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE UY (X: INTEGER): INTEGER;
     VAR h: INTEGER;
-      fil, bot, alt, max: Display.Frame;
+      fil!, bot!, alt!, max!: Display.Frame;
   BEGIN
     Viewers.Locate(X, 0, fil, bot, alt, max);
     IF fil.H >= DH DIV 8 THEN h := DH ELSE h := max.Y + max.H DIV 2 END ;
@@ -238,7 +238,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE SY (X: INTEGER): INTEGER;
     VAR H0, H1, H2, H3, y: INTEGER;
-      fil, bot, alt, max: Display.Frame;
+      fil!, bot!, alt!, max!: Display.Frame;
   BEGIN H3 := DH - DH DIV 3;
     H2 := H3 - H3 DIV 2; H1 := DH DIV 5; H0 := DH DIV 10;
     Viewers.Locate(X, DH, fil, bot, alt, max);
@@ -279,7 +279,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END SetPar;
 
   PROCEDURE Call* (name: ARRAY OF CHAR; VAR res: INTEGER);
-    VAR mod: Modules.Module; P: Modules.Command;
+    VAR mod!: Modules.Module; P: Modules.Command;
       i, j: INTEGER; ch: CHAR;
       Mname, Cname: ARRAY 32 OF CHAR;
   BEGIN i := 0; ch := name[0];
@@ -299,14 +299,14 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END Call;
 
   PROCEDURE GetSelection* (VAR text: Texts.Text; VAR beg, end, time: LONGINT);
-    VAR M: SelectionMsg;
+    VAR M!: SelectionMsg;
   BEGIN
     M.time := -1; Viewers.Broadcast(M); time := M.time;
     IF time >= 0 THEN text := M.text; beg := M.beg; end := M.end END
   END GetSelection;
 
   PROCEDURE GC;
-    VAR mod: Modules.Module;
+    VAR mod!: Modules.Module;
   BEGIN
     IF (ActCnt <= 0) OR (Kernel.allocated >= Kernel.heapLim - Kernel.heapOrg - 10000H) THEN
       mod := Modules.root; LED(21H);
@@ -322,7 +322,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END GC;
 
   PROCEDURE NewTask*(h: Handler; period: INTEGER): Task;
-    VAR t: Task;
+    VAR t!: Task;
   BEGIN NEW(t); t.state := off; t.next := t; t.handle := h; t.period := period; RETURN t
   END NewTask;
   
@@ -334,7 +334,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END Install;
 
   PROCEDURE Remove* (T: Task);
-    VAR t: Task;
+    VAR t!: Task;
   BEGIN
     IF T.state # off THEN t := T;
       WHILE t.next # T DO t := t.next END ;
@@ -359,7 +359,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END SetOffset;
 
   PROCEDURE Loop*;
-    VAR V: Viewers.Viewer; M: InputMsg; N: ControlMsg;
+    VAR V!: Viewers.Viewer; M!: InputMsg; N: ControlMsg;
        prevX, prevY, X, Y, t: INTEGER; keys: SET; ch: CHAR;
   BEGIN
     REPEAT

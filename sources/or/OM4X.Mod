@@ -71,7 +71,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   
   PROCEDURE OutCode(VAR R, R1: Files.Rider; write: Writer; loadaddress: INTEGER; VAR codelen, entry, res: INTEGER);
     VAR n, data: INTEGER; ch: CHAR; b: BYTE;               (*codelen in bytes, entry in bytes*)
-      F: Files.File;
+      F!: Files.File;
       name: ARRAY 32 OF CHAR;
       r: record;
       la, lah: INTEGER;
@@ -123,10 +123,10 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   END OutCode;
 
   PROCEDURE WriteFile*;  (*write code section of M.m4c in hex format to output file*)
-    VAR f, g: Files.File; Rf, Rg: Files.Rider;
+    VAR f!, g!: Files.File; Rf!, Rg!: Files.Rider;
       n, codelen, filelen, entry: INTEGER;
       name: ARRAY 32 OF CHAR;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN name := S.s; Texts.Scan(S);
       IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteFile "); res := -2;
@@ -157,10 +157,10 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   END WriteFile;
 
   PROCEDURE WriteCode*;  (*write code section of M.m4c in binary format to output file*)
-    VAR f, g: Files.File; Rf, Rg: Files.Rider;
+    VAR f!, g!: Files.File; Rf!, Rg!: Files.Rider;
       codelen, entry: INTEGER;
       name: ARRAY 32 OF CHAR;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN name := S.s; Texts.Scan(S);
       IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteCode "); res := -2;
@@ -187,10 +187,10 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   END WriteCode;
 
   PROCEDURE WriteASM*;  (*write code section of M.m4c in assembly format to output file*)
-    VAR f, g: Files.File; Rf, Rg: Files.Rider;
+    VAR f!, g!: Files.File; Rf!, Rg!: Files.Rider;
       codelen, entry, i: INTEGER;
       name: ARRAY 32 OF CHAR;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN name := S.s; Texts.Scan(S);
       IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteASM "); res := -2;
@@ -231,11 +231,11 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   END WriteASM;
 
   PROCEDURE WritePreLinkedASM*;  (*write pre-linked (.bin) in assembly format to output file*)
-    VAR f, g: Files.File; Rf, Rg: Files.Rider;
+    VAR f!, g!: Files.File; Rf!, Rg!: Files.Rider;
       base, i: INTEGER;
       b: BYTE;
       name: ARRAY 32 OF CHAR;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN name := S.s; Texts.Scan(S);
       IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteASM "); res := -2;

@@ -145,15 +145,29 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     WriteReg1(7, 40H); (*done; STATUS <= clear RX_DR*)
   END SubRcv;
 
+  PROCEDURE FlushRX;
+  BEGIN
+    StartCmd(0E2H); SYSTEM.PUT(netSelectOut, 1)
+  END FlushRX;
+
+  PROCEDURE FlushTX;
+  BEGIN
+    StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1)
+  END FlushTX;
+
   PROCEDURE Flush*;
-  BEGIN WriteReg1(7, 70H); StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1); StartCmd(0E2H); SYSTEM.PUT(netSelectOut, 1)
-(*FLUSH_TX, FLUSH_RX*)
+  BEGIN FlushRX; FlushTX; WriteReg1(7, 70H); StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1)
+
   END Flush;
 
+  PROCEDURE PrintReg1(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; VAR dat: BYTE);
+  BEGIN ReadReg1(n, dat); Texts.WriteString(W, t);  Texts.WriteString(W, " = "); 
+    TextsEx.WriteHexVLen(W, dat, 2, FALSE); Texts.WriteLn(W)
+  END PrintReg1;
+  
   PROCEDURE xmitPayload(VAR timeout: BOOLEAN; flush: BOOLEAN);
     VAR res: INTEGER; status: BYTE;
-  BEGIN
-    SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); Delayus(12); SYSTEM.PUT(netEnableOut, 0);
+  BEGIN SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); Delayus(12); SYSTEM.PUT(netEnableOut, 0);
     REPEAT Delayms(1); SYSTEM.PUT(netSelectOut, 0); SPIr(status); (*NOP*); SYSTEM.PUT(netSelectOut, 1);
       res := status DIV 10H MOD 4
     UNTIL res # 0;
@@ -187,8 +201,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE SubRcVReq(VAR timeout: BOOLEAN);
     VAR payload: ARRAY 1 OF BYTE;
-  BEGIN
-    payload[0] := 0; doSubSend(SYSTEM.ADR(payload), 1, timeout, FALSE);
+  BEGIN payload[0] := 0; doSubSend(SYSTEM.ADR(payload), 1, timeout, FALSE)
   END SubRcVReq;
   
   PROCEDURE ResetRcv;
@@ -212,9 +225,9 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       REPEAT
         SubRcVReq(timeout);
         WHILE timeout & (Kernel.Time() - t1 <= time) DO Delayms(1); xmitPayload(timeout, FALSE) END;
-        rcvd := RXFIFOAvail(); IF ~rcvd THEN Flush END
+        IF timeout THEN FlushTX ELSE rcvd := RXFIFOAvail() END
   
-    UNTIL rcvd OR (Kernel.Time() - t1 >= time)
+    UNTIL rcvd OR (Kernel.Time() - t1 > time)
     END;
     RETURN rcvd
   END Rcvd;
@@ -226,9 +239,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     IF config # 7EH THEN WriteReg1(0, 7EH); (*CONFIG <= mask ints; EN_CRC(2 byte), PWR_UP, PTX*)
       Delayms(8)
     END;
-    (*put PRX and PTX in a clean state*)
-    Flush;
-    WHILE Rcvd(0) DO LED(127); Flush; LED(0) END;
+    Flush
   END PowerUp;
 
   PROCEDURE Start*(channel: BYTE; pipeName: ARRAY OF CHAR);
@@ -250,14 +261,10 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     WriteReg1(1DH, 6); (*FEATURE Enables Dynamic Payload Length and Payload with ACK*)
 (*    WriteReg1(4, 63H); (*SETUP_RETR ARD = 1750us, ARC = 3*)*)
     WriteReg1(4, 0FFH); (*SETUP_RETR ARD = 4000us, ARC = 15*)
-    Flush; ResetRcv
+    (*put PRX and PTX in a clean state*)
+    PowerUp; REPEAT Flush UNTIL ~Rcvd(0); ResetRcv
   END Start;
-
-  PROCEDURE PrintReg1(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; VAR dat: BYTE);
-  BEGIN ReadReg1(n, dat); Texts.WriteString(W, t);  Texts.WriteString(W, " = "); 
-    TextsEx.WriteHexVLen(W, dat, 2, FALSE); Texts.WriteLn(W)
-  END PrintReg1;
-  
+ 
   PROCEDURE PrintRegN(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; len: INTEGER);
     VAR dat: ARRAY 5 OF BYTE; i: INTEGER;
   BEGIN ReadRegN(n, dat, len); Texts.WriteString(W, t);  Texts.WriteString(W, " = "); 
@@ -274,13 +281,13 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     PrintRegN(W, 10H, "TX_ADDR", dat+2); PrintReg1(W, 11H, "RX_PW_P0", dat);
     PrintReg1(W, 1CH, "DYNPD", dat); PrintReg1(W, 1DH, "FEATURE", dat);
     PrintReg1(W, 4, "SETUP_RETR", dat);
-    SYSTEM.GET(DWTBase + CYCCNT, data); Texts.WriteString(W, "CYCCNT = "); Texts.WriteInt(W, data, 1); Texts.WriteLn(W)
+    Texts.WriteString(W, "RX FIFO available: "); Texts.WriteInt(W, ORD(RXFIFOAvail()), 1); Texts.WriteLn(W)
   END PrintConfig;
   
   PROCEDURE SendPacket*(VAR head: Header; dat: ARRAY OF BYTE);
     VAR len, i, off: INTEGER; timeout: BOOLEAN; 
     payload: ARRAY SubPacket OF BYTE;
-  BEGIN PowerUp;
+  BEGIN PowerUp; REPEAT Flush UNTIL ~Rcvd(0);
     head.valid := TRUE; SYSTEM.PUT(CRCReset, 1); (*Reset STM32 CRC Unit*)
     SYSTEM.COPY(SYSTEM.ADR(head), SYSTEM.ADR(payload), HdrSize DIV 4);
     i := HdrSize; off := 0; len := head.len;
@@ -292,7 +299,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
       SubSnd(SYSTEM.ADR(payload), timeout);
     END;
-	IF ~timeout THEN
+    IF ~timeout THEN
       SYSTEM.GET(CRCBase + CRCDR, off); SYSTEM.PUT(SYSTEM.ADR(payload), off); (*send CRC*)
       i := 4; WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
       SubSnd(SYSTEM.ADR(payload), timeout)
@@ -313,7 +320,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     VAR adr, data, n: INTEGER; len: BYTE;
   BEGIN PowerUp;
     head.valid := FALSE; SYSTEM.PUT(CRCReset, 1); (*Reset STM32 CRC Unit*)
-    IF Rcvd(100) THEN
+    IF Rcvd(Wait) THEN
       ResetRcv; adr := SYSTEM.ADR(rx); SubRcv(adr, len);
       n := rx.hd.len + HdrSize - len;
       IF rx.hd.len <= MaxPayload THEN

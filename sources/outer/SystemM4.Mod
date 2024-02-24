@@ -17,7 +17,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     TrappedAdr, DebounceTime: INTEGER; CFSR: SET;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
-    VAR T: Texts.Text; beg, end, time: LONGINT;
+    VAR T!: Texts.Text; beg, end, time: LONGINT;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF (S.class = Texts.Char) & (S.c = "^") THEN
       Oberon.GetSelection(T, beg, end, time);
@@ -43,25 +43,25 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END SetUser;
 
   PROCEDURE SetFont*;
-    VAR S: Texts.Scanner;
+    VAR S!: Texts.Scanner;
   BEGIN GetArg(S);
     IF S.class = Texts.Name THEN Oberon.SetFont(Fonts.This(S.s)) END
   END SetFont;
 
   PROCEDURE SetColor*;
-    VAR S: Texts.Scanner;
+    VAR S!: Texts.Scanner;
   BEGIN GetArg(S);
     IF S.class = Texts.Int THEN Oberon.SetColor(S.i) END
   END SetColor;
 
   PROCEDURE SetOffset*;
-    VAR S: Texts.Scanner;
+    VAR S!: Texts.Scanner;
   BEGIN GetArg(S);
     IF S.class = Texts.Int THEN Oberon.SetOffset(S.i) END
   END SetOffset;
   
   PROCEDURE Date*;
-    VAR S: Texts.Scanner;
+    VAR S!: Texts.Scanner;
       dt, hr, min, sec, yr, mo, day: LONGINT;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Int THEN (*set clock*)
@@ -82,8 +82,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   PROCEDURE Open*;  (*open viewer in system track*)
     VAR X, Y: INTEGER;
-      V: Viewers.Viewer;
-      S: Texts.Scanner;
+      V!: Viewers.Viewer;
+      S!: Texts.Scanner;
   BEGIN GetArg(S);
     IF S.class = Texts.Name THEN
       Oberon.AllocateSystemViewer(Oberon.Par.vwr.X, X, Y);
@@ -94,7 +94,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END Open;
 
   PROCEDURE Clear*;  (*clear Log*)
-    VAR T: Texts.Text; F: Display.Frame; buf: Texts.Buffer;
+    VAR T!: Texts.Text; F!: Display.Frame; buf!: Texts.Buffer;
   BEGIN F := Oberon.Par.frame;
     IF (F # NIL) & (F.next IS TextFrames.Frame) & (F = Oberon.Par.vwr.dsc) THEN
       NEW(buf); Texts.OpenBuf(buf); T := F.next(TextFrames.Frame).text; Texts.Delete(T, 0, T.len, buf)
@@ -102,7 +102,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END Clear;
 
   PROCEDURE Close*;
-    VAR V: Viewers.Viewer;
+    VAR V!: Viewers.Viewer;
   BEGIN
     IF Oberon.Par.frame = Oberon.Par.vwr.dsc THEN V := Oberon.Par.vwr
     ELSE V := Oberon.MarkedViewer()
@@ -111,12 +111,12 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END Close;
 
   PROCEDURE CloseTrack*;
-    VAR V: Viewers.Viewer;
+    VAR V!: Viewers.Viewer;
   BEGIN V := Oberon.MarkedViewer(); Viewers.CloseTrack(V.X)
   END CloseTrack;
 
   PROCEDURE Recall*;
-    VAR V: Viewers.Viewer; M: Viewers.ViewerMsg;
+    VAR V!: Viewers.Viewer; M: Viewers.ViewerMsg;
   BEGIN Viewers.Recall(V);
     IF (V#NIL) & (V.state = 0) THEN
       Viewers.Open(V, V.X, V.Y + V.H); M.id := Viewers.restore; V.handle(V, M)
@@ -124,14 +124,14 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END Recall;
 
   PROCEDURE Copy*;
-    VAR V, V1: Viewers.Viewer; M: Oberon.CopyMsg; N: Viewers.ViewerMsg;
+    VAR V!, V1!: Viewers.Viewer; M!: Oberon.CopyMsg; N: Viewers.ViewerMsg;
   BEGIN V := Oberon.Par.vwr; V.handle(V, M); V1 := M.F(Viewers.Viewer);
     Viewers.Open(V1, V.X, V.Y + V.H DIV 2);
     N.id := Viewers.restore; V1.handle(V1, N)
   END Copy;
 
   PROCEDURE Grow*;
-    VAR V, V1: Viewers.Viewer; M: Oberon.CopyMsg; N: Viewers.ViewerMsg;
+    VAR V!, V1!: Viewers.Viewer; M!: Oberon.CopyMsg; N: Viewers.ViewerMsg;
       DW, DH: INTEGER;
   BEGIN V := Oberon.Par.vwr;
     DW := Oberon.DisplayWidth(V.X); DH := Oberon.DisplayHeight(V.X);
@@ -155,9 +155,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END Free1;
 
   PROCEDURE Free*;
-    VAR T: Texts.Text;
+    VAR T!: Texts.Text;
       beg, end, time: LONGINT;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN Texts.WriteString(W, "System.Free"); EndLine;
     Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF (S.class = Texts.Char) & (S.c = "^") THEN
@@ -209,9 +209,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   PROCEDURE Directory*;
     VAR X, Y, i: INTEGER; ch: CHAR;
-      R: Texts.Reader;
-      T, t: Texts.Text;
-      V: Viewers.Viewer;
+      R!: Texts.Reader;
+      T!, t!: Texts.Text;
+      V!: Viewers.Viewer;
       beg, end, time: LONGINT;
       pre: ARRAY 32 OF CHAR;
   BEGIN Texts.OpenReader(R, Oberon.Par.text, Oberon.Par.pos); Texts.Read(R, ch);
@@ -238,9 +238,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END Directory;
 
   PROCEDURE CopyFiles*;
-    VAR f, g: Files.File; Rf, Rg: Files.Rider; ch: CHAR;
+    VAR f!, g!: Files.File; Rf!, Rg!: Files.Rider; ch: CHAR;
       name: ARRAY 32 OF CHAR;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN GetArg(S);
     Texts.WriteString(W, "System.CopyFiles"); EndLine;
     WHILE S.class = Texts.Name DO
@@ -268,7 +268,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   PROCEDURE RenameFiles*;
     VAR res: INTEGER;
       name: ARRAY 32 OF CHAR;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN GetArg(S);
     Texts.WriteString(W, "System.RenameFiles"); EndLine;
     WHILE S.class = Texts.Name DO
@@ -288,7 +288,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END RenameFiles;
 
   PROCEDURE DeleteFiles*;
-    VAR res: INTEGER; S: Texts.Scanner;
+    VAR res: INTEGER; S!: Texts.Scanner;
   BEGIN GetArg(S);
     Texts.WriteString(W, "System.DeleteFiles"); EndLine;
     WHILE S.class = Texts.Name DO
@@ -316,9 +316,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END Watch;
 
   PROCEDURE ShowModules*;
-    VAR T: Texts.Text;
-      V: Viewers.Viewer;
-      M: Modules.Module;
+    VAR T!: Texts.Text;
+      V!: Viewers.Viewer;
+      M!: Modules.Module;
       X, Y: INTEGER;
   BEGIN T := TextFrames.Text("");
     Oberon.AllocateSystemViewer(Oberon.Par.vwr.X, X, Y);
@@ -337,11 +337,11 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END ShowModules;
 
   PROCEDURE ShowCommands*;
-    VAR M: Modules.Module;
+    VAR M!: Modules.Module;
       comadr: LONGINT; ch: CHAR;
-      T: Texts.Text;
-      S: Texts.Scanner;
-      V: Viewers.Viewer;
+      T!: Texts.Text;
+      S!: Texts.Scanner;
+      V!: Viewers.Viewer;
       X, Y: INTEGER;
   BEGIN GetArg(S);
     IF S.class = Texts.Name THEN
@@ -364,7 +364,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END ShowCommands;
 
   PROCEDURE ShowFonts*;
-    VAR fnt: Fonts.Font;
+    VAR fnt!: Fonts.Font;
   BEGIN Texts.WriteString(W, "System.ShowFonts"); Texts.WriteLn(W); fnt := Fonts.root;
     WHILE fnt # NIL DO
       Texts.Write(W, 9X); Texts.WriteString(W, fnt.name); Texts.WriteLn(W); fnt := fnt.next
@@ -373,10 +373,10 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END ShowFonts;
 
   PROCEDURE OpenViewers;
-    VAR logV, toolV: Viewers.Viewer;
-      menu, main: Display.Frame;
-      d: LONGINT; X, Y: INTEGER;
-  BEGIN d := Kernel.Clock(); Texts.WriteString(W, "Oberon V5  NW 14.4.2013"); EndLine;
+    VAR logV!, toolV!: Viewers.Viewer;
+      menu!, main!: Display.Frame;
+      X, Y: INTEGER;
+  BEGIN Texts.WriteString(W, "Oberon V5  NW 14.4.2013"); EndLine;
     Oberon.AllocateSystemViewer(0, X, Y);
     menu := TextFrames.NewMenu("System.Log", LogMenu);
     main := TextFrames.NewText(Oberon.Log, 0);
@@ -388,9 +388,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END OpenViewers;
 
   PROCEDURE ExtendDisplay*;
-    VAR V: Viewers.Viewer;
+    VAR V!: Viewers.Viewer;
       X, Y, DX, DW, DH: INTEGER;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN GetArg(S);
     IF S.class = Texts.Name THEN
       DX := Viewers.curW; DW := Oberon.DisplayWidth(DX); DH := Oberon.DisplayHeight(DX);
@@ -452,7 +452,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END AbortHandler;
 
   PROCEDURE Reset;
-    VAR inst, w, base: INTEGER; mod: Modules.Module;
+    VAR inst, w, base: INTEGER; mod!: Modules.Module;
   BEGIN
     IF NOCP IN CFSR THEN (*Trap*)      
       SYSTEM.GET(TrappedAdr, inst);
@@ -489,4 +489,3 @@ BEGIN Texts.OpenWriter(W);
   Kernel.Install(SYSTEM.ADR(AbortHandler), Kernel.VecTabBase+Exti15to10IrqNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
 END System.
-

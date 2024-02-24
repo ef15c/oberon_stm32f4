@@ -70,7 +70,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     typtab: ARRAY maxTypTab OF Type;
 
   PROCEDURE NewObj*(VAR obj: Object; id: OM4S.Ident; class: INTEGER);  (*insert new Object with name id*)
-    VAR new, x: Object;
+    VAR new!, x!: Object;
   BEGIN x := topScope;
     WHILE (x.next # NIL) & (x.next.name # id) DO x := x.next END ;
     IF x.next = NIL THEN
@@ -81,7 +81,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END NewObj;
 
   PROCEDURE thisObj*(): Object;
-    VAR s, x: Object;
+    VAR s!, x!: Object;
   BEGIN s := topScope;
     REPEAT x := s.next;
       WHILE (x # NIL) & (x.name # OM4S.id) DO x := x.next END ;
@@ -91,7 +91,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END thisObj;
 
   PROCEDURE thisimport*(mod: Object): Object;
-    VAR obj: Object;
+    VAR obj!: Object;
   BEGIN
     IF mod.rdo THEN
       IF mod.name[0] # 0X THEN
@@ -105,14 +105,14 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END thisimport;
 
   PROCEDURE thisfield*(rec: Type): Object;
-    VAR fld: Object;
+    VAR fld!: Object;
   BEGIN fld := rec.dsc;
     WHILE (fld # NIL) & (fld.name # OM4S.id) DO fld := fld.next END ;
     RETURN fld
   END thisfield;
 
   PROCEDURE OpenScope*;
-    VAR s: Object;
+    VAR s!: Object;
   BEGIN NEW(s); s.class := Head; s.dsc := topScope; s.next := NIL; topScope := s
   END OpenScope;
 
@@ -131,7 +131,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END MakeFileName;
   
   PROCEDURE ThisModule(name, orgname: OM4S.Ident; decl: BOOLEAN; key: LONGINT): Object;
-    VAR mod: Module; obj, obj1: Object;
+    VAR mod!: Module; obj!, obj1!: Object;
   BEGIN obj1 := topScope; obj := obj1.next;  (*search for module*)
     WHILE (obj # NIL) & (obj(Module).orgname # orgname) DO obj1 := obj; obj := obj1.next END ;
     IF obj = NIL THEN  (*new module, search for alias*)
@@ -162,8 +162,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   PROCEDURE InType(VAR R: Files.Rider; thismod: Object; VAR T: Type);
     VAR key: LONGINT;
       ref, class, form, np, readonly: INTEGER;
-      fld, par, obj, mod, last: Object;
-      t: Type;
+      fld!, par!, obj!, mod!, last!: Object;
+      t!: Type;
       name, modname: OM4S.Ident;
   BEGIN Read(R, ref);
     IF ref < 0 THEN T := typtab[-ref]  (*already read*)
@@ -214,10 +214,10 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   
   PROCEDURE Import*(VAR modid, modid1: OM4S.Ident);
     VAR key: LONGINT; class, k: INTEGER;
-      obj: Object;  t: Type;
-      thismod: Object;
+      obj!: Object;  t!: Type;
+      thismod!: Object;
       modname, fname: OM4S.Ident;
-      F: Files.File; R: Files.Rider;
+      F!: Files.File; R!: Files.Rider;
   BEGIN
     IF modid1 = "SYSTEM" THEN
       thismod := ThisModule(modid, modid1, TRUE,  key); DEC(nofmod);
@@ -255,7 +255,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END Write;
 
   PROCEDURE OutType(VAR R: Files.Rider; t: Type);
-    VAR obj, mod, fld, bot: Object;
+    VAR obj!, mod!, fld!, bot!: Object;
 
     PROCEDURE OutPar(VAR R: Files.Rider; par: Object; n: INTEGER);
       VAR cl: INTEGER;
@@ -269,7 +269,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     END OutPar;
 
     PROCEDURE FindHiddenPointers(VAR R: Files.Rider; typ: Type; offset: LONGINT);
-      VAR fld: Object; i, n: LONGINT;
+      VAR fld!: Object; i, n: LONGINT;
     BEGIN
       IF (typ.form = Pointer) OR (typ.form = NilTyp) THEN Write(R, Fld); Write(R, 0); Files.WriteNum(R, offset)
       ELSIF typ.form = Record THEN fld := typ.dsc;
@@ -314,9 +314,9 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
   PROCEDURE Export*(VAR modid: OM4S.Ident; VAR newSF: BOOLEAN; VAR key: LONGINT);
     VAR x, sum, oldkey: LONGINT;
-      obj, obj0: Object;
+      obj!, obj0!: Object;
       filename: OM4S.Ident;
-      F, F1: Files.File; R, R1: Files.Rider;
+      F!, F1!: Files.File; R!, R1!: Files.Rider;
   BEGIN Ref := Record + 1; MakeFileName(filename, modid, ".sm4");
     F := Files.New(filename); Files.Set(R, F, 0);
     Files.WriteInt(R, 0); (*placeholder*)
@@ -366,13 +366,13 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END Init;
   
   PROCEDURE type(ref, form: INTEGER; size: LONGINT): Type;
-    VAR tp: Type;
+    VAR tp!: Type;
   BEGIN NEW(tp); tp.form := form; tp.size := size; tp.ref := ref; tp.base := NIL;
     typtab[ref] := tp; RETURN tp
   END type;
 
   PROCEDURE enter(name: ARRAY OF CHAR; cl: INTEGER; type: Type; n: LONGINT);
-    VAR obj: Object;
+    VAR obj!: Object;
   BEGIN NEW(obj); obj.name := name; obj.class := cl; obj.type := type; obj.val := n; obj.dsc := NIL;
     IF cl = Typ THEN type.typobj := obj END ;
     obj.next := system; system := obj

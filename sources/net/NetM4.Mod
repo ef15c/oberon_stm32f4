@@ -86,7 +86,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     VAR k, retry, seqno, nseqno: INTEGER;
       x: BYTE;
       len: LONGINT;
-      R: Files.Rider;
+      R!: Files.Rider;
       buf: ARRAY PakSize OF BYTE;
   BEGIN Files.Set(R, F, 0); len := 0; seqno := 0;
     REPEAT k := 0;
@@ -108,7 +108,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     VAR k, retry, seqno: INTEGER;
      x: BYTE;
      len: LONGINT;
-     R: Files.Rider;
+     R!: Files.Rider;
   BEGIN Files.Set(R, F, 0); seqno := 0; len := 0; retry := 2; k := PakSize;
     REPEAT
      IF head1.typ = seqno THEN
@@ -144,7 +144,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   PROCEDURE Serve;
     VAR i: INTEGER;
       done: BOOLEAN; x: BYTE;
-      F: Files.File;
+      F!: Files.File;
       pw, clock, newclock: LONGINT;
       Id: ARRAY 8 OF CHAR;
       IdB: ARRAY 8 OF BYTE;
@@ -212,7 +212,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END GetPar1;
 
   PROCEDURE GetPar(VAR S: Texts.Scanner; VAR end: LONGINT);
-    VAR T: Texts.Text; beg, tm: LONGINT;
+    VAR T!: Texts.Text; beg, tm: LONGINT;
   BEGIN Texts.Scan(S);
     IF (S.class = Texts.Char) & (S.c = "^") THEN
       Oberon.GetSelection(T, beg, end, tm);
@@ -224,8 +224,8 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   PROCEDURE SendFiles*;
     VAR k: INTEGER;
       end: LONGINT;
-      S: Texts.Scanner;
-      F: Files.File;
+      S!: Texts.Scanner;
+      F!: Files.File;
       buf: ARRAY 64 OF BYTE;
   BEGIN GetPar1(S);
     IF S.class = Texts.Name THEN
@@ -265,8 +265,8 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   PROCEDURE ReceiveFiles*;
     VAR k: INTEGER; done: BOOLEAN;
       end: LONGINT;
-      S: Texts.Scanner;
-      F: Files.File;
+      S!: Texts.Scanner;
+      F!: Files.File;
       buf: ARRAY 64 OF BYTE;
   BEGIN GetPar1(S);
     IF S.class = Texts.Name THEN
@@ -309,7 +309,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
 
   PROCEDURE SendMsg*;
     VAR i: INTEGER; ch: CHAR;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
       msg: ARRAY 64 OF BYTE;
   BEGIN GetPar1(S);
     IF S.class = Texts.Name THEN
@@ -328,7 +328,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
 
   PROCEDURE GetTime*;
     VAR dt, res: INTEGER;
-      S: Texts.Scanner;
+      S!: Texts.Scanner;
   BEGIN GetPar1(S);
     IF S.class = Texts.Name THEN
       FindPartner(S.s, res);
@@ -343,7 +343,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END GetTime;
 
   PROCEDURE StartServer*;
-    VAR S: Texts.Scanner;
+    VAR S!: Texts.Scanner;
       end: LONGINT;
       channel: BYTE;
   BEGIN GetPar1(S);
@@ -368,7 +368,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END WProtect;
 
   PROCEDURE Reset*;
-    VAR S: Texts.Scanner;
+    VAR S!: Texts.Scanner;
       end: LONGINT;
       channel: BYTE;
   BEGIN GetPar1(S);
@@ -389,7 +389,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END StopServer;
 
   PROCEDURE tstFindPartner*;
-    VAR S: Texts.Scanner;
+    VAR S!: Texts.Scanner;
       res: INTEGER;
   BEGIN GetPar1(S);
     IF S.class = Texts.Name THEN

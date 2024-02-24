@@ -141,7 +141,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
       fixorgP, fixorgD, fixorgT: INTEGER;
       disp, adr, inst, pno, vno, dest, offset, trpbase, noftrps: INTEGER;
       name1, impname: ModuleName;
-      F!: Files.File; R: Files.Rider;
+      F!: Files.File; R!: Files.Rider;
       import: ARRAY 16 OF Module;
   BEGIN mod := root; error(0, name); nofimps := 0;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
