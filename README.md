@@ -5,25 +5,27 @@ Work in progress.
 
 Software side:
 
-Code generator for Cortex-M4F processor is done and tested.
-Linker and export tool are done and tested.
+Bootloader, inner, outer, OMAx and net modules are done.
 
-Bootloader, inner, outer and net modules are done.
+Stable: Bootloader, inner, outer and OM4x modules
 
-Stable: Bootloader, inner, outer modules
-
-Usable: net module, but relaibility has to be inproved.
+Usable: net modules, but relaibility has to be inproved.
 
 Next step: adapt graphic modules
+
 
 Change in oberon 07 compiler:
 
 This Oberon compiler allow declaration of unitialized pointers on stack.
-Those pointer are not checked at runtime, so they are not safe until they are properly intialized.
+Those pointers are not checked at runtime, so they are not safe until they are properly intialized.
+
 I made a change in the compiler to allow detection of the declaration of local variables containing pointers.
 The developer must check the code to be sure that no bad use is made with these variables.
-For example, if a Files.Rider is declared as a local variable, no use of the file member before the rider (eg. via Files.Base) has been initialized with Files.Set.
-When the developer has determined that the use of the local variable is safe, he or she must mark the variable with an exclamation mark (!) in its declaration.
+
+For example, assume that a Files.Rider is declared as a local variable. Using of the "file" member (eg. via Files.Base) is unsafe until the rider has been initialized with Files.Set.
+
+When the developer has determined that the code usage of the local variable is safe, he or she must mark the variable with an exclamation mark (!) in its declaration.
+
 
 Oberon runs now on the STM32F429I-DISCO base board:
 
