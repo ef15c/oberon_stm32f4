@@ -26,7 +26,9 @@ MODULE ShowPatterns;
 
 *)
 
-  IMPORT SYSTEM, Display, Texts, Oberon, OM4D;
+  IMPORT SYSTEM, Display, Texts, Oberon, TextsEx, GraphicFrames;
+
+  CONST Span = (Display.Width*8 DIV Display.NofBPP+63) DIV 64*64;
 
   VAR W: Texts.Writer;
   
@@ -35,7 +37,7 @@ MODULE ShowPatterns;
       patadr, r, c, line: INTEGER;
       pix: SET;
   BEGIN
-    patadr := Display.arrow;
+    patadr := GraphicFrames.tack;
     SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
     Texts.WriteString(W, "w="); Texts.WriteInt(W, w, 1);
     Texts.WriteString(W, ", h="); Texts.WriteInt(W, h, 1); Texts.WriteLn(W);
@@ -57,7 +59,7 @@ MODULE ShowPatterns;
     Texts.Append(Oberon.Log, W.buf)
   END Show;
 
-  PROCEDURE Convert*(patadr: LONGINT; name: ARRAY OF CHAR);
+  PROCEDURE Convert*(patadr: LONGINT; name: ARRAY OF CHAR; special: BOOLEAN);
     VAR w, h, pbt: BYTE;
       r, c, line: INTEGER;
       pix: SET;
@@ -65,8 +67,14 @@ MODULE ShowPatterns;
     Texts.WriteString(W, "  "); Texts.WriteString(W, name);
     Texts.WriteString(W, " := SYSTEM.ADR($");
     SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
-    OM4D.WriteHexVLen(W, w, 2, FALSE); Texts.WriteString(W, "00 "); 
-    OM4D.WriteHexVLen(W, h, 2, FALSE); Texts.WriteString(W, "00 "); Texts.WriteLn(W);
+    IF special THEN
+      TextsEx.WriteHexVLen(W, w, 2, FALSE); TextsEx.WriteHexVLen(W, h, 2, FALSE);
+      Texts.WriteString(W, " 0000"); Texts.WriteLn(W); INC(patadr, 2)
+     ELSE
+      TextsEx.WriteHexVLen(W, w, 2, FALSE); Texts.WriteString(W, "00 "); 
+  
+    TextsEx.WriteHexVLen(W, h, 2, FALSE); Texts.WriteString(W, "00 "); Texts.WriteLn(W)
+    END;
     Texts.WriteString(W, "    "); 
     FOR r := 1 TO h DO
       (*build pattern line; w <= 32*)
@@ -78,11 +86,11 @@ MODULE ShowPatterns;
       END ;
       c := 0;
       WHILE c <= w-1 DO
-        IF ODD(line) THEN OM4D.WriteHexVLen(W, 0FFH, 2, FALSE)
-        ELSE OM4D.WriteHexVLen(W, 0, 2, FALSE)
+        IF ODD(line) THEN TextsEx.WriteHexVLen(W, 0FFH, 2, FALSE)
+        ELSE TextsEx.WriteHexVLen(W, 0, 2, FALSE)
         END; line := line DIV 2; INC(c)
       END;
-      WHILE c MOD 4 # 0 DO OM4D.WriteHexVLen(W, 0, 2, FALSE); INC(c) END;
+      WHILE c MOD 4 # 0 DO TextsEx.WriteHexVLen(W, 0, 2, FALSE); INC(c) END;
       IF r # h THEN Texts.WriteLn(W); Texts.WriteString(W, "    ") END
     END;
     Texts.WriteString(W, "$);"); Texts.WriteLn(W);
@@ -90,14 +98,66 @@ MODULE ShowPatterns;
   END Convert;
 
   PROCEDURE ConvertAll*;
-  BEGIN Convert(Display.arrow, "arrow");
+    VAR pat: INTEGER;
+  BEGIN (* Convert(Display.arrow, "arrow");
     Convert(Display.star, "star");
     Convert(Display.hook, "hook");
     Convert(Display.updown, "updown");
     Convert(Display.block, "block");
     Convert(Display.cross, "cross");
-    Convert(Display.grey, "grey")
+    Convert(Display.grey, "grey")*)
+    Convert(GraphicFrames.tack, "tack", FALSE);
+    pat := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 0000 0000 0000 0000$);
+    Convert(pat, "dotted
+", TRUE);
+    pat := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 4444 4444 0000 0000$);
+    Convert(pat, "dotted
+1", TRUE);
   END ConvertAll;
+
+  PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
+  (* pattern width = 32, fixed; pattern starts at patadr+4, for mode = invert only *)
+    VAR al, ar, a0, a1, i: INTEGER;
+      pta0, pta1: INTEGER;  (*pattern addresses*)
+      ph: BYTE;
+      left, right, mid, pix, pixl, pixr, ptw: SET;
+  BEGIN al := Display.Base + (Display.Height-1-y)*Span; SYSTEM.GET(patadr+1, ph);
+    pta0 := patadr+4; pta1 := ph*(32*Display.NofBPP DIV 8) + pta0;
+    ar := ((x+w-1) DIV Display.NofPixperWord)*4 + al; al := (x DIV Display.NofPixperWord)*4 + al;
+    IF ar = al THEN
+      mid := {x MOD Display.NofPixperWord*Display.NofBPP .. (x+w-1) MOD Display.NofPixperWord*Display.NofBPP+Display.NofBPP-1};
+      a1 := al;
+      FOR i := 1 TO h DO
+        SYSTEM.GET(a1, pix); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a1, (pix - mid) + (pix/ptw * mid)); INC(pta0, 32*Display.NofBPP DIV 8);
+        IF pta0 = pta1 THEN pta0 := patadr+4 END;
+        DEC(a1, Span);
+      END
+    ELSIF ar > al THEN
+      left := {x MOD Display.NofPixperWord*Display.NofBPP .. 31}; right := {0 .. (x+w-1) MOD Display.NofPixperWord*Display.NofBPP+Display.NofBPP-1};
+Texts.WriteString(W, "left: "); Texts.WriteHex(W, ORD(left)); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+Texts.WriteString(W, "right: "); Texts.WriteHex(W, ORD(right)); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+      a0 := al;
+      FOR i := 1 TO h DO
+        SYSTEM.GET(a0, pixl); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a0, (pixl - left) + (pixl/ptw * left));
+        FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.GET(a1, pix); SYSTEM.PUT(a1, pix/ptw) END ;
+        SYSTEM.GET(ar, pixr); SYSTEM.PUT(ar, (pixr - right) + (pixr/ptw * right));
+        INC(pta0, 32*Display.NofBPP DIV 8); DEC(ar, Span);
+        IF pta0 = pta1 THEN pta0 := patadr+4 END;
+        DEC(a0, Span)
+      END
+    END
+  END ReplPattern;
+
+  PROCEDURE dotted*;
+  BEGIN
+    ReplPattern(Display.white, GraphicFrames.dotted, 100, 100, 1, 30, Display.invert);
+    ReplPattern(Display.white, GraphicFrames.dotted, 101, 100, 50, 1, Display.invert);
+    ReplPattern(Display.white, GraphicFrames.dotted, 200, 100, 50, 30, Display.invert);
+
+    ReplPattern(Display.white, GraphicFrames.dotted1, 100, 200, 1, 30, Display.invert);
+    ReplPattern(Display.white, GraphicFrames.dotted1, 101, 200, 50, 1, Display.invert);
+    ReplPattern(Display.white, GraphicFrames.dotted1, 200, 200, 50, 30, Display.invert);
+  END dotted;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Show patterns 23/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)

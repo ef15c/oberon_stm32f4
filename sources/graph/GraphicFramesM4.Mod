@@ -61,7 +61,8 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
       END ;
 
   VAR Crosshair*: Oberon.Marker;
-    tack*, dotted*, dotted1*: INTEGER;  (*patterns*)
+    tack* (*normal pattern*),
+      dotted*, dotted1* (*special patterns requiring Display.ReplPattern*): INTEGER;  (*patterns*)
     newcap: Graphics.Caption;
     TBuf: Texts.Buffer;
     DW, DH, CL: INTEGER;
@@ -521,9 +522,28 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
 
 BEGIN DW := Display.Width - 8; DH := Display.Height - 8; CL := 0;
   Texts.OpenWriter(W);
-  tack := SYSTEM.ADR($0707 4122 1408 1422 4100$);
-  dotted := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 0000 0000 0000 0000$);
-  dotted1 := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 4444 4444 0000 0000$);
+  tack := SYSTEM.ADR($ 0700  0700 
+     FF 00 00 00 00 00 FF 00
+     00 FF 00 00 00 FF 00 00
+     00 00 FF 00 FF 00 00 00
+     00 00 00 FF 00 00 00 00
+     00 00 FF 00 FF 00 00 00
+     00 FF 00 00 00 FF 00 00
+     FF 00 00 00 00 00 FF 00$);
+
+  (*dotted := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 0000 0000 0000 0000$);
+  dotted1 := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 4444 4444 0000 0000$);*)
+  dotted := SYSTEM.ADR($ 20 04 0000
+     FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00$);
+  dotted1 := SYSTEM.ADR($ 20 04 0000
+     FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+     00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00$);
+
   Crosshair.Fade := FlipCross; Crosshair.Draw := FlipCross;
   Graphics.InstallDrawMethods(DrawLine, DrawCaption, DrawMacro)
 END GraphicFrames.

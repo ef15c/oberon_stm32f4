@@ -9,14 +9,14 @@ Bootloader, inner, outer, OMAx and net modules are done.
 
 Stable: Bootloader, inner, outer and OM4x modules
 
-Usable: net modules, but relaibility has to be inproved.
+Usable: net modules, but reliability has to be improved.
 
 Next step: adapt graphic modules
 
 
 Change in oberon 07 compiler:
 
-This Oberon compiler allow declaration of unitialized pointers on stack.
+This Oberon compiler allow allocation of unitialized pointers on stack.
 Those pointers are not checked at runtime, so they are not safe until they are properly intialized.
 
 I made a change in the compiler to allow detection of the declaration of local variables containing pointers.

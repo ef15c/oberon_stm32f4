@@ -190,15 +190,12 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
   (* pattern width = 32, fixed; pattern starts at patadr+4, for mode = invert only *)
-  BEGIN ASSERT(FALSE)
-  END ReplPattern;
-(*Seems no more used:
     VAR al, ar, a0, a1, i: INTEGER;
       pta0, pta1: INTEGER;  (*pattern addresses*)
       ph: BYTE;
       left, right, mid, pix, pixl, pixr, ptw: SET;
-  BEGIN al := Base + y*Span; SYSTEM.GET(patadr, i); ph := i DIV 10000H MOD 100H
-    pta0 := patadr+4; pta1 := ph*4 + pta0; (*à quoi sert pta1?????*)
+  BEGIN al := Base + (Height-1-y)*Span; SYSTEM.GET(patadr+1, ph);
+    pta0 := patadr+4; pta1 := ph*(32*NofBPP DIV 8) + pta0;
     ar := ((x+w-1) DIV NofPixperWord)*4 + al; al := (x DIV NofPixperWord)*4 + al;
     IF ar = al THEN
       mid := {(x MOD NofPixperWord) .. ((x+w-1) MOD NofPixperWord)};
@@ -221,7 +218,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       END
     END
   END ReplPattern;
-*)
 
 (*only for testing:
   PROCEDURE test1;

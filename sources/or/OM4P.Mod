@@ -811,7 +811,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     obj := type.dsc; res := FALSE;
     WHILE ~res & (obj # NIL) DO 
       IF obj.type.form = OM4B.Record THEN res := containsPointer(obj.type)
-      ELSIF obj.type.form = OM4B.Pointer THEN res := TRUE
+      ELSIF (obj.type.form = OM4B.Pointer) OR (obj.type.form = OM4B.NilTyp) THEN res := TRUE
       END;
       obj := obj.next
     END;
@@ -881,7 +881,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
           obj := obj.next
         END ;
-        IF umm THEN OM4S.Mark("mark unsafe pointer with !") 
+        IF umm THEN OM4S.Mark("mark unsafe vars with an exclamation mark") 
         ELSIF umf THEN OM4S.Mark("remove exclamation mark") END;
         Check(OM4S.semicolon, "; missing")
       END
