@@ -188,33 +188,34 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END CopyBlock;
 
+
   PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
-  (* pattern width = 32, fixed; pattern starts at patadr+4, for mode = invert only *)
+  (* pattern width = 4, fixed; pattern starts at patadr+4, for mode = invert only *)
     VAR al, ar, a0, a1, i: INTEGER;
       pta0, pta1: INTEGER;  (*pattern addresses*)
       ph: BYTE;
       left, right, mid, pix, pixl, pixr, ptw: SET;
   BEGIN al := Base + (Height-1-y)*Span; SYSTEM.GET(patadr+1, ph);
-    pta0 := patadr+4; pta1 := ph*(32*NofBPP DIV 8) + pta0;
+    pta0 := patadr+4; pta1 := ph*4 + pta0;
     ar := ((x+w-1) DIV NofPixperWord)*4 + al; al := (x DIV NofPixperWord)*4 + al;
     IF ar = al THEN
-      mid := {(x MOD NofPixperWord) .. ((x+w-1) MOD NofPixperWord)};
+      mid := {x MOD NofPixperWord*NofBPP .. (x+w-1) MOD NofPixperWord*NofBPP+NofBPP-1};
       a1 := al;
       FOR i := 1 TO h DO
         SYSTEM.GET(a1, pix); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a1, (pix - mid) + (pix/ptw * mid)); INC(pta0, 4);
         IF pta0 = pta1 THEN pta0 := patadr+4 END;
-        INC(a1, Span);
+        DEC(a1, Span);
       END
     ELSIF ar > al THEN
-      left := {(x MOD NofPixperWord) .. 31}; right := {0 .. ((x+w-1) MOD NofPixperWord)};
+      left := {x MOD NofPixperWord*NofBPP .. 31}; right := {0 .. (x+w-1) MOD NofPixperWord*NofBPP+NofBPP-1};
       a0 := al;
       FOR i := 1 TO h DO
         SYSTEM.GET(a0, pixl); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a0, (pixl - left) + (pixl/ptw * left));
         FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.GET(a1, pix); SYSTEM.PUT(a1, pix/ptw) END ;
         SYSTEM.GET(ar, pixr); SYSTEM.PUT(ar, (pixr - right) + (pixr/ptw * right));
-        INC(pta0, 4); INC(ar, Span);
+        INC(pta0, 4); DEC(ar, Span);
         IF pta0 = pta1 THEN pta0 := patadr+4 END;
-        INC(a0, Span)
+        DEC(a0, Span)
       END
     END
   END ReplPattern;
@@ -356,9 +357,9 @@ BEGIN
      00 00 FF 00 00 00 00 00 00 00 00 00 FF 00 00 00
      00 FF 00 00 00 00 00 00 00 00 00 00 00 FF 00 00
      FF 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00$);
-  grey := SYSTEM.ADR($ 2000  0200 
-     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00
-     FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF$);
+  grey := SYSTEM.ADR($ 04 02 0000 
+     FF 00 FF 00
+      00 FF 00 FF$);
 
   (*only for testing:
   test1; test3; test4; test5;*)

@@ -116,32 +116,30 @@ MODULE ShowPatterns;
   END ConvertAll;
 
   PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
-  (* pattern width = 32, fixed; pattern starts at patadr+4, for mode = invert only *)
+  (* pattern width = 4, fixed; pattern starts at patadr+4, for mode = invert only *)
     VAR al, ar, a0, a1, i: INTEGER;
       pta0, pta1: INTEGER;  (*pattern addresses*)
       ph: BYTE;
       left, right, mid, pix, pixl, pixr, ptw: SET;
   BEGIN al := Display.Base + (Display.Height-1-y)*Span; SYSTEM.GET(patadr+1, ph);
-    pta0 := patadr+4; pta1 := ph*(32*Display.NofBPP DIV 8) + pta0;
+    pta0 := patadr+4; pta1 := ph*4 + pta0;
     ar := ((x+w-1) DIV Display.NofPixperWord)*4 + al; al := (x DIV Display.NofPixperWord)*4 + al;
     IF ar = al THEN
       mid := {x MOD Display.NofPixperWord*Display.NofBPP .. (x+w-1) MOD Display.NofPixperWord*Display.NofBPP+Display.NofBPP-1};
       a1 := al;
       FOR i := 1 TO h DO
-        SYSTEM.GET(a1, pix); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a1, (pix - mid) + (pix/ptw * mid)); INC(pta0, 32*Display.NofBPP DIV 8);
+        SYSTEM.GET(a1, pix); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a1, (pix - mid) + (pix/ptw * mid)); INC(pta0, 4);
         IF pta0 = pta1 THEN pta0 := patadr+4 END;
         DEC(a1, Span);
       END
     ELSIF ar > al THEN
       left := {x MOD Display.NofPixperWord*Display.NofBPP .. 31}; right := {0 .. (x+w-1) MOD Display.NofPixperWord*Display.NofBPP+Display.NofBPP-1};
-Texts.WriteString(W, "left: "); Texts.WriteHex(W, ORD(left)); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-Texts.WriteString(W, "right: "); Texts.WriteHex(W, ORD(right)); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
       a0 := al;
       FOR i := 1 TO h DO
         SYSTEM.GET(a0, pixl); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a0, (pixl - left) + (pixl/ptw * left));
         FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.GET(a1, pix); SYSTEM.PUT(a1, pix/ptw) END ;
         SYSTEM.GET(ar, pixr); SYSTEM.PUT(ar, (pixr - right) + (pixr/ptw * right));
-        INC(pta0, 32*Display.NofBPP DIV 8); DEC(ar, Span);
+        INC(pta0, 4); DEC(ar, Span);
         IF pta0 = pta1 THEN pta0 := patadr+4 END;
         DEC(a0, Span)
       END
@@ -150,13 +148,13 @@ Texts.WriteString(W, "right: "); Texts.WriteHex(W, ORD(right)); Texts.WriteLn(W)
 
   PROCEDURE dotted*;
   BEGIN
-    ReplPattern(Display.white, GraphicFrames.dotted, 100, 100, 1, 30, Display.invert);
-    ReplPattern(Display.white, GraphicFrames.dotted, 101, 100, 50, 1, Display.invert);
-    ReplPattern(Display.white, GraphicFrames.dotted, 200, 100, 50, 30, Display.invert);
+    Display.ReplPattern(Display.white, GraphicFrames.dotted, 100, 100, 1, 30, Display.invert);
+    Display.ReplPattern(Display.white, GraphicFrames.dotted, 101, 100, 50, 1, Display.invert);
+    Display.ReplPattern(Display.white, GraphicFrames.dotted, 200, 100, 50, 30, Display.invert);
 
-    ReplPattern(Display.white, GraphicFrames.dotted1, 100, 200, 1, 30, Display.invert);
-    ReplPattern(Display.white, GraphicFrames.dotted1, 101, 200, 50, 1, Display.invert);
-    ReplPattern(Display.white, GraphicFrames.dotted1, 200, 200, 50, 30, Display.invert);
+    Display.ReplPattern(Display.white, GraphicFrames.dotted1, 100, 200, 1, 30, Display.invert);
+    Display.ReplPattern(Display.white, GraphicFrames.dotted1, 101, 200, 50, 1, Display.invert);
+    Display.ReplPattern(Display.white, GraphicFrames.dotted1, 200, 200, 50, 30, Display.invert);
   END dotted;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Show patterns 23/12/2023");
