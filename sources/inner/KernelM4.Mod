@@ -23,6 +23,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   VAR allocated*, NofSectors*: INTEGER;
     heapOrg*, heapLim*: INTEGER; 
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
+    readErrors*, writeErrors*, unrecoverableErrors*: INTEGER;
 
     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
     sectorMap: ARRAY mapsize DIV 32 OF SET;
@@ -149,12 +150,17 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     VAR r: INTEGER;
   BEGIN SYSTEM.LDREG(0, src); SYSTEM.LDREG(1, dst); 
     SYSTEM.LDREG(2, nofblocks); r := SYSTEM.SVC(2);
+    INC(readErrors, r)
   END ReadSD;
 
   PROCEDURE WriteSD(dst, src, nofblocks: INTEGER);
-    VAR r: INTEGER;
-  BEGIN SYSTEM.LDREG(0, dst); SYSTEM.LDREG(1, src);
-    SYSTEM.LDREG(2, nofblocks); r := SYSTEM.SVC(3);
+    VAR r, retry: INTEGER;
+  BEGIN retry := 5;
+    REPEAT SYSTEM.LDREG(0, dst); SYSTEM.LDREG(1, src);
+    SYSTEM.LDREG(2, nofblocks); r := SYSTEM.SVC(3); DEC(retry);
+    INC(writeErrors, r)
+    UNTIL (r = 0) OR (retry = 0);
+    INC(unrecoverableErrors, r)
   END WriteSD;
 
   PROCEDURE InitSecMap*;
@@ -197,7 +203,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     VAR dst: INTEGER;
   BEGIN dst := dst29 DIV 29; ASSERT(dst29 = dst*29);
     dst := dst * 2 + FSoffset;
-    WriteSD(dst, SYSTEM.ADR(src), 2)
+    WriteSD(dst, SYSTEM.ADR(src), 2);
+    WriteSD(dst+(mapsize*2), SYSTEM.ADR(src), 2) (*backup*)
   END PutSector;
 
 (*-------- Miscellaneous procedures----------*)

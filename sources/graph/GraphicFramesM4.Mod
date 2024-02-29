@@ -520,7 +520,8 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
     G.mark.next := NIL; G.ticked := TRUE; G.handle := Handle
   END Open;
 
-BEGIN DW := Display.Width - 8; DH := Display.Height - 8; CL := 0;
+BEGIN NEW(TBuf); Texts.OpenBuf(TBuf);
+  DW := Display.Width - 8; DH := Display.Height - 8; CL := 0;
   Texts.OpenWriter(W);
   tack := SYSTEM.ADR($ 0700  0700 
      FF 00 00 00 00 00 FF 00

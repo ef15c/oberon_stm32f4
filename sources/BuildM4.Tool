@@ -29,6 +29,9 @@ Commands for generation of graphic system
 OM4P.Compile Graphics.Mod ~
 OM4P.Compile GraphicFramesM4.Mod ~
 OM4P.Compile Draw.Mod ~
+OM4P.Compile Rectangles.Mod ~
+OM4P.Compile Curves.Mod ~
+OM4P.Compile MacroTool.Mod ~
 
 Commands for generation of the compiler
 OM4P.Compile TextsEx.Mod/s ~
