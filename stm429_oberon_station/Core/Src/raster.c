@@ -51,7 +51,7 @@ extern DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
 void CopyPattern(int col, uint32_t *patadr, int x, int y, int mode)  /*only for modes = paint, invert*/
 {
-    uint32_t *a0, i, j, line[32 / NofPixperWord + 1], pattern[(32/NofPixperWord) * (32/NofPixperWord)];
+    uint32_t *a0, i, j, line[32 / NofPixperWord + 1], pattern[(32/NofPixperWord) * 32];
     uint8_t w, h;
     uint32_t ps, psn, last, middle;
 

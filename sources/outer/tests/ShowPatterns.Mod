@@ -26,7 +26,7 @@ MODULE ShowPatterns;
 
 *)
 
-  IMPORT SYSTEM, Display, Texts, Oberon, TextsEx, GraphicFrames;
+  IMPORT SYSTEM, Display, Fonts, Texts, Oberon, TextsEx, GraphicFrames;
 
   CONST Span = (Display.Width*8 DIV Display.NofBPP+63) DIV 64*64;
 
@@ -148,14 +148,46 @@ MODULE ShowPatterns;
 
   PROCEDURE dotted*;
   BEGIN
-    Display.ReplPattern(Display.white, GraphicFrames.dotted, 100, 100, 1, 30, Display.invert);
+    (*Display.ReplPattern(Display.white, GraphicFrames.dotted, 100, 100, 1, 30, Display.invert);
     Display.ReplPattern(Display.white, GraphicFrames.dotted, 101, 100, 50, 1, Display.invert);
     Display.ReplPattern(Display.white, GraphicFrames.dotted, 200, 100, 50, 30, Display.invert);
 
     Display.ReplPattern(Display.white, GraphicFrames.dotted1, 100, 200, 1, 30, Display.invert);
     Display.ReplPattern(Display.white, GraphicFrames.dotted1, 101, 200, 50, 1, Display.invert);
     Display.ReplPattern(Display.white, GraphicFrames.dotted1, 200, 200, 50, 30, Display.invert);
+
+    Display.ReplPattern(255, -803172648, 336, 384, 160, 1, 0);*)
+    Display.ReplPattern(255, -803172648, 200, 200, 50, 30, 0);
   END dotted;
+
+  PROCEDURE Elektra*;
+    VAR fnt!: Fonts.Font;
+      i, dx, x, y, w, h, patadr, paMax: INTEGER;
+  BEGIN
+    Fonts.GetPat(Fonts.Default, 0X, dx, x, y, w, h, patadr);
+    Texts.WriteString(W, "Adresse Default: "); Texts.WriteHex(W, patadr);
+    paMax := patadr;
+    FOR i := 1 TO 127 DO Fonts.GetPat(Fonts.Default, CHR(i), dx, x, y, w, h, patadr);
+      IF patadr > paMax THEN paMax := patadr END
+    END;
+    Texts.WriteString(W, " .. "); Texts.WriteHex(W, paMax); 
+    Texts.WriteLn(W);
+    Texts.Append(Oberon.Log, W.buf);
+ 
+    fnt := Fonts.This("Elektra.Scn.Fnt");
+    IF fnt # NIL THEN
+      Fonts.GetPat(fnt, 0X, dx, x, y, w, h, patadr);
+      Texts.WriteString(W, "Adresse Elektra: "); Texts.WriteHex(W, patadr);
+      paMax := patadr;
+      FOR i := 1 TO 127 DO Fonts.GetPat(fnt, CHR(i), dx, x, y, w, h, patadr);
+        IF patadr > paMax THEN paMax := patadr END
+      END;
+      Texts.WriteString(W, " .. "); Texts.WriteHex(W, paMax); 
+      Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf)
+    END
+  END Elektra;
+
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Show patterns 23/12/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)

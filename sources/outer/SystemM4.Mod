@@ -416,7 +416,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END;
     IF w = 0 THEN Kernel.New(w, f.r1); SYSTEM.PUT(f.r0, w); INC(f.returnAddress, 4); (*move to next instruction*)
     ELSE (*trap*) 
-      TrappedAdr := f.returnAddress;
+      IF w = 5 THEN TrappedAdr := f.lr ELSE TrappedAdr := f.returnAddress END;
       (*Trigger abort by requesting a PendSV interrupt*)
       SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*)
     END;
