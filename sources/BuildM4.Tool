@@ -32,6 +32,7 @@ OM4P.Compile Draw.Mod ~
 OM4P.Compile Rectangles.Mod ~
 OM4P.Compile Curves.Mod ~
 OM4P.Compile MacroTool.Mod ~
+OM4P.Compile GraphTool.Mod ~
 
 Commands for generation of the compiler
 OM4P.Compile TextsEx.Mod/s ~
@@ -46,6 +47,7 @@ OM4P.Compile OM4D.Mod/s ~
 
 Command for generation of tools
 OM4P.Compile OM4Tool.Mod/s ~
+OM4P.Compile Tools.Mod/s ~
 
 Commands for generation of net
 OM4P.Compile SCCM4.Mod/s ~

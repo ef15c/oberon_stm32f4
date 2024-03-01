@@ -369,7 +369,7 @@ static void PS2_Reset(PS2_HandleTypeDef *dev) {
         PS2_SendByteAsync(dev, 0xFF);
         res = PS2_WaitForAnswer(dev, 20);
         if (res == 0xfa) {
-            HAL_Delay(500); /*Wait for BAT to be completed*/
+            HAL_Delay(1000); /*Wait for BAT to be completed*/
         	res = PS2_WaitForAnswer(dev, 20);
         }
     } while (--nbTries && res != 0xaa);

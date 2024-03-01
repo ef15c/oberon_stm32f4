@@ -4,11 +4,11 @@ Edit.ChangeFont Oberon10i.Scn.Fnt
 Edit.ChangeFont Oberon10b.Scn.Fnt
 
 System.Directory ^
-  *.Mod  *.Bak  *.Tool  *.Text  *.Scn.Fnt  *.smb  *.rsc
+  *.Mod  *.Bak  *.Tool  *.Text  *.Scn.Fnt  *.sm4  *.m4c
 
-ORP.Compile @  ORP.Compile @/s  ORP.Compile ^/s
 OM4P.Compile @  OM4P.Compile @/s  OM4P.Compile ^/s
-System.Free ~ System.Collect  System.Watch
+
+System.Free ~
 System.Open Draw.Tool
 System.CopyFiles ~
 System.RenameFiles ~
@@ -19,21 +19,15 @@ System.ShowModules  System.ShowCommands ^
 PCLink1.Run
 Hilbert.Draw  Sierpinski.Draw  Blink.Run  Stars.Open
 
-Tools.Inspect 0
+Tools.Inspect 0D0201000H
 Tools.Sector 1
 Tools.ShowFile 
 Tools.Recall  Tools.Clear
 
-OM4S.Mod ~ OM4B.Mod ~ OM4A.Mod ~ OM4G.Mod ~
-OM4P.Mod ~ OM4X.Mod ~ OM4L.Mod ~  OM4D.Mod ~
-OM4Tool.Mod ~
-
 Edit.Open BuildM4.Tool ~ Edit.Open SCCM4.Mod ~ Edit.Open NetM4.Mod ~
 
-OM4L.Link Oberon ~ OM4Tool.DecBin Oberon.bin ~
+Net.SendFiles CS  ~
+Net.ReceiveFiles CS ShowPatterns.Mod ~
 
-testGPIO.Mod ~ testGPIO.LED7On testGPIO.LED7Off testGPIO.ReadLED7
-testCRC.Mod ~ testCRC.test ~ testCRC.test2 ~ System.Free testCRC ~ 
-Net Net.Reset 110 OSCHO ~ Net.SendMsg CS Test ~ Net.SCCPrintConfig Net.SCCShowRxPacket
-Net.tstFindPartner CS ~ System.Free Net SCC ~
-SCC.Wait1Sec
+ShowPatterns.Mod ~ ShowPatterns.dotted ShowPatterns.Elektra
+System.Free ShowPatterns ~

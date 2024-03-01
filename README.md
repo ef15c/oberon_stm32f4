@@ -1,18 +1,9 @@
 # oberon_stm32f4
 Portage of Oberon system to stm32f429i-disco board
 
-Work in progress.
+Version 1 released!
 
-Software side:
-
-Bootloader, inner, outer, OMAx and net modules are done.
-
-Stable: Bootloader, inner, outer and OM4x modules
-
-Usable: net modules, but reliability has to be improved.
-
-Next step: adapt graphic modules
-
+Next steps: port the firmware from C language to Oberon.
 
 Change in oberon 07 compiler:
 
@@ -32,9 +23,6 @@ Oberon runs now on the STM32F429I-DISCO base board:
 ![OberonRunning](https://github.com/ef15c/oberon_stm32f4/assets/8286839/77827576-acf8-4043-8afc-f022df2e06ab)
 
 Hardware side:
-
-Base board is tested:
-SD Card, VGA, PS2 mouse and keyboard and nRF24L01+ interface are OK.
 
 ![equippedBaseBoard](https://github.com/ef15c/oberon_stm32f4/assets/8286839/a8bed1ea-580c-429d-b511-b619743729e1)
 
