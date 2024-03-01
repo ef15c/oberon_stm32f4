@@ -643,6 +643,16 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     Put0(c, 0F3EF8000H + a*C8 + s)
   END encMRS;
 
+  PROCEDURE encMSR*(VAR c: ModuleCode; a, s: LONGINT);
+  (*|1111/0011/1000/ Rn /1000/Mq00/  SY/Sm  |
+    MSR<c> <spec_reg>,<Rn>
+    Mq is set as "10" to prevent unpredictable behaviour*)
+  BEGIN
+    ASSERT(a < C4);
+    ASSERT(s IN {0..9, 16..20});
+    Put0(c, 0F3808800H + a*C16 + s)
+  END encMSR;
+
   (*handling of forward reference, fixups of branch addresses and constant tables*)
 
   PROCEDURE negated*(cond: LONGINT): LONGINT;

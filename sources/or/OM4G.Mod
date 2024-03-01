@@ -1064,9 +1064,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF pc0 # 0 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END; DEC(RH, 3)
   END Copy;
 
-  PROCEDURE LDREG*(VAR y: Item);
-  BEGIN
-    load(y); RH := 0
+  PROCEDURE LDREG*(VAR x, y: Item);
+  BEGIN (*x is constant*)
+    load(y);  IF x.a > OM4A.C4 THEN OM4A.encMSR(mcode, y.r, x.a - OM4A.C4) END; RH := 0
   END LDREG;
 
   (*In-line code functions*)

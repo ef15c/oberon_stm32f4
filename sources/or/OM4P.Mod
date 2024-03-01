@@ -447,7 +447,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     npar := pno MOD 10; pno := pno DIV 10; expression(x); nap := 1;
     IF sym = OM4S.comma THEN
       OM4S.Get(sym); IF pno = 14 (*LDREG*) THEN 
-        CheckConst(x); CheckInt(x); OM4G.SetRH(x.a) END;
+        CheckConst(x); CheckInt(x); IF x.a < 16 THEN OM4G.SetRH(x.a) END 
+      END;
       expression(y); nap := 2; z.type := OM4B.noType;
       WHILE sym = OM4S.comma DO OM4S.Get(sym); expression(z); INC(nap) END
     ELSE y.type := OM4B.noType
@@ -472,7 +473,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno = 10 THEN CheckInt(x); OM4G.Get(x, y)
       ELSIF pno = 11 THEN CheckInt(x); OM4G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); OM4G.Copy(x, y, z)
-      ELSIF pno = 14 THEN OM4G.LDREG(y)
+      ELSIF pno = 14 THEN OM4G.LDREG(x, y)
       ELSIF pno = 15 THEN CheckConst(x); CheckInt(x); OM4G.MBI(x.a) (*Memory barrier instructions*)
       END
     ELSE OM4S.Mark("wrong nof parameters")

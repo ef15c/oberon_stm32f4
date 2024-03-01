@@ -260,6 +260,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       
       (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
       MovFrSpReg = {21..22};
+      (*T32MSK52 0x0 011100x: Move to Special Register MSR on page A7-301*)
+      MovToSpReg = {};
       
       (*T32MSK3 01 1xxxxxx x: Coprocessor instructions on page A5-158*)
       CoProc = {26..27};
@@ -619,6 +621,15 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
             ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
             END
+          ELSIF op*T32MSK52 = MovToSpReg THEN
+            (*T32MSK52 0x0 011100x: Move to Special Register MSR on page A7-301*)
+            (*MSR<c><spec_reg>,Rn*)
+            Rn := b2 MOD OM4A.C4;
+            WriteOp(W, op, "MSR", FALSE, FALSE);
+            IF b4 = 8 THEN Texts.WriteString(W, " MSP")
+            ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
+            ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
+            END; WriteReg(W, Rn)
           ELSIF op*T32MSK52A = Hint THEN
             (*T32MSK52A 0x0 0111010 - Hint instructions on page A7-143*)
             IF op*T32MSK52A1 = NopT2 THEN
