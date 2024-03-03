@@ -74,8 +74,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
   PROCEDURE DecSym*;  (*decode symbol file*)
     VAR class, typno, k: INTEGER;
       name: ARRAY 32 OF CHAR;
-      F: Files.File; R: Files.Rider;
-      S: Texts.Scanner;
+      F!: Files.File; R!: Files.Rider;
+      S!: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s);
@@ -166,10 +166,10 @@ MODULE OM4Tool;  (*NW 18.2.2013
       next: INTEGER;
       ch: CHAR;
       name: ARRAY 32 OF CHAR;
-      F: Files.File; R: Files.Rider;
-      S: Texts.Scanner;
-      mcode: OM4A.ModuleCode;
-      eref: ExternalRefMap;
+      F!: Files.File; R!: Files.Rider;
+      S!: Texts.Scanner;
+      mcode!: OM4A.ModuleCode;
+      eref!: ExternalRefMap;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
@@ -177,7 +177,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
         NEW(mcode); NEW(eref);
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
         Files.ReadInt(R, key); Texts.WriteHex(W, key); Read(R, class); Texts.WriteInt(W, class, 4); (*version*)
+        Texts.Append(Oberon.Log, W.buf); ASSERT(class IN {0, 1});
         Files.ReadInt(R, size); Texts.WriteInt(W, size, 6); Texts.WriteLn(W);
+        Texts.Append(Oberon.Log, W.buf); ASSERT(size < 100000);
         Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
         WHILE name[0] # 0X DO
           Texts.Write(W, 9X); Texts.WriteString(W, name);
@@ -278,11 +280,11 @@ MODULE OM4Tool;  (*NW 18.2.2013
   
   PROCEDURE DecBin*;   (*decode binary boot file*)
     VAR i, n, modLoc, root, ramOrg, data: INTEGER;
-      F: Files.File; R: Files.Rider;
-      S: Texts.Scanner;
-      bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp: BootParams;
-      mcode: OM4A.ModuleCode;
-      mod: Modules.Module;
+      F!: Files.File; R!: Files.Rider;
+      S!: Texts.Scanner;
+      bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp!: BootParams;
+      mcode!: OM4A.ModuleCode;
+      mod!: Modules.Module;
       ok: BOOLEAN;
       ch: CHAR;
       name: ARRAY 32 OF CHAR;

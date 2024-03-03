@@ -11,6 +11,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     IntCtrlSRAdr = 0E000ED04H; PENDSVSET = 28;
     Exti15to10IrqNum = 16+40; ABORTKEY = 2; (*Reserved in CFSR*)
     EXTIBase = 40013C00H; extiPR = 14H;
+    PendSVExcNum = 14;
 
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
@@ -405,7 +406,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END
   END ExtendDisplay;
 
-  PROCEDURE* Trap(VAR f: Kernel.ExceptionFrame);
+  PROCEDURE* Trap(VAR f: Kernel.ExceptionFrameDesc);
     VAR ICSR: SET; w, inst: INTEGER;
   BEGIN
     SYSTEM.GET(FaultSRAdr, CFSR);
@@ -426,7 +427,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     SYSTEM.PUT(FaultSRAdr, CFSR*UFSRMask) (*reset UFSR flags*)
   END Trap;
 
-  PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrame);
+  PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
     VAR ICSR: SET; w, inst: INTEGER;
   BEGIN
     SYSTEM.GET(FaultSRAdr, CFSR);
@@ -438,7 +439,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     SYSTEM.PUT(FaultSRAdr, CFSR*BFSRMask) (*reset BFSR flags*)
   END BusFaultHandler;
 
-  PROCEDURE* AbortHandler(VAR f: Kernel.ExceptionFrame);
+  (*Handle abort key press*)
+  PROCEDURE* AbortHandler(VAR f: Kernel.ExceptionFrameDesc);
     VAR ICSR, pr: SET;
   BEGIN CFSR := {ABORTKEY}; TrappedAdr := f.returnAddress;
     (* Clear pending IRQ*)
@@ -483,11 +485,29 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END; Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); CFSR := {}; Oberon.Reset
   END Reset;
   
+  PROCEDURE PendSVHandler;
+  (*Abort current command by resetting stack and reentering the main loop*)
+    CONST LR = 14; PSP=16+9;
+    VAR f!: Kernel.ExceptionFrame;
+		lr: SET;
+       sz: INTEGER;
+  BEGIN
+    lr := SYSTEM.VAL(SET, SYSTEM.REG(LR)); IF 4 IN lr THEN sz := 20H ELSE sz := 68H END;
+    IF ORD(lr*{0..3}) = 0DH THEN (*return to thread mode with process stack*)
+      (*build exception frame*)
+      f := SYSTEM.VAL(Kernel.ExceptionFrame, 10010000H - sz);
+      f.r0 := 0; f.r1 := 0; f.r2 := 0; f.r3 := 0; f.r12 := 0; f.lr := 0FFFFFFFFH; f.returnAddress := SYSTEM.ADR(Reset);
+      f.xpsr := 01000000H; (*Bit 24 as 1 to indicate thumb mode*)
+      SYSTEM.LDREG(PSP, SYSTEM.VAL(INTEGER, f)); SYSTEM.MBI(3) (*ISB*)
+    END
+  END PendSVHandler;
+
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
   DebounceTime := Kernel.Time();
   Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4);
   Kernel.Install(SYSTEM.ADR(BusFaultHandler), Kernel.VecTabBase+BusFaultExcNum*4);
   Kernel.Install(SYSTEM.ADR(AbortHandler), Kernel.VecTabBase+Exti15to10IrqNum*4);
+  Kernel.Install(SYSTEM.ADR(PendSVHandler), Kernel.VecTabBase+PendSVExcNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
 END System.

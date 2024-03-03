@@ -15,7 +15,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
   
-    ExceptionFrame* = RECORD
+    ExceptionFrame* = POINTER TO ExceptionFrameDesc;
+    ExceptionFrameDesc* = RECORD
       r0*, r1*, r2*, r3*, r12*, lr*: LONGINT;
       returnAddress*, xpsr*: LONGINT
     END;
@@ -252,7 +253,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN SYSTEM.PUT(at, Padr)
   END Install;
 
-  PROCEDURE* Trap(VAR f: ExceptionFrame);
+  PROCEDURE* Trap(VAR f: ExceptionFrameDesc);
     VAR u, v, w: INTEGER;
   BEGIN 
     SYSTEM.GET(f.returnAddress, u);
