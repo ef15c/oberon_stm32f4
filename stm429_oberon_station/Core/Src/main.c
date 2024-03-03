@@ -21,7 +21,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdbool.h>
 #include <string.h>
 #include "stm32f4xx_it.h"
 #include "raster.h"
@@ -101,7 +100,7 @@ static const uint32_t clut[256] = {
 PS2_HandleTypeDef ps2_1;
 PS2_HandleTypeDef ps2_2;
 MSKBData mskbBlock;
-
+bool SD_ErrorOcurred;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -910,6 +909,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	__ISB();
     break;
   }
+}
+
+void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
+{
+	SD_ErrorOcurred = true;
 }
 
 void MPU_RegionConfig(void)

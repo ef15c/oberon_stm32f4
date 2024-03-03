@@ -379,13 +379,14 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
     		pbuf = buf;
     	}
 
+    	SD_ErrorOcurred = false;
 		frame->r0 = HAL_SD_ReadBlocks_DMA(&hsd, pbuf, frame->r0, frame->r2);
 		if (frame->r0 == HAL_OK) {
 			frame->r0 = 300;
 			while (frame->r0-- && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
 				HAL_Delay(1);
 			}
-			frame->r0 = (frame->r0)?HAL_OK:HAL_ERROR;
+			frame->r0 = (frame->r0 != 0 && !SD_ErrorOcurred)?HAL_OK:HAL_ERROR;
 		}
 
 		if (frame->r0 == HAL_OK) {
@@ -421,13 +422,14 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
     		pbuf = buf;
     	}
 
+    	SD_ErrorOcurred = false;
 		frame->r0 = HAL_SD_WriteBlocks_DMA(&hsd, pbuf, frame->r0, frame->r2);
 		if (frame->r0 == HAL_OK) {
 			frame->r0 = 300;
 			while (frame->r0-- && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
 				HAL_Delay(1);
 			}
-			frame->r0 = (frame->r0)?HAL_OK:HAL_ERROR;
+			frame->r0 = (frame->r0 != 0 && !SD_ErrorOcurred)?HAL_OK:HAL_ERROR;
 		}
 		if (frame->r0 != HAL_OK) {
 			HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);

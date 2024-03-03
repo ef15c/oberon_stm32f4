@@ -1,0 +1,21 @@
+SDIO Config
+
+PCLK2 = 84MHz
+SDIOCLK = 48MHz
+CLKDIV = 0
+SDIO_CK = SDIOCLK / [CLKDIV + 2] = 48 / 2 = 24MHz
+
+From reference manual:
+"PCLK2 and SDIO_CK clock frequencies must respect the following condition:
+PCLK2 >= 3 / 8 x SDIO_CK"
+
+84 >= (3/8*24 = 3*24/8 = 9) OK
+
+From device errata sheet:
+In case there is an ongoing data transfer from the SDIO host to the SD card and the hardware flow control is
+disabled (bit 14 of the SDIO_CLKCR is not set), if an underrun condition occurs, the controller may transmit
+a corrupted data block (with a wrong data word) without detecting the underrun condition when the clock
+frequencies have the following relationship:
+ 3 x period(PCLK2) + 3 x period(SDIOCLK) >= 32 / BusWidth x period(SDIO_CK)
+
+(0,0357142857143 + 0,0625 = 0,0982142857143) >= (32 / 4 x 1/24 = 0,333333333333) OK

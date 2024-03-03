@@ -31,6 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
 #include "ps2_protocol.h"
 /* USER CODE END Includes */
 
@@ -46,7 +47,7 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+extern bool SD_ErrorOcurred;
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
