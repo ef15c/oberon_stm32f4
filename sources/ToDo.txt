@@ -91,8 +91,7 @@ N° de service   Nom         R0                                                  
             2   ReadSD      N° du premier secteur à lire sur la carte SD        Addresse de destination en mémoire      Nombre de blocs à lire
                             Retourne 0 si OK
             3   WriteSD     N° du premier secteur à écrire sur la carte SD      Addresse de destination en mémoire      Nombre de blocs à écrire
-            4   Time        Retourne le temps en millisecondes depuis le
-                            démarrage du système
+            4   <supprimé>  
             5   Clavier     Retourne l'adresse du bloc de données du clavier
                 Souris      et de la souris
             6   CopyPat     Couleur                                             Adresse du motif à dessiner             x*10000H+y, R3 = mode    
@@ -113,6 +112,7 @@ trap number trap cause
 7           assertion violated
 8           Bus Fault: data access precise error
 9           Bus Fault: stack overflow
+10          User abort
 
 
 

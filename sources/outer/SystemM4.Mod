@@ -446,12 +446,12 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     (* Clear pending IRQ*)
     SYSTEM.GET(EXTIBase + extiPR, pr); SYSTEM.PUT(EXTIBase + extiPR, pr);
     IF 14 IN pr THEN
-      (*IF Kernel.Time() - DebounceTime < 30 THEN INC(DebounceTime, 30)
+      IF Kernel.Time() - DebounceTime < 30 THEN INC(DebounceTime, 30)
       ELSE
-        DebounceTime := Kernel.Time();*)
+        DebounceTime := Kernel.Time();
         (*Trigger abort by requesting a PendSV interrupt*)
         SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*)
-      (*END*)
+      END
     END
   END AbortHandler;
 

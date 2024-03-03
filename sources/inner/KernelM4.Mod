@@ -3,7 +3,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   CONST SectorLength* = 1024;
     FSoffset = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*64K sectors, 64MB*)
-    SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6;
+    SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6;  SysTickExcNum = 15;
     VarORG0* = 0D0201000H;
     CS = 2; (*Carry set Greater than, equal, or unordered*)
     CC = 3; (* Carry clear Less than*)
@@ -25,6 +25,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     heapOrg*, heapLim*: INTEGER; 
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
     readErrors*, writeErrors*, unrecoverableErrors*: INTEGER;
+    tick: INTEGER;
 
     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
     sectorMap: ARRAY mapsize DIV 32 OF SET;
@@ -211,7 +212,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 (*-------- Miscellaneous procedures----------*)
 
   PROCEDURE Time*(): INTEGER;
-  BEGIN RETURN SYSTEM.SVC(4)
+  BEGIN RETURN tick
   END Time;
 
   PROCEDURE Clock*(): INTEGER;
@@ -263,8 +264,14 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     END
   END Trap;
 
+  PROCEDURE IncTick;
+  BEGIN
+    INC(tick)
+  END IncTick;
+
   PROCEDURE Init*;
   BEGIN Install(SYSTEM.ADR(Trap), VecTabBase+UsageFaultExcNum*4);  (*install temporary trap*)
+    Install(SYSTEM.ADR(IncTick), VecTabBase+SysTickExcNum*4);
     SYSTEM.GET(VarORG0+12, MemLim); SYSTEM.GET(VarORG0+24, stackOrg);
     SYSTEM.GET(VarORG0+28, heapOrg); stackSize := 10000H; heapLim := MemLim;
     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
