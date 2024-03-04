@@ -227,7 +227,6 @@ void Counter(void) __attribute__ ((noreturn));
 #define NRF24L01P_MOSI_GPIO_Port GPIOD
 #define NRF24L01P_IRQ_Pin GPIO_PIN_7
 #define NRF24L01P_IRQ_GPIO_Port GPIOD
-#define NRF24L01P_IRQ_EXTI_IRQn EXTI9_5_IRQn
 #define NRF24L01P_CE_Pin GPIO_PIN_9
 #define NRF24L01P_CE_GPIO_Port GPIOG
 #define G3_Pin GPIO_PIN_10

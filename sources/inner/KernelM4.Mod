@@ -3,7 +3,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   CONST SectorLength* = 1024;
     FSoffset = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*64K sectors, 64MB*)
-    SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6;  SysTickExcNum = 15;
+    SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6; SVCallExcNum = 11; SysTickExcNum = 15;
     VarORG0* = 0D0201000H;
     CS = 2; (*Carry set Greater than, equal, or unordered*)
     CC = 3; (* Carry clear Less than*)
@@ -29,6 +29,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
     sectorMap: ARRAY mapsize DIV 32 OF SET;
+
+    OldSVCallHandler: PROCEDURE(VAR f: ExceptionFrameDesc);
     
 (* ---------- New: heap allocation ----------*)
 
@@ -269,9 +271,18 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     INC(tick)
   END IncTick;
 
+  PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
+  BEGIN OldSVCallHandler(f)
+  END SVCallHandler;
+
   PROCEDURE Init*;
+    VAR currentSVCHandlerAddr: INTEGER;
   BEGIN Install(SYSTEM.ADR(Trap), VecTabBase+UsageFaultExcNum*4);  (*install temporary trap*)
     Install(SYSTEM.ADR(IncTick), VecTabBase+SysTickExcNum*4);
+    (*tail chain old SVC handler*)
+    SYSTEM.GET(VecTabBase+SVCallExcNum*4, currentSVCHandlerAddr);
+    SYSTEM.PUT(SYSTEM.ADR(OldSVCallHandler), currentSVCHandlerAddr + 14); (*Skip stack determination code*)
+    Install(SYSTEM.ADR(SVCallHandler), VecTabBase+SVCallExcNum*4);
     SYSTEM.GET(VarORG0+12, MemLim); SYSTEM.GET(VarORG0+24, stackOrg);
     SYSTEM.GET(VarORG0+28, heapOrg); stackSize := 10000H; heapLim := MemLim;
     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;

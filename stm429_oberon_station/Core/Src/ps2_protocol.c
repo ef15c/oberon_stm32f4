@@ -93,7 +93,7 @@ void PS2_initHandle(PS2_HandleTypeDef *dev)
     dev->ActivityLedPort = 0;
     /* Synchronize clock */
     HAL_GPIO_WritePin(dev->clockPort, dev->clockPin, GPIO_PIN_RESET);
-    HAL_Delay(1); /* Should wait for 100 microseconds, so 1 ms is OK */
+    DWT_Delay_us(120); /* Should wait for 100 microseconds */
     HAL_GPIO_WritePin(dev->clockPort, dev->clockPin, GPIO_PIN_SET);
 
     dev->numberOfBitsRemainingToBeRead = 11;
@@ -272,7 +272,7 @@ int16_t PS2_WaitForAnswer(PS2_HandleTypeDef *dev, uint16_t timemout)
 
     answer = PS2_DrawByteFormFIFOBuffer(dev);
     while (answer == -1 && timemout--) { /* Wait until buffer is not empty */
-        HAL_Delay(1);
+    	DWT_Delay_us(1000);
         answer = PS2_DrawByteFormFIFOBuffer(dev);
     }
 
@@ -369,7 +369,7 @@ static void PS2_Reset(PS2_HandleTypeDef *dev) {
         PS2_SendByteAsync(dev, 0xFF);
         res = PS2_WaitForAnswer(dev, 20);
         if (res == 0xfa) {
-            HAL_Delay(1000); /*Wait for BAT to be completed*/
+        	DWT_Delay_us(1000000); /*Wait for BAT to be completed*/
         	res = PS2_WaitForAnswer(dev, 20);
         }
     } while (--nbTries && res != 0xaa);
@@ -381,9 +381,9 @@ static void PS2_ReadId(PS2_HandleTypeDef *dev) {
     int16_t res;
     /* Send the read ID command */
     do {
-        HAL_Delay(10);
+    	DWT_Delay_us(10000);
         PS2_SendByteAsync(dev, 0xF2);
-        HAL_Delay(1);
+        DWT_Delay_us(1000);
         res = PS2_WaitForAnswer(dev, 20);
         if (res != 0xfa) {
         	PS2_Reset(dev);

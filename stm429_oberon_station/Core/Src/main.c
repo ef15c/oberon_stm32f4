@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include "stm32_usec.h"
 #include "stm32f4xx_it.h"
 #include "raster.h"
 /* USER CODE END Includes */
@@ -616,8 +617,7 @@ static void MX_FMC_Init(void)
   HAL_SDRAM_SendCommand(&hsdram1, &Command, SDRAM_TIMEOUT);
 
   /* Step 2: Insert 100 us minimum delay */
-  /* Inserted delay is equal to 1 ms due to systick time base unit (ms) */
-  HAL_Delay(1);
+  DWT_Delay_us(120);
 
   /* Step 3: Configure a PALL (precharge all) command */
   Command.CommandMode             = FMC_SDRAM_CMD_PALL;
@@ -798,7 +798,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : NRF24L01P_IRQ_Pin */
   GPIO_InitStruct.Pin = NRF24L01P_IRQ_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(NRF24L01P_IRQ_GPIO_Port, &GPIO_InitStruct);
 
@@ -815,9 +815,6 @@ static void MX_GPIO_Init(void)
 
   HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
@@ -860,7 +857,7 @@ void PS2_PINS_Output_OD_High(void)
 static void BSP_PS2_Init(void)
 {
     /* Wait for completion of PS/2 devices self tests */
-    HAL_Delay(500);
+	DWT_Delay_us(500000);
 
     /* Probe PS/2 devices */
     ps2_1.clockPort = PS2_CLOCK_1_GPIO_Port;
