@@ -1,5 +1,5 @@
 MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
-  IMPORT SYSTEM;
+  IMPORT SYSTEM, BSP;
   CONST SectorLength* = 1024;
     FSoffset = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*64K sectors, 64MB*)
@@ -262,7 +262,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SYSTEM.GET(f.returnAddress, u);
     w := u DIV 10000H MOD 10H; (*trap number*)
     IF w = 0 THEN New(v, f.r1); SYSTEM.PUT(f.r0, v); INC(f.returnAddress, 4); (*move to next instruction*)
-    ELSE (*stop*) (*LED(w + 192);*) REPEAT UNTIL FALSE
+    ELSE (*stop*) BSP.led(w + 64); REPEAT UNTIL FALSE
     END
   END Trap;
 
@@ -272,12 +272,15 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END IncTick;
 
   PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
-  BEGIN OldSVCallHandler(f)
+    VAR param: BYTE;
+  BEGIN SYSTEM.GET(f.returnAddress - 2, param);
+    IF param = 1 THEN BSP.led(f.r0)
+    ELSE OldSVCallHandler(f) END
   END SVCallHandler;
 
   PROCEDURE Init*;
     VAR currentSVCHandlerAddr: INTEGER;
-  BEGIN Install(SYSTEM.ADR(Trap), VecTabBase+UsageFaultExcNum*4);  (*install temporary trap*)
+  BEGIN BSP.Init; Install(SYSTEM.ADR(Trap), VecTabBase+UsageFaultExcNum*4);  (*install temporary trap*)
     Install(SYSTEM.ADR(IncTick), VecTabBase+SysTickExcNum*4);
     (*tail chain old SVC handler*)
     SYSTEM.GET(VecTabBase+SVCallExcNum*4, currentSVCHandlerAddr);

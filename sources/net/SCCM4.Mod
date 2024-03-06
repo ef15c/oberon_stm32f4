@@ -5,9 +5,6 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   CONST
     (*STM32F429*)
     
-    (*Unique device ID register (96 bits)*)
-    UIDREgAdr = 1FFF7A10H;
-    
     (*GPIOs*)
     PeriphBase = 40000000H; PeriphBBAlias = 42000000H;
     
@@ -199,10 +196,10 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     END
   END SubSnd;
 
-  PROCEDURE SubRcVReq(VAR timeout: BOOLEAN);
+  PROCEDURE SubRcvReq(VAR timeout: BOOLEAN);
     VAR payload: ARRAY 1 OF BYTE;
   BEGIN payload[0] := 0; doSubSend(SYSTEM.ADR(payload), 1, timeout, FALSE)
-  END SubRcVReq;
+  END SubRcvReq;
   
   PROCEDURE ResetRcv;
   BEGIN SYSTEM.PUT(SYSTEM.ADR(rx), 0); rx.hd.len := 0; rcvd := 0
@@ -223,7 +220,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     IF RXFIFOAvail() THEN rcvd := TRUE
     ELSE rcvd := FALSE;
       REPEAT
-        SubRcVReq(timeout);
+        SubRcvReq(timeout);
         WHILE timeout & (Kernel.Time() - t1 <= time) DO Delayms(1); xmitPayload(timeout, FALSE) END;
         IF timeout THEN FlushTX ELSE rcvd := RXFIFOAvail() END
   

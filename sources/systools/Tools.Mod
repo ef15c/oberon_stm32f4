@@ -1,6 +1,8 @@
 MODULE Tools;   (*NW 22.2.2014*)
   IMPORT SYSTEM, Kernel, Files, Modules, Input, Texts, Viewers, MenuViewers, TextFrames, Oberon;
-  CONST UniqueIdBase = 1FFF7A10H;
+
+  CONST UIDRegAdr = 1FFF7A10H; (*Unique device ID register (96 bits)*)
+
   VAR T: Texts.Text; V: MenuViewers.Viewer; W: Texts.Writer;
 
   PROCEDURE OpenViewer(T: Texts.Text; title: ARRAY OF CHAR);
@@ -103,9 +105,9 @@ MODULE Tools;   (*NW 22.2.2014*)
 
   PROCEDURE Id*;
   VAR data: INTEGER;
-  BEGIN SYSTEM.GET(UniqueIdBase, data); Texts.WriteHex(W, data); 
-    SYSTEM.GET(UniqueIdBase + 4, data); Texts.WriteHex(W, data); 
-    SYSTEM.GET(UniqueIdBase + 8, data); Texts.WriteHex(W, data); 
+  BEGIN SYSTEM.GET(UIDRegAdr, data); Texts.WriteHex(W, data); 
+    SYSTEM.GET(UIDRegAdr + 4, data); Texts.WriteHex(W, data); 
+    SYSTEM.GET(UIDRegAdr + 8, data); Texts.WriteHex(W, data); 
     Texts.WriteLn(W); Texts.Append(T, W.buf)
   END Id;
 
