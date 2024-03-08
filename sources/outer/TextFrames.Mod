@@ -3,7 +3,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   IMPORT Modules, Input, Display, Viewers, Fonts, Texts, Oberon, MenuViewers;
 
   CONST replace* = 0; insert* = 1; delete* = 2; unmark* = 3; (*message id*)
-    BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX;
+    BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX; LEFTARROW = 81X; RIGHTARROW = 8DX;
 
   TYPE Line = POINTER TO LineDesc;
     LineDesc = RECORD
@@ -618,7 +618,13 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       IF F.carloc.pos > F.org THEN
         Texts.Delete(F.text, F.carloc.pos - 1, F.carloc.pos, DelBuf); SetCaret(F, F.carloc.pos - 1)
       END
-    ELSIF ch = 3X THEN (* ctrl-c  copy*)
+    ELSIF ch = DEL THEN (*delete*)
+      Texts.Delete(F.text, F.carloc.pos, F.carloc.pos + 1, DelBuf); SetCaret(F, F.carloc.pos)
+    ELSIF ch = LEFTARROW THEN
+      IF F.carloc.pos > F.org THEN FlipCaret(F); SetCaret(F, F.carloc.pos - 1) END
+    ELSIF ch = RIGHTARROW THEN FlipCaret(F); SetCaret(F, F.carloc.pos + 1)
+    ELSIF ch = 3X THEN (*ctrl-c  copy*)
+    ELSIF ch = 3X THEN (*ctrl-c  copy*)
       IF F.hasSel THEN
         NEW(TBuf); Texts.OpenBuf(TBuf); Texts.Save(F.text, F.selbeg.pos, F.selend.pos, TBuf)
       END
@@ -629,7 +635,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       IF F.hasSel THEN
         NEW(TBuf); Texts.OpenBuf(TBuf); Texts.Delete(F.text, F.selbeg.pos, F.selend.pos, TBuf)
       END
-    ELSIF (20X <= ch) & (ch <= DEL) OR (ch = CR) OR (ch = TAB) THEN
+    ELSIF (20X <= ch) OR (ch = CR) OR (ch = TAB) THEN
       KW.fnt := fnt; KW.col := col; KW.voff := voff; Texts.Write(KW, ch);
       Texts.Insert(F.text, F.carloc.pos, KW.buf);
       SetCaret(F, F.carloc.pos + 1)
