@@ -624,7 +624,6 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       IF F.carloc.pos > F.org THEN FlipCaret(F); SetCaret(F, F.carloc.pos - 1) END
     ELSIF ch = RIGHTARROW THEN FlipCaret(F); SetCaret(F, F.carloc.pos + 1)
     ELSIF ch = 3X THEN (*ctrl-c  copy*)
-    ELSIF ch = 3X THEN (*ctrl-c  copy*)
       IF F.hasSel THEN
         NEW(TBuf); Texts.OpenBuf(TBuf); Texts.Save(F.text, F.selbeg.pos, F.selend.pos, TBuf)
       END

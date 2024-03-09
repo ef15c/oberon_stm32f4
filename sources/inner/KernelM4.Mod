@@ -3,15 +3,15 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   CONST SectorLength* = 1024;
     FSoffset = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*64K sectors, 64MB*)
-    SRAMBase* = 20000000H; VecTabBase* = SRAMBase; UsageFaultExcNum* = 6; SVCallExcNum = 11; SysTickExcNum = 15;
     VarORG0* = 0D0201000H;
     CS = 2; (*Carry set Greater than, equal, or unordered*)
     CC = 3; (* Carry clear Less than*)
 
-    PeriphBase = 40000000H; PeriphBBAlias = 42000000H;
-    RTCBase =  40002800H; TR = 0; DR = 4; SSR = 28H; WPR = 24H; ISR = 0CH;
-    INIT = 7; INITF = 6; RSF = 5;
-    rtcInit = PeriphBBAlias + (RTCBase + ISR - PeriphBase + INIT DIV 8)*32 + INIT MOD 8*4;
+    (*To improve readability*)
+    SSR = BSP.RTC_BASE + BSP.RTC_SSR; TR = BSP.RTC_BASE + BSP.RTC_TR;
+    DR = BSP.RTC_BASE + BSP.RTC_DR; WPR = BSP.RTC_BASE + BSP.RTC_WPR;
+    ISR = BSP.RTC_BASE + BSP.RTC_ISR;
+    INITF = BSP.RTC_ISR_INITF;
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
   
@@ -158,11 +158,11 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END ReadSD;
 
   PROCEDURE WriteSD(dst, src, nofblocks: INTEGER);
-    VAR r, retry: INTEGER;
+    VAR r, retry, t: INTEGER;
   BEGIN retry := 5;
     REPEAT SYSTEM.LDREG(0, dst); SYSTEM.LDREG(1, src);
-    SYSTEM.LDREG(2, nofblocks); r := SYSTEM.SVC(3); DEC(retry);
-    INC(writeErrors, r)
+    SYSTEM.LDREG(2, nofblocks); r := SYSTEM.SVC(3); DEC(retry); INC(writeErrors, r);
+     IF (r # 0) THEN t := tick; REPEAT UNTIL tick - t >= 100 END (*wait 100ms*)
     UNTIL (r = 0) OR (retry = 0);
     INC(unrecoverableErrors, r)
   END WriteSD;
@@ -220,10 +220,10 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE Clock*(): INTEGER;
     VAR d,  h, newss, ss: INTEGER;
   BEGIN
-      REPEAT SYSTEM.GET(RTCBase + SSR, ss); SYSTEM.GET(RTCBase + TR, h);
-        SYSTEM.GET(RTCBase + DR, d); SYSTEM.GET(RTCBase + SSR, newss)
+      REPEAT SYSTEM.GET(SSR, ss); SYSTEM.GET(TR, h);
+        SYSTEM.GET(DR, d); SYSTEM.GET(SSR, newss)
       UNTIL ss = newss;
-      SYSTEM.GET(RTCBase + DR, newss); (*dummy date read to unlock registers*)
+      SYSTEM.GET(DR, newss); (*dummy date read to unlock registers*)
       RETURN (((((LSR(d, 20) MOD 16*10 + LSR(d, 16) MOD 16)*16 +
         LSR(d, 12) MOD 2*10 + LSR(d, 8) MOD 16)*32 +
           LSR(d, 4) MOD 4*10 + d MOD 16)*32 +
@@ -244,12 +244,12 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       LSL(min DIV 10, 12) + LSL(min MOD 10, 8) +
       LSL(sec DIV 10, 4) + sec MOD 10;
 
-    SYSTEM.PUT(RTCBase + WPR, 0CAH); SYSTEM.PUT(RTCBase + WPR, 53H); (*disable write protection on RTC registers*)
-    SYSTEM.PUT(rtcInit, TRUE); (*put RTC in init mode*)
-    REPEAT UNTIL SYSTEM.BIT(RTCBase + ISR, INITF); (*RTC is now in init mode*)
-    SYSTEM.PUT(RTCBase + TR, h); SYSTEM.PUT(RTCBase + DR, d); (*set time and date*)
-    SYSTEM.PUT(rtcInit, FALSE); (*exit RTC from init mode*)
-    SYSTEM.PUT(RTCBase + WPR, 0FFH); (*enable write protection on RTC registers*)
+    SYSTEM.PUT(WPR, 0CAH); SYSTEM.PUT(WPR, 53H); (*disable write protection on RTC registers*)
+    SYSTEM.PUT(BSP.rtcInit, TRUE); (*put RTC in init mode*)
+    REPEAT UNTIL SYSTEM.BIT(ISR, INITF); (*RTC is now in init mode*)
+    SYSTEM.PUT(TR, h); SYSTEM.PUT(DR, d); (*set time and date*)
+    SYSTEM.PUT(BSP.rtcInit, FALSE); (*exit RTC from init mode*)
+    SYSTEM.PUT(WPR, 0FFH); (*enable write protection on RTC registers*)
   END SetClock;
 
   PROCEDURE Install*(Padr, at: INTEGER);
@@ -280,12 +280,12 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
   PROCEDURE Init*;
     VAR currentSVCHandlerAddr: INTEGER;
-  BEGIN BSP.Init; Install(SYSTEM.ADR(Trap), VecTabBase+UsageFaultExcNum*4);  (*install temporary trap*)
-    Install(SYSTEM.ADR(IncTick), VecTabBase+SysTickExcNum*4);
+  BEGIN BSP.Init; Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);  (*install temporary trap*)
+    Install(SYSTEM.ADR(IncTick), BSP.VecTabBase+BSP.SysTickExcNum*4);
     (*tail chain old SVC handler*)
-    SYSTEM.GET(VecTabBase+SVCallExcNum*4, currentSVCHandlerAddr);
+    SYSTEM.GET(BSP.VecTabBase+BSP.SVCallExcNum*4, currentSVCHandlerAddr);
     SYSTEM.PUT(SYSTEM.ADR(OldSVCallHandler), currentSVCHandlerAddr + 14); (*Skip stack determination code*)
-    Install(SYSTEM.ADR(SVCallHandler), VecTabBase+SVCallExcNum*4);
+    Install(SYSTEM.ADR(SVCallHandler), BSP.VecTabBase+BSP.SVCallExcNum*4);
     SYSTEM.GET(VarORG0+12, MemLim); SYSTEM.GET(VarORG0+24, stackOrg);
     SYSTEM.GET(VarORG0+28, heapOrg); stackSize := 10000H; heapLim := MemLim;
     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;

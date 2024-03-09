@@ -2,15 +2,46 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   IMPORT SYSTEM;
 
   CONST  (*STM32F429*)
-    (*GPIOs*)
+    (*Cortex M4*)
+    SCB_BASE* =  0E000ED00H;
+    SCB_ICSR* = 4; SCB_CFSR* = 28H; SCB_BFAR* = 38H;
+    SCB_ICSR_PENDSVSET* = 28;
+    SCB_UFSR_Mask* = {16..31}; SCB_BFSR_Mask* = {8..15};
+    SCB_UFSR_NOCP* = 19; SCB_UFSR_INVSTATE* = 17; SCB_BFSR_PRECISERR* = 9; SCB_BFSR_STKERR* = 12;
+
+    (*Memory*)
+    SRAMBase* = 20000000H; VecTabBase* = SRAMBase;
+
+    (*Peripherals*)
     PeriphBase* = 40000000H; PeriphBBAlias* = 42000000H;
-    
+
+    (*RTC*)
+    RTC_BASE* =  40002800H; 
+	RTC_TR* = 0; RTC_DR* = 4; RTC_SSR* = 28H; RTC_WPR* = 24H; RTC_ISR* = 0CH; (*registers*)
+    RTC_ISR_INIT* = 7; RTC_ISR_INITF* = 6; RTC_ISR_RSF* = 5;(*flags*)
+    rtcInit* = PeriphBBAlias + (RTC_BASE + RTC_ISR - PeriphBase + RTC_ISR_INIT DIV 8)*32 + RTC_ISR_INIT MOD 8*4;
+
+    (*EXTI*)
+    EXTI_BASE* = 40013C00H; EXTI_PR* = 14H;
+
+    (*NVIC*)
+    (*Cortex M4*)
+    BusFaultExcNum* = 5;
+    UsageFaultExcNum* = 6;
+    SVCallExcNum* = 11;
+    PendSVExcNum* = 14;
+    SysTickExcNum* = 15;
+
+    (*STM32F429*)
+    EXTI15_10_IRQNum* = 16+40;
+
+    (*GPIOs*)    
     GPIOA* = 40020000H; GPIOB* = 40020400H; GPIOC* = 40020800H; GPIOD* = 40020C00H; 
     GPIOE* = 40021000H; GPIOF* = 40021400H; GPIOG* = 40021800H; GPIOH* = 40021C00H;
     GPIOI* = 40022000H; GPIOJ* = 40022400H; GPIOK* = 40022800H;
     IDR = 10H; ODR = 14H; BSRR = 18H;
 
-    PB1Pin* = 14; PB1Port* = GPIOC; (*PB1_EXTI_IRQn EXTI15_10_IRQn*)
+    PB1Pin* = 14; PB1Port* = GPIOC; PB1ExtiIrqNum* = EXTI15_10_IRQNum;
     PB1In* = PeriphBBAlias + (PB1Port + IDR - PeriphBase + PB1Pin DIV 8)*32 + PB1Pin MOD 8*4;
     PB2Pin* = 15; PB2Port* = GPIOC;
     PB2In* = PeriphBBAlias + (PB2Port + IDR - PeriphBase + PB2Pin DIV 8)*32 + PB2Pin MOD 8*4;

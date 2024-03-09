@@ -6,12 +6,15 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     StandardMenu = "System.Close System.Copy System.Grow Edit.Search Edit.Store";
     LogMenu = "Edit.Locate System.Copy System.Grow System.Clear Edit.Store";
     
-    FaultSRAdr = 0E000ED28H; UFSRMask = {16..31}; BFSRMask = {8..15}; NOCP = 19; INVSTATE = 17; PRECISERR = 9; STKERR = 12;
-    BusFaultExcNum = 5; BFARAdr = 0E000ED38H;
-    IntCtrlSRAdr = 0E000ED04H; PENDSVSET = 28;
-    Exti15to10IrqNum = 16+40; ABORTKEY = 2; (*Reserved in CFSR*)
-    EXTIBase = 40013C00H; extiPR = 14H;
-    PendSVExcNum = 14;
+    ABORTKEY = 2; (*Reserved in CFSR*)
+
+    (*To improve readability*)
+    SCB_CFSR = BSP.SCB_BASE + BSP.SCB_CFSR; SCB_ICSR = BSP.SCB_BASE + BSP.SCB_ICSR; SCB_BFAR = BSP.SCB_BASE + BSP.SCB_BFAR;
+    NOCP = BSP.SCB_UFSR_NOCP; INVSTATE = BSP.SCB_UFSR_INVSTATE; STKERR = BSP.SCB_BFSR_STKERR; PRECISERR = BSP.SCB_BFSR_PRECISERR;
+    PENDSVSET = BSP.SCB_ICSR_PENDSVSET;
+    UFSR_Mask = BSP.SCB_UFSR_Mask; BFSR_Mask = BSP.SCB_BFSR_Mask;
+
+    EXTI_PR = BSP.EXTI_BASE + BSP.EXTI_PR;
 
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
@@ -409,7 +412,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   PROCEDURE* Trap(VAR f: Kernel.ExceptionFrameDesc);
     VAR ICSR: SET; w, inst: INTEGER;
   BEGIN
-    SYSTEM.GET(FaultSRAdr, CFSR);
+    SYSTEM.GET(SCB_CFSR, CFSR);
     IF NOCP IN CFSR THEN (*Trap*)
       SYSTEM.GET(f.returnAddress, inst);
       w := inst DIV 10000H MOD 10H;
@@ -419,24 +422,24 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     ELSE (*trap*) 
       IF w = 5 THEN TrappedAdr := f.lr ELSE TrappedAdr := f.returnAddress END;
       (*Trigger abort by requesting a PendSV interrupt*)
-      SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*)
+      SYSTEM.GET(SCB_ICSR, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(SCB_ICSR, ICSR); SYSTEM.MBI(3) (*ISB*)
     END;
     IF CFSR - {NOCP, INVSTATE} # {} THEN (*other fault*)
       (*LED(127)*); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
-    SYSTEM.PUT(FaultSRAdr, CFSR*UFSRMask) (*reset UFSR flags*)
+    SYSTEM.PUT(SCB_CFSR, CFSR*UFSR_Mask) (*reset UFSR flags*)
   END Trap;
 
   PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
     VAR ICSR: SET; w, inst: INTEGER;
   BEGIN
-    SYSTEM.GET(FaultSRAdr, CFSR);
+    SYSTEM.GET(SCB_CFSR, CFSR);
     IF ~(STKERR IN CFSR) THEN TrappedAdr := f.returnAddress 
-    ELSIF PRECISERR IN CFSR THEN SYSTEM.GET(BFARAdr, TrappedAdr)
+    ELSIF PRECISERR IN CFSR THEN SYSTEM.GET(SCB_BFAR, TrappedAdr)
     END;
     (*Trigger abort by requesting a PendSV interrupt*)
-    SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*);
-    SYSTEM.PUT(FaultSRAdr, CFSR*BFSRMask) (*reset BFSR flags*)
+      SYSTEM.GET(SCB_ICSR, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(SCB_ICSR, ICSR); SYSTEM.MBI(3); (*ISB*)
+    SYSTEM.PUT(SCB_CFSR, CFSR*BFSR_Mask) (*reset BFSR flags*)
   END BusFaultHandler;
 
   (*Handle abort key press*)
@@ -444,13 +447,13 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     VAR ICSR, pr: SET;
   BEGIN CFSR := {ABORTKEY}; TrappedAdr := f.returnAddress;
     (* Clear pending IRQ*)
-    SYSTEM.GET(EXTIBase + extiPR, pr); SYSTEM.PUT(EXTIBase + extiPR, pr);
-    IF 14 IN pr THEN
+    SYSTEM.GET(EXTI_PR, pr); SYSTEM.PUT(EXTI_PR, pr);
+    IF BSP.PB1Pin IN pr THEN
       IF Kernel.Time() - DebounceTime < 30 THEN INC(DebounceTime, 30)
       ELSE
         DebounceTime := Kernel.Time();
         (*Trigger abort by requesting a PendSV interrupt*)
-        SYSTEM.GET(IntCtrlSRAdr, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(IntCtrlSRAdr, ICSR); SYSTEM.MBI(3) (*ISB*)
+        SYSTEM.GET(SCB_ICSR, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(SCB_ICSR, ICSR); SYSTEM.MBI(3) (*ISB*)
       END
     END
   END AbortHandler;
@@ -505,9 +508,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
   DebounceTime := Kernel.Time();
-  Kernel.Install(SYSTEM.ADR(Trap), Kernel.VecTabBase+Kernel.UsageFaultExcNum*4);
-  Kernel.Install(SYSTEM.ADR(BusFaultHandler), Kernel.VecTabBase+BusFaultExcNum*4);
-  Kernel.Install(SYSTEM.ADR(AbortHandler), Kernel.VecTabBase+Exti15to10IrqNum*4);
-  Kernel.Install(SYSTEM.ADR(PendSVHandler), Kernel.VecTabBase+PendSVExcNum*4);
+  Kernel.Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);
+  Kernel.Install(SYSTEM.ADR(BusFaultHandler), BSP.VecTabBase+BSP.BusFaultExcNum*4);
+  Kernel.Install(SYSTEM.ADR(AbortHandler), BSP.VecTabBase+BSP.PB1ExtiIrqNum*4);
+  Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
 END System.
