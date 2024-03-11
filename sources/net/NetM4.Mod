@@ -92,7 +92,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     REPEAT k := 0;
       REPEAT Files.ReadByte(R, x);
         IF ~R.eof THEN buf[k] := x; INC(k) END
-      UNTIL R.eof OR (k = PakSize); retry := 5; nseqno := (seqno + 1) MOD 8;
+      UNTIL R.eof OR (k = PakSize); retry := 10; nseqno := (seqno + 1) MOD 8;
       REPEAT Send(seqno, k, buf); ReceiveHead(T1); DEC(retry);
         IF head1.typ # nseqno + ACK THEN SCC.Delayms(500); END
       UNTIL (head1.typ = nseqno + ACK) OR (retry = 0);
@@ -109,7 +109,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
      x: BYTE;
      len: LONGINT;
      R!: Files.Rider;
-  BEGIN Files.Set(R, F, 0); seqno := 0; len := 0; retry := 5; k := PakSize;
+  BEGIN Files.Set(R, F, 0); seqno := 0; len := 0; retry := 10; k := PakSize;
     REPEAT
      IF head1.typ = seqno THEN
        seqno := (seqno + 1) MOD 8; len := len + head1.len; retry := 2;

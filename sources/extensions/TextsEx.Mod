@@ -1,5 +1,4 @@
 MODULE TextsEx;
-
   IMPORT Texts;
 
   PROCEDURE WriteHexVLen*(VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
@@ -14,5 +13,5 @@ MODULE TextsEx;
     IF leadingZero & (a[i-1] > "9") THEN Texts.Write(W, "0") END; (*Add a leading 0 if first hex digit is a letter*)
     REPEAT DEC(i); Texts.Write(W, a[i]) UNTIL i = 0
   END WriteHexVLen;
-  
+
 END TextsEx.

@@ -1,5 +1,5 @@
 MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
-  IMPORT SYSTEM, Kernel, FileDir, Files, Modules,
+  IMPORT SYSTEM, BSP, Kernel, FileDir, Files, Modules,
     Input, Display, Viewers, Fonts, Texts, Oberon, MenuViewers, TextFrames;
 
   CONST
@@ -492,8 +492,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   (*Abort current command by resetting stack and reentering the main loop*)
     CONST LR = 14; PSP=16+9;
     VAR f!: Kernel.ExceptionFrame;
-		lr: SET;
-       sz: INTEGER;
+      lr: SET; sz: INTEGER;
   BEGIN
     lr := SYSTEM.VAL(SET, SYSTEM.REG(LR)); IF 4 IN lr THEN sz := 20H ELSE sz := 68H END;
     IF ORD(lr*{0..3}) = 0DH THEN (*return to thread mode with process stack*)

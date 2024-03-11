@@ -2,7 +2,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   IMPORT SYSTEM, BSP;
   CONST SectorLength* = 1024;
     FSoffset = 80000H; (*256MB in 512-byte blocks*)
-    mapsize = 10000H; (*64K sectors, 64MB*)
+    mapsize = 10000H; (*64K sectors, 64*1024*SectorLength bytes*)
+    BootReservedSize = 63488;
     VarORG0* = 0D0201000H;
     CS = 2; (*Carry set Greater than, equal, or unordered*)
     CC = 3; (* Carry clear Less than*)
@@ -168,9 +169,12 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END WriteSD;
 
   PROCEDURE InitSecMap*;
-    VAR i: INTEGER;
-  BEGIN NofSectors := 0; sectorMap[0] := {0 .. 31}; sectorMap[1] := {0 .. 31};
-    FOR i := 2 TO mapsize DIV 32 - 1 DO sectorMap[i] := {} END
+    CONST NofReservedSectors = (BootReservedSize + SectorLength - 1) DIV SectorLength + 2;
+    VAR i, r: INTEGER;
+  BEGIN NofSectors := 0; i := 0;
+    WHILE i < NofReservedSectors DIV 32 DO sectorMap[i] := {0 .. 31}; INC(i) END;
+    r := NofReservedSectors MOD 32; IF r > 0 THEN sectorMap[i] := {0 .. r}; INC(i) END;
+    WHILE i < mapsize DIV 32 DO sectorMap[i] := {}; INC(i) END
   END InitSecMap;
 
   PROCEDURE MarkSector*(sec29: INTEGER);
