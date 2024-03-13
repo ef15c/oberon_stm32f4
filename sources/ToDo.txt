@@ -1,16 +1,3 @@
-Liste des modules à créer en se basant sur ORx :
-Faits : OM4P, OM4S, OM4B, OM4G, OM4A, OM4X, OM4L, OM4D, OM4Tool
-
-Liste des modules à créer en se basant sur la version RISC-5 :
-
-Faits : 
-- loader : BootLoadM4
-- inner : ModulesM4, KernelM4. Files et FilesDir ne sont pas modifiés
-- outer : DisplayM4.Mod, FontsM4.Mod, MenuViewers.Mod, SystemM4.Mod, TextFrames.Mod,
-          Viewers.Mod, Edit.Mod, InputM4.Mod, OberonM4.Mod, Texts.Mod
-
-En cours : 
-
 Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
 15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0   15 14 13 12 11 10 9   8 7 6 5 4 3 2 1 0
      32-bit Thumb instruction, hw1            32-bit Thumb instruction, hw2
@@ -113,6 +100,12 @@ trap number trap cause
 8           Bus Fault: data access precise error
 9           Bus Fault: stack overflow
 10          User abort
+
+Utilisation du secteur 0 (à la position 262144KiB sur la carte) pour ranger des paramètres de configuration
+Décalage    Longeur     Signification
+--------    -------     --------------------------------------------------------------------------------
+      12          4     Si différent de 0, indique la position de démarrage du système de fichier Oberon
+      16          4     Si différent de 0, indique la taille en octets d'un secteur Oberon
 
 
 

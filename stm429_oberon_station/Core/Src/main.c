@@ -900,11 +900,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     /* Second PS/2 port */
     PS2_ProcessData(&ps2_2);
     break;
-  case PB1_Pin:
-	/* Trigger pendSV interrupt for abort processing */
-	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
-	__ISB();
-    break;
   }
 }
 

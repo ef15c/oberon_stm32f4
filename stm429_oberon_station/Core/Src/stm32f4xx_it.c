@@ -43,11 +43,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-static const GPIO_TypeDef *LEDS_PORT[] = {
-    LED1_GPIO_Port, LED2_GPIO_Port, LED3_GPIO_Port, LED4_GPIO_Port,
-    LED5_GPIO_Port, LED6_GPIO_Port, LED7_GPIO_Port, };
-static const uint16_t LEDS_PIN[] = {
-    LED1_Pin, LED2_Pin, LED3_Pin, LED4_Pin, LED5_Pin, LED6_Pin, LED7_Pin, };
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -276,6 +272,7 @@ __STATIC_FORCEINLINE uint32_t __get_LR(void)
   return(result);
 }
 
+#define NB_BLOCKS_MAX 64
 /**
   * @brief This function handles SVC calls.
   */
@@ -283,30 +280,18 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
 {
     uint8_t param = *((uint8_t *)(frame->return_address)-2);
     int32_t x, y, w, h, dx, dy;
-    uint8_t buf[16*512], *pbuf;
+    uint8_t buf[NB_BLOCKS_MAX*512], *pbuf;
     uint32_t *wsrc, *wdst;
     int i;
 
     switch (param) {
-    case 1:
-        /* Process LED update */
-        x = frame->r0;
-        for (i=0; i<7; i++) {
-            if (x & 1) {
-                HAL_GPIO_WritePin((GPIO_TypeDef *) LEDS_PORT[i], LEDS_PIN[i], GPIO_PIN_SET);
-            } else {
-                HAL_GPIO_WritePin((GPIO_TypeDef *) LEDS_PORT[i], LEDS_PIN[i], GPIO_PIN_RESET);
-            }
-            x >>= 1;
-        }
-        break;
     case 2:
         /* Process SD card multi blocks read */
     	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
     	if (frame->r1 >= 0x20000000) { /*Memory region accessible to DMA*/
     		pbuf =  (uint8_t *)frame->r1;
     	} else {
-    		if (frame->r2 > 16) {
+    		if (frame->r2 > NB_BLOCKS_MAX) {
     	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
     	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
     			frame->r0 = HAL_ERROR;
@@ -344,7 +329,7 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
     	if (frame->r1 >= 0x20000000) { /*Memory region accessible to DMA*/
     		pbuf =  (uint8_t *)frame->r1;
     	} else {
-    		if (frame->r2 > 16) {
+    		if (frame->r2 > NB_BLOCKS_MAX) {
     	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
     	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
     			frame->r0 = HAL_ERROR;

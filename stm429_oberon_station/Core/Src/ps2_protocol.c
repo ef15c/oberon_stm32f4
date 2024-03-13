@@ -126,7 +126,7 @@ void PS2_ProcessData(PS2_HandleTypeDef *dev)
         break;
     case PS2_DEVICE_TO_HOST:
         if (HAL_GPIO_ReadPin(dev->clockPort, dev->clockPin) == GPIO_PIN_RESET) {
-            /* Rising edge of clock */
+            /* Falling edge of clock */
             dataBit = HAL_GPIO_ReadPin(dev->dataPort, dev->dataPin);
             if (dev->numberOfBitsRemainingToBeRead == 11) {
                 if (dev->ActivityLedPort) {
@@ -281,10 +281,10 @@ int16_t PS2_WaitForAnswer(PS2_HandleTypeDef *dev, uint16_t timemout)
 
 static void PS2_ParseReadIdAnswer(PS2_HandleTypeDef *dev)
 {
-    uint8_t id1 = PS2_WaitForAnswer(dev, 20);
+    uint8_t id1 = PS2_WaitForAnswer(dev, 35);
 
     if (id1 == 0xab &&
-        PS2_WaitForAnswer(dev, 20) == 0x83) {
+        PS2_WaitForAnswer(dev, 35) == 0x83) {
         /* Map the activity LED for a keyboard device */
         dev->ActivityLedPort = dev->KBLedPort;
         dev->ActivityLedPin = dev->KBLedPin;
@@ -309,38 +309,38 @@ static void PS2_ParseReadIdAnswer(PS2_HandleTypeDef *dev)
         } else {
             /* Try to activate wheel mode */
             PS2_SendByteAsync(dev, 0xF3);
-            if (PS2_WaitForAnswer(dev, 20) != 0xfa) {
+            if (PS2_WaitForAnswer(dev, 35) != 0xfa) {
                 return;
             }
             PS2_SendByteAsync(dev, 200);
-            if (PS2_WaitForAnswer(dev, 20) != 0xfa) {
+            if (PS2_WaitForAnswer(dev, 35) != 0xfa) {
                 return;
             }
 
             PS2_SendByteAsync(dev, 0xF3);
-            if (PS2_WaitForAnswer(dev, 20) != 0xfa) {
+            if (PS2_WaitForAnswer(dev, 35) != 0xfa) {
                 return;
             }
             PS2_SendByteAsync(dev, 100);
-            if (PS2_WaitForAnswer(dev, 20) != 0xfa) {
+            if (PS2_WaitForAnswer(dev, 35) != 0xfa) {
                 return;
             }
 
             PS2_SendByteAsync(dev, 0xF3);
-            if (PS2_WaitForAnswer(dev, 20) != 0xfa) {
+            if (PS2_WaitForAnswer(dev, 35) != 0xfa) {
                 return;
             }
             PS2_SendByteAsync(dev, 80);
-            if (PS2_WaitForAnswer(dev, 20) != 0xfa) {
+            if (PS2_WaitForAnswer(dev, 35) != 0xfa) {
                 return;
             }
 
             /* Reread device type */
             PS2_SendByteAsync(dev, 0xF2);
-            if (PS2_WaitForAnswer(dev, 20) != 0xfa) {
+            if (PS2_WaitForAnswer(dev, 35) != 0xfa) {
                 return;
             }
-            id1 = PS2_WaitForAnswer(dev, 20);
+            id1 = PS2_WaitForAnswer(dev, 35);
             if (id1 == 0x03) {
                 dev->haveWheel = 1;
                 dev->mouseReportSize = 4;
@@ -353,7 +353,7 @@ static void PS2_ParseReadIdAnswer(PS2_HandleTypeDef *dev)
         dev->answerBlock->maxX = 1366;
         dev->answerBlock->maxY = 768;
         PS2_SendByteAsync(dev, 0xF4);
-        id1 = PS2_WaitForAnswer(dev, 20);
+        id1 = PS2_WaitForAnswer(dev, 35);
         dev->connectedDevice = PS2_MOUSE;
     } else {
         /* No known device connected */
@@ -367,13 +367,13 @@ static void PS2_Reset(PS2_HandleTypeDef *dev) {
     /* Send the reset command */
     do {
         PS2_SendByteAsync(dev, 0xFF);
-        res = PS2_WaitForAnswer(dev, 20);
+        res = PS2_WaitForAnswer(dev, 35);
         if (res == 0xfa) {
-        	DWT_Delay_us(1000000); /*Wait for BAT to be completed*/
-        	res = PS2_WaitForAnswer(dev, 20);
+        	DWT_Delay_us(600000); /*Wait for BAT to be completed*/
+        	res = PS2_WaitForAnswer(dev, 35);
         }
     } while (--nbTries && res != 0xaa);
-    PS2_WaitForAnswer(dev, 20);
+    PS2_WaitForAnswer(dev, 35);
 }
 
 static void PS2_ReadId(PS2_HandleTypeDef *dev) {
@@ -384,7 +384,7 @@ static void PS2_ReadId(PS2_HandleTypeDef *dev) {
     	DWT_Delay_us(10000);
         PS2_SendByteAsync(dev, 0xF2);
         DWT_Delay_us(1000);
-        res = PS2_WaitForAnswer(dev, 20);
+        res = PS2_WaitForAnswer(dev, 35);
         if (res != 0xfa) {
         	PS2_Reset(dev);
         }

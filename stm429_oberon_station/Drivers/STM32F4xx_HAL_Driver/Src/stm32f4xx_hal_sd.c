@@ -1337,6 +1337,20 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
     {
       hsd->Context = (SD_CONTEXT_WRITE_MULTIPLE_BLOCK | SD_CONTEXT_DMA);
 
+      /* Send CMD55 APP_CMD with argument as card's RCA.*/
+      errorstate = SDMMC_CmdAppCommand(hsd->Instance, (uint32_t)(hsd->SdCard.RelCardAdd << 16U));
+      if(errorstate != HAL_SD_ERROR_NONE)
+      {
+        return errorstate;
+      }
+
+      /* Send ACMD23 APP_CMD with argument as NumberOfBlocks */
+      errorstate = SDMMC_CmdAppSetWrBlkEraseCount(hsd->Instance, NumberOfBlocks);
+      if(errorstate != HAL_SD_ERROR_NONE)
+      {
+        return errorstate;
+      }
+
       /* Write Multi Block command */
       errorstate = SDMMC_CmdWriteMultiBlock(hsd->Instance, add);
     }
@@ -2800,7 +2814,7 @@ static uint32_t SD_PowerON(SD_HandleTypeDef *hsd)
     }
   }
   /* SD CARD */
-  /* Send ACMD41 SD_APP_OP_COND with Argument 0x80100000 */
+  /* Send ACMD41 SD_APP_OP_COND with Argument 0x80010000 */
   while((count < SDMMC_MAX_VOLT_TRIAL) && (validvoltage == 0U))
   {
     /* SEND CMD55 APP_CMD with RCA as 0 */

@@ -1,6 +1,6 @@
-MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
+MODULE Kernel32K;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   IMPORT SYSTEM, BSP;
-  CONST SectorLength* = 1024; SDBlockSize = 512;
+  CONST SectorLength* = 32768;
     FS_OFFSET = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*64K sectors, 64*1024*SectorLength bytes*)
     BootReservedSize = 63488;
@@ -203,16 +203,16 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE GetSector*(src29: INTEGER; VAR dst: Sector);
     VAR src: INTEGER;
   BEGIN src := src29 DIV 29; ASSERT(src29 = src*29);
-    src := src * (SectorLength DIV SDBlockSize) + FSoffset;
-    ReadSD(src, SYSTEM.ADR(dst), SectorLength DIV SDBlockSize)
+    src := src * 2 + FSoffset;
+    ReadSD(src, SYSTEM.ADR(dst), 2)
   END GetSector;
 
   PROCEDURE PutSector*(dst29: INTEGER; VAR src: Sector);
     VAR dst: INTEGER;
   BEGIN dst := dst29 DIV 29; ASSERT(dst29 = dst*29);
-    dst := dst * (SectorLength DIV SDBlockSize) + FSoffset;
-    WriteSD(dst, SYSTEM.ADR(src), SectorLength DIV SDBlockSize);
-    WriteSD(dst+(mapsize*(SectorLength DIV SDBlockSize)), SYSTEM.ADR(src), SectorLength DIV SDBlockSize) (*backup*)
+    dst := dst * 2 + FSoffset;
+    WriteSD(dst, SYSTEM.ADR(src), 2);
+    WriteSD(dst+(mapsize*2), SYSTEM.ADR(src), 2) (*backup*)
   END PutSector;
 
 (*-------- Miscellaneous procedures----------*)
@@ -285,7 +285,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE Init*;
     VAR currentSVCHandlerAddr, r: INTEGER;
       param: ARRAY 128 OF INTEGER;
-  BEGIN BSP.Init;
+  BEGIN BSP.Init; 
     (*Get and verify Oberon file system configuration*)
     SYSTEM.LDREG(0, FS_OFFSET); SYSTEM.LDREG(1, SYSTEM.ADR(param)); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);
     ASSERT ((param[4] = 0)  OR (param[4] = SectorLength));
@@ -303,4 +303,4 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     allocated := 0; InitSecMap
   END Init;
 
-END Kernel.
+END Kernel32K.

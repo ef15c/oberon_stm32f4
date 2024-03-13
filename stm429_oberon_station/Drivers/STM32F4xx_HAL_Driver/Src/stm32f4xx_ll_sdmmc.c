@@ -896,6 +896,30 @@ uint32_t SDMMC_CmdAppOperCommand(SDIO_TypeDef *SDIOx, uint32_t Argument)
 }
 
 /**
+  * @brief  Send the command telling the card the number of blocks to be erased
+  * @param  SDIOx: Pointer to SDIO register base
+  * @param  Argument: Command Argument
+  * @retval HAL status
+  */
+uint32_t SDMMC_CmdAppSetWrBlkEraseCount(SDIO_TypeDef *SDIOx, uint32_t Argument)
+{
+  SDIO_CmdInitTypeDef  sdmmc_cmdinit;
+  uint32_t errorstate;
+
+  sdmmc_cmdinit.Argument         = Argument;
+  sdmmc_cmdinit.CmdIndex         = SDMMC_CMD_SD_APP_SET_WR_BLK_ERASE_COUNT;
+  sdmmc_cmdinit.Response         = SDIO_RESPONSE_SHORT;
+  sdmmc_cmdinit.WaitForInterrupt = SDIO_WAIT_NO;
+  sdmmc_cmdinit.CPSM             = SDIO_CPSM_ENABLE;
+  (void)SDIO_SendCommand(SDIOx, &sdmmc_cmdinit);
+
+  /* Check for error conditions */
+  errorstate = SDMMC_GetCmdResp1(SDIOx, SDMMC_CMD_SD_APP_SET_WR_BLK_ERASE_COUNT, SDIO_CMDTIMEOUT);
+
+  return errorstate;
+}
+
+/**
   * @brief  Send the Bus Width command and check the response.
   * @param  SDIOx: Pointer to SDIO register base 
   * @param  BusWidth: BusWidth
