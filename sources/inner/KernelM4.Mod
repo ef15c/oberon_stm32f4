@@ -284,12 +284,14 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
   PROCEDURE Init*;
     VAR currentSVCHandlerAddr, r: INTEGER;
-      param: ARRAY 128 OF INTEGER;
-  BEGIN BSP.Init;
-    (*Get and verify Oberon file system configuration*)
-    SYSTEM.LDREG(0, FS_OFFSET); SYSTEM.LDREG(1, SYSTEM.ADR(param)); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);
-    ASSERT ((param[4] = 0)  OR (param[4] = SectorLength));
-    IF param[3] = 0 THEN FSoffset := FS_OFFSET ELSE FSoffset := param[3] END;
+      pb2up: BOOLEAN; param: ARRAY 128 OF INTEGER;
+  BEGIN BSP.Init; SYSTEM.GET(BSP.PB2In, pb2up);
+    IF ~pb2up THEN FSoffset := FS_OFFSET
+    ELSE (*Get and verify Oberon file system configuration*)
+      SYSTEM.LDREG(0, FS_OFFSET); SYSTEM.LDREG(1, SYSTEM.ADR(param)); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);
+      ASSERT ((param[4] = 0)  OR (param[4] = SectorLength));
+      IF param[3] = 0 THEN FSoffset := FS_OFFSET ELSE FSoffset := param[3] END
+    END;
     Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);  (*install temporary trap*)
     Install(SYSTEM.ADR(IncTick), BSP.VecTabBase+BSP.SysTickExcNum*4);
     (*tail chain old SVC handler*)

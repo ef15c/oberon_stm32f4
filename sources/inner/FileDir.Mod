@@ -318,11 +318,11 @@ PROCEDURE Init*;
           REPEAT DEC(j); Kernel.MarkSector(hd.sec[j]) UNTIL j = 0
         ELSE j := SecTabSize;
           REPEAT DEC(j); Kernel.MarkSector(hd.sec[j]) UNTIL j = 0;
-          n := (hd.aleng - SecTabSize) DIV 256; i := 0;
+          n := (hd.aleng - SecTabSize) DIV IndexSize; i := 0;
           WHILE i <= n DO
             Kernel.MarkSector(hd.ext[i]);
             Kernel.GetSector(hd.ext[i], B); (*index sector*)
-            IF i < n THEN j := 256 ELSE j := (hd.aleng - SecTabSize) MOD 256 + 1 END ;
+            IF i < n THEN j := IndexSize ELSE j := (hd.aleng - SecTabSize) MOD IndexSize + 1 END ;
             REPEAT DEC(j); Kernel.MarkSector(B[j]) UNTIL j = 0;
             INC(i)
           END
