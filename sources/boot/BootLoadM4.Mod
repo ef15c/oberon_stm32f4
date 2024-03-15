@@ -24,24 +24,26 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     PB2In* = PeriphBBAlias + (PB2Port + IDR - PeriphBase + PB2Pin DIV 8)*32 + PB2Pin MOD 8*4;
 
     FSoffset = 80000H;   (*block offset*)
+    SectorSize = 1024;
 
 (* ---------- disk ------------*)
 
   PROCEDURE LoadFromDisk;
-    VAR bb, r, lim: INTEGER;
+    VAR bb, r, lim, ss, bps: INTEGER;
      pb2up: BOOLEAN;
   BEGIN SYSTEM.GET(PB2In, pb2up);
-    IF ~pb2up THEN bb := FSoffset (*Fixed address boot*)
+    IF ~pb2up THEN bb := FSoffset; ss := SectorSize (*Fixed address boot*)
     ELSE (*find boot block position*)
       SYSTEM.LDREG(0, FSoffset); SYSTEM.LDREG(1, VarORG0); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);
-      SYSTEM.GET(VarORG0 + 12, bb); IF bb = 0 THEN bb := FSoffset END
+      SYSTEM.GET(VarORG0 + 12, bb); IF bb = 0 THEN bb := FSoffset; ss := SectorSize ELSE SYSTEM.GET(VarORG0 + 16, ss); END
     END;
+    bps := ss DIV 512;
     (*start at boot block*)
-    SYSTEM.LDREG(0, bb + 4); SYSTEM.LDREG(1, VarORG0); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);
+    SYSTEM.LDREG(0, bb + 2*bps); SYSTEM.LDREG(1, VarORG0); SYSTEM.LDREG(2, bps); r := SYSTEM.SVC(2);
     SYSTEM.GET(VarORG0 + 16, lim);
     (*read remaining blocks*)
-    SYSTEM.LDREG(0, bb + 4 + 1); SYSTEM.LDREG(1, VarORG0+512); SYSTEM.LDREG(2, (lim + (511-VarORG0)) DIV 512 - 1); 
-    r := SYSTEM.SVC(2);
+    r := (lim + (511- VarORG0)) DIV 512 - bps;
+    IF r > 0 THEN SYSTEM.LDREG(0, bb + 2*(bps+1)); SYSTEM.LDREG(1, VarORG0+ss); SYSTEM.LDREG(2, r); r := SYSTEM.SVC(2) END
   END LoadFromDisk;
 
 BEGIN

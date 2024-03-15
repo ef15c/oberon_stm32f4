@@ -929,7 +929,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN);
     VAR r: LONGINT;
   BEGIN frame := 0;
-    IF locblksize >= OM4A.C16 THEN OM4S.Mark("too many locals") END;
+    IF locblksize >= OM4A.C16 THEN OM4S.Mark("local variables size exeeded") END;
     r := (parblksize-4) DIV 4;
     IF int THEN (*interrupt procedure, lot of registers are already saved in interrupt frame*)
       (*Store interrupt frame address in R0*)
