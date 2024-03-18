@@ -1,4 +1,4 @@
-MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013*)
+MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17/03/24*)
   IMPORT Kernel;
 
   (*File Directory is a B-tree with its root page at DirRootAdr.
@@ -53,6 +53,8 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013*)
       END ;
 
       DirPg* = POINTER TO DirPage;
+
+  VAR hd: FileHd;
 
   (*Exported procedures: Search, Insert, Delete, Enumerate, Init*)
 
@@ -136,14 +138,14 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013*)
   PROCEDURE Insert*(name: FileName; fad: DiskAdr);
     VAR  oldroot: DiskAdr;
       h: BOOLEAN; U: DirEntry;
-      a: DirPage;
-  BEGIN h := FALSE;
+      a!: DirPg;
+  BEGIN NEW(a); h := FALSE;
     insert(name, DirRootAdr, h, U, fad);
     IF h THEN (*root overflow*)
-      Kernel.GetSector(DirRootAdr, a); ASSERT(a.mark = DirMark);
-      Kernel.AllocSector(DirRootAdr, oldroot); Kernel.PutSector(oldroot, a);
+      Kernel.GetSector(DirRootAdr, a^); ASSERT(a.mark = DirMark);
+      Kernel.AllocSector(DirRootAdr, oldroot); Kernel.PutSector(oldroot, a^);
       a.mark := DirMark; a.m := 1; a.p0 := oldroot; a.e[0] := U;
-      Kernel.PutSector(DirRootAdr, a)
+      Kernel.PutSector(DirRootAdr, a^)
     END
   END Insert;
 
@@ -245,14 +247,14 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013*)
 
   PROCEDURE Delete*(name: FileName; VAR fad: DiskAdr);
     VAR h: BOOLEAN; newroot: DiskAdr;
-      a: DirPage;
-  BEGIN h := FALSE;
+      a!: DirPg;
+  BEGIN NEW(a); h := FALSE;
     delete(name, DirRootAdr, h, fad);
     IF h THEN (*root underflow*)
-      Kernel.GetSector(DirRootAdr, a); ASSERT(a.mark = DirMark);
+      Kernel.GetSector(DirRootAdr, a^); ASSERT(a.mark = DirMark);
       IF (a.m = 0) & (a.p0 # 0) THEN
-        newroot := a.p0; Kernel.GetSector(newroot, a); ASSERT(a.mark = DirMark);
-        Kernel.PutSector(DirRootAdr, a) (*discard newroot*)
+        newroot := a.p0; Kernel.GetSector(newroot, a^); ASSERT(a.mark = DirMark);
+        Kernel.PutSector(DirRootAdr, a^) (*discard newroot*)
       END
     END
   END Delete;
@@ -296,7 +298,6 @@ PROCEDURE Init*;
 
     PROCEDURE MarkSectors(VAR A: ARRAY OF DiskAdr; k: INTEGER);
       VAR L, R, i, j, n: INTEGER; x: DiskAdr;
-        hd!: FileHd;
         B: IndexSector;
 
       PROCEDURE sift(VAR A: ARRAY OF DiskAdr; L, R: INTEGER);
@@ -309,7 +310,7 @@ PROCEDURE Init*;
         A[i] := x
       END sift;
 
-    BEGIN NEW(hd); L := k DIV 2; R := k; (*heapsort*)
+    BEGIN L := k DIV 2; R := k; (*heapsort*)
       WHILE L > 0 DO DEC(L); sift(A, L, R) END ;
       WHILE R > 0 DO
         DEC(R); x := A[0]; A[0] := A[R]; A[R] := x; sift(A, L, R)
@@ -335,7 +336,7 @@ PROCEDURE Init*;
 
     PROCEDURE TraverseDir(VAR A: ARRAY OF DiskAdr; VAR k: INTEGER; dpg: DiskAdr);
       VAR i: INTEGER; a!: DirPg;
-    BEGIN NEW(a); IF dpg # 0 THEN
+    BEGIN IF dpg # 0 THEN NEW(a);
         Kernel.GetSector(dpg, a^); ASSERT(a.mark = DirMark); Kernel.MarkSector(dpg); i := 0;
         WHILE i < a.m DO
           A[k] := a.e[i].adr; INC(k); INC(i);
@@ -346,7 +347,7 @@ PROCEDURE Init*;
       END
     END TraverseDir;
 
-  BEGIN k := 0; TraverseDir(A, k, DirRootAdr); MarkSectors(A, k)
+  BEGIN NEW(hd); k := 0; TraverseDir(A, k, DirRootAdr); MarkSectors(A, k); hd := NIL;
   END Init; 
   
 END FileDir.

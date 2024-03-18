@@ -41,7 +41,7 @@ _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
 _epstack = ORIGIN(CCMRAM) + LENGTH(CCMRAM); /* end of "CCMRAM" Ram type memory */
 
 _Min_Heap_Size = 0x0; /* required amount of heap */
-_Min_Stack_Size = 0x1000; /* required amount of stack */
+_Min_Stack_Size = 0x10000; /* required amount of stack */
 
 /* Memories definition */
 MEMORY

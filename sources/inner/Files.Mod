@@ -206,8 +206,8 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
     VAR i, k: INTEGER;
       buf!: Buffer;
       inx!: Index;
-      head: FileDir.FileHeader;
-  BEGIN buf := f.firstbuf;
+      head!: FileDir.FileHd;
+  BEGIN NEW(head); buf := f.firstbuf;
     REPEAT
       IF buf.mod THEN WriteBuf(f, buf) END ;
       buf := buf.next
@@ -223,8 +223,8 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
       END
     END ;
     IF f.modH THEN
-      Kernel.GetSector(f.sec[0], head); UpdateHeader(f, head);
-      Kernel.PutSector(f.sec[0], head); f.modH := FALSE
+      Kernel.GetSector(f.sec[0], head^); UpdateHeader(f, head^);
+      Kernel.PutSector(f.sec[0], head^); f.modH := FALSE
     END
   END Unbuffer;
 
@@ -273,15 +273,15 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
   PROCEDURE Rename*(old, new: ARRAY OF CHAR; VAR res: INTEGER);
     VAR adr: DiskAdr;
         oldbuf, newbuf: FileDir.FileName;
-        head: FileDir.FileHeader;
-  BEGIN Check(old, oldbuf, res);
+        head!: FileDir.FileHd;
+  BEGIN NEW(head); Check(old, oldbuf, res);
     IF res = 0 THEN
       Check(new, newbuf, res);
       IF res = 0 THEN
         FileDir.Delete(oldbuf, adr);
         IF adr # 0 THEN
           FileDir.Insert(newbuf, adr);
-          Kernel.GetSector(adr, head); head.name := newbuf; Kernel.PutSector(adr, head)
+          Kernel.GetSector(adr, head^); head.name := newbuf; Kernel.PutSector(adr, head^)
         ELSE res := 2
         END
       END

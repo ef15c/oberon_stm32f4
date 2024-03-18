@@ -385,7 +385,7 @@ static void PS2_ReadId(PS2_HandleTypeDef *dev) {
         PS2_SendByteAsync(dev, 0xF2);
         DWT_Delay_us(1000);
         res = PS2_WaitForAnswer(dev, 35);
-        if (res != 0xfa) {
+        if (res != 0xfa && res != 0xfe) {
         	PS2_Reset(dev);
         }
     } while (--nbTries && res != 0xfa);

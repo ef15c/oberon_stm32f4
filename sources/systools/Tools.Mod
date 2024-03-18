@@ -45,12 +45,13 @@ MODULE Tools;   (*NW 22.2.2014*)
   PROCEDURE Sector*;
     VAR k, m, n, secno: INTEGER;
       S!: Texts.Scanner;
-      buf: ARRAY 256 OF INTEGER;
+      buf: ARRAY Kernel.SectorLength DIV 4 OF INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Int THEN
       secno := S.i; Texts.Scan(S);
-      IF S.class = Texts.Int THEN n := S.i ELSE n := 8 END ;
-      Kernel.GetSector(secno*29, buf); Texts.WriteString(W, "Sector "); Texts.WriteInt(W, S.i, 4);
+      IF S.class = Texts.Int THEN n := S.i ELSE n := Kernel.SectorLength DIV 128 END ;
+      IF n > Kernel.SectorLength DIV 32 THEN n := Kernel.SectorLength DIV 32 END;
+      Kernel.GetSector(secno*29, buf); Texts.WriteString(W, "Sector "); Texts.WriteInt(W, secno, 4);
       k := 0;
       REPEAT DEC(n); m := 8; Texts.WriteLn(W); Texts.WriteHex(W, k*4); Texts.Write(W, 9X);
         REPEAT Texts.WriteHex(W, buf[k]); INC(k); DEC(m) UNTIL m = 0;

@@ -425,7 +425,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       SYSTEM.GET(SCB_ICSR, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(SCB_ICSR, ICSR); SYSTEM.MBI(3) (*ISB*)
     END;
     IF CFSR - {NOCP, INVSTATE} # {} THEN (*other fault*)
-      (*LED(127)*); REPEAT UNTIL FALSE (*Other faults need debugging*)
+      BSP.led(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
     SYSTEM.PUT(SCB_CFSR, CFSR*UFSR_Mask) (*reset UFSR flags*)
   END Trap;
@@ -459,7 +459,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END AbortHandler;
 
   PROCEDURE Reset;
-    VAR inst, w, base: INTEGER; mod!: Modules.Module;
+    VAR inst, w, base, i: INTEGER; mod!: Modules.Module;
   BEGIN
     IF NOCP IN CFSR THEN (*Trap*)      
       SYSTEM.GET(TrappedAdr, inst);
@@ -473,7 +473,11 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       inst := (inst DIV 100H*80H + inst MOD 80H) MOD 100000H;
       Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
     ELSIF INVSTATE IN CFSR THEN w := 5 (*probably illegal procedure call*)
-    ELSIF STKERR IN CFSR THEN w := 9 (*Bus Fault: stack overflow*)
+    ELSIF STKERR IN CFSR THEN w := 9; (*Bus Fault: stack overflow*)
+      (*trying to find nearest return adress*)
+      SYSTEM.GET(Kernel.VarORG0 + 16, base); i := 10000000H;
+      REPEAT SYSTEM.GET(i, TrappedAdr); INC(i, 4) UNTIL ((TrappedAdr >= base) & (TrappedAdr < Modules.AllocPtr)) OR (i >= 10010000H);
+      IF i >= 10010000H THEN TrappedAdr := 0 END
     ELSIF PRECISERR IN CFSR THEN w := 8 (*Bus Fault: data access precise error*)
     ELSIF ABORTKEY IN CFSR THEN w := 10 (*User pressed the abort key*)
     ELSE w := 11 (*TODO Fault to be characterized*)
