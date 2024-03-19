@@ -4,6 +4,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
 
   CONST replace* = 0; insert* = 1; delete* = 2; unmark* = 3; (*message id*)
     BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX; LEFTARROW = 81X; RIGHTARROW = 8DX;
+    FrameColor = Display.midgrey;
 
   TYPE Line = POINTER TO LineDesc;
     LineDesc = RECORD
@@ -837,7 +838,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   PROCEDURE NewMenu* (name, commands: ARRAY OF CHAR): Frame;
     VAR F!: Frame; T!: Texts.Text;
   BEGIN NEW(F); T := Menu(name, commands);
-    Open(F, Handle, T, 0, Display.white, left DIV 4, 0, 0, 0, lsp); RETURN F
+    Open(F, Handle, T, 0, FrameColor, left DIV 4, 0, 0, 0, lsp); RETURN F
   END NewMenu;
 
   PROCEDURE NewText* (text: Texts.Text; pos: LONGINT): Frame;

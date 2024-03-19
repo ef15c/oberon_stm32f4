@@ -14,6 +14,7 @@ OM4L.Load Modules.bin ~
 OM4Tool.DecBin Modules.bin ~
 
 Commands for generation of outer core
+OM4P.Compile PS2.Mod/s ~
 OM4P.Compile InputM4.Mod/s ~
 OM4P.Compile DisplayM4.Mod/s ~
 OM4P.Compile Viewers.Mod/s ~

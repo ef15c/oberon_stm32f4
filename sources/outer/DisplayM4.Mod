@@ -3,7 +3,8 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   IMPORT SYSTEM;
 
-  CONST black* = 0; white* = 255;  (*black = background*)
+  CONST black* = 0; white* = 255;  (*black = background*) midgrey* = 49H; (*010 010 01*)
+     yellow* = 0FCH;
     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
     Base* = 0D0000000H; Width* = 1366; Height* = 768; NofBPP* = 8;
     NofPixperWord* = 32 DIV NofBPP; Span = (Width*8 DIV NofBPP+63) DIV 64*64;
@@ -37,18 +38,19 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END Dot;
 
   PROCEDURE ReplConst*(col, x, y, w, h, mode: INTEGER);
-    VAR al, ar, a0, a1, i, ppl, ppr: INTEGER; left, right, mid, pix, pixl, pixr: SET;
+    VAR al, ar, a0, a1, i, ppl, ppr: INTEGER; left, right, mid, pix, pixl, pixr, pattern: SET;
   BEGIN al := Base + (Height-1-y)*Span;
     ar := (x+w-1) DIV NofPixperWord*4 + al; al := x DIV NofPixperWord*4 + al;
     ppl := x MOD NofPixperWord*NofBPP; ppr := (x+w-1) MOD NofPixperWord*NofBPP;
+      pattern := SYSTEM.VAL(SET, 0+col + 256*(col + 256*(col + 256*col)));
     IF ar = al THEN
       mid := {ppl .. ppr+NofBPP-1};
       a1 := al;
       FOR i := 1 TO h DO
         SYSTEM.GET(a1, pix);
-        IF mode = invert THEN SYSTEM.PUT(a1, pix / mid)
-        ELSIF (mode = replace) & (col = black) THEN (*erase*) SYSTEM.PUT(a1, pix - mid)
-        ELSE (* (mode = paint) OR (mode = replace) & (col # black) *) SYSTEM.PUT(a1, pix + mid)
+        IF mode = invert THEN SYSTEM.PUT(a1, pix / (mid*pattern))
+        ELSIF mode = replace THEN SYSTEM.PUT(a1, pix - mid + mid*pattern)
+        ELSE (*mode = paint*) SYSTEM.PUT(a1, pix + mid*pattern)
         END;
         DEC(a1, Span)
       END
@@ -58,17 +60,17 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       FOR i := 1 TO h DO
         SYSTEM.GET(a0, pixl); SYSTEM.GET(ar, pixr);
         IF mode = invert THEN
-          SYSTEM.PUT(a0, pixl / left);
-          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.GET(a1, pix); SYSTEM.PUT(a1, -pix) END ;
-          SYSTEM.PUT(ar, pixr / right)
-        ELSIF (mode = replace) & (col = black) THEN (*erase*)
-          SYSTEM.PUT(a0, pixl - left);
-          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, {}) END ;
-          SYSTEM.PUT(ar, pixr - right)
-        ELSE (* (mode = paint) OR (mode = replace) & (col # black) *)
-          SYSTEM.PUT(a0, pixl + left);
-          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, {0 .. 31}) END ;
-          SYSTEM.PUT(ar, pixr + right)
+          SYSTEM.PUT(a0, pixl / (left*pattern));
+          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.GET(a1, pix); SYSTEM.PUT(a1, pix / pattern) END ;
+          SYSTEM.PUT(ar, pixr / (right*pattern))
+        ELSIF mode = replace THEN
+          SYSTEM.PUT(a0, pixl - left + left*pattern);
+          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, pattern) END ;
+          SYSTEM.PUT(ar, pixr - right + right*pattern)
+        ELSE (*mode = paint *)
+          SYSTEM.PUT(a0, pixl + left*pattern);
+          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.GET(a1, pix); SYSTEM.PUT(a1, pix + pattern) END ;
+          SYSTEM.PUT(ar, pixr + right*pattern)
         END ;
         DEC(ar, Span); DEC(a0, Span)
       END

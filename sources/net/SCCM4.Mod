@@ -1,6 +1,6 @@
 MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.12.13
   CS 21/01/2024*)
-  IMPORT SYSTEM, Kernel, Texts, TextsEx;
+  IMPORT SYSTEM, BSP, Kernel, Texts, TextsEx;
 
   CONST
     (*STM32F429*)
@@ -25,11 +25,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     (*CRC*)
     CRCBase = 40023000H; CRCDR = 0; CR = 8;
     CRCReset = PeriphBBAlias + (CRCBase + CR - PeriphBase)*32;
-
-    (*DWT*)
-    DWTBase = 0E0001000H;  CYCCNT = 4;
-    HCLCFREQ = 168;
-    
+  
     HdrSize = 8; MaxPayload = 512; SubPacket = 32; Wait = 50; SendTries = 50;
     MaxPacket = (HdrSize + MaxPayload + SubPacket-1) DIV SubPacket * SubPacket;
 
@@ -57,12 +53,6 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     REPEAT UNTIL Kernel.Time() - beg > d
   END Delayms;
   
-  PROCEDURE Delayus(d: INTEGER);
-    VAR beg, now: INTEGER;
-  BEGIN SYSTEM.GET(DWTBase + CYCCNT, beg);
-    REPEAT SYSTEM.GET(DWTBase + CYCCNT, now) UNTIL now - beg >= HCLCFREQ*d
-  END  Delayus;
-
   PROCEDURE SPIn(src, dst, n: INTEGER);
     VAR sc, rc: INTEGER; data: BYTE;
   BEGIN (*send/rcv n bytes to/from SPI*) ASSERT(n>0);
@@ -164,7 +154,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   
   PROCEDURE xmitPayload(VAR timeout: BOOLEAN; flush: BOOLEAN);
     VAR res: INTEGER; status: BYTE;
-  BEGIN SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); Delayus(12); SYSTEM.PUT(netEnableOut, 0);
+  BEGIN SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); BSP.Delayus(12); SYSTEM.PUT(netEnableOut, 0);
     REPEAT Delayms(1); SYSTEM.PUT(netSelectOut, 0); SPIr(status); (*NOP*); SYSTEM.PUT(netSelectOut, 1);
       res := status DIV 10H MOD 4
     UNTIL res # 0;

@@ -9,6 +9,10 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SCB_UFSR_Mask* = {16..31}; SCB_BFSR_Mask* = {8..15};
     SCB_UFSR_NOCP* = 19; SCB_UFSR_INVSTATE* = 17; SCB_BFSR_PRECISERR* = 9; SCB_BFSR_STKERR* = 12;
 
+    (*DWT*)
+    DWTBase = 0E0001000H;  CYCCNT = 4;
+    HCLCFREQ = 168;
+
     (*Memory*)
     SRAMBase* = 20000000H; VecTabBase* = SRAMBase;
 
@@ -17,7 +21,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*RTC*)
     RTC_BASE* =  40002800H; 
-	RTC_TR* = 0; RTC_DR* = 4; RTC_SSR* = 28H; RTC_WPR* = 24H; RTC_ISR* = 0CH; (*registers*)
+    RTC_TR* = 0; RTC_DR* = 4; RTC_SSR* = 28H; RTC_WPR* = 24H; RTC_ISR* = 0CH; (*registers*)
     RTC_ISR_INIT* = 7; RTC_ISR_INITF* = 6; RTC_ISR_RSF* = 5;(*flags*)
     rtcInit* = PeriphBBAlias + (RTC_BASE + RTC_ISR - PeriphBase + RTC_ISR_INIT DIV 8)*32 + RTC_ISR_INIT MOD 8*4;
 
@@ -39,7 +43,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     GPIOA* = 40020000H; GPIOB* = 40020400H; GPIOC* = 40020800H; GPIOD* = 40020C00H; 
     GPIOE* = 40021000H; GPIOF* = 40021400H; GPIOG* = 40021800H; GPIOH* = 40021C00H;
     GPIOI* = 40022000H; GPIOJ* = 40022400H; GPIOK* = 40022800H;
-    IDR = 10H; ODR = 14H; BSRR = 18H;
+    IDR* = 10H; ODR* = 14H; BSRR* = 18H;
 
     PB1Pin* = 14; PB1Port* = GPIOC; PB1ExtiIrqNum* = EXTI15_10_IRQNum;
     PB1In* = PeriphBBAlias + (PB1Port + IDR - PeriphBase + PB1Pin DIV 8)*32 + PB1Pin MOD 8*4;
@@ -109,6 +113,12 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   BEGIN
     FOR i := 0 TO 6 DO SYSTEM.PUT(Leds[i], ODD(n)); n := n DIV 2 END
   END led;
+
+  PROCEDURE Delayus*(d: INTEGER);
+    VAR beg, now: INTEGER;
+  BEGIN SYSTEM.GET(DWTBase + CYCCNT, beg);
+    REPEAT SYSTEM.GET(DWTBase + CYCCNT, now) UNTIL now - beg >= HCLCFREQ*d
+  END  Delayus;
 
   PROCEDURE Init*;
   BEGIN Leds[0] := LED1Out; Leds[1] := LED2Out; Leds[2] := LED3Out; Leds[3] := LED4Out; 

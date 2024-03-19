@@ -188,7 +188,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.r > 0 THEN OM4S.Mark("not allowed")
           ELSIF x.r = 0 THEN 
             (*optimisation possible : si align(PC+4, 4) - x.a < 4096 on peut 
-              utiliser l'équivalent de l'assembleur ADR RH, <label>*)
+              utiliser l'equivalent de l'assembleur ADR RH, <label>*)
             OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); (*Put address+1 of next statement in LR*)
             OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a)
           ELSE GetStaticVarAddress(x, RH) 
@@ -1150,11 +1150,18 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END MBI;
 
   PROCEDURE Bit*(VAR x, y: Item);
-  BEGIN load(x); OM4A.encMemImm32(mcode, OM4A.LDR, x.r, x.r, RH, 0);
-    IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROr, x.r, x.r, y.a+1); DEC(RH)
-    ELSE load(y); OM4A.encDPImm32(mcode, OM4A.ADD, y.r, y.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROr, x.r, x.r, y.r); DEC(RH, 2)
-    END ;
-    SetCC(x, OM4A.MI)
+  BEGIN IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) &
+    ((x.a >= 20000000H) & (x.a < 20100000H) OR (x.a >= 40000000H) & (x.a < 40100000H)) THEN
+      (*Use bit banding*)
+      x.a := x.a DIV OM4A.C28*OM4A.C28 + 2000000H + (x.a MOD OM4A.C28 + y.a DIV 8)*32 + y.a MOD 8*4; load(x);
+      OM4A.encMemImm32(mcode, OM4A.LDR, x.r, x.r, RH, 0); x.type := OM4B.boolType
+    ELSE load(x);
+      OM4A.encMemImm32(mcode, OM4A.LDR, x.r, x.r, RH, 0);
+      IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROr, x.r, x.r, y.a+1); DEC(RH)
+      ELSE load(y); OM4A.encDPImm32(mcode, OM4A.ADD, y.r, y.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROr, x.r, x.r, y.r); DEC(RH, 2)
+      END ;
+      SetCC(x, OM4A.MI)
+    END
   END Bit;
 
   PROCEDURE Register*(VAR x: Item);
