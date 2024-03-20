@@ -3,11 +3,7 @@ OM4P.Compile BootLoadM4.Mod ~
 OM4X.WriteASM BootLoadM4.m4c BootLoadM4.s ~
 
 Commands for generation of the boot file (inner core)
-OM4P.Compile BSP.Mod/s ~
-OM4P.Compile KernelM4.Mod/s ~ 
-OM4P.Compile FileDir.Mod/s ~
-OM4P.Compile Files.Mod/s ~
-OM4P.Compile ModulesM4.Mod/s ~ 
+OM4P.Compile BSP.Mod/s KernelM4.Mod/s FileDir.Mod/s Files.Mod/s ModulesM4.Mod/s ~ 
 OM4L.Link Modules ~
 OM4L.Load Modules.bin ~
 
@@ -54,5 +50,10 @@ Commands for generation of net
 OM4P.Compile SCCM4.Mod/s ~
 OM4P.Compile NetM4.Mod/s ~
 
+Command for generating programs
+OM4P.Compile Hilbert.Mod/s ~
+OM4P.Compile Sierpinski.Mod/s ~
+OM4P.Compile Blink.Mod/s ~
+OM4P.Compile Stars.Mod/s ~
 
 System.Directory *.m4c ~ System.Directory *.sm4 ~

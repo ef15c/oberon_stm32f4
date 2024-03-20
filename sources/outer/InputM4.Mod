@@ -16,15 +16,13 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   VAR kbdCode: BYTE; (*last keyboard code read*)
     Recd, Up, Shift, Ctrl, Ext, AltGr, CapsLock, Extended: BOOLEAN;
     KTabAdr, KTabAdrAlt, KTabAdrExt: INTEGER;  (*keyboard code translation tables*)
-    MKBAdr: INTEGER; (*mouse and keyboard data block*)
+    mkb: MKB; (*mouse and keyboard data block*)
 
 (*FIFO implemented in firmware, because every read must be handled,
   including tracking the state of the Shift and Ctrl keys*)
 
   PROCEDURE Peek();
-    VAR mkb!: MKB;
   BEGIN
-    mkb := SYSTEM.VAL(MKB, MKBAdr);
     IF mkb.tail # mkb.head THEN
       kbdCode := mkb.kdbBuf[mkb.tail]; mkb.tail := (mkb.tail + 1) MOD BUFFERSIZE;
       IF kbdCode = 0F0H THEN Up := TRUE
@@ -68,22 +66,18 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   END Read;
 
   PROCEDURE Mouse*(VAR keys: SET; VAR x, y: INTEGER);
-    VAR mkb!: MKB;
-  BEGIN mkb := SYSTEM.VAL(MKB, MKBAdr);
-    keys := SYSTEM.VAL(SET, mkb.MD DIV 1000000H MOD 8);
+  BEGIN keys := SYSTEM.VAL(SET, mkb.MD DIV 1000000H MOD 8);
     x := mkb.MD MOD 1000H; y := (mkb.MD DIV 1000H) MOD 1000H;
   END Mouse;
 
   PROCEDURE SetMouseLimits*(w, h: INTEGER);
-    VAR mkb!: MKB;
-  BEGIN mkb := SYSTEM.VAL(MKB, MKBAdr);
-    mkb.MW := w; mkb.MH := h
+  BEGIN mkb.MW := w; mkb.MH := h
   END SetMouseLimits;
 
   PROCEDURE Init*;
   BEGIN Up := FALSE; Shift := FALSE; Ctrl := FALSE; Recd := FALSE;
     AltGr := FALSE; CapsLock := FALSE;
-    MKBAdr := SYSTEM.SVC(5);
+    mkb := SYSTEM.VAL(MKB, SYSTEM.SVC(5));
     KTabAdr := SYSTEM.ADR(
     (* US key map $
       00 00 00 00 00 1A 00 00  00 00 00 00 00 09 60 00

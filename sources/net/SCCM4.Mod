@@ -154,7 +154,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   
   PROCEDURE xmitPayload(VAR timeout: BOOLEAN; flush: BOOLEAN);
     VAR res: INTEGER; status: BYTE;
-  BEGIN SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); BSP.Delayus(12); SYSTEM.PUT(netEnableOut, 0);
+  BEGIN SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); Kernel.Delayus(12); SYSTEM.PUT(netEnableOut, 0);
     REPEAT Delayms(1); SYSTEM.PUT(netSelectOut, 0); SPIr(status); (*NOP*); SYSTEM.PUT(netSelectOut, 1);
       res := status DIV 10H MOD 4
     UNTIL res # 0;

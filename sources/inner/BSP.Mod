@@ -10,8 +10,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SCB_UFSR_NOCP* = 19; SCB_UFSR_INVSTATE* = 17; SCB_BFSR_PRECISERR* = 9; SCB_BFSR_STKERR* = 12;
 
     (*DWT*)
-    DWTBase = 0E0001000H;  CYCCNT = 4;
-    HCLCFREQ = 168;
+    DWTBase* = 0E0001000H;  CYCCNT* = 4;
+    HCLCFREQ* = 168;
 
     (*Memory*)
     SRAMBase* = 20000000H; VecTabBase* = SRAMBase;
@@ -37,7 +37,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SysTickExcNum* = 15;
 
     (*STM32F429*)
-    EXTI15_10_IRQNum* = 16+40;
+    EXTI0_IRQNum* = 16+6; EXTI1_IRQNum* = 16+7; EXTI2_IRQNum* = 16+8; EXTI3_IRQNum* = 16+9; EXTI4_IRQNum* = 16+10;
+    EXTI9_5_IRQNum* = 16+23; EXTI15_10_IRQNum* = 16+40;
 
     (*GPIOs*)    
     GPIOA* = 40020000H; GPIOB* = 40020400H; GPIOC* = 40020800H; GPIOD* = 40020C00H; 
@@ -77,17 +78,27 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     LED7Pin* = 3; LED7Port* = GPIOG;
     LED7Out* = PeriphBBAlias + (LED7Port + ODR - PeriphBase + LED7Pin DIV 8)*32 + LED7Pin MOD 8*4;
 
+    LD3Pin* = 13; LD3Port* = GPIOG;
+    LD3Out* = PeriphBBAlias + (LD3Port + ODR - PeriphBase + LD3Pin DIV 8)*32 + LD3Pin MOD 8*4;
+    LD4Pin* = 14; LD4Port* = GPIOG;
+    LD4Out* = PeriphBBAlias + (LD4Port + ODR - PeriphBase + LD4Pin DIV 8)*32 + LD4Pin MOD 8*4;
+
+    PS2CLOCK1Pin* = 2; PS2CLOCK1Port* = GPIOE; PS2CLOCK1ExtiIrqNum* =  EXTI2_IRQNum;
+    PS2CLOCK1Out* = PeriphBBAlias + (PS2CLOCK1Port + ODR - PeriphBase + PS2CLOCK1Pin DIV 8)*32 + PS2CLOCK1Pin MOD 8*4;
+    PS2DATA1Pin* = 3; PS2DATA1Port* =  GPIOE;
+    PS2DATA1Out* = PeriphBBAlias + (PS2DATA1Port + ODR - PeriphBase + PS2DATA1Pin DIV 8)*32 + PS2DATA1Pin MOD 8*4;
+    PS2CLOCK2Pin* = 4; PS2CLOCK2Port* = GPIOE; PS2CLOCK2ExtiIrqNum* =  EXTI4_IRQNum;
+    PS2CLOCK2Out* = PeriphBBAlias + (PS2CLOCK2Port + ODR - PeriphBase + PS2CLOCK2Pin DIV 8)*32 + PS2CLOCK2Pin MOD 8*4;
+    PS2DATA2Pin* = 5; PS2DATA2Port* =  GPIOE;
+    PS2DATA2Out* = PeriphBBAlias + (PS2DATA2Port + ODR - PeriphBase + PS2DATA2Pin DIV 8)*32 + PS2DATA2Pin MOD 8*4;
+
 (*
-#define PS2_CLOCK_1_Pin GPIO_PIN_2
-#define PS2_CLOCK_1_GPIO_Port GPIOE
-#define PS2_CLOCK_1_EXTI_IRQn EXTI2_IRQn
-#define PS2_DATA_1_Pin GPIO_PIN_3
-#define PS2_DATA_1_GPIO_Port GPIOE
-#define PS2_CLOCK_2_Pin GPIO_PIN_4
-#define PS2_CLOCK_2_GPIO_Port GPIOE
-#define PS2_CLOCK_2_EXTI_IRQn EXTI4_IRQn
-#define PS2_DATA_2_Pin GPIO_PIN_5
-#define PS2_DATA_2_GPIO_Port GPIOE
+
+#define LD3_Pin GPIO_PIN_13
+#define LD3_GPIO_Port GPIOG
+#define LD4_Pin GPIO_PIN_14
+#define LD4_GPIO_Port GPIOG
+
 #define WRITE_PROTECT_Pin GPIO_PIN_4
 #define WRITE_PROTECT_GPIO_Port GPIOD
 #define CARD_DETECT_Pin GPIO_PIN_5
@@ -113,12 +124,6 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   BEGIN
     FOR i := 0 TO 6 DO SYSTEM.PUT(Leds[i], ODD(n)); n := n DIV 2 END
   END led;
-
-  PROCEDURE Delayus*(d: INTEGER);
-    VAR beg, now: INTEGER;
-  BEGIN SYSTEM.GET(DWTBase + CYCCNT, beg);
-    REPEAT SYSTEM.GET(DWTBase + CYCCNT, now) UNTIL now - beg >= HCLCFREQ*d
-  END  Delayus;
 
   PROCEDURE Init*;
   BEGIN Leds[0] := LED1Out; Leds[1] := LED2Out; Leds[2] := LED3Out; Leds[3] := LED4Out; 

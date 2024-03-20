@@ -1,9 +1,9 @@
 MODULE PS2; (*PS/2 Mouse and keyboard driver*)
-  IMPORT SYSTEM, BSP, Kernel;
+  IMPORT SYSTEM, Kernel;
 
   CONST NONE = 0; DEVICE_TO_HOST = 1; HOST_TO_DEVICE = 2; (*direction*)
     SUCCESS = 0; IN_PROGRESS = 1; FRAME_ERROR = 2; PARITY_ERROR = 3; NAK = 4; NO_ANSWER = 5; (*status*)
-    NO_DEVICE = 0; KEYBOARD = 1; MOUSE = 2;
+    NO_DEVICE = 0; KEYBOARD* = 1; MOUSE* = 2;
 
     BUFFERSIZE = 16;
 
@@ -15,14 +15,14 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       MW, MH: INTEGER; (*mouse limits*)
     END;
 
-  DeviceDesc = RECORD
-      direction, statusIn, statusOut, connectedDevice: BYTE;
-      clockPin, dataPin: BYTE;
+  DeviceDesc* = RECORD
+      direction, statusIn, statusOut, connectedDevice*: BYTE;
+      clockPin*, dataPin*: BYTE;
       nofBitsToBeRead, parity: BYTE;
       parityEnabled: BOOLEAN;
-      clockIdr, dataIdr, clockPinOut, dataPinOut, ActivityLedOut: LONGINT;
+      clockIdr*, dataIdr*, clockPinOut*, dataPinOut*, ActivityLedOut*: LONGINT;
       dataIn, dataOut: INTEGER;
-      answerBlock: MKDataBlock;
+      answerBlock: MKB;
       tickLastReport, mouseIndex, mouseReportSize: INTEGER;
       mouseBuffer: ARRAY 4 OF BYTE;
     END;
@@ -31,7 +31,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     VAR bk!: MKB;
       curTick, x, y, dx, dy: INTEGER;
       next: INTEGER;
-  BEGIN SYSTEM.PUT(SYSTEM.ADR(bk), SYSTEM.ADR(dev.answerBlock));
+  BEGIN bk := dev.answerBlock;
     IF dev.connectedDevice = MOUSE THEN
       curTick := Kernel.Time();
       IF curTick - dev.tickLastReport > 5 THEN (*The mouse didn't send report for a while. Start to begin of frame*)
@@ -61,7 +61,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   PROCEDURE requestToSend(VAR dev: DeviceDesc);
   BEGIN
     IF dev.ActivityLedOut # 0 THEN SYSTEM.PUT(dev.ActivityLedOut, TRUE) (*Turn activity LED on*) END;
-    SYSTEM.PUT(dev.clockPinOut, 0); BSP.Delayus(150); (*wait for at least 100 microseconds*)
+    SYSTEM.PUT(dev.clockPinOut, 0); Kernel.Delayus(150); (*wait for at least 100 microseconds*)
     SYSTEM.PUT(dev.dataPinOut, 0); SYSTEM.PUT(dev.clockPinOut, 1)
     (*now, wait for device to generate clock pulses*)
   END requestToSend;
@@ -79,11 +79,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   PROCEDURE ProcessData(VAR dev: DeviceDesc); (*Process a data bit from/to a PS/2 port.*)
   (* Warning : this function is call via a GPIO interrupt : keep it as fast as possible *)
     VAR dataBit: BOOLEAN;
-  BEGIN IF dev.direction = NONE THEN
-      IF SYSTEM.BIT(dev.clockIdr, dev.clockPin) THEN dev.direction := DEVICE_TO_HOST;
-        IF dev.ActivityLedOut # 0 THEN SYSTEM.PUT(dev.ActivityLedOut, FALSE) (*Turn activity LED off*) END
-      END
-      ELSIF dev.direction = DEVICE_TO_HOST THEN
+  BEGIN IF dev.direction = DEVICE_TO_HOST THEN
         IF ~SYSTEM.BIT(dev.clockIdr, dev.clockPin) THEN (* Falling edge of clock *)
           dataBit := SYSTEM.BIT(dev.dataIdr, dev.dataPin);
           IF dev.nofBitsToBeRead = 11 THEN 
@@ -101,7 +97,10 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
             DEC(dev.nofBitsToBeRead);
             IF dev.nofBitsToBeRead = 0 THEN
               dev.nofBitsToBeRead := 11;
-              IF (dev.statusIn = SUCCESS) OR ~dev.parityEnabled THEN PutByteInFIFOBuffer(dev) ELSE SendByteAsync(dev, 0FEH) END;
+              IF (dev.statusIn = SUCCESS) OR ~dev.parityEnabled THEN 
+                SYSTEM.PUT(dev.clockPinOut, 0); (*Keep clock low while processing byte*); PutByteInFIFOBuffer(dev);
+                SYSTEM.PUT(dev.clockPinOut, 1); (*Release clock*)
+              ELSE SendByteAsync(dev, 0FEH) END;
               IF dev.ActivityLedOut # 0 THEN SYSTEM.PUT(dev.ActivityLedOut, FALSE) (*Turn activity LED off*) END
             END
           END
@@ -110,10 +109,20 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
         IF ~SYSTEM.BIT(dev.clockIdr, dev.clockPin) THEN (*falling edge*)
           IF dev.dataOut # 0 THEN (*Send data to device*) SYSTEM.PUT(dev.dataPinOut, ODD(dev.dataOut)); dev.dataOut := LSR(dev.dataOut, 1)
           ELSE (*Check ACK from device*) IF SYSTEM.BIT(dev.dataIdr, dev.dataPin) THEN dev.statusOut := NAK ELSE dev.statusOut := SUCCESS END;
-            dev.direction := NONE; dev.nofBitsToBeRead := 11
+            dev.direction := DEVICE_TO_HOST; dev.nofBitsToBeRead := 11
         END
       END
     END
   END ProcessData;
+
+  PROCEDURE resetForTest*(VAR dev: DeviceDesc);
+  BEGIN
+      dev.direction := DEVICE_TO_HOST; dev.statusIn := SUCCESS; dev.statusOut := SUCCESS;
+      dev.nofBitsToBeRead := 11; dev.parity := 0;
+      dev.parityEnabled := TRUE;
+      dev.dataIn := 0; dev.dataOut := 0;
+      dev.answerBlock := SYSTEM.VAL(MKB, SYSTEM.SVC(5));
+      dev.tickLastReport := 0; dev.mouseIndex := 0; dev.mouseReportSize := 4;
+  END resetForTest;
 
 END PS2.
