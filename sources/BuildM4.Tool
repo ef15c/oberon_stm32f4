@@ -47,8 +47,7 @@ OM4P.Compile OM4Tool.Mod/s ~
 OM4P.Compile Tools.Mod/s ~
 
 Commands for generation of net
-OM4P.Compile SCCM4.Mod/s ~
-OM4P.Compile NetM4.Mod/s ~
+OM4P.Compile SCCM4.Mod/s NetM4.Mod/s ~
 
 Command for generating programs
 OM4P.Compile Hilbert.Mod/s ~

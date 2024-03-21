@@ -1,7 +1,8 @@
 MODULE PS2; (*PS/2 Mouse and keyboard driver*)
-  IMPORT SYSTEM, Kernel;
+  IMPORT SYSTEM, BSP, Kernel;
 
-  CONST NONE = 0; DEVICE_TO_HOST = 1; HOST_TO_DEVICE = 2; (*direction*)
+  CONST ON = 1; OFF = 0; HIGH = 1; LOW = 0;
+    NONE = 0; DEVICE_TO_HOST = 1; HOST_TO_DEVICE = 2; (*direction*)
     SUCCESS = 0; IN_PROGRESS = 1; FRAME_ERROR = 2; PARITY_ERROR = 3; NAK = 4; NO_ANSWER = 5; (*status*)
     NO_DEVICE = 0; KEYBOARD* = 1; MOUSE* = 2;
 
@@ -9,22 +10,22 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   TYPE MKB = POINTER TO MKDataBlock;
     MKDataBlock = RECORD
-      head, tail: INTEGER; (*Indexes of head and tail of the circular keyboard buffer*)
+      head*, tail*: INTEGER; (*Indexes of head and tail of the circular keyboard buffer*)
       kdbBuf: ARRAY BUFFERSIZE OF BYTE;
       MD: INTEGER; (*mouse data*)
-      MW, MH: INTEGER; (*mouse limits*)
+      MW*, MH: INTEGER; (*mouse limits*)
     END;
 
-  DeviceDesc* = RECORD
-      direction, statusIn, statusOut, connectedDevice*: BYTE;
+  DeviceDesc* = RECORD (*0*)
+      direction, statusIn*, statusOut, connectedDevice*: BYTE; (*4*)
       clockPin*, dataPin*: BYTE;
-      nofBitsToBeRead, parity: BYTE;
-      parityEnabled: BOOLEAN;
-      clockIdr*, dataIdr*, clockPinOut*, dataPinOut*, ActivityLedOut*: LONGINT;
+      nofBitsToBeRead*, parity: BYTE; (*8*)
+      parityEnabled: BOOLEAN; (*12*)
+      clockIdr*, dataIdr*, clockPinOut*, dataPinOut*, activityLED, mouseLED*, keyboardLED*: LONGINT;
       dataIn, dataOut: INTEGER;
-      answerBlock: MKB;
+      answerBlock*: MKB;
       tickLastReport, mouseIndex, mouseReportSize: INTEGER;
-      mouseBuffer: ARRAY 4 OF BYTE;
+      mouseBuffer: ARRAY 4 OF BYTE
     END;
 
   PROCEDURE PutByteInFIFOBuffer(VAR dev: DeviceDesc);
@@ -60,9 +61,9 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   PROCEDURE requestToSend(VAR dev: DeviceDesc);
   BEGIN
-    IF dev.ActivityLedOut # 0 THEN SYSTEM.PUT(dev.ActivityLedOut, TRUE) (*Turn activity LED on*) END;
-    SYSTEM.PUT(dev.clockPinOut, 0); Kernel.Delayus(150); (*wait for at least 100 microseconds*)
-    SYSTEM.PUT(dev.dataPinOut, 0); SYSTEM.PUT(dev.clockPinOut, 1)
+    IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, ON) END;
+    SYSTEM.PUT(dev.clockPinOut, LOW); Kernel.Delayus(150); (*wait for at least 100 microseconds*)
+    SYSTEM.PUT(dev.dataPinOut, LOW); SYSTEM.PUT(dev.clockPinOut, HIGH)
     (*now, wait for device to generate clock pulses*)
   END requestToSend;
 
@@ -76,53 +77,57 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     requestToSend(dev)
   END SendByteAsync;
 
-  PROCEDURE ProcessData(VAR dev: DeviceDesc); (*Process a data bit from/to a PS/2 port.*)
+  PROCEDURE ProcessData*(VAR dev: DeviceDesc); (*Process a data bit from/to a PS/2 port.*)
   (* Warning : this function is call via a GPIO interrupt : keep it as fast as possible *)
     VAR dataBit: BOOLEAN;
-  BEGIN IF dev.direction = DEVICE_TO_HOST THEN
-        IF ~SYSTEM.BIT(dev.clockIdr, dev.clockPin) THEN (* Falling edge of clock *)
-          dataBit := SYSTEM.BIT(dev.dataIdr, dev.dataPin);
-          IF dev.nofBitsToBeRead = 11 THEN 
-            IF dev.ActivityLedOut # 0 THEN SYSTEM.PUT(dev.ActivityLedOut, TRUE) (*Turn activity LED on*) END;
-            IF dataBit THEN dev.statusIn := FRAME_ERROR ELSE dev.statusIn := IN_PROGRESS END;
-            dev.dataIn := 0; dev.parity := 1
-          ELSIF dev.statusIn = IN_PROGRESS THEN
-            IF dev.nofBitsToBeRead > 2 THEN dev.dataIn := LSR(dev.dataIn, 1); INC(dev.dataIn, LSL(ORD(dataBit), 7));
-              INC(dev.parity, ORD(dataBit))
-            ELSIF (dev.nofBitsToBeRead = 2) & dev.parityEnabled THEN
-              IF ODD(dev.parity + ORD(dataBit)) THEN dev.statusIn := PARITY_ERROR; SendByteAsync(dev, 0FEH)
-              ELSE dev.statusIn := IN_PROGRESS END
-            ELSE IF dataBit THEN dev.statusIn := SUCCESS ELSE dev.statusIn := FRAME_ERROR END
-            END;
-            DEC(dev.nofBitsToBeRead);
-            IF dev.nofBitsToBeRead = 0 THEN
-              dev.nofBitsToBeRead := 11;
-              IF (dev.statusIn = SUCCESS) OR ~dev.parityEnabled THEN 
-                SYSTEM.PUT(dev.clockPinOut, 0); (*Keep clock low while processing byte*); PutByteInFIFOBuffer(dev);
-                SYSTEM.PUT(dev.clockPinOut, 1); (*Release clock*)
-              ELSE SendByteAsync(dev, 0FEH) END;
-              IF dev.ActivityLedOut # 0 THEN SYSTEM.PUT(dev.ActivityLedOut, FALSE) (*Turn activity LED off*) END
-            END
+  BEGIN
+    IF dev.direction = DEVICE_TO_HOST THEN
+      IF ~SYSTEM.BIT(dev.clockIdr, dev.clockPin) THEN (* Falling edge of clock *)
+        dataBit := SYSTEM.BIT(dev.dataIdr, dev.dataPin);
+        IF dev.nofBitsToBeRead = 11 THEN 
+          IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, ON) END;
+          IF dataBit THEN dev.statusIn := FRAME_ERROR 
+          ELSE dev.statusIn := IN_PROGRESS END;
+          dev.dataIn := 0; dev.parity := 1
+        ELSIF dev.statusIn = IN_PROGRESS THEN
+          IF dev.nofBitsToBeRead > 2 THEN dev.dataIn := LSR(dev.dataIn, 1); INC(dev.dataIn, LSL(ORD(dataBit), 7));
+            INC(dev.parity, ORD(dataBit))
+          ELSIF (dev.nofBitsToBeRead = 2) & dev.parityEnabled THEN
+            IF ODD(dev.parity + ORD(dataBit)) THEN dev.statusIn := PARITY_ERROR; SendByteAsync(dev, 0FEH)
+            ELSE dev.statusIn := IN_PROGRESS END
+          ELSE IF dataBit THEN dev.statusIn := SUCCESS ELSE dev.statusIn := FRAME_ERROR END
           END
-        END
-      ELSIF dev.direction = HOST_TO_DEVICE THEN
-        IF ~SYSTEM.BIT(dev.clockIdr, dev.clockPin) THEN (*falling edge*)
-          IF dev.dataOut # 0 THEN (*Send data to device*) SYSTEM.PUT(dev.dataPinOut, ODD(dev.dataOut)); dev.dataOut := LSR(dev.dataOut, 1)
-          ELSE (*Check ACK from device*) IF SYSTEM.BIT(dev.dataIdr, dev.dataPin) THEN dev.statusOut := NAK ELSE dev.statusOut := SUCCESS END;
-            dev.direction := DEVICE_TO_HOST; dev.nofBitsToBeRead := 11
+        END;
+        DEC(dev.nofBitsToBeRead);
+        IF dev.nofBitsToBeRead = 0 THEN
+          dev.nofBitsToBeRead := 11;
+          IF (dev.statusIn = SUCCESS) OR ~dev.parityEnabled THEN 
+            SYSTEM.PUT(dev.clockPinOut, LOW); (*Keep clock low while processing byte*); PutByteInFIFOBuffer(dev);
+            SYSTEM.PUT(dev.clockPinOut, HIGH); (*Release clock*)
+          ELSE SendByteAsync(dev, 0FEH) END;
+          IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, OFF) END
         END
       END
-    END
+    ELSIF dev.direction = HOST_TO_DEVICE THEN
+      IF ~SYSTEM.BIT(dev.clockIdr, dev.clockPin) THEN (*falling edge*)
+        IF dev.dataOut # 0 THEN (*Send data to device*) SYSTEM.PUT(dev.dataPinOut, ODD(dev.dataOut)); dev.dataOut := LSR(dev.dataOut, 1)
+        ELSE (*Check ACK from device*) IF SYSTEM.BIT(dev.dataIdr, dev.dataPin) THEN dev.statusOut := NAK ELSE dev.statusOut := SUCCESS END;
+          dev.direction := DEVICE_TO_HOST; dev.nofBitsToBeRead := 11
+        END
+      END
+    END;
   END ProcessData;
 
   PROCEDURE resetForTest*(VAR dev: DeviceDesc);
   BEGIN
-      dev.direction := DEVICE_TO_HOST; dev.statusIn := SUCCESS; dev.statusOut := SUCCESS;
-      dev.nofBitsToBeRead := 11; dev.parity := 0;
-      dev.parityEnabled := TRUE;
-      dev.dataIn := 0; dev.dataOut := 0;
-      dev.answerBlock := SYSTEM.VAL(MKB, SYSTEM.SVC(5));
-      dev.tickLastReport := 0; dev.mouseIndex := 0; dev.mouseReportSize := 4;
+    dev.direction := DEVICE_TO_HOST; dev.statusIn := SUCCESS; dev.statusOut := SUCCESS;
+    dev.nofBitsToBeRead := 11; dev.parity := 0;
+    dev.parityEnabled := TRUE;
+    dev.dataIn := 0; dev.dataOut := 0;
+    dev.answerBlock := SYSTEM.VAL(MKB, SYSTEM.SVC(5));
+    dev.tickLastReport := 0; dev.mouseIndex := 0; dev.mouseReportSize := 4;
+      
+    IF dev.connectedDevice = KEYBOARD THEN dev.activityLED := dev.keyboardLED ELSE dev.activityLED := dev.mouseLED END
   END resetForTest;
 
 END PS2.

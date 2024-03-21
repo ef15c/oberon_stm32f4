@@ -212,7 +212,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN dst := dst29 DIV 29; ASSERT(dst29 = dst*29);
     dst := dst * (SectorLength DIV SDBlockSize) + FSoffset;
     WriteSD(dst, SYSTEM.ADR(src), SectorLength DIV SDBlockSize);
-    WriteSD(dst+(mapsize*(SectorLength DIV SDBlockSize)), SYSTEM.ADR(src), SectorLength DIV SDBlockSize) (*backup*)
+(*    WriteSD(dst+(mapsize*(SectorLength DIV SDBlockSize)), SYSTEM.ADR(src), SectorLength DIV SDBlockSize) (*backup*)*)
   END PutSector;
 
 (*-------- Miscellaneous procedures----------*)

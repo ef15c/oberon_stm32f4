@@ -445,10 +445,10 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   (*Handle abort key press*)
   PROCEDURE* AbortHandler(VAR f: Kernel.ExceptionFrameDesc);
     VAR ICSR, pr: SET;
-  BEGIN CFSR := {ABORTKEY}; TrappedAdr := f.returnAddress;
-    (* Clear pending IRQ*)
-    SYSTEM.GET(EXTI_PR, pr); SYSTEM.PUT(EXTI_PR, pr);
+  BEGIN SYSTEM.GET(EXTI_PR, pr);
     IF BSP.PB1Pin IN pr THEN
+      CFSR := {ABORTKEY}; TrappedAdr := f.returnAddress;
+      pr := {BSP.PB1Pin}; SYSTEM.PUT(EXTI_PR, pr); (* Clear pending IRQ*)
       IF Kernel.Time() - DebounceTime < 30 THEN INC(DebounceTime, 30)
       ELSE
         DebounceTime := Kernel.Time();
