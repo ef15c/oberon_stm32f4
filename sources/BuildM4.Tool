@@ -11,40 +11,17 @@ OM4Tool.DecBin Modules.bin ~
 
 Commands for generation of outer core
 OM4P.Compile PS2.Mod/s ~
-OM4P.Compile InputM4.Mod/s ~
-OM4P.Compile DisplayM4.Mod/s ~
-OM4P.Compile Viewers.Mod/s ~
-OM4P.Compile FontsM4.Mod/s ~
-OM4P.Compile Texts.Mod/s ~
-OM4P.Compile OberonM4.Mod/s ~
-OM4P.Compile MenuViewers.Mod/s ~
-OM4P.Compile TextFrames.Mod/s ~
-OM4P.Compile SystemM4.Mod/s ~
-OM4P.Compile Edit.Mod/s ~
+OM4P.Compile InputM4.Mod/s DisplayM4.Mod/s Viewers.Mod/s FontsM4.Mod/s Texts.Mod/s OberonM4.Mod/s MenuViewers.Mod/s
+TextFrames.Mod/s SystemM4.Mod/s Edit.Mod/s ~
 
 Commands for generation of graphic system
-OM4P.Compile Graphics.Mod/s ~
-OM4P.Compile GraphicFramesM4.Mod/s ~
-OM4P.Compile Draw.Mod ~
-OM4P.Compile Rectangles.Mod/s ~
-OM4P.Compile Curves.Mod/s ~
-OM4P.Compile MacroTool.Mod ~
-OM4P.Compile GraphTool.Mod ~
+OM4P.Compile Graphics.Mod/s GraphicFramesM4.Mod/s Draw.Mod Rectangles.Mod/s Curves.Mod/s MacroTool.Mod GraphTool.Mod ~
 
 Commands for generation of the compiler
-OM4P.Compile TextsEx.Mod/s ~
-OM4P.Compile OM4S.Mod/s ~
-OM4P.Compile OM4B.Mod/s ~
-OM4P.Compile OM4A.Mod/s ~
-OM4P.Compile OM4G.Mod/s ~
-OM4P.Compile OM4P.Mod/s ~
-OM4P.Compile OM4X.Mod/s ~
-OM4P.Compile OM4L.Mod/s ~
-OM4P.Compile OM4D.Mod/s ~
+OM4P.Compile TextsEx.Mod/s OM4S.Mod/s OM4B.Mod/s OM4A.Mod/s OM4G.Mod/s OM4P.Mod/s OM4X.Mod/s OM4L.Mod/s OM4D.Mod/s ~
 
 Command for generation of tools
-OM4P.Compile OM4Tool.Mod/s ~
-OM4P.Compile Tools.Mod/s ~
+OM4P.Compile OM4Tool.Mod/s Tools.Mod/s ~
 
 Commands for generation of net
 OM4P.Compile SCCM4.Mod/s NetM4.Mod/s ~

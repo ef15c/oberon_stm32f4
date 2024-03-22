@@ -1,10 +1,11 @@
 MODULE testPS2;
-  IMPORT SYSTEM, BSP, Kernel, PS2, Texts, Oberon;
+  IMPORT SYSTEM, BSP, Kernel, PS2, Texts, Oberon, TextsEx;
 
   CONST EXTI_PR = BSP.EXTI_BASE + BSP.EXTI_PR;
 
   VAR ps2_1, ps2_2: PS2.DeviceDesc;
     OldPS2_2IrqHandler: PROCEDURE;
+    leds: BYTE;
 
     W: Texts.Writer;
 
@@ -38,9 +39,9 @@ MODULE testPS2;
 *)
     IF OldPS2_2IrqHandler = NIL THEN
       ps2_2.connectedDevice := PS2.KEYBOARD;
-      ps2_2.clockPin := BSP.PS2CLOCK2Pin; ps2_2.dataPin := BSP.PS2DATA2Pin;
-      ps2_2.clockIdr := BSP.PS2CLOCK2Port + BSP.IDR; ps2_2.dataIdr := BSP.PS2DATA2Port + BSP.IDR;
-      ps2_2.clockPinOut := BSP.PS2CLOCK2Out; ps2_2.dataPinOut := BSP.PS2DATA2Out;
+      ps2_2.clockPin := BSP.PS2CLOCK2Pin;
+      ps2_2.clock_In := BSP.PS2CLOCK2In; ps2_2.clock_Out := BSP.PS2CLOCK2Out;
+      ps2_2.data_In := BSP.PS2DATA2In; ps2_2.data_Out := BSP.PS2DATA2Out;
       ps2_2.keyboardLED := BSP.LD3Out; ps2_2.mouseLED := BSP.LD4Out;
       PS2.resetForTest(ps2_2);
 
@@ -57,20 +58,26 @@ MODULE testPS2;
   END restoreKBDriver;
 
   PROCEDURE show*(VAR dev: PS2.DeviceDesc);
-    VAR gpio: LONGINT;
-  BEGIN Texts.WriteString(W, "@dataIdr "); Texts.WriteHex(W, dev.dataIdr);
-    Texts.WriteString(W, ", dataPin "); Texts.WriteInt(W, dev.dataPin,1);
-    SYSTEM.GET(dev.dataIdr, gpio); Texts.WriteString(W, ", dataIdr "); Texts.WriteHex(W, gpio);
+    VAR lb: BYTE;
+      idx: INTEGER;
+  BEGIN
+    Texts.WriteString(W, "Old IRQ Handler "); Texts.WriteHex(W, SYSTEM.VAL(INTEGER, OldPS2_2IrqHandler));
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
     IF dev.answerBlock # NIL THEN
       Texts.WriteString(W, "MW "); Texts.WriteInt(W, dev.answerBlock.MW, 1);
       Texts.WriteString(W, ",head "); Texts.WriteInt(W, dev.answerBlock.head, 1);
       Texts.WriteString(W, ", tail "); Texts.WriteInt(W, dev.answerBlock.tail, 1);
+      idx := dev.answerBlock.head; DEC(idx); IF idx < 0 THEN idx := 15 END;
+      Texts.WriteString(W, ", last byte read "); TextsEx.WriteHexVLen(W, dev.answerBlock.kbdBuf[idx], 1, FALSE);
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
     END;
 
     Texts.WriteString(W, "statusIn "); Texts.WriteInt(W, dev.statusIn,1);
-    Texts.WriteString(W, ", nofBitsToBeRead "); Texts.WriteInt(W, dev.nofBitsToBeRead,1);
+    Texts.WriteString(W, ", bad edges "); Texts.WriteInt(W, dev.badEdge,1);
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+
+    Texts.WriteString(W, "statusOut "); Texts.WriteInt(W, dev.statusOut,1);
+    Texts.WriteString(W, ", leds "); Texts.WriteInt(W, leds,1);
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END show;
 
@@ -78,6 +85,17 @@ MODULE testPS2;
   PROCEDURE showKB*;
   BEGIN show(ps2_2);
   END showKB;
+
+  PROCEDURE nextKBLeds*;
+    VAR rc: BYTE;
+  BEGIN INC(leds); leds := leds MOD 8;
+    PS2.SendByteAsync(ps2_2, 0EDH);
+    rc := PS2.WaitForAnswer(ps2_2, 35);
+    IF rc = 0FAH THEN
+      PS2.SendByteAsync(ps2_2, leds);
+      rc := PS2.WaitForAnswer(ps2_2, 35)
+    END
+  END nextKBLeds;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Test PS/2 driver CS 21.03.24"); Texts.WriteLn(W);
   Texts.Append(Oberon.Log, W.buf)
