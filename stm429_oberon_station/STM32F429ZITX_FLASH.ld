@@ -46,12 +46,9 @@ _Min_Stack_Size = 0x10000; /* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  CCMRAM    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 64K
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 192K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 2048K
-  /* <<<< Modifications C. SCHOFFIT pour test code dans SDRAM */
-  SDRAM    (xrw)    : ORIGIN = 0xD0201000, LENGTH = 4096K
-  /* Modifications C. SCHOFFIT pour test code dans SDRAM >>>>*/
+  CCMRAM    (rw)    : ORIGIN = 0x10000000,   LENGTH = 64K
+  RAM       (rw)    : ORIGIN = 0x20000000,   LENGTH = 192K
+  FLASH     (rx)    : ORIGIN = 0x8000000,    LENGTH = 2048K
 }
 
 /* Sections */
@@ -148,30 +145,11 @@ SECTIONS
     _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
-    *(.RamFunc)        /* .RamFunc sections */
-    *(.RamFunc*)       /* .RamFunc* sections */
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
   } >RAM AT> FLASH
-
-  /* <<<< Modifications C. SCHOFFIT pour test code dans SDRAM */
-  _sitext2 = LOADADDR(.text2);
-
-  /* Initialized data sections into "RAM" Ram type memory */
-  .text2 :
-  {
-    . = ALIGN(4);
-    _stext2 = .;        /* create a global symbol at data start */
-    *(.SDRamFunc)        /* .RamFunc sections */
-    *(.SDRamFunc*)       /* .RamFunc* sections */
-
-    . = ALIGN(4);
-    _etext2 = .;        /* define a global symbol at data end */
-
-  } >SDRAM AT> FLASH
-  /* Modifications C. SCHOFFIT pour test code dans SDRAM >>>>*/
 
   _siccmram = LOADADDR(.ccmram);
 

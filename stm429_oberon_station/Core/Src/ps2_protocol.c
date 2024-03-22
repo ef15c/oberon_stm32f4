@@ -85,16 +85,16 @@ PS2_ResultCodeTypedef PS2_SendByte(PS2_HandleTypeDef *dev, uint8_t byte)
 
 void PS2_initHandle(PS2_HandleTypeDef *dev)
 {
+	/*Inhibit device*/
+    HAL_GPIO_WritePin(dev->clockPort, dev->clockPin, GPIO_PIN_RESET);
+    DWT_Delay_us(150); /* Should wait for at least 100 microseconds */
+
     dev->connectedDevice = PS2_NO_DEVICE;
     dev->direction = PS2_NONE;
     dev->answerBlock->head = 0;
     dev->answerBlock->tail = 0;
 
     dev->ActivityLedPort = 0;
-    /* Synchronize clock */
-    HAL_GPIO_WritePin(dev->clockPort, dev->clockPin, GPIO_PIN_RESET);
-    DWT_Delay_us(120); /* Should wait for 100 microseconds */
-    HAL_GPIO_WritePin(dev->clockPort, dev->clockPin, GPIO_PIN_SET);
 
     dev->numberOfBitsRemainingToBeRead = 11;
     dev->statusIn = PS2_NO_ANSWER;
@@ -116,13 +116,7 @@ void PS2_ProcessData(PS2_HandleTypeDef *dev)
 
     switch (dev->direction) {
     case PS2_NONE:
-        if (HAL_GPIO_ReadPin(dev->clockPort, dev->clockPin) == GPIO_PIN_SET) {
-            dev->direction = PS2_DEVICE_TO_HOST;
-            if (dev->ActivityLedPort) {
-                /* Turn activity LED off */
-                HAL_GPIO_WritePin(dev->ActivityLedPort, dev->ActivityLedPin, GPIO_PIN_RESET);
-            }
-        }
+        /*device inhibited*/
         break;
     case PS2_DEVICE_TO_HOST:
         if (HAL_GPIO_ReadPin(dev->clockPort, dev->clockPin) == GPIO_PIN_RESET) {
@@ -162,7 +156,9 @@ void PS2_ProcessData(PS2_HandleTypeDef *dev)
             if (dev->numberOfBitsRemainingToBeRead == 0) {
                 dev->numberOfBitsRemainingToBeRead = 11;
                 if (dev->statusIn == PS2_SUCCESS || !dev->parityEnabled) {
+                    HAL_GPIO_WritePin(dev->clockPort, dev->clockPin, GPIO_PIN_RESET); /*Keep clock low until byte is processed*/
                     PS2_PutByteInFIFOBuffer(dev, dev->dataIn);
+                    HAL_GPIO_WritePin(dev->clockPort, dev->clockPin, GPIO_PIN_SET); /*Release clock*/
                 } else { /* In case of error, ask device to resend information */
                     PS2_SendByteAsync(dev, 0xFE);
                 }
@@ -183,7 +179,7 @@ void PS2_ProcessData(PS2_HandleTypeDef *dev)
                 } else {
                     /* Check ACK from device */
                         dev->statusOut = (HAL_GPIO_ReadPin(dev->dataPort, dev->dataPin) == GPIO_PIN_RESET)?PS2_SUCCESS:PS2_NAK;
-                        dev->direction = PS2_NONE;
+                        dev->direction = PS2_DEVICE_TO_HOST;
                         dev->numberOfBitsRemainingToBeRead = 11;
                 }
             }
@@ -207,6 +203,11 @@ void PS2_PutByteInFIFOBuffer(PS2_HandleTypeDef *dev, uint8_t byte)
             dev->tickLastReport = curTick;
         }
         dev->mouseBuffer[dev->mouseIndex++] = byte;
+        if (!(dev->mouseBuffer[0] & 8)) {
+        	/* Invalid value */
+        	dev->mouseIndex = 0;
+        	return;
+        }
         if (dev->mouseIndex >= dev->mouseReportSize) {
             dev->mouseIndex = 0;
             /* Process Report */
@@ -399,6 +400,12 @@ static void PS2_ReadId(PS2_HandleTypeDef *dev) {
   * @retval none
   */
 static void PS2_ProbeDevice(PS2_HandleTypeDef *dev) {
+	int16_t res;
+	/*Disable scanning*/
+	do {
+		PS2_SendByteAsync(dev, 0xF5);
+		res = PS2_WaitForAnswer(dev, 35);
+	} while (res != 0xfa && res >= 0);
     /* Send read id command */
     PS2_ReadId(dev);
     PS2_ParseReadIdAnswer(dev);

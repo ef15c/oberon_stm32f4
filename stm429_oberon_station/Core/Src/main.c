@@ -132,6 +132,7 @@ void BootLoadM4(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk|SCB_SHCSR_BUSFAULTENA_Msk;
 SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
@@ -422,7 +423,7 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.ClockEdge = SDIO_CLOCK_EDGE_RISING;
   hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_DISABLE;
   hsd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_DISABLE;
-  hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
+  hsd.Init.BusWide = SDIO_BUS_WIDE_4B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd.Init.ClockDiv = 0;
   if (HAL_SD_Init(&hsd) != HAL_OK)
@@ -720,7 +721,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PS2_CLOCK_1_Pin PS2_CLOCK_2_Pin */
   GPIO_InitStruct.Pin = PS2_CLOCK_1_Pin|PS2_CLOCK_2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
@@ -861,7 +862,7 @@ void PS2_PINS_Output_OD_High(void)
   GPIO_InitStruct.Pin = PS2_CLOCK_1_Pin | PS2_DATA_1_Pin | PS2_CLOCK_2_Pin | PS2_DATA_2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(PS2_CLOCK_1_GPIO_Port, &GPIO_InitStruct);
 }
 

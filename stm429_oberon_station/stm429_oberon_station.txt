@@ -1,6 +1,6 @@
 Configuration	stm429_oberon_station
-STM32CubeMX 	6.10.0
-Date	03/03/2024
+STM32CubeMX 	6.11.0
+Date	03/22/2024
 MCU	STM32F429ZITx
 
 

@@ -20,7 +20,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
@@ -66,6 +65,7 @@ extern DMA_HandleTypeDef hdma_sdio_tx;
   */
 void HAL_MspInit(void)
 {
+
   /* USER CODE BEGIN MspInit 0 */
 
   /* USER CODE END MspInit 0 */
@@ -171,7 +171,6 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* hltdc)
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     /**LTDC GPIO Configuration
-    PF10     ------> LTDC_DE
     PA3     ------> LTDC_B5
     PA4     ------> LTDC_VSYNC
     PA6     ------> LTDC_G2
@@ -180,7 +179,6 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* hltdc)
     PB10     ------> LTDC_G4
     PB11     ------> LTDC_G5
     PG6     ------> LTDC_R7
-    PG7     ------> LTDC_CLK
     PC6     ------> LTDC_HSYNC
     PC7     ------> LTDC_G6
     PA11     ------> LTDC_R4
@@ -192,13 +190,6 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* hltdc)
     PB8     ------> LTDC_B6
     PB9     ------> LTDC_B7
     */
-    GPIO_InitStruct.Pin = ENABLE_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF14_LTDC;
-    HAL_GPIO_Init(ENABLE_GPIO_Port, &GPIO_InitStruct);
-
     GPIO_InitStruct.Pin = B5_Pin|G2_Pin|R4_Pin|R5_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -234,26 +225,12 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* hltdc)
     GPIO_InitStruct.Alternate = GPIO_AF14_LTDC;
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = DOTCLK_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF14_LTDC;
-    HAL_GPIO_Init(DOTCLK_GPIO_Port, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = HSYNC_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF14_LTDC;
-    HAL_GPIO_Init(HSYNC_GPIO_Port, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = G6_Pin;
+    GPIO_InitStruct.Pin = HSYNC_Pin|G6_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF14_LTDC;
-    HAL_GPIO_Init(G6_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = G7_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -555,14 +532,14 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     GPIO_InitStruct.Pin = NRF24L01P_MOSI_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
     HAL_GPIO_Init(NRF24L01P_MOSI_GPIO_Port, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = NRF24L01P_SCK_Pin|NRF24L01P_MISO_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
     GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -630,7 +607,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     GPIO_InitStruct.Pin = STLINK_RX_Pin|STLINK_TX_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 

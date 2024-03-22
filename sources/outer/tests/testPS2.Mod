@@ -97,6 +97,12 @@ MODULE testPS2;
     END
   END nextKBLeds;
 
+  PROCEDURE resetKB*;
+    VAR rc: BYTE;
+  BEGIN
+    rc := PS2.SendByte(ps2_2, 0FFH)
+  END resetKB;
+
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Test PS/2 driver CS 21.03.24"); Texts.WriteLn(W);
   Texts.Append(Oberon.Log, W.buf)
 END testPS2.

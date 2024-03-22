@@ -69,7 +69,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   PROCEDURE SendByteAsync*(VAR dev: DeviceDesc; data: BYTE);
     VAR i: INTEGER; parity: BYTE;
-  BEGIN
+  BEGIN parity := 1;
     dev.direction := HOST_TO_DEVICE; dev.dataOut := (data + 200H)*2;
     (*Parity computation*)
     FOR i := 0 TO 7 DO INC(parity, ORD(ODD(data))); data := LSR(data, 1) END;
