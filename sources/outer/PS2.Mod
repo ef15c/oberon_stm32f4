@@ -13,13 +13,13 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       head*, tail*: INTEGER; (*Indexes of head and tail of the circular keyboard buffer*)
       kbdBuf*: ARRAY BUFFERSIZE OF BYTE;
       MD: INTEGER; (*mouse data*)
-      MW*, MH: INTEGER; (*mouse limits*)
+      MW, MH: INTEGER; (*mouse limits*)
     END;
 
   DeviceDesc* = RECORD
       direction, statusIn*, statusOut*, connectedDevice*: BYTE;
       clockPin*, nofBitsToBeRead, parity: BYTE;
-      parityEnabled*: BOOLEAN;
+      parityEnabled*, haveWheel: BOOLEAN;
       clock_In*, data_In*, clock_Out*, data_Out*, activityLED, mouseLED*, keyboardLED*: LONGINT;
       dataIn, dataOut: INTEGER;
       answerBlock*: MKB;
@@ -28,7 +28,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       badEdge*: INTEGER
     END;
 
-  PROCEDURE PutByteInFIFOBuffer(VAR dev: DeviceDesc);
+  PROCEDURE^3 PutByteInFIFOBuffer(VAR dev: DeviceDesc);
     VAR bk!: MKB;
       curTick, x, y, dx, dy: INTEGER;
       next: INTEGER;
@@ -52,14 +52,13 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
           bk.MD := LSL(LSR(dev.mouseBuffer[0], 1) MOD 4, 24) + LSL(ORD(ODD(dev.mouseBuffer[0])), 26) + x MOD 1000H + LSL(y MOD 1000H, 12)
         END
       END
-    ELSE next := (bk.head + 1) MOD BUFFERSIZE;
-      IF next # bk.tail THEN (*buffer has free space*)
-        bk.kbdBuf[bk.head] := dev.dataIn; bk.head := next
-      END
+    ELSIF dev.connectedDevice = KEYBOARD THEN
+      next := (bk.head + 1) MOD BUFFERSIZE;
+      IF next # bk.tail THEN (*buffer has free space*) bk.kbdBuf[bk.head] := dev.dataIn; bk.head := next END
     END
   END PutByteInFIFOBuffer;
 
-  PROCEDURE requestToSend(VAR dev: DeviceDesc);
+  PROCEDURE^3 requestToSend(VAR dev: DeviceDesc);
   BEGIN
     IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, ON) END;
     SYSTEM.PUT(dev.clock_Out, LOW); Kernel.Delayus(150); (*wait for at least 100 microseconds*)
@@ -67,7 +66,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     (*now, wait for device to generate clock pulses*)
   END requestToSend;
 
-  PROCEDURE SendByteAsync*(VAR dev: DeviceDesc; data: BYTE);
+  PROCEDURE^3 SendByteAsync*(VAR dev: DeviceDesc; data: BYTE);
     VAR i: INTEGER; parity: BYTE;
   BEGIN parity := 1;
     dev.direction := HOST_TO_DEVICE; dev.dataOut := (data + 200H)*2;
@@ -100,7 +99,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     RETURN answer
   END WaitForAnswer;
 
-  PROCEDURE ProcessData*(VAR dev: DeviceDesc); (*Process a data bit from/to a PS/2 port.*)
+  PROCEDURE^3 ProcessData*(VAR dev: DeviceDesc); (*Process a data bit from/to a PS/2 port.*)
   (* Warning : this function is call via a GPIO interrupt : keep it as fast as possible *)
     VAR clockBit, dataBit: BOOLEAN;
   BEGIN SYSTEM.GET(dev.clock_In, clockBit); SYSTEM.GET(dev.data_In, dataBit);
@@ -148,6 +147,52 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     REPEAT UNTIL dev.statusIn # IN_PROGRESS; (*wait for answer*)
     RETURN dev.statusIn
   END SendByte;
+
+  PROCEDURE ReadId(VAR dev: DeviceDesc);
+    VAR nbTries, res: INTEGER;
+  BEGIN nbTries := 3;
+    (*Send the read ID command*)
+    REPEAT DEC(nbTries);
+      SendByteAsync(dev, 0F2H) (*Send the read ID command*);
+      res := WaitForAnswer(dev, 35)
+    UNTIL (nbTries = 0) OR (res = 0FAH)
+  END ReadId;
+
+  PROCEDURE ParseReadIdAnswer(VAR dev: DeviceDesc);
+    VAR id1, WheelInitSeq, i, res: INTEGER;
+      data: BYTE;
+  BEGIN id1 := WaitForAnswer(dev, 35);
+    IF (id1 = 0ABH) & (WaitForAnswer(dev, 35) = 83H) THEN
+      dev.activityLED := dev.keyboardLED; (*Map the activity LED for a keyboard device*)
+      dev.connectedDevice := KEYBOARD;
+    ELSIF (id1 = 0) OR (id1 = 3) THEN
+      dev.activityLED := dev.mouseLED; (*Map the device type and activity LED for a mouse device*)
+      dev.haveWheel := FALSE; dev.mouseReportSize := 3; (*Initialize mouse state*)
+      IF id1 = 3 THEN (*This is a wheel mouse*)
+        dev.haveWheel := TRUE; dev.mouseReportSize := 4;
+      ELSE (*Try to activate wheel mode*)
+        WheelInitSeq := SYSTEM.ADR($F3 C8 F3 64 F3 50$); i := 0;
+        REPEAT SYSTEM.GET(WheelInitSeq + i, data); SendByteAsync(dev, data); res := WaitForAnswer(dev, 35); INC(i) UNTIL (i = 6) OR (res # 0FAH);
+        IF res = 0FAH THEN
+          SendByteAsync(dev, 0F2H); (*Reread device type*)
+          IF WaitForAnswer(dev, 35) = 0FAH THEN
+            IF WaitForAnswer(dev, 35) = 3 THEN dev.haveWheel := TRUE; dev.mouseReportSize := 4 END;
+          END
+        END
+      END;
+      dev.tickLastReport := Kernel.Time(); dev.mouseIndex := 0; dev.answerBlock.MW := 1366; dev.answerBlock.MH := 768;
+      SendByteAsync(dev, 0F4H); (*Enable data reporting*)
+      res := WaitForAnswer(dev, 35);
+      dev.connectedDevice := MOUSE;
+    ELSE dev.connectedDevice := NO_DEVICE (*No known device connected*)
+    END
+  END ParseReadIdAnswer;
+
+  PROCEDURE ProbeDevice(VAR dev: DeviceDesc);
+  BEGIN
+    ReadId(dev);
+    ParseReadIdAnswer(dev);
+  END ProbeDevice;
 
   PROCEDURE resetForTest*(VAR dev: DeviceDesc);
   BEGIN

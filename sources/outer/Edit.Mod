@@ -5,7 +5,6 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     StandardMenu = "System.Close System.Copy System.Grow Edit.Search Edit.Store";
 
   VAR W: Texts.Writer;
-    time: LONGINT;
     M: INTEGER;
     pat: ARRAY maxlen OF CHAR;
     d: ARRAY 256 OF INTEGER;
@@ -88,7 +87,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
   END CopyLooks; 
 
   PROCEDURE ChangeFont*;
-    VAR S!: Texts.Scanner; T!: Texts.Text; beg, end: LONGINT;
+    VAR S!: Texts.Scanner; T!: Texts.Text; beg, end, time: LONGINT;
   BEGIN
     Oberon.GetSelection(T, beg, end, time);
     IF time >= 0 THEN
@@ -128,7 +127,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
       V!: Viewers.Viewer;
       R!: Texts.Reader;
       T!: Texts.Text;
-      pos, beg, end, prevTime, len: LONGINT; n, i, j: INTEGER;
+      pos, beg, end, time, len: LONGINT; n, i, j: INTEGER;
       buf: ARRAY 32 OF CHAR;
 
     PROCEDURE Forward(n: INTEGER; VAR R: Texts.Reader; VAR buf: ARRAY OF CHAR);
@@ -142,9 +141,9 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     IF Oberon.Par.frame # V.dsc THEN V := Oberon.FocusViewer END;
     IF (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
       Text := V.dsc.next(TextFrames.Frame);
-      prevTime := time; Oberon.GetSelection(T, beg, end, time);
-      IF time > prevTime THEN
-        Texts.OpenReader(R, T, beg);
+      beg := 0; Oberon.GetSelection(T, beg, end, time);
+      IF time >= 0 THEN
+ASSERT(beg >= 0);        Texts.OpenReader(R, T, beg);
         i := 0; pos := beg;
         REPEAT Texts.Read(R, pat[i]); INC(i); INC(pos)
         UNTIL (i = maxlen) OR (pos = end);
@@ -155,7 +154,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
       END;
       IF Text.hasCar THEN pos := Text.carloc.pos ELSE pos := 0 END;
       len := Text.text.len;
-      Texts.OpenReader(R, Text.text, pos);
+ASSERT(pos >= 0);      Texts.OpenReader(R, Text.text, pos);
       Forward(M, R, buf); pos := pos + M;
       j := M;
       REPEAT DEC(j) UNTIL (j < 0) OR (buf[j] # pat[j]);

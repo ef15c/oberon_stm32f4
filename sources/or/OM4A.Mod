@@ -778,26 +778,34 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END;
     INC(res, LSL(mask, 4-i) + suffix); Put1(c, res); c.nbRmnITBlockInsts := i+1
   END IfThen;
-  
-  PROCEDURE SaveRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT);  (* R[0 .. r-1]*)
+
+  PROCEDURE PushRegs*(VAR c: ModuleCode; rl, rh: BYTE);
     VAR r0: LONGINT;
-  BEGIN (*r > 0*)
-    ASSERT(r IN {1..13});
-    r0 := LSL(1, r) - 1;
+  BEGIN ASSERT((rl IN {0..7}) & (rh IN {0..12}) & (rl <= rh));
+    r0 := ORD({rl..rh});
     IF r0 < C8 THEN (*PUSH T1*) Put1(c, PUSHT1 + r0)
     ELSE (*PUSH T2*) Put0(c, PUSHT2 + r0)
-    END;
+    END
+  END PushRegs;
+
+  PROCEDURE SaveRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT);  (* R[0 .. r-1]*)
+  BEGIN (*r > 0*)
+    PushRegs(c, 0, r-1);
     INC(frame, 4*r)
   END SaveRegs;
 
-  PROCEDURE RestoreRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT); (*R[0 .. r-1]*)
+  PROCEDURE PopRegs*(VAR c: ModuleCode; rl, rh: BYTE);
     VAR r0: LONGINT;
-  BEGIN (*r > 0*)
-    ASSERT(r IN {1..13});
-    r0 := LSL(1, r) - 1;
+  BEGIN ASSERT((rl IN {0..7}) & (rh IN {0..12}) & (rl <= rh));
+    r0 := ORD({rl..rh});
     IF r0 < C8 THEN (*POP T1*) Put1(c, POPT1 + r0)
     ELSE (*POP T2*) Put0(c, POPT2 + r0)
-    END;
+    END
+  END PopRegs;
+
+  PROCEDURE RestoreRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT); (*R[0 .. r-1]*)
+  BEGIN (*r > 0*)
+    PopRegs(c, 0, r-1);
     DEC(frame, 4*r)
   END RestoreRegs;
 

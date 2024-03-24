@@ -38,6 +38,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     tdx, strx: LONGINT;
     entry: LONGINT;   (*main entry point*)
     RH: LONGINT;      (*in use registers R[0] ... R[H-1]*)
+    RL: INTEGER; (*register limit*)
     SH: LONGINT;      (*in use floating point registers S[0] ... S[H-1]*)
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
     fixORGP, fixORGD, fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by loader*)
@@ -60,7 +61,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE incR;
   BEGIN
-    IF RH < SP-1 THEN INC(RH) ELSE OM4S.Mark("register stack overflow") END
+    IF RH < RL-1 THEN INC(RH) ELSE OM4S.Mark("register stack overflow") END
   END incR;
 
   PROCEDURE incS;
@@ -926,7 +927,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Call;
 
-  PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN);
+  PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN; reglim: INTEGER);
     VAR r: LONGINT;
   BEGIN frame := 0;
     IF locblksize >= OM4A.C16 THEN OM4S.Mark("local variables size exeeded") END;
@@ -942,20 +943,20 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF locblksize - parblksize # 0 THEN
       OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, r, locblksize - parblksize) END;
 
-    r := LSL(1, r) - 1;
-    IF r > 0 THEN
-      IF r < OM4A.C8 THEN (*PUSH T1*) OM4A.Put1(mcode, OM4A.PUSHT1 + r)
-      ELSE (*PUSH T2*) OM4A.Put0(mcode, OM4A.PUSHT2 + r) END
+    IF r > 0 THEN OM4A.PushRegs(mcode, 0, r-1) END;
+    IF reglim >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
+      RL := reglim+1; IF reglim >= 4 THEN OM4A.PushRegs(mcode, 4, reglim) (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*) END
     END;
     (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8)
   END Enter;
 
-  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN);
+  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; reglim: INTEGER);
   BEGIN
     IF form # OM4B.NoTyp THEN 
       IF x.type.form = OM4B.Real THEN loadFP(x); ELSE load(x) END
     END;
     (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4);
+    IF reglim >= 0 THEN IF reglim >= 4 THEN OM4A.PopRegs(mcode, 4, reglim) END; RL := SP END;
     IF size - 4 # 0 THEN OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size - 4) END;
     OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3); RH := 0; SH := 0;
   END Return;
@@ -1315,4 +1316,5 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
 BEGIN relmap[0] := OM4A.EQ; relmap[1] := OM4A.NE; relmap[2] := OM4A.LT; 
   relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE;
+  RL := SP
 END OM4G.

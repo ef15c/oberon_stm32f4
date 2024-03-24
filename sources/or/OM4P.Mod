@@ -902,9 +902,12 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       procid: OM4S.Ident;
       x!: OM4G.Item;
       locblksize, parblksize, L: LONGINT;
-      int: BOOLEAN;
+      int: BOOLEAN; reglim: INTEGER;
   BEGIN (* ProcedureDecl *) int := FALSE; OM4S.Get(sym); 
     IF sym = OM4S.times THEN OM4S.Get(sym); int := TRUE END ;
+    IF sym = OM4S.arrow THEN OM4S.Get(sym); reglim := OM4S.ival; Check(OM4S.int, "missing register limit");
+    ELSE reglim := -1
+    END;
     IF sym = OM4S.ident THEN
       OM4S.CopyId(procid); OM4S.Get(sym);
       OM4B.NewObj(proc, OM4S.id, OM4B.Const);
@@ -924,7 +927,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         REPEAT ProcedureDecl; Check(OM4S.semicolon, "no ;") UNTIL sym # OM4S.procedure;
         OM4G.FixOne(L); proc.val := OM4G.Here(); proc.type.dsc := OM4B.topScope.next
       END ;
-      OM4G.Enter(parblksize, locblksize, int);
+      OM4G.Enter(parblksize, locblksize, int, reglim);
       IF sym = OM4S.begin THEN OM4S.Get(sym); StatSequence END ;
       IF sym = OM4S.return THEN
         OM4S.Get(sym); expression(x);
@@ -934,7 +937,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF type.base.form # OM4B.NoTyp THEN
         OM4S.Mark("function without result"); type.base := OM4B.noType
       END ;
-      OM4G.Return(type.base.form, x, locblksize, int);
+      OM4G.Return(type.base.form, x, locblksize, reglim);
       OM4B.CloseScope; DEC(level); Check(OM4S.end, "no END");
       IF sym = OM4S.ident THEN
         IF OM4S.id # procid THEN OM4S.Mark("no match") END ;

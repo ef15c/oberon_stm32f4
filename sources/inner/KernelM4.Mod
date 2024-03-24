@@ -276,7 +276,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     END
   END Trap;
 
-  PROCEDURE IncTick;
+  PROCEDURE^3 IncTick;
   BEGIN
     INC(tick)
   END IncTick;
