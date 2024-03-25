@@ -345,7 +345,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
     END ;
     IF ("A" <= ch) & (ch <= "Z") OR ("a" <= ch) & (ch <= "z") THEN (*name*)
       REPEAT S.s[i] := ch; INC(i); Read(S, ch)
-      UNTIL ((ch < "0") & (ch # ".") OR ("9" < ch) & (ch < "A") OR ("Z" < ch) & (ch < "a") OR ("z" < ch)) OR (i = 31);
+      UNTIL ((ch # "_") & ((ch < "0") & (ch # ".") OR ("9" < ch) & (ch < "A") OR ("Z" < ch) & (ch < "a") OR ("z" < ch))) OR (i = 31);
       S.s[i] := 0X; S.len := i; S.class := Name
     ELSIF ch = 22X THEN (*string*)
       Read(S, ch);

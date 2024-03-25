@@ -98,9 +98,6 @@ static const uint32_t clut[256] = {
 0XFFDA00,0XFFDA55,0XFFDAAA,0XFFDAFF,0XFFFF00,0XFFFF55,0XFFFFAA,0XFFFFFF,
 };
 
-PS2_HandleTypeDef ps2_1;
-PS2_HandleTypeDef ps2_2;
-MSKBData mskbBlock;
 bool SD_ErrorOcurred;
 /* USER CODE END PV */
 
@@ -116,7 +113,6 @@ static void MX_SPI3_Init(void);
 static void MX_CRC_Init(void);
 static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
-static void BSP_PS2_Init(void);
 static void PS2_PINS_Output_OD_High(void);
 /* USER CODE END PFP */
 
@@ -177,7 +173,6 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   PS2_PINS_Output_OD_High();
-  BSP_PS2_Init();
   // Configure MPU to allow execution in range 0xD0201000 - 0xD0800000
   MPU_RegionConfig();
 
@@ -866,60 +861,6 @@ void PS2_PINS_Output_OD_High(void)
   HAL_GPIO_Init(PS2_CLOCK_1_GPIO_Port, &GPIO_InitStruct);
 }
 
-
-/**
-  * @brief Initialize PS/2 handlers for the board
-  * @param None
-  * @retval None
-  */
-static void BSP_PS2_Init(void)
-{
-    /* Wait for completion of PS/2 devices self tests */
-	DWT_Delay_us(500000);
-
-    /* Probe PS/2 devices */
-    ps2_1.clockPort = PS2_CLOCK_1_GPIO_Port;
-    ps2_1.clockPin = PS2_CLOCK_1_Pin;
-    ps2_1.dataPort = PS2_DATA_1_GPIO_Port;
-    ps2_1.dataPin = PS2_DATA_1_Pin;
-    ps2_1.KBLedPort = LD3_GPIO_Port;
-    ps2_1.KBLedPin = LD3_Pin;
-    ps2_1.MouseLedPort = LD4_GPIO_Port;
-    ps2_1.MouseLedPin = LD4_Pin;
-    ps2_1.answerBlock = &mskbBlock;
-    PS2_initHandle(&ps2_1);
-
-    ps2_2.clockPort = PS2_CLOCK_2_GPIO_Port;
-    ps2_2.clockPin = PS2_CLOCK_2_Pin;
-    ps2_2.dataPort = PS2_DATA_2_GPIO_Port;
-    ps2_2.dataPin = PS2_DATA_2_Pin;
-    ps2_2.KBLedPort = LD3_GPIO_Port;
-    ps2_2.KBLedPin = LD3_Pin;
-    ps2_2.MouseLedPort = LD4_GPIO_Port;
-    ps2_2.MouseLedPin = LD4_Pin;
-    ps2_2.answerBlock = &mskbBlock;
-    PS2_initHandle(&ps2_2);
-}
-
-
-/**
-  * @brief  EXTI line detection callbacks.
-  * @param  GPIO_Pin: Specifies the pins connected EXTI line
-  * @retval None
-  */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-  switch(GPIO_Pin) {
-  case PS2_CLOCK_1_Pin:
-    /* First PS/2 port */
-    PS2_ProcessData(&ps2_1);
-    break;
-  case PS2_CLOCK_2_Pin:
-    /* Second PS/2 port */
-    PS2_ProcessData(&ps2_2);
-    break;
-  }
-}
 
 void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
 {

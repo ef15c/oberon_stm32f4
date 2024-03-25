@@ -1184,7 +1184,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Condition;
 
   PROCEDURE Open*(v: INTEGER);
-  BEGIN NEW(mcode); OM4A.Init(mcode);
+  BEGIN OM4A.Init(mcode);
     tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
     IF v = 0 THEN mcode.pc := 4; (*Make room for the jump to entry point instruction*) END
   END Open;
@@ -1311,8 +1311,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     Files.WriteInt(R, -1);
     Files.WriteInt(R, fixORGP); Files.WriteInt(R, fixORGD); Files.WriteInt(R, fixORGT); Files.WriteInt(R, entry);
     Files.Write(R, "O"); Files.Register(F);
-    mcode := NIL
   END Close;
+
+  PROCEDURE Init*;
+  BEGIN NEW(mcode)
+  END Init;
+
+  PROCEDURE DeInit*;
+  BEGIN mcode := NIL
+  END DeInit;
+
 
 BEGIN relmap[0] := OM4A.EQ; relmap[1] := OM4A.NE; relmap[2] := OM4A.LT; 
   relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE;

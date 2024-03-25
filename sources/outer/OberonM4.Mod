@@ -1,12 +1,13 @@
 MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   CS 20/12/2023*)
-  IMPORT SYSTEM, Kernel, Files, Modules, Input, Display, Viewers, Fonts, Texts;
+  IMPORT SYSTEM, BSP, PS2, Kernel, Files, Modules, Input, Display, Viewers, Fonts, Texts;
 
   CONST (*message ids*)
     consume* = 0; track* = 1; defocus* = 0; neutralize* = 1; mark* = 2;
     off = 0; idle = 1; active = 2;   (*task states*)
     BasicCycle = 20;
     ESC = 1BX; SETSTAR = 1AX;
+    EXTI_PR = BSP.EXTI_BASE + BSP.EXTI_PR;
 
   TYPE Painter* = PROCEDURE (x, y: INTEGER);
     Marker* = RECORD Fade*, Draw*: Painter END;
@@ -69,6 +70,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     DW, DH, CL: INTEGER;
     ActCnt: INTEGER; (*action count for GC*)
     Mod: Modules.Module;
+
+    ps2*: ARRAY 2 OF PS2.DeviceDesc;
 
   (*user identification*)
 
@@ -391,11 +394,44 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     UNTIL FALSE
   END Loop;
 
+  PROCEDURE^3 ps2_1IrqHandler;
+    VAR pr: SET;
+  BEGIN SYSTEM.GET(EXTI_PR, pr);
+    IF ps2[0].clockPin IN pr THEN
+      pr := {ps2[0].clockPin}; SYSTEM.PUT(EXTI_PR, pr); (*clear pending IRQ*)
+      PS2.ProcessData(ps2[0])
+    END
+  END ps2_1IrqHandler;
+
+  PROCEDURE^3 ps2_2IrqHandler;
+    VAR pr: SET;
+  BEGIN
+    SYSTEM.GET(EXTI_PR, pr);
+    IF ps2[1].clockPin IN pr THEN
+      pr := {ps2[1].clockPin}; SYSTEM.PUT(EXTI_PR, pr); (*clear pending IRQ*)
+      PS2.ProcessData(ps2[1])
+    END
+  END ps2_2IrqHandler;
+
   PROCEDURE Reset*;
   BEGIN
     IF CurTask.state = active THEN Remove(CurTask) END ; Loop
   END Reset;
-  
+
+  PROCEDURE SendByteAsync*(idx, data: BYTE);
+  BEGIN IF idx < 2 THEN
+      PS2.SendByteAsync(ps2[idx], data)
+    END
+  END SendByteAsync;
+
+  PROCEDURE WaitForAnswer*(idx: BYTE; timeout: INTEGER): INTEGER;
+    VAR res: INTEGER;
+  BEGIN IF idx < 2 THEN
+      res := PS2.WaitForAnswer(ps2[idx], timeout)
+    END;
+    RETURN res
+  END WaitForAnswer;
+
 BEGIN User[0] := 0X;
   Arrow.Fade := FlipArrow; Arrow.Draw := FlipArrow;
   Star.Fade := FlipStar; Star.Draw := FlipStar;
@@ -407,5 +443,23 @@ BEGIN User[0] := 0X;
   CurFnt := Fonts.Default; CurCol := Display.white; CurOff := 0;
 
   ActCnt := 0; CurTask := NewTask(GC, 1000); Install(CurTask);
+
+  (*Initialize PS/2 devices*)
+  ps2[0].connectedDevice := PS2.NO_DEVICE;
+  ps2[0].clockPin := BSP.PS2CLOCK1Pin;
+  ps2[0].clock_In := BSP.PS2CLOCK1In; ps2[0].clock_Out := BSP.PS2CLOCK1Out;
+  ps2[0].data_In := BSP.PS2DATA1In; ps2[0].data_Out := BSP.PS2DATA1Out;
+  ps2[0].keyboardLED := BSP.LD3Out; ps2[0].mouseLED := BSP.LD4Out;
+  Kernel.Install(SYSTEM.ADR(ps2_1IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK1ExtiIrqNum*4);
+  PS2.InitDevice(ps2[0]);
+
+  ps2[1].connectedDevice := PS2.NO_DEVICE;
+  ps2[1].clockPin := BSP.PS2CLOCK2Pin;
+  ps2[1].clock_In := BSP.PS2CLOCK2In; ps2[1].clock_Out := BSP.PS2CLOCK2Out;
+  ps2[1].data_In := BSP.PS2DATA2In; ps2[1].data_Out := BSP.PS2DATA2Out;
+  ps2[1].keyboardLED := BSP.LD3Out; ps2[1].mouseLED := BSP.LD4Out;
+  Kernel.Install(SYSTEM.ADR(ps2_2IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK2ExtiIrqNum*4);
+  PS2.InitDevice(ps2[1]);
+
   Modules.Load("System", Mod); Mod := NIL; Loop
 END Oberon.

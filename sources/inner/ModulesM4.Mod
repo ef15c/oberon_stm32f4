@@ -247,7 +247,6 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
         END ;
         INC(p, noftrps*8);
         (*fixup of MOV/MOVT*)
-        (* TODO : à revérifier après avoir fini de décortiquer le format .bin *)
         adr := mod.code + fixorgD;
         WHILE adr # mod.code DO
           inst := GetWordAt(adr);

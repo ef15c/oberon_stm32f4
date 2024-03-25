@@ -10,8 +10,7 @@ OM4L.Load Modules.bin ~
 OM4Tool.DecBin Modules.bin ~
 
 Commands for generation of outer core
-OM4P.Compile PS2.Mod/s ~
-OM4P.Compile InputM4.Mod/s DisplayM4.Mod/s Viewers.Mod/s FontsM4.Mod/s Texts.Mod/s 
+OM4P.Compile PS2.Mod/s InputM4.Mod/s DisplayM4.Mod/s Viewers.Mod/s FontsM4.Mod/s Texts.Mod/s 
   OberonM4.Mod/s MenuViewers.Mod/s TextFrames.Mod/s SystemM4.Mod/s Edit.Mod/s ~
 
 Commands for generation of graphic system

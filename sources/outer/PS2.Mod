@@ -6,14 +6,20 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     SUCCESS* = 0; IN_PROGRESS* = 1; FRAME_ERROR* = 2; PARITY_ERROR* = 3; NAK* = 4; NO_ANSWER* = 5; (*status*)
     NO_DEVICE* = 0; KEYBOARD* = 1; MOUSE* = 2;
 
-    BUFFERSIZE = 16;
+    BUFFERSIZE* = 16;
 
-  TYPE MKB = POINTER TO MKDataBlock;
-    MKDataBlock = RECORD
+  TYPE
+    CircularBuffer* = POINTER TO CircularBufferDesc;
+    CircularBufferDesc* = RECORD
       head*, tail*: INTEGER; (*Indexes of head and tail of the circular keyboard buffer*)
-      kbdBuf*: ARRAY BUFFERSIZE OF BYTE;
-      MD: INTEGER; (*mouse data*)
-      MW, MH: INTEGER; (*mouse limits*)
+      buffer*: ARRAY BUFFERSIZE OF BYTE
+    END;
+
+    MKB* = POINTER TO MKDataBlock;
+    MKDataBlock* = RECORD
+      KB*: CircularBufferDesc;
+      MD*: INTEGER; (*mouse data*)
+      MW*, MH*: INTEGER; (*mouse limits*)
     END;
 
   DeviceDesc* = RECORD
@@ -21,40 +27,37 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       clockPin*, nofBitsToBeRead, parity: BYTE;
       parityEnabled*, haveWheel: BOOLEAN;
       clock_In*, data_In*, clock_Out*, data_Out*, activityLED, mouseLED*, keyboardLED*: LONGINT;
-      dataIn, dataOut: INTEGER;
-      answerBlock*: MKB;
-      tickLastReport, mouseIndex, mouseReportSize*: INTEGER;
-      mouseBuffer*: ARRAY 4 OF BYTE;
-      badEdge*: INTEGER
+      dataIn, dataOut, tickLastReport, mouseReportSize, badEdge*: INTEGER;
+      dest*: CircularBuffer; buf: CircularBufferDesc
     END;
 
+  VAR mkb*: MKB; mkbBlock: MKDataBlock;
+
   PROCEDURE^3 PutByteInFIFOBuffer(VAR dev: DeviceDesc);
-    VAR bk!: MKB;
-      curTick, x, y, dx, dy: INTEGER;
+    VAR curTick, x, y, dx, dy: INTEGER;
       next: INTEGER;
-  BEGIN bk := dev.answerBlock;
+  BEGIN
     IF dev.connectedDevice = MOUSE THEN
       curTick := Kernel.Time();
       IF curTick - dev.tickLastReport > 5 THEN (*The mouse didn't send report for a while. Start to begin of frame*)
-        dev.mouseIndex := 0; dev.tickLastReport := curTick
+        dev.buf.head := 0; dev.tickLastReport := curTick
       END;
-      dev.mouseBuffer[dev.mouseIndex] := dev.dataIn; INC(dev.mouseIndex);
-      IF dev.mouseIndex >= dev.mouseReportSize THEN (*Process Report*)
-        dev.mouseIndex := 0;
-        IF LSR(dev.mouseBuffer[0], 6) = 0 THEN (*No overflow*)
-          x := bk.MD MOD 1000H; y := LSR(bk.MD, 12) MOD 1000H;
-          dx := dev.mouseBuffer[1]; dy := dev.mouseBuffer[2];
-          IF ODD(LSR(dev.mouseBuffer[0], 4)) THEN (*dx is negative*) DEC(dx, 100H) END;
-          INC(x, dx); IF x < 0 THEN x := 0 ELSIF x >= bk.MW THEN x := bk.MW - 1 END;
-          IF ODD(LSR(dev.mouseBuffer[0], 5)) THEN (*dy is negative*) DEC(dy, 100H) END;
-          INC(y, dy); IF y < 0 THEN y := 0 ELSIF y >= bk.MH THEN y := bk.MH - 1 END;
+      dev.buf.buffer[dev.buf.head] := dev.dataIn; INC(dev.buf.head);
+      IF dev.buf.head >= dev.mouseReportSize THEN (*Process Report*)
+        dev.buf.head := 0;
+        IF LSR(dev.buf.buffer[0], 6) = 0 THEN (*No overflow*)
+          x := mkb.MD MOD 1000H; y := LSR(mkb.MD, 12) MOD 1000H;
+          dx := dev.buf.buffer[1]; dy := dev.buf.buffer[2];
+          IF ODD(LSR(dev.buf.buffer[0], 4)) THEN (*dx is negative*) DEC(dx, 100H) END;
+          INC(x, dx); IF x < 0 THEN x := 0 ELSIF x >= mkb.MW THEN x := mkb.MW - 1 END;
+          IF ODD(LSR(dev.buf.buffer[0], 5)) THEN (*dy is negative*) DEC(dy, 100H) END;
+          INC(y, dy); IF y < 0 THEN y := 0 ELSIF y >= mkb.MH THEN y := mkb.MH - 1 END;
           (*Pack mouse report in Oberon's format*)
-          bk.MD := LSL(LSR(dev.mouseBuffer[0], 1) MOD 4, 24) + LSL(ORD(ODD(dev.mouseBuffer[0])), 26) + x MOD 1000H + LSL(y MOD 1000H, 12)
+          mkb.MD := LSL(LSR(dev.buf.buffer[0], 1) MOD 4, 24) + LSL(ORD(ODD(dev.buf.buffer[0])), 26) + x MOD 1000H + LSL(y MOD 1000H, 12)
         END
       END
-    ELSIF dev.connectedDevice = KEYBOARD THEN
-      next := (bk.head + 1) MOD BUFFERSIZE;
-      IF next # bk.tail THEN (*buffer has free space*) bk.kbdBuf[bk.head] := dev.dataIn; bk.head := next END
+    ELSE next := (dev.dest.head + 1) MOD BUFFERSIZE;
+      IF next # dev.dest.tail THEN (*buffer has free space*) dev.dest.buffer[dev.dest.head] := dev.dataIn; dev.dest.head := next END
     END
   END PutByteInFIFOBuffer;
 
@@ -79,9 +82,9 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   PROCEDURE DrawByteFormFIFOBuffer(VAR dev: DeviceDesc): INTEGER;
     VAR res: INTEGER;
   BEGIN
-    IF dev.answerBlock.tail # dev.answerBlock.head THEN (*The buffer is not empty*)
-      res := dev.answerBlock.kbdBuf[dev.answerBlock.tail];
-      dev.answerBlock.tail := (dev.answerBlock.tail+1) MOD BUFFERSIZE;
+    IF dev.dest.tail # dev.dest.head THEN (*The buffer has unread data*)
+      res := dev.dest.buffer[dev.dest.tail];
+      dev.dest.tail := (dev.dest.tail+1) MOD BUFFERSIZE;
     ELSE res := -1
     END;
     RETURN res
@@ -151,12 +154,18 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   PROCEDURE ReadId(VAR dev: DeviceDesc);
     VAR nbTries, res: INTEGER;
   BEGIN nbTries := 3;
+    (*Stop reporting*)
+    REPEAT DEC(nbTries);
+      SendByteAsync(dev, 0F5H);
+      res := WaitForAnswer(dev, 35)
+    UNTIL (nbTries = 0) OR (res = 0FAH);
+    nbTries := 3;
     (*Send the read ID command*)
     REPEAT DEC(nbTries);
-      SendByteAsync(dev, 0F2H) (*Send the read ID command*);
+      SendByteAsync(dev, 0F2H);
       res := WaitForAnswer(dev, 35)
     UNTIL (nbTries = 0) OR (res = 0FAH)
-  END ReadId;
+ END ReadId;
 
   PROCEDURE ParseReadIdAnswer(VAR dev: DeviceDesc);
     VAR id1, WheelInitSeq, i, res: INTEGER;
@@ -165,6 +174,9 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     IF (id1 = 0ABH) & (WaitForAnswer(dev, 35) = 83H) THEN
       dev.activityLED := dev.keyboardLED; (*Map the activity LED for a keyboard device*)
       dev.connectedDevice := KEYBOARD;
+      SendByteAsync(dev, 0F4H); (*Enable data reporting*)
+      res := WaitForAnswer(dev, 35);
+      dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(mkb.KB));
     ELSIF (id1 = 0) OR (id1 = 3) THEN
       dev.activityLED := dev.mouseLED; (*Map the device type and activity LED for a mouse device*)
       dev.haveWheel := FALSE; dev.mouseReportSize := 3; (*Initialize mouse state*)
@@ -180,10 +192,10 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
           END
         END
       END;
-      dev.tickLastReport := Kernel.Time(); dev.mouseIndex := 0; dev.answerBlock.MW := 1366; dev.answerBlock.MH := 768;
+      dev.tickLastReport := Kernel.Time(); dev.buf.tail := 0; mkb.MW := 1366; mkb.MH := 768;
+      dev.connectedDevice := MOUSE;
       SendByteAsync(dev, 0F4H); (*Enable data reporting*)
       res := WaitForAnswer(dev, 35);
-      dev.connectedDevice := MOUSE;
     ELSE dev.connectedDevice := NO_DEVICE (*No known device connected*)
     END
   END ParseReadIdAnswer;
@@ -194,16 +206,31 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     ParseReadIdAnswer(dev);
   END ProbeDevice;
 
+  PROCEDURE InitDevice*(VAR dev: DeviceDesc);
+  BEGIN (*Inhibit device data transmission*) SYSTEM.PUT(dev.clock_Out, LOW); Kernel.Delayus(150);
+     dev.connectedDevice := NO_DEVICE; dev.direction := NONE; dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(dev.buf));
+    dev.buf.head := 0; dev.buf.tail := 0;
+    dev.activityLED := 0;
+    dev.nofBitsToBeRead := 11;
+    dev.statusIn := NO_ANSWER; dev.statusOut := NO_ANSWER;
+    dev.parityEnabled := TRUE;
+
+    ProbeDevice(dev);
+  END InitDevice;
+
   PROCEDURE resetForTest*(VAR dev: DeviceDesc);
   BEGIN
     dev.direction := DEVICE_TO_HOST; dev.statusIn := SUCCESS; dev.statusOut := SUCCESS;
     dev.nofBitsToBeRead := 11; dev.parity := 0;
     dev.parityEnabled := TRUE;
     dev.dataIn := 0; dev.dataOut := 0;
-    dev.answerBlock := SYSTEM.VAL(MKB, SYSTEM.SVC(5));
-    dev.tickLastReport := 0; dev.mouseIndex := 0; dev.mouseReportSize := 4;
+    dev.tickLastReport := 0; dev.buf.head := 0; dev.mouseReportSize := 4;
       
-    IF dev.connectedDevice = KEYBOARD THEN dev.activityLED := dev.keyboardLED ELSE dev.activityLED := dev.mouseLED END
+    IF dev.connectedDevice = KEYBOARD THEN
+      dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(mkb.KB)); dev.activityLED := dev.keyboardLED 
+    ELSE dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(dev.buf)); dev.activityLED := dev.mouseLED
+    END
   END resetForTest;
 
+BEGIN mkb := SYSTEM.VAL(MKB, SYSTEM.ADR(mkbBlock));
 END PS2.

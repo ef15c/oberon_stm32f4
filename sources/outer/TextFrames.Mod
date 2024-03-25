@@ -604,7 +604,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
         ELSIF res = 3 THEN Texts.WriteString(W, " imports ");
           Texts.WriteString(W, Modules.imported); Texts.WriteString(W, " with bad key");
         ELSIF res = 4 THEN Texts.WriteString(W, " corrupted obj file")
-        ELSIF res = 5 THEN Texts.WriteString(W, " command not found")
+        ELSIF res = 5 THEN Texts.WriteString(W, " command "); Texts.WriteString(W,S.s); Texts.WriteString(W, " not found")
         ELSIF res = 7 THEN Texts.WriteString(W, " insufficient space")
         END;
         Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)

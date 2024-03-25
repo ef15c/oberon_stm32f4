@@ -1,30 +1,19 @@
 MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-4*)
-(* Adapted for a customizable framebuffer size -- see git history *)
 (* C. Schoffit: adapted to french keyboard layout *)
-  IMPORT SYSTEM;
-
-  CONST BUFFERSIZE = 16;
-  
-  TYPE MKB = POINTER TO MKDataBlock;
-    MKDataBlock = RECORD
-      head, tail: INTEGER; (*Indexes of head and tail of the circular keyboard buffer*)
-      kdbBuf: ARRAY BUFFERSIZE OF BYTE;
-      MD: INTEGER; (*mouse data*)
-      MW, MH: INTEGER; (*mouse limits*)
-    END;
+  IMPORT SYSTEM, Kernel, PS2;
     
   VAR kbdCode: BYTE; (*last keyboard code read*)
     Recd, Up, Shift, Ctrl, Ext, AltGr, CapsLock, Extended: BOOLEAN;
     KTabAdr, KTabAdrAlt, KTabAdrExt: INTEGER;  (*keyboard code translation tables*)
-    mkb: MKB; (*mouse and keyboard data block*)
+    mkb: PS2.MKB; (*mouse and keyboard data block*)
 
-(*FIFO implemented in firmware, because every read must be handled,
+(*FIFO implemented in interrupt handler, because every read must be handled,
   including tracking the state of the Shift and Ctrl keys*)
 
   PROCEDURE Peek();
   BEGIN
-    IF mkb.tail # mkb.head THEN
-      kbdCode := mkb.kdbBuf[mkb.tail]; mkb.tail := (mkb.tail + 1) MOD BUFFERSIZE;
+    IF mkb.KB.tail # mkb.KB.head THEN
+      kbdCode := mkb.KB.buffer[mkb.KB.tail]; mkb.KB.tail := (mkb.KB.tail + 1) MOD PS2.BUFFERSIZE;
       IF kbdCode = 0F0H THEN Up := TRUE
       ELSIF kbdCode = 0E0H THEN Ext := TRUE
       ELSE
@@ -77,7 +66,7 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
   PROCEDURE Init*;
   BEGIN Up := FALSE; Shift := FALSE; Ctrl := FALSE; Recd := FALSE;
     AltGr := FALSE; CapsLock := FALSE;
-    mkb := SYSTEM.VAL(MKB, SYSTEM.SVC(5));
+    mkb := PS2.mkb;
     KTabAdr := SYSTEM.ADR(
     (* US key map $
       00 00 00 00 00 1A 00 00  00 00 00 00 00 09 60 00

@@ -64,7 +64,6 @@ extern DMA_HandleTypeDef hdma_sdio_rx;
 extern DMA_HandleTypeDef hdma_sdio_tx;
 extern SD_HandleTypeDef hsd;
 /* USER CODE BEGIN EV */
-extern MSKBData mskbBlock;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -361,10 +360,6 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
 			hsd.State = HAL_SD_STATE_READY;
 		}
     	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-        break;
-    case 5:
-        /* Return mouse and keyboard data block address */
-        frame->r0 = (uint32_t) &mskbBlock;
         break;
     case 6:
         /* Draw pattern on screen */
