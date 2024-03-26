@@ -37,6 +37,8 @@ MODULE testPS2;
   PROCEDURE nextKBLeds*;
     VAR rc: BYTE;
   BEGIN INC(leds); leds := leds MOD 8;
+    Texts.WriteString(W, "leds "); Texts.WriteInt(W, leds,1);
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
     Oberon.SendByteAsync(1, 0EDH);
     rc := Oberon.WaitForAnswer(1, 35);
     IF rc = 0FAH THEN

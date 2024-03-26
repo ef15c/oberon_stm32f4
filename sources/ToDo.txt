@@ -80,8 +80,8 @@ N° de service   Nom         R0                                                  
             3   WriteSD     N° du premier secteur à écrire sur la carte SD      Addresse de destination en mémoire      Nombre de blocs à écrire
             4   <supprimé>  
             5   <supprimé>
-            6   CopyPat     Couleur                                             Adresse du motif à dessiner             x*10000H+y, R3 = mode    
-            7   CopyBlock   sx*10000H + sy                                      h*10000H + w                            dx*10000H+dy, R3 = mode    
+            6   <supprimé>
+            7   <supprimé>
 à faire
 N° de service   Nom         R0                                                  R1                                      R2 et suivants
 -------------   -------     --------------------------------------------------  ------------------------------------    ------------------------

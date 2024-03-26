@@ -59,7 +59,6 @@ __STATIC_FORCEINLINE uint32_t __get_LR(void);
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 extern DMA_HandleTypeDef hdma_sdio_rx;
 extern DMA_HandleTypeDef hdma_sdio_tx;
 extern SD_HandleTypeDef hsd;
@@ -219,20 +218,6 @@ void SDIO_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles DMA2 stream0 global interrupt.
-  */
-void DMA2_Stream0_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA2_Stream0_IRQn 0 */
-
-  /* USER CODE END DMA2_Stream0_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_memtomem_dma2_stream0);
-  /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
-
-  /* USER CODE END DMA2_Stream0_IRQn 1 */
-}
-
-/**
   * @brief This function handles DMA2 stream3 global interrupt.
   */
 void DMA2_Stream3_IRQHandler(void)
@@ -279,7 +264,6 @@ __STATIC_FORCEINLINE uint32_t __get_LR(void)
 void Oberon_SVC_Handler(sContextStateFrame *frame)
 {
     uint8_t param = *((uint8_t *)(frame->return_address)-2);
-    int32_t x, y, w, h, dx, dy;
 	uint8_t *pbuf;
     uint32_t *wsrc, *wdst;
     int i;
@@ -360,22 +344,6 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
 			hsd.State = HAL_SD_STATE_READY;
 		}
     	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-        break;
-    case 6:
-        /* Draw pattern on screen */
-        x = frame->r2 >> 16;
-        y = frame->r2 & 0xFFFF;
-        CopyPattern(frame->r0, (uint32_t *) frame->r1, x, y, frame->r3);
-        break;
-    case 7:
-        /* Copy block on screen */
-        x = frame->r0 >> 16;
-        y = frame->r0 & 0xFFFF;
-        w = frame->r1 >> 16;
-        h = frame->r1 & 0xFFFF;
-        dx = frame->r2 >> 16;
-        dy = frame->r2 & 0xFFFF;
-        CopyBlock(x, y, w, h, dx, dy, frame->r3);
         break;
     }
 }

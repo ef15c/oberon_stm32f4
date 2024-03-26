@@ -22,6 +22,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       MW*, MH*: INTEGER; (*mouse limits*)
     END;
 
+  Device* = POINTER TO DeviceDesc;
   DeviceDesc* = RECORD
       direction, statusIn*, statusOut*, connectedDevice*: BYTE;
       clockPin*, nofBitsToBeRead, parity: BYTE;
@@ -31,7 +32,8 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       dest*: CircularBuffer; buf: CircularBufferDesc
     END;
 
-  VAR mkb*: MKB; mkbBlock: MKDataBlock;
+  VAR mkb*: MKB; mkbBlock: MKDataBlock; keyboard: Device;
+    KBLeds: SET;
 
   PROCEDURE^3 PutByteInFIFOBuffer(VAR dev: DeviceDesc);
     VAR curTick, x, y, dx, dy: INTEGER;
@@ -117,7 +119,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
           IF dev.nofBitsToBeRead > 2 THEN dev.dataIn := LSR(dev.dataIn, 1); INC(dev.dataIn, LSL(ORD(dataBit), 7));
             INC(dev.parity, ORD(dataBit))
           ELSIF (dev.nofBitsToBeRead = 2) & dev.parityEnabled THEN
-            IF ODD(dev.parity + ORD(dataBit)) THEN dev.statusIn := PARITY_ERROR; SendByteAsync(dev, 0FEH)
+            IF ODD(dev.parity + ORD(dataBit)) THEN dev.statusIn := PARITY_ERROR; SendByteAsync(dev, 0FEH); dev.dataOut := LSR(dev.dataOut, 1)
             ELSE dev.statusIn := IN_PROGRESS END
           ELSE IF dataBit THEN dev.statusIn := SUCCESS ELSE dev.statusIn := FRAME_ERROR END
           END
@@ -128,7 +130,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
           IF (dev.statusIn = SUCCESS) OR ~dev.parityEnabled THEN 
             SYSTEM.PUT(dev.clock_Out, LOW); (*Keep clock low while processing byte*); PutByteInFIFOBuffer(dev);
             SYSTEM.PUT(dev.clock_Out, HIGH); (*Release clock*)
-          ELSE SendByteAsync(dev, 0FEH) END;
+          ELSE SendByteAsync(dev, 0FEH); dev.dataOut := LSR(dev.dataOut, 1) END;
           IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, OFF) END
         END
       ELSE INC(dev.badEdge)
@@ -150,6 +152,18 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     REPEAT UNTIL dev.statusIn # IN_PROGRESS; (*wait for answer*)
     RETURN dev.statusIn
   END SendByte;
+
+  PROCEDURE SetCapsLock*(state: BOOLEAN);
+    VAR rc: INTEGER;
+  BEGIN IF keyboard # NIL THEN
+      IF state THEN INCL(KBLeds, 2) ELSE EXCL(KBLeds, 2) END;
+      SendByteAsync(keyboard^, 0EDH);
+      IF WaitForAnswer(keyboard^, 35) = 0FAH THEN
+        SendByteAsync(keyboard^, ORD(KBLeds));
+        rc := WaitForAnswer(keyboard^, 35)
+      END
+    END    
+  END SetCapsLock;
 
   PROCEDURE ReadId(VAR dev: DeviceDesc);
     VAR nbTries, res: INTEGER;
@@ -173,7 +187,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   BEGIN id1 := WaitForAnswer(dev, 35);
     IF (id1 = 0ABH) & (WaitForAnswer(dev, 35) = 83H) THEN
       dev.activityLED := dev.keyboardLED; (*Map the activity LED for a keyboard device*)
-      dev.connectedDevice := KEYBOARD;
+      dev.connectedDevice := KEYBOARD; keyboard := SYSTEM.VAL(Device, SYSTEM.ADR(dev));
       SendByteAsync(dev, 0F4H); (*Enable data reporting*)
       res := WaitForAnswer(dev, 35);
       dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(mkb.KB));
@@ -217,20 +231,6 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
     ProbeDevice(dev);
   END InitDevice;
-
-  PROCEDURE resetForTest*(VAR dev: DeviceDesc);
-  BEGIN
-    dev.direction := DEVICE_TO_HOST; dev.statusIn := SUCCESS; dev.statusOut := SUCCESS;
-    dev.nofBitsToBeRead := 11; dev.parity := 0;
-    dev.parityEnabled := TRUE;
-    dev.dataIn := 0; dev.dataOut := 0;
-    dev.tickLastReport := 0; dev.buf.head := 0; dev.mouseReportSize := 4;
-      
-    IF dev.connectedDevice = KEYBOARD THEN
-      dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(mkb.KB)); dev.activityLED := dev.keyboardLED 
-    ELSE dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(dev.buf)); dev.activityLED := dev.mouseLED
-    END
-  END resetForTest;
 
 BEGIN mkb := SYSTEM.VAL(MKB, SYSTEM.ADR(mkbBlock));
 END PS2.

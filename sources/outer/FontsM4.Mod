@@ -74,8 +74,7 @@ BEGIN F := root;
         F.height := height; F.minX := minX; F.maxX := maxX; F.maxY := maxY;
         IF minY >= 80H THEN F.minY := minY - 100H ELSE F.minY := minY END ;
         a0 := SYSTEM.ADR(F.raster);
-        (*SYSTEM.PUT(a0, 0); INC(a0, 4); SYSTEM.PUT(a0, 0);*)
-		SYSTEM.PUT(a0, 400H); INC(a0, 4); SYSTEM.PUT(a0, 30003H);
+        SYSTEM.PUT(a0, 400H); INC(a0, 4); SYSTEM.PUT(a0, 30003H);
         SYSTEM.PUT(a0+4, 0E0E0E0H); SYSTEM.PUT(a0+8, 0E000E0H); SYSTEM.PUT(a0+12, 0E0E0E0H); 
         (*null pattern for characters not in a run*)
         a := a0+16; j := 0; k := 0; m := 0;

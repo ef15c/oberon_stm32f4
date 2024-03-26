@@ -159,7 +159,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ASSERT((x.r <= 0) & (a < 13));
     IF mcode.pc-fixORGD > OM4A.C25 THEN OM4S.Mark("too many instruction between static access") END;
     (* MOV a, #imm16 *)
-    OM4A.Put0(mcode, RH*OM4A.C28 + (-x.r)*OM4A.C24 + (mcode.pc-fixORGD) DIV OM4A.C1);
+    OM4A.Put0(mcode, a*OM4A.C28 + (-x.r)*OM4A.C24 + (mcode.pc-fixORGD) DIV OM4A.C1);
     fixORGD := mcode.pc-4;
     (*If x.r = 0, x.a contains the offset of the variable computed at compile time,
       else if x.r < 0, x.a contains the variable or procedure number and the base indicator*)
@@ -344,8 +344,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       lim := x.type.len;
       IF (y.mode = OM4B.Const) & (lim >= 0) THEN
         IF (y.a < 0) OR (y.a >= lim) THEN OM4S.Mark("bad index") END ;
-        IF x.mode IN {OM4B.Var, RegI} THEN x.a := y.a * s + x.a
-        ELSIF x.mode = OM4B.Par THEN x.b := y.a * s + x.b
+        IF (x.mode # OM4B.Var) OR (x.r >= 0) OR (y.a = 0) THEN
+          IF x.mode IN {OM4B.Var, RegI} THEN INC(x.a, y.a * s)
+          ELSIF x.mode = OM4B.Par THEN x.b := y.a * s + x.b
+          END
+        ELSE GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := y.a * s; incR
         END
       ELSE load(y);
         IF check THEN  (*check array bounds*)

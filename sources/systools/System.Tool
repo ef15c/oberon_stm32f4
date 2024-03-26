@@ -31,10 +31,3 @@ Net.SendFiles CS System.Tool ~
 Net.ReceiveFiles CS main.h ~
 
 testForever.Mod testForever.loop testForever.ovfl System.Free testForever
-
-System.Free testPS2 ~ 
-testPS2.Mod ~ 
-testPS2.showKB testPS2.nextKBLeds testPS2.resetKB
-testPS2.Command 1 0EDH 7 ~ testPS2.Command 1 0EDH 0 ~
-
-testPS2.showMouse testPS2.Command 0 0F4H ~

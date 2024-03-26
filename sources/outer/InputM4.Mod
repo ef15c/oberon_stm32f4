@@ -21,7 +21,7 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
         ELSIF (kbdCode = 12H) OR (kbdCode = 59H) THEN (*shift*) Shift := ~Up
         ELSIF kbdCode = 14H THEN (*ctrl*) Ctrl := ~Up
         ELSIF (kbdCode = 58H) & ~Up THEN (*capslock*)
-          CapsLock := ~CapsLock; LED(ORD(CapsLock))
+          CapsLock := ~CapsLock; PS2.SetCapsLock(CapsLock)
         ELSIF ~Up THEN Extended := Ext; Recd := TRUE (*real key going down*)
         END ;
         Up := FALSE; Ext := FALSE

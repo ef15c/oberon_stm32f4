@@ -66,7 +66,6 @@ void SysTick_Handler(void);
 void EXTI2_IRQHandler(void);
 void EXTI4_IRQHandler(void);
 void SDIO_IRQHandler(void);
-void DMA2_Stream0_IRQHandler(void);
 void DMA2_Stream3_IRQHandler(void);
 void DMA2_Stream6_IRQHandler(void);
 /* USER CODE BEGIN EFP */

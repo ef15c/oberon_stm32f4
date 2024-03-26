@@ -77,54 +77,43 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     END
   END ReplConst;
 
-(*Implemented in firmware
   PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
-    VAR a0, i, j: INTEGER; line: ARRAY 32 DIV NofPixperWord + 1 OF SET;
-      w, h: BYTE; ps, psn, last: INTEGER;
+    VAR a0, i, j, pixAdr: INTEGER; pix: SET;
+      w, h: BYTE; ps, psn, last, middle: INTEGER;
   BEGIN SYSTEM.GET(patadr, i); w := i MOD 100H; h := i DIV 10000H MOD 100H; INC(patadr, 4);
     a0 := Base + x DIV NofPixperWord*4 + (Height-1-y)*Span; x := x MOD NofPixperWord;
+    last :=  (w+x+3) DIV 4 - 1; middle := (w+3) DIV 4;
     FOR i := 1 TO h DO
       (*build frame buffer line w<32*)
-      last := (w+x+3) DIV 4 - 1;
-      FOR j := 0 TO last DO SYSTEM.GET(a0+j*4, line[j]) END;
       IF x = 0 THEN (*pattern and frame buffer are aligned*)
-        FOR j := 0 TO last DO
-          SYSTEM.GET(patadr, ps); INC(patadr, 4);
-          IF mode = invert THEN line[j] := line[j] / SYSTEM.VAL(SET, ps)
-          ELSE line[j] := line[j] + SYSTEM.VAL(SET, ps) END
+        FOR j := 0 TO last DO pixAdr := a0 + 4*j;
+          SYSTEM.GET(patadr, ps); INC(patadr, 4); SYSTEM.GET(pixAdr, pix);
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / SYSTEM.VAL(SET, ps))
+          ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)) END
         END
       ELSE(*pattern must be right shifted by x pixels. Because of little endianness of
-            STMF429 processor, words have to be left shifted by x*NofBPP*)
-        SYSTEM.GET(patadr, ps); INC(patadr, 4);
-        IF mode = invert THEN line[0] := line[0] / SYSTEM.VAL(SET, LSL(ps, x*NofBPP))
-        ELSE line[0] := line[0] + SYSTEM.VAL(SET, LSL(ps, x*NofBPP)) END;
+                 STMF429 processor, words have to be left shifted by x*NofBPP*)
+        SYSTEM.GET(patadr, ps); INC(patadr, 4); SYSTEM.GET(a0, pix);
+        IF mode = invert THEN SYSTEM.PUT(a0, pix / SYSTEM.VAL(SET, LSL(ps, x*NofBPP)))
+        ELSE SYSTEM.PUT(a0, pix + SYSTEM.VAL(SET, LSL(ps, x*NofBPP))) END;
         (*process frame buffer words except the last one*)
         j := 1;
-        WHILE j < (w+3) DIV 4 DO
-          SYSTEM.GET(patadr, psn); INC(patadr, 4);
+        WHILE j < middle DO pixAdr := a0 + 4*j;
+          SYSTEM.GET(patadr, psn); INC(patadr, 4); SYSTEM.GET(pixAdr, pix);
           ps := LSR(ps, (NofPixperWord - x)*NofBPP) + LSL(psn, x*NofBPP);
-          IF mode = invert THEN line[j] := line[j] / SYSTEM.VAL(SET, ps)
-          ELSE line[j] := line[j] + SYSTEM.VAL(SET, ps) END;
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / SYSTEM.VAL(SET, ps))
+          ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)) END;
           ps := psn; INC(j)
         END;
-        IF j <= last THEN
+        IF j <= last THEN pixAdr := a0 + 4*j; SYSTEM.GET(pixAdr, pix);
           (*process last word*)
           ps := LSR(ps, (NofPixperWord - x)*NofBPP);
-          IF mode = invert THEN line[j] := line[j] / SYSTEM.VAL(SET, ps)
-          ELSE line[j] := line[j] + SYSTEM.VAL(SET, ps) END
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / SYSTEM.VAL(SET, ps))
+          ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)) END
         END
       END;
-      (*update frame buffer for this line*)
-      FOR j := 0 TO last DO SYSTEM.PUT(a0+j*4, line[j]) END;      
       DEC(a0, Span)
     END
-  END CopyPattern;
-*)
-  PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
-  BEGIN
-    SYSTEM.LDREG(0, col); SYSTEM.LDREG(1, patadr);
-    SYSTEM.LDREG(2, x*10000H+y); SYSTEM.LDREG(3, mode);
-    col := SYSTEM.SVC(6)
   END CopyPattern;
 
   PROCEDURE CopyBlock*(sx, sy, w, h, dx, dy, mode: INTEGER); (*only for mode = replace*)
