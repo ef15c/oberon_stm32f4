@@ -74,6 +74,7 @@ Localisation CCM : 1000 0000H - 1000 FFFFH
 L'instruction SVC sera utilisée pour exécuter des services matériels, valeur de retour dans R0 :
 N° de service   Nom         R0                                                  R1                                      R2 et suivants
 -------------   -------     --------------------------------------------------  ------------------------------------    ------------------------
+            0   NEW         Adresse du pointeur vers la zone à allouer          Taille de la zone à allouer
             1   LED         <7:0> : un bit par LED à allumer (1) ou éteindre 0
             2   ReadSD      N° du premier secteur à lire sur la carte SD        Addresse de destination en mémoire      Nombre de blocs à lire
                             Retourne 0 si OK

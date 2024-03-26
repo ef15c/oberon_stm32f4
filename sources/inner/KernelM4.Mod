@@ -282,9 +282,11 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END IncTick;
 
   PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
-    VAR param: BYTE;
+    VAR param: BYTE; m: LONGINT;
   BEGIN SYSTEM.GET(f.returnAddress - 2, param);
-    IF param = 1 THEN BSP.led(f.r0)
+    IF param = 0 THEN (*Allocate dynamic memory*)
+      New(m, f.r1); SYSTEM.PUT(f.r0, m)
+    ELSIF param = 1 THEN BSP.led(f.r0)
     ELSE OldSVCallHandler(f) END
   END SVCallHandler;
 

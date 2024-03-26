@@ -1006,7 +1006,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Assert; 
 
   PROCEDURE New*(VAR x: Item);
-  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Trap(OM4A.AL, 0); RH := 0; SH := 0
+  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); (*Trap(OM4A.AL, 0)*) OM4A.Put1(mcode, OM4A.SVC); RH := 0; SH := 0
   END New;
 
   PROCEDURE Pack*(VAR x, y: Item);
