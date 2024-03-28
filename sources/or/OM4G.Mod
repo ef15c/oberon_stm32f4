@@ -1125,10 +1125,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item);
     VAR op: LONGINT;
-  BEGIN load(x);
-    IF fct = 0 THEN op := OM4A.LSl ELSIF fct = 1 THEN op := OM4A.ASr ELSIF fct = 2 THEN op := OM4A.ROr ELSE op := OM4A.LSr END ;
-    IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, op, x.r, x.r, y.a MOD 20H)
-    ELSE load(y); OM4A.encShiftReg(mcode, op, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+  BEGIN IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
+      IF fct = 0 THEN x.a := LSL(x.a, y.a) ELSIF fct = 1 THEN x.a := ASR(x.a, y.a) ELSIF fct = 2 THEN x.a := ROR(x.a, y.a) ELSE x.a := LSR(x.a, y.a) END 
+    ELSE load(x);
+      IF fct = 0 THEN op := OM4A.LSl ELSIF fct = 1 THEN op := OM4A.ASr ELSIF fct = 2 THEN op := OM4A.ROr ELSE op := OM4A.LSr END ;
+      IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, op, x.r, x.r, y.a MOD 20H)
+      ELSE load(y); OM4A.encShiftReg(mcode, op, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+      END
     END
   END Shift;
 

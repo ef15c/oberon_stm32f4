@@ -9,16 +9,16 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     ABORTKEY = 2; (*Reserved in CFSR*)
 
     (*To improve readability*)
-    SCB_CFSR = BSP.SCB_BASE + BSP.SCB_CFSR; SCB_ICSR = BSP.SCB_BASE + BSP.SCB_ICSR; SCB_BFAR = BSP.SCB_BASE + BSP.SCB_BFAR;
-    NOCP = BSP.SCB_UFSR_NOCP; INVSTATE = BSP.SCB_UFSR_INVSTATE; STKERR = BSP.SCB_BFSR_STKERR; PRECISERR = BSP.SCB_BFSR_PRECISERR;
-    PENDSVSET = BSP.SCB_ICSR_PENDSVSET;
-    UFSR_Mask = BSP.SCB_UFSR_Mask; BFSR_Mask = BSP.SCB_BFSR_Mask;
+    CFSR = BSP.SCB_BASE + BSP.CFSR; ICSR = BSP.SCB_BASE + BSP.ICSR; BFAR = BSP.SCB_BASE + BSP.BFAR;
+    NOCP = BSP.NOCP; INVSTATE = BSP.INVSTATE; STKERR = BSP.STKERR; PRECISERR = BSP.PRECISERR;
+    PENDSVSET = BSP.PENDSVSET;
+    UFSR_Mask = BSP.UFSR_Mask; BFSR_Mask = BSP.BFSR_Mask;
 
-    EXTI_PR = BSP.EXTI_BASE + BSP.EXTI_PR;
+    PR = BSP.EXTI_BASE + BSP.PR;
 
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
-    TrappedAdr, DebounceTime: INTEGER; CFSR: SET;
+    TrappedAdr, DebounceTime: INTEGER; cfsr: SET;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
     VAR T!: Texts.Text; beg, end, time: LONGINT;
@@ -410,50 +410,50 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END ExtendDisplay;
 
   PROCEDURE* Trap(VAR f: Kernel.ExceptionFrameDesc);
-    VAR ICSR: SET; w, inst: INTEGER;
+    VAR icsr: SET; w, inst: INTEGER;
   BEGIN
-    SYSTEM.GET(SCB_CFSR, CFSR);
-    IF NOCP IN CFSR THEN (*Trap*)
+    SYSTEM.GET(CFSR, cfsr);
+    IF NOCP IN cfsr THEN (*Trap*)
       SYSTEM.GET(f.returnAddress, inst);
       w := inst DIV 10000H MOD 10H;
-    ELSIF INVSTATE IN CFSR THEN w := 5 (*probably illegal procedure call*)
+    ELSIF INVSTATE IN cfsr THEN w := 5 (*probably illegal procedure call*)
     END;
     IF w = 0 THEN Kernel.New(w, f.r1); SYSTEM.PUT(f.r0, w); INC(f.returnAddress, 4); (*move to next instruction*)
     ELSE (*trap*) 
       IF w = 5 THEN TrappedAdr := f.lr ELSE TrappedAdr := f.returnAddress END;
       (*Trigger abort by requesting a PendSV interrupt*)
-      SYSTEM.GET(SCB_ICSR, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(SCB_ICSR, ICSR); SYSTEM.MBI(3) (*ISB*)
+      SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3) (*ISB*)
     END;
-    IF CFSR - {NOCP, INVSTATE} # {} THEN (*other fault*)
+    IF cfsr - {NOCP, INVSTATE} # {} THEN (*other fault*)
       BSP.led(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
-    SYSTEM.PUT(SCB_CFSR, CFSR*UFSR_Mask) (*reset UFSR flags*)
+    SYSTEM.PUT(CFSR, cfsr*UFSR_Mask) (*reset UFSR flags*)
   END Trap;
 
   PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
-    VAR ICSR: SET; w, inst: INTEGER;
+    VAR icsr: SET; w, inst: INTEGER;
   BEGIN
-    SYSTEM.GET(SCB_CFSR, CFSR);
-    IF ~(STKERR IN CFSR) THEN TrappedAdr := f.returnAddress 
-    ELSIF PRECISERR IN CFSR THEN SYSTEM.GET(SCB_BFAR, TrappedAdr)
+    SYSTEM.GET(CFSR, cfsr);
+    IF ~(STKERR IN cfsr) THEN TrappedAdr := f.returnAddress 
+    ELSIF PRECISERR IN cfsr THEN SYSTEM.GET(BFAR, TrappedAdr)
     END;
     (*Trigger abort by requesting a PendSV interrupt*)
-      SYSTEM.GET(SCB_ICSR, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(SCB_ICSR, ICSR); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(SCB_CFSR, CFSR*BFSR_Mask) (*reset BFSR flags*)
+      SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
+    SYSTEM.PUT(CFSR, cfsr*BFSR_Mask) (*reset BFSR flags*)
   END BusFaultHandler;
 
   (*Handle abort key press*)
   PROCEDURE* AbortHandler(VAR f: Kernel.ExceptionFrameDesc);
-    VAR ICSR, pr: SET;
-  BEGIN SYSTEM.GET(EXTI_PR, pr);
+    VAR icsr, pr: SET;
+  BEGIN SYSTEM.GET(PR, pr);
     IF BSP.PB1Pin IN pr THEN
-      CFSR := {ABORTKEY}; TrappedAdr := f.returnAddress;
-      pr := {BSP.PB1Pin}; SYSTEM.PUT(EXTI_PR, pr); (* Clear pending IRQ*)
+      cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
+      pr := {BSP.PB1Pin}; SYSTEM.PUT(PR, pr); (* Clear pending IRQ*)
       IF Kernel.Time() - DebounceTime < 30 THEN INC(DebounceTime, 30)
       ELSE
         DebounceTime := Kernel.Time();
         (*Trigger abort by requesting a PendSV interrupt*)
-        SYSTEM.GET(SCB_ICSR, ICSR); INCL(ICSR, PENDSVSET); SYSTEM.PUT(SCB_ICSR, ICSR); SYSTEM.MBI(3) (*ISB*)
+        SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3) (*ISB*)
       END
     END
   END AbortHandler;
@@ -461,7 +461,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   PROCEDURE Reset;
     VAR inst, w, base, i: INTEGER; mod!: Modules.Module;
   BEGIN
-    IF NOCP IN CFSR THEN (*Trap*)      
+    IF NOCP IN cfsr THEN (*Trap*)      
       SYSTEM.GET(TrappedAdr, inst);
       inst := inst DIV 100H MOD 100H*1000000H
         + inst MOD 100H*10000H
@@ -472,14 +472,14 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       inst := inst DIV 10H; (*inst contains 1110/110p/pppp/pppp/pppp/0ppp/pppp*)
       inst := (inst DIV 100H*80H + inst MOD 80H) MOD 100000H;
       Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
-    ELSIF INVSTATE IN CFSR THEN w := 5 (*probably illegal procedure call*)
-    ELSIF STKERR IN CFSR THEN w := 9; (*Bus Fault: stack overflow*)
+    ELSIF INVSTATE IN cfsr THEN w := 5 (*probably illegal procedure call*)
+    ELSIF STKERR IN cfsr THEN w := 9; (*Bus Fault: stack overflow*)
       (*trying to find nearest return adress*)
       SYSTEM.GET(Kernel.VarORG0 + 16, base); i := 10000000H;
       REPEAT SYSTEM.GET(i, TrappedAdr); INC(i, 4) UNTIL ((TrappedAdr >= base) & (TrappedAdr < Modules.AllocPtr)) OR (i >= 10010000H);
       IF i >= 10010000H THEN TrappedAdr := 0 END
-    ELSIF PRECISERR IN CFSR THEN w := 8 (*Bus Fault: data access precise error*)
-    ELSIF ABORTKEY IN CFSR THEN w := 10 (*User pressed the abort key*)
+    ELSIF PRECISERR IN cfsr THEN w := 8 (*Bus Fault: data access precise error*)
+    ELSIF ABORTKEY IN cfsr THEN w := 10 (*User pressed the abort key*)
     ELSE w := 11 (*TODO Fault to be characterized*)
     END;
     Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4);
@@ -489,7 +489,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       IF mod # NIL THEN base := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
       Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - base);
       TrappedAdr := 0
-    END; Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); CFSR := {}; Oberon.Reset
+    END; Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); cfsr := {}; Oberon.Reset
   END Reset;
   
   PROCEDURE PendSVHandler;

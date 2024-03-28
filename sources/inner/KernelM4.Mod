@@ -9,10 +9,10 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     CC = 3; (* Carry clear Less than*)
 
     (*To improve readability*)
-    SSR = BSP.RTC_BASE + BSP.RTC_SSR; TR = BSP.RTC_BASE + BSP.RTC_TR;
-    DR = BSP.RTC_BASE + BSP.RTC_DR; WPR = BSP.RTC_BASE + BSP.RTC_WPR;
-    ISR = BSP.RTC_BASE + BSP.RTC_ISR;
-    INITF = BSP.RTC_ISR_INITF;
+    SSR = BSP.RTC_BASE + BSP.SSR; TR = BSP.RTC_BASE + BSP.TR;
+    DR = BSP.RTC_BASE + BSP.DR; WPR = BSP.RTC_BASE + BSP.WPR;
+    ISR = BSP.RTC_BASE + BSP.ISR;
+    INITF = BSP.INITF;
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
   
