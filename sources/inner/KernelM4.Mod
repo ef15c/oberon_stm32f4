@@ -10,7 +10,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
     (*To improve readability*)
     SSR = BSP.RTC_BASE + BSP.SSR; TR = BSP.RTC_BASE + BSP.TR;
-    DR = BSP.RTC_BASE + BSP.DR; WPR = BSP.RTC_BASE + BSP.WPR;
+    DR = BSP.RTC_BASE + BSP.RTC_DR; WPR = BSP.RTC_BASE + BSP.WPR;
     ISR = BSP.RTC_BASE + BSP.ISR;
     INITF = BSP.INITF;
 
@@ -293,7 +293,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE Init*;
     VAR currentSVCHandlerAddr, r: INTEGER;
       pb2up: BOOLEAN; param: ARRAY 128 OF INTEGER;
-  BEGIN BSP.Init; SYSTEM.GET(BSP.PB2In, pb2up);
+  BEGIN BSP.Init; BSP.InitRTC;
+    SYSTEM.GET(BSP.PB2In, pb2up); (*Check PB2 statte*)
     IF ~pb2up THEN FSoffset := FS_OFFSET
     ELSE (*Get and verify Oberon file system configuration*)
       SYSTEM.LDREG(0, FS_OFFSET); SYSTEM.LDREG(1, SYSTEM.ADR(param)); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);

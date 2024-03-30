@@ -91,50 +91,6 @@ void HAL_MspInit(void)
 }
 
 /**
-* @brief CRC MSP Initialization
-* This function configures the hardware resources used in this example
-* @param hcrc: CRC handle pointer
-* @retval None
-*/
-void HAL_CRC_MspInit(CRC_HandleTypeDef* hcrc)
-{
-  if(hcrc->Instance==CRC)
-  {
-  /* USER CODE BEGIN CRC_MspInit 0 */
-
-  /* USER CODE END CRC_MspInit 0 */
-    /* Peripheral clock enable */
-    __HAL_RCC_CRC_CLK_ENABLE();
-  /* USER CODE BEGIN CRC_MspInit 1 */
-
-  /* USER CODE END CRC_MspInit 1 */
-  }
-
-}
-
-/**
-* @brief CRC MSP De-Initialization
-* This function freeze the hardware resources used in this example
-* @param hcrc: CRC handle pointer
-* @retval None
-*/
-void HAL_CRC_MspDeInit(CRC_HandleTypeDef* hcrc)
-{
-  if(hcrc->Instance==CRC)
-  {
-  /* USER CODE BEGIN CRC_MspDeInit 0 */
-
-  /* USER CODE END CRC_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_CRC_CLK_DISABLE();
-  /* USER CODE BEGIN CRC_MspDeInit 1 */
-
-  /* USER CODE END CRC_MspDeInit 1 */
-  }
-
-}
-
-/**
 * @brief LTDC MSP Initialization
 * This function configures the hardware resources used in this example
 * @param hltdc: LTDC handle pointer
@@ -314,61 +270,6 @@ void HAL_LTDC_MspDeInit(LTDC_HandleTypeDef* hltdc)
 }
 
 /**
-* @brief RTC MSP Initialization
-* This function configures the hardware resources used in this example
-* @param hrtc: RTC handle pointer
-* @retval None
-*/
-void HAL_RTC_MspInit(RTC_HandleTypeDef* hrtc)
-{
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-  if(hrtc->Instance==RTC)
-  {
-  /* USER CODE BEGIN RTC_MspInit 0 */
-
-  /* USER CODE END RTC_MspInit 0 */
-
-  /** Initializes the peripherals clock
-  */
-    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
-    PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_HSE_DIV16;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
-    /* Peripheral clock enable */
-    __HAL_RCC_RTC_ENABLE();
-  /* USER CODE BEGIN RTC_MspInit 1 */
-
-  /* USER CODE END RTC_MspInit 1 */
-  }
-
-}
-
-/**
-* @brief RTC MSP De-Initialization
-* This function freeze the hardware resources used in this example
-* @param hrtc: RTC handle pointer
-* @retval None
-*/
-void HAL_RTC_MspDeInit(RTC_HandleTypeDef* hrtc)
-{
-  if(hrtc->Instance==RTC)
-  {
-  /* USER CODE BEGIN RTC_MspDeInit 0 */
-
-  /* USER CODE END RTC_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_RTC_DISABLE();
-  /* USER CODE BEGIN RTC_MspDeInit 1 */
-
-  /* USER CODE END RTC_MspDeInit 1 */
-  }
-
-}
-
-/**
 * @brief SD MSP Initialization
 * This function configures the hardware resources used in this example
 * @param hsd: SD handle pointer
@@ -501,83 +402,6 @@ void HAL_SD_MspDeInit(SD_HandleTypeDef* hsd)
   /* USER CODE BEGIN SDIO_MspDeInit 1 */
 
   /* USER CODE END SDIO_MspDeInit 1 */
-  }
-
-}
-
-/**
-* @brief SPI MSP Initialization
-* This function configures the hardware resources used in this example
-* @param hspi: SPI handle pointer
-* @retval None
-*/
-void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if(hspi->Instance==SPI3)
-  {
-  /* USER CODE BEGIN SPI3_MspInit 0 */
-
-  /* USER CODE END SPI3_MspInit 0 */
-    /* Peripheral clock enable */
-    __HAL_RCC_SPI3_CLK_ENABLE();
-
-    __HAL_RCC_GPIOD_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    /**SPI3 GPIO Configuration
-    PD6     ------> SPI3_MOSI
-    PB3     ------> SPI3_SCK
-    PB4     ------> SPI3_MISO
-    */
-    GPIO_InitStruct.Pin = NRF24L01P_MOSI_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-    GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-    HAL_GPIO_Init(NRF24L01P_MOSI_GPIO_Port, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = NRF24L01P_SCK_Pin|NRF24L01P_MISO_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-    GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /* USER CODE BEGIN SPI3_MspInit 1 */
-
-  /* USER CODE END SPI3_MspInit 1 */
-  }
-
-}
-
-/**
-* @brief SPI MSP De-Initialization
-* This function freeze the hardware resources used in this example
-* @param hspi: SPI handle pointer
-* @retval None
-*/
-void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
-{
-  if(hspi->Instance==SPI3)
-  {
-  /* USER CODE BEGIN SPI3_MspDeInit 0 */
-
-  /* USER CODE END SPI3_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_SPI3_CLK_DISABLE();
-
-    /**SPI3 GPIO Configuration
-    PD6     ------> SPI3_MOSI
-    PB3     ------> SPI3_SCK
-    PB4     ------> SPI3_MISO
-    */
-    HAL_GPIO_DeInit(NRF24L01P_MOSI_GPIO_Port, NRF24L01P_MOSI_Pin);
-
-    HAL_GPIO_DeInit(GPIOB, NRF24L01P_SCK_Pin|NRF24L01P_MISO_Pin);
-
-  /* USER CODE BEGIN SPI3_MspDeInit 1 */
-
-  /* USER CODE END SPI3_MspDeInit 1 */
   }
 
 }

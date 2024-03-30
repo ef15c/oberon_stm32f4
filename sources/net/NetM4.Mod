@@ -3,7 +3,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
 
   CONST PakSize = 512;
     (*T0 = 300; T1 = 1000; (*timeouts*)*)
-    T0 = 1000; T1 = 3000; (*timeouts*)
+    T0 = 3000; T1 = 3000; (*timeouts*)
     ACK = 10H; NAK = 25H; NPR = 26H; (*acknowledgements*)
     NRQ = 34H; NRS = 35H; (*name request, response*)
     SND = 41H; REC = 42H; MSG = 44H;
@@ -42,7 +42,6 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   BEGIN SCC.Skip(SCC.Available()); res := 0; k := 0;
     WHILE (k < 7) & (name[k] # 0X) DO Id[k] := name[k]; IdB[k] := ORD(Id[k]); INC(k) END;
     Id[k] := 0X; IdB[k] := 0; (* <-- also terminate IdB *)
-
     IF Id # partner THEN
       head0.dadr := 0FFH; Send(NRQ, k+1, IdB); time := Oberon.Time() + T1;
       REPEAT
@@ -92,13 +91,14 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     REPEAT k := 0;
       REPEAT Files.ReadByte(R, x);
         IF ~R.eof THEN buf[k] := x; INC(k) END
-      UNTIL R.eof OR (k = PakSize); retry := 15; nseqno := (seqno + 1) MOD 8;
+      UNTIL R.eof OR (k = PakSize); retry := 20; nseqno := (seqno + 1) MOD 8;
       REPEAT Send(seqno, k, buf); ReceiveHead(T1); DEC(retry);
-        IF head1.typ # nseqno + ACK THEN SCC.Delayms(500); END
+        IF head1.typ # nseqno + ACK THEN SCC.Delayms(100); END
       UNTIL (head1.typ = nseqno + ACK) OR (retry = 0);
       seqno := nseqno; len := len + k;
       IF head1.typ # seqno + ACK THEN
         Texts.WriteString(W, " failed"); k := 0
+        ;Texts.WriteString(W, " recd type "); ;Texts.WriteInt(W, head1.typ, 1)
       END
     UNTIL k < PakSize;
     Texts.WriteInt(W, len, 7)
@@ -109,7 +109,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
      x: BYTE;
      len: LONGINT;
      R!: Files.Rider;
-  BEGIN Files.Set(R, F, 0); seqno := 0; len := 0; retry := 15; k := PakSize;
+  BEGIN Files.Set(R, F, 0); seqno := 0; len := 0; retry := 20; k := PakSize;
     REPEAT
      IF head1.typ = seqno THEN
        seqno := (seqno + 1) MOD 8; len := len + head1.len; retry := 2;
@@ -118,7 +118,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
          SCC.Receive(x); Files.WriteByte(R, x); INC(k)
        END ;
        IF k < PakSize THEN done := TRUE END
-     ELSE DEC(retry);
+     ELSE SCC.Delayms(100); DEC(retry);
        IF retry = 0 THEN
          Texts.WriteString(W, " failed"); done := FALSE; k := 0
        END ;

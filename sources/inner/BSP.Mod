@@ -1,7 +1,8 @@
 MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   IMPORT SYSTEM;
 
-  CONST  (*STM32F429*)
+  CONST  MASK2* = {0..1}; MASK4* = {0..3};
+    (*STM32F429*)
     (*Cortex M4*)
     SCB_BASE* =  0E000ED00H;
     ICSR* = 4; CFSR* = 28H; BFAR* = 38H;
@@ -33,6 +34,14 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     EXTI0_IRQNum* = 16+6; EXTI1_IRQNum* = 16+7; EXTI2_IRQNum* = 16+8; EXTI3_IRQNum* = 16+9; EXTI4_IRQNum* = 16+10;
     EXTI9_5_IRQNum* = 16+23; EXTI15_10_IRQNum* = 16+40;
 
+    (*CRC*)
+    CRC_BASE* = 40023000H;
+    CRC_DR* = 0;
+    CRC_IDR* = 4;
+
+    CRC_CR* = 8; CRC_RESET* = 0;
+    crcReset* = PeriphBBAlias + (CRC_BASE + CRC_CR - PeriphBase + CRC_RESET DIV 8)*32 + CRC_RESET MOD 8*4;
+
     (*EXTI*)
     EXTI_BASE* = 40013C00H; PR* = 14H;
 
@@ -45,8 +54,12 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     RCC_BASE* = 40023800H;
     CFGR* = 8; RTCPRE* = {16..20}; (*clock configuration register*)
 
-    APB1ENR* = 40H; PWREN* = 28; (*APB1 peripheral clock enable register*)
+    AHB1ENR* = 30H; CRCEN* = 12;
+    crcEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + CRCEN DIV 8)*32 + CRCEN MOD 8*4;
+
+    APB1ENR* = 40H; SPI3EN* = 15; PWREN* = 28; (*APB1 peripheral clock enable register*)
     pwrEn* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + PWREN DIV 8)*32 + PWREN MOD 8*4;
+    spi3En* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + SPI3EN DIV 8)*32 + SPI3EN MOD 8*4;
 
     BDCR* = 70H; RTCEN* = 15; BDRST* = 16; RTCSEL* = {8..9}; (*backup domain control register*)
     rtcEn* = PeriphBBAlias + (RCC_BASE + BDCR - PeriphBase + RTCEN DIV 8)*32 + RTCEN MOD 8*4;
@@ -54,16 +67,36 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*RTC*)
     RTC_BASE* =  40002800H; 
-    TR* = 0; DR* = 4; RTC_CR* = 8; PRER* = 10H; SSR* = 28H; WPR* = 24H; ISR* = 0CH; (*registers*)
+    TR* = 0; RTC_DR* = 4; RTC_CR* = 8; PRER* = 10H; SSR* = 28H; WPR* = 24H; ISR* = 0CH; (*registers*)
     INIT* = 7; INITF* = 6; RSF* = 5;(*flags*)
     rtcInit* = PeriphBBAlias + (RTC_BASE + ISR - PeriphBase + INIT DIV 8)*32 + INIT MOD 8*4;
+
+    (*SPI*)
+    SPI2_BASE* = 40003800; SPI3_BASE* = 40003C00H;
+    CR1* = 0;
+    SPE* = 6; 
+    CPHAm* = {0}; CPOLm* = {1};  MSTRm* = {2}; BRm* = {3..5}; SPEm = {SPE}; LSBFIRSTm* = {7}; SSIm* = {8}; SSMm* = {9};
+    RXONLYm* = {10}; DFFm* = {11}; CRCNEXTm* = {12}; CECENm = {13}; BIDIOEm* = {14}; BIDIMODEm* = {15};
+    BRPS_2* = {}; BRPS_4* = {3}; BRPS_8* = {4}; BRPS_16* = {3,4}; BRPS_32* = {5}; BRPS_64* = {3,5}; BRPS_128* = {4,5}; BRPS_256* = {3..5};
+    spe3* = PeriphBBAlias + (SPI3_BASE +CR1 - PeriphBase + SPE DIV 8)*32 + SPE MOD 8*4;
+    CR2* = 4;
+    I2SCFGR* = 1CH;
+    I2SMOD* = 11;
+    i2smod3* = PeriphBBAlias + (SPI3_BASE + I2SCFGR - PeriphBase + I2SMOD DIV 8)*32 + I2SMOD MOD 8*4;
+    SR* = 08H;
+    RXNE* = 0; TXE* = 1; BSY* = 7;
+    SPI_DR* = 0CH;
 
     (*GPIOs*)    
     GPIOA* = 40020000H; GPIOB* = 40020400H; GPIOC* = 40020800H; GPIOD* = 40020C00H; 
     GPIOE* = 40021000H; GPIOF* = 40021400H; GPIOG* = 40021800H; GPIOH* = 40021C00H;
     GPIOI* = 40022000H; GPIOJ* = 40022400H; GPIOK* = 40022800H;
-    MODER* = 0; OTYPER* = 4; OSPEEDR* = 8; PUPDR* = 0CH; IDR* = 10H; ODR* = 14H; BSRR* = 18H;
+    MODER* = 0; OTYPER* = 4; OSPEEDR* = 8; PUPDR* = 0CH; IDR* = 10H; ODR* = 14H; BSRR* = 18H; AFRL = 20H; AFRH = 24H;
+    INPUT_MODE* = {}; OUTPUT_MODE* = {0}; AF_MODE* = {1}; ANALOG_MODE* = {0..1};
+    LOW_SPEED* = {}; MEDIUM_SPEED* = {0}; HIGH_SPEED* = {1}; VERY_HIGH_SPEED* = {0..1};
+    NO_PULL* = {}; PULL_UP* = {0}; PULL_DOWN* = {1};
 
+    (*base board push buttons*)
     PB1Pin* = 14; PB1Port* = GPIOC; PB1ExtiIrqNum* = EXTI15_10_IRQNum;
     PB1In* = PeriphBBAlias + (PB1Port + IDR - PeriphBase + PB1Pin DIV 8)*32 + PB1Pin MOD 8*4;
     PB2Pin* = 15; PB2Port* = GPIOC;
@@ -81,6 +114,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     PB8Pin* = 7; PB8Port* = GPIOF;
     PB8In* = PeriphBBAlias + (PB8Port + IDR - PeriphBase + PB8Pin DIV 8)*32 + PB8Pin MOD 8*4;
 
+    (*base board LEDs*)
     LED1Pin* = 9; LED1Port* = GPIOF;
     LED1Out* = PeriphBBAlias + (LED1Port + ODR - PeriphBase + LED1Pin DIV 8)*32 + LED1Pin MOD 8*4;
     LED2Pin* = 3; LED2Port* = GPIOC;
@@ -96,11 +130,13 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     LED7Pin* = 3; LED7Port* = GPIOG;
     LED7Out* = PeriphBBAlias + (LED7Port + ODR - PeriphBase + LED7Pin DIV 8)*32 + LED7Pin MOD 8*4;
 
+    (*discovery board push button*)
     LD3Pin* = 13; LD3Port* = GPIOG;
     LD3Out* = PeriphBBAlias + (LD3Port + ODR - PeriphBase + LD3Pin DIV 8)*32 + LD3Pin MOD 8*4;
     LD4Pin* = 14; LD4Port* = GPIOG;
     LD4Out* = PeriphBBAlias + (LD4Port + ODR - PeriphBase + LD4Pin DIV 8)*32 + LD4Pin MOD 8*4;
 
+    (*PS/2 pins*)
     PS2Port = GPIOE;
     PS2CLOCK1Pin* = 2; PS2CLOCK1Port* = PS2Port; PS2CLOCK1ExtiIrqNum* =  EXTI2_IRQNum;
     PS2CLOCK1In* = PeriphBBAlias + (PS2CLOCK1Port + IDR - PeriphBase + PS2CLOCK1Pin DIV 8)*32 + PS2CLOCK1Pin MOD 8*4;
@@ -115,25 +151,24 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     PS2DATA2In* = PeriphBBAlias + (PS2DATA2Port + IDR - PeriphBase + PS2DATA2Pin DIV 8)*32 + PS2DATA2Pin MOD 8*4;
     PS2DATA2Out* = PeriphBBAlias + (PS2DATA2Port + ODR - PeriphBase + PS2DATA2Pin DIV 8)*32 + PS2DATA2Pin MOD 8*4;
 
-(*
+    (*SD card pins*)
+    WRITE_PROTECTPin* = 4; WRITE_PROTECTPort* = GPIOD;
+    WRITE_PROTECTin* = PeriphBBAlias + (WRITE_PROTECTPort + IDR - PeriphBase + WRITE_PROTECTPin DIV 8)*32 + WRITE_PROTECTPin MOD 8*4;
+    CARD_DETECTPin* = 5; CARD_DETECTPort* = GPIOD;
+    CARD_DETECTin* = PeriphBBAlias + (CARD_DETECTPort + IDR - PeriphBase + CARD_DETECTPin DIV 8)*32 + CARD_DETECTPin MOD 8*4;
 
-#define WRITE_PROTECT_Pin GPIO_PIN_4
-#define WRITE_PROTECT_GPIO_Port GPIOD
-#define CARD_DETECT_Pin GPIO_PIN_5
-#define CARD_DETECT_GPIO_Port GPIOD
-#define NRF24L01P_MOSI_Pin GPIO_PIN_6
-#define NRF24L01P_MOSI_GPIO_Port GPIOD
-#define NRF24L01P_IRQ_Pin GPIO_PIN_7
-#define NRF24L01P_IRQ_GPIO_Port GPIOD
-#define NRF24L01P_CE_Pin GPIO_PIN_9
-#define NRF24L01P_CE_GPIO_Port GPIOG
-#define NRF24L01P_SCK_Pin GPIO_PIN_3
-#define NRF24L01P_SCK_GPIO_Port GPIOB
-#define NRF24L01P_MISO_Pin GPIO_PIN_4
-#define NRF24L01P_MISO_GPIO_Port GPIOB
-#define NRF24L01P_CS_Pin GPIO_PIN_7
-#define NRF24L01P_CS_GPIO_Port GPIOB
-*)
+    (*nRF24L01+*) NRF24L01P_SMPort = GPIOB; NRF24L01P_MSAFR = AFRL;
+    NRF24L01P_MOSIPin* = 6; NRF24L01P_MOSIPort* =  GPIOD; NRF24L01P_MOSIAFR* = AFRL;
+    NRF24L01P_IRQPin* = 7; NRF24L01P_IRQPort* = GPIOD;
+    NRF24L01P_CEPin* = 9; NRF24L01P_CEPort* = GPIOG;
+    NRF24L01P_CEOut* = PeriphBBAlias + (NRF24L01P_CEPort + ODR - PeriphBase + NRF24L01P_CEPin DIV 8)*32 + NRF24L01P_CEPin MOD 8*4;
+    NRF24L01P_SCKPin* = 3; NRF24L01P_SCKPort* = NRF24L01P_SMPort;
+    NRF24L01P_MISOPin* = 4; NRF24L01P_MISOPort* = NRF24L01P_SMPort;
+    NRF24L01P_CSPin* = 7; NRF24L01P_CSPort* =  GPIOB;
+    NRF24L01P_CSOut* = PeriphBBAlias + (NRF24L01P_CSPort + ODR - PeriphBase + NRF24L01P_CSPin DIV 8)*32 + NRF24L01P_CSPin MOD 8*4;
+
+    (*nRF24L01+*)
+    NRF24L01P_spi* = SPI3_BASE; NRF24L01P_spiEnable* = spe3;
 
   VAR Leds*: ARRAY 7 OF LONGINT;
 
@@ -146,19 +181,65 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   PROCEDURE initGPIOs; (*Initialize GPIOs for all sub systems*)
     CONST
       (*PS/2*)
-      MASK2 = {0..1}; OUTPUT_MODE = {0};
-      maskR1 = {PS2CLOCK1Pin, PS2DATA1Pin, PS2CLOCK2Pin, PS2DATA2Pin};
-      maskR2 = LSL(MASK2, PS2CLOCK1Pin*2) + LSL(MASK2, PS2DATA1Pin*2) + LSL(MASK2, PS2CLOCK2Pin*2) + LSL(MASK2, PS2DATA2Pin*2);
-      om = LSL(OUTPUT_MODE, PS2CLOCK1Pin*2) + LSL(OUTPUT_MODE, PS2DATA1Pin*2) +
+      maskPS2_1b = {PS2CLOCK1Pin, PS2DATA1Pin, PS2CLOCK2Pin, PS2DATA2Pin};
+      maskPS2_2b = LSL(MASK2, PS2CLOCK1Pin*2) + LSL(MASK2, PS2DATA1Pin*2) + LSL(MASK2, PS2CLOCK2Pin*2) + LSL(MASK2, PS2DATA2Pin*2);
+      omPS2 = LSL(OUTPUT_MODE, PS2CLOCK1Pin*2) + LSL(OUTPUT_MODE, PS2DATA1Pin*2) +
         LSL(OUTPUT_MODE, PS2CLOCK2Pin*2) + LSL(OUTPUT_MODE, PS2DATA2Pin*2);
+
+      maskNRF_1b = {NRF24L01P_SCKPin, NRF24L01P_MISOPin};
+      maskNRF_2b = LSL(MASK2, NRF24L01P_SCKPin*2) + LSL(MASK2, NRF24L01P_MISOPin*2);
+      maskNRF_4b = LSL(MASK4, NRF24L01P_SCKPin*4) + LSL(MASK4, NRF24L01P_MISOPin*4);
+      msNRF = LSL(MEDIUM_SPEED, NRF24L01P_SCKPin*2) + LSL(MEDIUM_SPEED, NRF24L01P_MISOPin*2);
+      afNRF = LSL(SYSTEM.VAL(SET, 6), NRF24L01P_SCKPin*4) + LSL(SYSTEM.VAL(SET, 6), NRF24L01P_MISOPin*4);
+      afmNRF =  LSL(AF_MODE, NRF24L01P_SCKPin*2) + LSL(AF_MODE, NRF24L01P_MISOPin*2);
+
     VAR reg: SET;
   BEGIN
    (*PS/2*)
-    SYSTEM.GET(PS2Port + OSPEEDR, reg); SYSTEM.PUT(PS2Port + OSPEEDR, reg - maskR2); (*all pins are low speed*)
-    SYSTEM.GET(PS2Port + OTYPER, reg); SYSTEM.PUT(PS2Port + OTYPER, reg + maskR1); (*all pins are open-drain*)
-    SYSTEM.GET(PS2Port + PUPDR, reg); SYSTEM.PUT(PS2Port + PUPDR, reg - maskR2); (*all pins have no pullup or pulldown*)
-    SYSTEM.GET(PS2Port + MODER, reg); SYSTEM.PUT(PS2Port + MODER, reg - maskR2 + om); (*all pins are output*)
+    SYSTEM.GET(PS2Port + OSPEEDR, reg); SYSTEM.PUT(PS2Port + OSPEEDR, reg - maskPS2_2b); (*all pins are low speed*)
+    SYSTEM.GET(PS2Port + OTYPER, reg); SYSTEM.PUT(PS2Port + OTYPER, reg + maskPS2_1b); (*all pins are open-drain*)
+    SYSTEM.GET(PS2Port + PUPDR, reg); SYSTEM.PUT(PS2Port + PUPDR, reg - maskPS2_2b); (*all pins have no pullups nor pulldowns*)
+    SYSTEM.GET(PS2Port + MODER, reg); SYSTEM.PUT(PS2Port + MODER, reg - maskPS2_2b + omPS2); (*all pins are output*)
+
+    (*SPI3 for nRF24L01+*)
+    (*MOSI*)
+    SYSTEM.GET(NRF24L01P_MOSIPort + OSPEEDR, reg); 
+    SYSTEM.PUT(NRF24L01P_MOSIPort + OSPEEDR, reg - LSL(MASK2, NRF24L01P_MOSIPin*2) + LSL(MEDIUM_SPEED, NRF24L01P_MOSIPin*2));
+
+    SYSTEM.GET(NRF24L01P_MOSIPort + OTYPER, reg); SYSTEM.PUT(NRF24L01P_MOSIPort + OTYPER, reg - {NRF24L01P_MOSIPin}); (*output push-pull*)
+
+    SYSTEM.GET(NRF24L01P_MOSIPort + PUPDR, reg);
+    SYSTEM.PUT(NRF24L01P_MOSIPort + PUPDR, reg - LSL(MASK2, NRF24L01P_MOSIPin*2)); (*no pullup nor pulldown*)
+
+    SYSTEM.GET(NRF24L01P_MOSIPort + NRF24L01P_MOSIAFR, reg);
+    SYSTEM.PUT(NRF24L01P_MOSIPort + NRF24L01P_MOSIAFR,
+      reg - LSL(MASK4, NRF24L01P_MOSIPin*4) + SYSTEM.VAL(SET, LSL(5, NRF24L01P_MOSIPin*4)));(*AF5: MOSI*)
+
+    SYSTEM.GET(NRF24L01P_MOSIPort + MODER, reg);
+    SYSTEM.PUT(NRF24L01P_MOSIPort + MODER,reg - LSL(MASK2, NRF24L01P_MOSIPin*2) + LSL(AF_MODE, NRF24L01P_MOSIPin*2)); (*alternate function mode*)
+
+    (*SCK, MISO*)
+    SYSTEM.GET(NRF24L01P_SMPort + OSPEEDR, reg); SYSTEM.PUT(NRF24L01P_SMPort + OSPEEDR, reg - maskNRF_2b + msNRF); (*pins are medium speed*)
+    SYSTEM.GET(NRF24L01P_SMPort + OTYPER, reg); SYSTEM.PUT(NRF24L01P_SMPort + OTYPER, reg - maskNRF_1b); (*output push-pull*)
+    SYSTEM.GET(NRF24L01P_SMPort + PUPDR, reg); SYSTEM.PUT(NRF24L01P_SMPort + PUPDR, reg - maskNRF_2b); (*no pullup nor pulldown*)
+    SYSTEM.GET(NRF24L01P_SMPort + NRF24L01P_MSAFR, reg); SYSTEM.PUT(NRF24L01P_SMPort + NRF24L01P_MSAFR, reg - maskNRF_4b + afNRF);(*AF6: SCK, MISO*)
+    SYSTEM.GET(NRF24L01P_SMPort + MODER, reg); SYSTEM.PUT(NRF24L01P_SMPort + MODER, reg - maskNRF_2b + afmNRF); (*alternate function mode*)
+
   END initGPIOs;
+
+  PROCEDURE InitCRC*;
+    VAR res: BYTE;
+  BEGIN SYSTEM.PUT(crcEn, TRUE); (*enable CRC clock*) SYSTEM.GET(crcEn, res); (*delay*)
+  END InitCRC;
+
+  PROCEDURE InitNRF24L01P*;
+    VAR res: BYTE;
+  BEGIN (*SPI3*) SYSTEM.PUT(spi3En, TRUE); (*enable power interface clock*) SYSTEM.GET(spi3En, res); (*delay*)
+    SYSTEM.PUT(spe3, FALSE); (*disable SPI3 peripheral*)
+    SYSTEM.PUT(SPI3_BASE + CR1, MSTRm + SSIm + SSMm + BRPS_8); (*Master, software slave management, DIV 8 prescaler*)
+    SYSTEM.PUT(SPI3_BASE + CR2, 0);
+    SYSTEM.PUT(i2smod3, FALSE); (*make sure that SPI3 is in SPI mode*)
+  END InitNRF24L01P;
 
   PROCEDURE InitRTC*;
     VAR res: BYTE; bdcr, cfgr: SET;

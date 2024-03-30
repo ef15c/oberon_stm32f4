@@ -3,28 +3,14 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   IMPORT SYSTEM, BSP, Kernel, Texts, TextsEx;
 
   CONST
-    (*STM32F429*)
-    
-    (*GPIOs*)
-    PeriphBase = 40000000H; PeriphBBAlias = 42000000H;
-    
-    GPIOBBase = 40020400H; GPIOGBase = 40021800H; GPIODBase = 40020C00H;
-    IDR = 10H; ODR = 14H; BSRR = 18H;
-    netSelect = 7; (*PB7*) netEnable = 9; (*PG9*) netIRQ = 7; (*PD7*)
-    netSelectOut = PeriphBBAlias + (GPIOBBase + ODR - PeriphBase + netSelect DIV 8)*32 + netSelect MOD 8*4;
-    netEnableOut = PeriphBBAlias + (GPIOGBase + ODR - PeriphBase + netEnable DIV 8)*32 + netEnable MOD 8*4;
-    netIRQIn = PeriphBBAlias + (GPIODBase + IDR - PeriphBase + netIRQ DIV 8)*32 + netIRQ MOD 8*4;
+    (*nRF24L01+ CSN and CE pins*)
+    netSelectOut = BSP. NRF24L01P_CSOut;
+    netEnableOut = BSP.NRF24L01P_CEOut;
     
     (*SPI*)
-    SPI3Base = 40003C00H; DR = 0CH; SR = 8; CR1 = 0;
-    spiData = SPI3Base + DR; spiSR = SPI3Base + SR; spiCR1 = SPI3Base + CR1;
-    RXNE = 0; TXE = 1; BSY = 7;
-    SPE = 6;
-    spiEnable = PeriphBBAlias + (spiCR1 - PeriphBase + SPE DIV 8)*32 + SPE MOD 8*4;
-
-    (*CRC*)
-    CRCBase = 40023000H; CRCDR = 0; CR = 8;
-    CRCReset = PeriphBBAlias + (CRCBase + CR - PeriphBase)*32;
+    spiData = BSP.NRF24L01P_spi + BSP.SPI_DR; spiSR = BSP.NRF24L01P_spi + BSP.SR;
+    spiEnable = BSP.NRF24L01P_spiEnable;
+    TXE = BSP.TXE; RXNE = BSP.RXNE; BSY = BSP.BSY;
   
     HdrSize = 8; MaxPayload = 512; SubPacket = 32; Wait = 50; SendTries = 50;
     MaxPacket = (HdrSize + MaxPayload + SubPacket-1) DIV SubPacket * SubPacket;
@@ -125,7 +111,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       END;
       SYSTEM.PUT(netSelectOut, 1);
       FOR i := 0 TO len-4 BY 4 DO (*Compute CRC*)
-        SYSTEM.GET(dst+i, data); SYSTEM.PUT(CRCBase+CRCDR, data)
+        SYSTEM.GET(dst+i, data); SYSTEM.PUT(BSP.CRC_BASE + BSP.CRC_DR, data)
       END
     ELSE len := 0
     END;
@@ -181,7 +167,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     doSubSend(src, SubPacket, timeout, TRUE);
     IF ~timeout THEN 
       FOR i := 0 TO SubPacket-4 BY 4 DO (*Compute CRC*)
-        SYSTEM.GET(src+i, data); SYSTEM.PUT(CRCBase+CRCDR, data)
+        SYSTEM.GET(src+i, data); SYSTEM.PUT(BSP.CRC_BASE + BSP.CRC_DR, data)
       END
     END
   END SubSnd;
@@ -275,7 +261,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     VAR len, i, off: INTEGER; timeout: BOOLEAN; 
     payload: ARRAY SubPacket OF BYTE;
   BEGIN PowerUp; REPEAT Flush UNTIL ~Rcvd(0);
-    head.valid := TRUE; SYSTEM.PUT(CRCReset, 1); (*Reset STM32 CRC Unit*)
+    head.valid := TRUE; SYSTEM.PUT(BSP.crcReset, 1); (*Reset STM32 CRC Unit*)
     SYSTEM.COPY(SYSTEM.ADR(head), SYSTEM.ADR(payload), HdrSize DIV 4);
     i := HdrSize; off := 0; len := head.len;
     WHILE (len > 0) & (i < SubPacket) DO payload[i] := dat[off]; INC(i); INC(off); DEC(len) END;
@@ -287,7 +273,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       SubSnd(SYSTEM.ADR(payload), timeout);
     END;
     IF ~timeout THEN
-      SYSTEM.GET(CRCBase + CRCDR, off); SYSTEM.PUT(SYSTEM.ADR(payload), off); (*send CRC*)
+      SYSTEM.GET(BSP.CRC_BASE + BSP.CRC_DR, off); SYSTEM.PUT(SYSTEM.ADR(payload), off); (*send CRC*)
       i := 4; WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
       SubSnd(SYSTEM.ADR(payload), timeout)
     END;
@@ -306,7 +292,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   PROCEDURE ReceiveHead*(VAR head: Header);  (*actually, recv whole packet*)
     VAR adr, data, n: INTEGER; len: BYTE;
   BEGIN PowerUp;
-    head.valid := FALSE; SYSTEM.PUT(CRCReset, 1); (*Reset STM32 CRC Unit*)
+    head.valid := FALSE; SYSTEM.PUT(BSP.crcReset, 1); (*Reset STM32 CRC Unit*)
     IF Rcvd(Wait) THEN
       ResetRcv; adr := SYSTEM.ADR(rx); SubRcv(adr, len);
       n := rx.hd.len + HdrSize - len;
@@ -314,8 +300,8 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
         WHILE (n > 0) & Rcvd(Wait) DO
           INC(adr, len); SubRcv(adr, len); DEC(n, len)
         END;
-        IF (n <= 0) & Rcvd(Wait) THEN INC(adr, len); SubRcv(adr, len); SYSTEM.GET(CRCBase+CRCDR, data); (*Check CRC*)
-          IF data = 0 THEN rx.hd.valid := (n <= 0) ELSE rx.hd.valid := FALSE; ResetRcv END;
+        IF (n <= 0) & Rcvd(Wait) THEN INC(adr, len); SubRcv(adr, len); SYSTEM.GET(BSP.CRC_BASE+BSP.CRC_DR, data); (*Check CRC*)
+          IF data = 0 THEN LED(8); rx.hd.valid := (n <= 0) ELSE LED(16); rx.hd.valid := FALSE; ResetRcv END;
         ELSE ResetRcv  (*discard packet*)
         END
       ELSE WHILE Rcvd(Wait) DO SubRcv(adr, len) END; ResetRcv  (*discard packet*)
@@ -348,5 +334,5 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     Texts.WriteLn(W)
   END ShowRxPacket;
 
-BEGIN SYSTEM.PUT(spiEnable, TRUE)
+BEGIN BSP.InitCRC; SYSTEM.PUT(spiEnable, TRUE)
 END SCC.
