@@ -6,7 +6,7 @@ Portage of Oberon system to stm32f429i-disco board
 
 Improved SD card write reliability<br>
 Improved VGA signals<br>
-Improved keyboard support
+Improved keyboard support<br>
 PS/2, RTC, nRF24L01+ (CRC + SPI) drivers ported from C to Oberon<br>
 Minor bugs correction<br>
 
