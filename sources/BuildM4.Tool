@@ -24,6 +24,7 @@ OM4P.Compile Graphics.Mod/s GraphicFramesM4.Mod/s Draw.Mod Rectangles.Mod/s Curv
 
 Commands for generation of net
 OM4P.Compile SCCM4.Mod/s NetM4.Mod/s ~
+OM4P.Compile RS232.Mod ~
 
 Command for generating programs
 OM4P.Compile Hilbert.Mod/s Sierpinski.Mod/s Blink.Mod/s Stars.Mod/s ~

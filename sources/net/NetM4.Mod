@@ -3,7 +3,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
 
   CONST PakSize = 512;
     (*T0 = 300; T1 = 1000; (*timeouts*)*)
-    T0 = 3000; T1 = 3000; (*timeouts*)
+    T0 = 300; T1 = 3000; (*timeouts*)
     ACK = 10H; NAK = 25H; NPR = 26H; (*acknowledgements*)
     NRQ = 34H; NRS = 35H; (*name request, response*)
     SND = 41H; REC = 42H; MSG = 44H;
@@ -37,22 +37,18 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END ReceiveHead;
 
   PROCEDURE FindPartner(name: ARRAY OF CHAR; VAR res: INTEGER);
-    VAR time: LONGINT; k: INTEGER;
+    VAR k, retry: INTEGER;
       Id: ARRAY 8 OF CHAR; IdB: ARRAY 8 OF BYTE;
   BEGIN SCC.Skip(SCC.Available()); res := 0; k := 0;
     WHILE (k < 7) & (name[k] # 0X) DO Id[k] := name[k]; IdB[k] := ORD(Id[k]); INC(k) END;
     Id[k] := 0X; IdB[k] := 0; (* <-- also terminate IdB *)
-    IF Id # partner THEN
-      head0.dadr := 0FFH; Send(NRQ, k+1, IdB); time := Oberon.Time() + T1;
-      REPEAT
-        SCC.ReceiveHead(head1);
-        IF head1.valid THEN
-          IF head1.typ = NRS THEN SetPartner(Id)
-          ELSE SCC.Skip(head1.len); head1.valid := FALSE
-          END
-        ELSIF Oberon.Time() >= time THEN res := 1; partner[0] := 0X
-        END
-      UNTIL head1.valid OR (res # 0)
+    IF Id # partner THEN retry := 10; res := 1;
+      REPEAT head0.dadr := 0FFH; Send(NRQ, k+1, IdB); SCC.ReceiveHead(head1);
+        IF head1.valid THEN IF head1.typ = NRS THEN SetPartner(Id); res := 0 ELSE SCC.Skip(head1.len); head1.valid := FALSE END
+        ELSE  partner[0] := 0X
+        END;
+        DEC(retry)
+      UNTIL head1.valid OR (retry = 0)
     END
   END FindPartner;
 
@@ -222,7 +218,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END GetPar;
 
   PROCEDURE SendFiles*;
-    VAR k: INTEGER;
+    VAR k, retry: INTEGER;
       end: LONGINT;
       S!: Texts.Scanner;
       F!: Files.File;
@@ -244,8 +240,8 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
             END
           END ;
           F := Files.Old(S.s);
-          IF F # NIL THEN
-            Send(REC, k, buf); ReceiveHead(T0);
+          IF F # NIL THEN retry := 10;
+            REPEAT Send(REC, k, buf); ReceiveHead(T0); DEC(retry) UNTIL head1.valid OR (retry = 0);
             IF head1.typ = ACK THEN
               Texts.WriteString(W, " sending"); Texts.Append(Oberon.Log, W.buf);
               SendData(F); reply(0)

@@ -20,14 +20,17 @@ System.ShowModules  System.ShowCommands ^
 PCLink1.Run
 Hilbert.Draw  Sierpinski.Draw  Blink.Run  Stars.Open
 
-Tools.Inspect 0D0201000H Tools.Inspect 40003C00H
+Tools.Inspect 0D0201000H Tools.Inspect 40011000H
 Tools.Sector 1
 Tools.ShowFile 
 Tools.Recall  Tools.Clear
 
 Edit.Open BuildM4.Tool
 
-Net.SendFiles CS BSP.Mod ~
+Net.SendFiles CS System.Tool ~
 Net.ReceiveFiles CS main.h ~
 
 testForever.Mod testForever.loop testForever.ovfl System.Free testForever
+RS232.Mod System.Free RS232 ~
+System.Free Net SCC ~
+testRS232.Mod testRS232.hello System.Free testRS232 ~

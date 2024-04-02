@@ -8,9 +8,9 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     netEnableOut = BSP.NRF24L01P_CEOut;
     
     (*SPI*)
-    spiData = BSP.NRF24L01P_spi + BSP.SPI_DR; spiSR = BSP.NRF24L01P_spi + BSP.SR;
+    spiData = BSP.NRF24L01P_spi + BSP.SPI_DR; spiSR = BSP.NRF24L01P_spi + BSP.SPI_SR;
     spiEnable = BSP.NRF24L01P_spiEnable;
-    TXE = BSP.TXE; RXNE = BSP.RXNE; BSY = BSP.BSY;
+    TXE = BSP.SPI_TXE; RXNE = BSP.SPI_RXNE; BSY = BSP.BSY;
   
     HdrSize = 8; MaxPayload = 512; SubPacket = 32; Wait = 50; SendTries = 50;
     MaxPacket = (HdrSize + MaxPayload + SubPacket-1) DIV SubPacket * SubPacket;
@@ -334,5 +334,5 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     Texts.WriteLn(W)
   END ShowRxPacket;
 
-BEGIN BSP.InitCRC; SYSTEM.PUT(spiEnable, TRUE)
+BEGIN BSP.InitNRF24L01P; BSP.InitCRC; SYSTEM.PUT(spiEnable, TRUE)
 END SCC.

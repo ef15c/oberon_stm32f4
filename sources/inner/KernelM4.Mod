@@ -224,7 +224,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE Delayus*(d: INTEGER);
     VAR beg, now: INTEGER;
   BEGIN SYSTEM.GET(BSP.DWTBase + BSP.CYCCNT, beg);
-    REPEAT SYSTEM.GET(BSP.DWTBase + BSP.CYCCNT, now) UNTIL now - beg >= BSP.HCLCFREQ*d
+    REPEAT SYSTEM.GET(BSP.DWTBase + BSP.CYCCNT, now) UNTIL now - beg >= BSP.HCLCFreq*d
   END  Delayus;
 
   PROCEDURE Clock*(): INTEGER;

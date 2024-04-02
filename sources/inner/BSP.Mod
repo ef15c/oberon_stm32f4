@@ -12,7 +12,6 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*DWT*)
     DWTBase* = 0E0001000H;  CYCCNT* = 4;
-    HCLCFREQ* = 168;
 
     (*Memory*)
     SRAMBase* = 20000000H; VecTabBase* = SRAMBase;
@@ -46,20 +45,25 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     EXTI_BASE* = 40013C00H; PR* = 14H;
 
     (*PWR*)
-    PWR_BASE* = 40007000H; PWR_CR* = 0;
-    DBP* = 8;
+    PWR_BASE* = 40007000H;
+    PWR_CR* = 0; DBP* = 8;
     dbp* = PeriphBBAlias + (PWR_BASE + PWR_CR - PeriphBase + DBP DIV 8)*32 + DBP MOD 8*4;
 
     (*RCC*)
+    HCLCFreq* = 168; PCLK1Freq* = 42; PCLK2Freq* = 84;(*MHz*)
+
     RCC_BASE* = 40023800H;
     CFGR* = 8; RTCPRE* = {16..20}; (*clock configuration register*)
 
-    AHB1ENR* = 30H; CRCEN* = 12;
+    AHB1ENR* = 30H; CRCEN* = 12; 
     crcEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + CRCEN DIV 8)*32 + CRCEN MOD 8*4;
 
     APB1ENR* = 40H; SPI3EN* = 15; PWREN* = 28; (*APB1 peripheral clock enable register*)
     pwrEn* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + PWREN DIV 8)*32 + PWREN MOD 8*4;
     spi3En* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + SPI3EN DIV 8)*32 + SPI3EN MOD 8*4;
+
+    APB2ENR* = 44H; USART1EN* = 4;
+    usart1En* = PeriphBBAlias + (RCC_BASE +APB2ENR - PeriphBase + USART1EN DIV 8)*32 + USART1EN MOD 8*4;
 
     BDCR* = 70H; RTCEN* = 15; BDRST* = 16; RTCSEL* = {8..9}; (*backup domain control register*)
     rtcEn* = PeriphBBAlias + (RCC_BASE + BDCR - PeriphBase + RTCEN DIV 8)*32 + RTCEN MOD 8*4;
@@ -67,25 +71,47 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*RTC*)
     RTC_BASE* =  40002800H; 
-    TR* = 0; RTC_DR* = 4; RTC_CR* = 8; PRER* = 10H; SSR* = 28H; WPR* = 24H; ISR* = 0CH; (*registers*)
-    INIT* = 7; INITF* = 6; RSF* = 5;(*flags*)
+    TR* = 0; RTC_DR* = 4; RTC_CR* = 8; PRER* = 10H; SSR* = 28H; WPR* = 24H;
+
+    ISR* = 0CH; INIT* = 7; INITF* = 6; RSF* = 5;(*flags*)
     rtcInit* = PeriphBBAlias + (RTC_BASE + ISR - PeriphBase + INIT DIV 8)*32 + INIT MOD 8*4;
 
     (*SPI*)
     SPI2_BASE* = 40003800; SPI3_BASE* = 40003C00H;
-    CR1* = 0;
-    SPE* = 6; 
-    CPHAm* = {0}; CPOLm* = {1};  MSTRm* = {2}; BRm* = {3..5}; SPEm = {SPE}; LSBFIRSTm* = {7}; SSIm* = {8}; SSMm* = {9};
+    SPI_CR1* = 0; SPE* = 6;
+    SPI_CPHAm* = {0}; SPI_CPOLm* = {1};  MSTRm* = {2}; BRm* = {3..5}; SPEm = {SPE}; LSBFIRSTm* = {7}; SSIm* = {8}; SSMm* = {9};
     RXONLYm* = {10}; DFFm* = {11}; CRCNEXTm* = {12}; CECENm = {13}; BIDIOEm* = {14}; BIDIMODEm* = {15};
     BRPS_2* = {}; BRPS_4* = {3}; BRPS_8* = {4}; BRPS_16* = {3,4}; BRPS_32* = {5}; BRPS_64* = {3,5}; BRPS_128* = {4,5}; BRPS_256* = {3..5};
-    spe3* = PeriphBBAlias + (SPI3_BASE +CR1 - PeriphBase + SPE DIV 8)*32 + SPE MOD 8*4;
-    CR2* = 4;
-    I2SCFGR* = 1CH;
-    I2SMOD* = 11;
+    spe3* = PeriphBBAlias + (SPI3_BASE +SPI_CR1 - PeriphBase + SPE DIV 8)*32 + SPE MOD 8*4;
+
+    SPI_CR2* = 4;
+
+    I2SCFGR* = 1CH; I2SMOD* = 11;
     i2smod3* = PeriphBBAlias + (SPI3_BASE + I2SCFGR - PeriphBase + I2SMOD DIV 8)*32 + I2SMOD MOD 8*4;
-    SR* = 08H;
-    RXNE* = 0; TXE* = 1; BSY* = 7;
+
+    SPI_SR* = 08H; SPI_RXNE* = 0; SPI_TXE* = 1; BSY* = 7;
+
     SPI_DR* = 0CH;
+
+    (*USART*)
+    USART1_BASE* = 40011000H;
+    USART_SR* = 0; USART_TXE* = 7; USART_RXNE* = 5;
+
+    USART_DR* = 4;
+
+    USART_BRR* = 8; DIV_Mantissa* = {4..15}; DIV_Fraction* = {0..3};
+
+    USART_CR1* = 0CH; UE* = 13;
+    OVER8m* = {15}; UEm* = {UE}; Mm* = {12}; WAKEm* = {11}; PCEm* = {10}; PSm* = {9}; PEIEm* = {8}; TXEIEm* = {7}; TCIEm* = {6};
+      RXNEIEm* = {5}; IDLEIEm* = {4}; TEm* = {3}; REm* = {2}; RWUm* = {1}; SBKm* = {0};
+    ue1 = PeriphBBAlias + (USART1_BASE + USART_CR1 - PeriphBase + UE DIV 8)*32 + UE MOD 8*4;
+
+    USART_CR2* = 10H; LINENm* = {14}; STOPm* = {12..13}; CLKENm* = {11}; USART_CPOLm* = {10}; USART_CPHAm* = {9}; LBCLm* = {8}; LBDIEm* = {6};
+      HALFSTOPBIT* = {12}; TWOSTOPBITS* = {13}; ONEANDHALFSTOPBIT* = {12..13};
+      LBDLm* = {5}; ADDm* = {0..3};
+
+    USART_CR3* = 14H; ONEBITm* = {11}; CTSIEm* = {10}; CTSEm* = {9}; RTSEm* = {8}; DMATm* = {7}; DMARm* = {6}; SCENm* = {5};
+      NACKm* = {4}; HDSELm* = {3}; IRLPm* = {2}; IRENm* = {1}; EIEm* = {0};
 
     (*GPIOs*)    
     GPIOA* = 40020000H; GPIOB* = 40020400H; GPIOC* = 40020800H; GPIOD* = 40020C00H; 
@@ -157,7 +183,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     CARD_DETECTPin* = 5; CARD_DETECTPort* = GPIOD;
     CARD_DETECTin* = PeriphBBAlias + (CARD_DETECTPort + IDR - PeriphBase + CARD_DETECTPin DIV 8)*32 + CARD_DETECTPin MOD 8*4;
 
-    (*nRF24L01+*) NRF24L01P_SMPort = GPIOB; NRF24L01P_MSAFR = AFRL;
+    (*nRF24L01+ pins*) NRF24L01P_SMPort = GPIOB; NRF24L01P_MSAFR = AFRL;
     NRF24L01P_MOSIPin* = 6; NRF24L01P_MOSIPort* =  GPIOD; NRF24L01P_MOSIAFR* = AFRL;
     NRF24L01P_IRQPin* = 7; NRF24L01P_IRQPort* = GPIOD;
     NRF24L01P_CEPin* = 9; NRF24L01P_CEPort* = GPIOG;
@@ -167,8 +193,16 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     NRF24L01P_CSPin* = 7; NRF24L01P_CSPort* =  GPIOB;
     NRF24L01P_CSOut* = PeriphBBAlias + (NRF24L01P_CSPort + ODR - PeriphBase + NRF24L01P_CSPin DIV 8)*32 + NRF24L01P_CSPin MOD 8*4;
 
+    (*UART pins*)
+    UARTPort = GPIOA; UARTAFR = AFRH;
+    UART_RXPin* = 10; UART_RXPort* = UARTPort;
+    UART_TXPin* = 9; UART_TXProt* = UARTPort;
+
     (*nRF24L01+*)
     NRF24L01P_spi* = SPI3_BASE; NRF24L01P_spiEnable* = spe3;
+
+    (*UART*)
+    UART_BASE* = USART1_BASE;
 
   VAR Leds*: ARRAY 7 OF LONGINT;
 
@@ -190,8 +224,14 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       maskNRF_2b = LSL(MASK2, NRF24L01P_SCKPin*2) + LSL(MASK2, NRF24L01P_MISOPin*2);
       maskNRF_4b = LSL(MASK4, NRF24L01P_SCKPin*4) + LSL(MASK4, NRF24L01P_MISOPin*4);
       msNRF = LSL(MEDIUM_SPEED, NRF24L01P_SCKPin*2) + LSL(MEDIUM_SPEED, NRF24L01P_MISOPin*2);
-      afNRF = LSL(SYSTEM.VAL(SET, 6), NRF24L01P_SCKPin*4) + LSL(SYSTEM.VAL(SET, 6), NRF24L01P_MISOPin*4);
+      afNRF = LSL(SYSTEM.VAL(SET, 6), NRF24L01P_SCKPin*4) + LSL(SYSTEM.VAL(SET, 6), NRF24L01P_MISOPin*4); (*AF6*)
       afmNRF =  LSL(AF_MODE, NRF24L01P_SCKPin*2) + LSL(AF_MODE, NRF24L01P_MISOPin*2);
+
+      maskUART_1b = {UART_RXPin, UART_TXPin};
+      maskUART_2b = LSL(MASK2, UART_RXPin*2) + LSL(MASK2, UART_TXPin*2);
+      maskUART_4b = LSL(MASK4, UART_RXPin MOD 8*4) + LSL(MASK4, UART_TXPin MOD 8*4);
+      afUART =  LSL(SYSTEM.VAL(SET, 7), UART_RXPin MOD 8*4) + LSL(SYSTEM.VAL(SET, 7), UART_TXPin MOD 8*4); (*AF7*)
+      afmUART = LSL(AF_MODE, UART_RXPin*2) + LSL(AF_MODE, UART_TXPin*2);
 
     VAR reg: SET;
   BEGIN
@@ -219,12 +259,18 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SYSTEM.PUT(NRF24L01P_MOSIPort + MODER,reg - LSL(MASK2, NRF24L01P_MOSIPin*2) + LSL(AF_MODE, NRF24L01P_MOSIPin*2)); (*alternate function mode*)
 
     (*SCK, MISO*)
-    SYSTEM.GET(NRF24L01P_SMPort + OSPEEDR, reg); SYSTEM.PUT(NRF24L01P_SMPort + OSPEEDR, reg - maskNRF_2b + msNRF); (*pins are medium speed*)
-    SYSTEM.GET(NRF24L01P_SMPort + OTYPER, reg); SYSTEM.PUT(NRF24L01P_SMPort + OTYPER, reg - maskNRF_1b); (*output push-pull*)
+    SYSTEM.GET(NRF24L01P_SMPort + OSPEEDR, reg); SYSTEM.PUT(NRF24L01P_SMPort + OSPEEDR, reg - maskNRF_2b + msNRF); (*SPI pins are medium speed*)
+    SYSTEM.GET(NRF24L01P_SMPort + OTYPER, reg); SYSTEM.PUT(NRF24L01P_SMPort + OTYPER, reg - maskNRF_1b); (*push-pull when output*)
     SYSTEM.GET(NRF24L01P_SMPort + PUPDR, reg); SYSTEM.PUT(NRF24L01P_SMPort + PUPDR, reg - maskNRF_2b); (*no pullup nor pulldown*)
     SYSTEM.GET(NRF24L01P_SMPort + NRF24L01P_MSAFR, reg); SYSTEM.PUT(NRF24L01P_SMPort + NRF24L01P_MSAFR, reg - maskNRF_4b + afNRF);(*AF6: SCK, MISO*)
     SYSTEM.GET(NRF24L01P_SMPort + MODER, reg); SYSTEM.PUT(NRF24L01P_SMPort + MODER, reg - maskNRF_2b + afmNRF); (*alternate function mode*)
 
+    (*USART1 for UART*)
+    SYSTEM.GET(UARTPort + OSPEEDR, reg); SYSTEM.PUT(UARTPort + OSPEEDR, reg - maskUART_2b); (*UART pins are low speed*)
+    SYSTEM.GET(UARTPort + OTYPER, reg); SYSTEM.PUT(UARTPort + OTYPER, reg - maskUART_1b); (*push-pull when output*)
+    SYSTEM.GET(UARTPort + PUPDR, reg); SYSTEM.PUT(UARTPort + PUPDR, reg - maskUART_2b); (*no pullup nor pulldown*)
+    SYSTEM.GET(UARTPort + UARTAFR, reg); SYSTEM.PUT(UARTPort + UARTAFR, reg - maskUART_4b + afUART); (*AF7*)
+    SYSTEM.GET(UARTPort + MODER, reg); SYSTEM.PUT(UARTPort + MODER, reg - maskUART_2b + afmUART); (*alternate function mode*)
   END initGPIOs;
 
   PROCEDURE InitCRC*;
@@ -233,12 +279,13 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   END InitCRC;
 
   PROCEDURE InitNRF24L01P*;
-    VAR res: BYTE;
-  BEGIN (*SPI3*) SYSTEM.PUT(spi3En, TRUE); (*enable power interface clock*) SYSTEM.GET(spi3En, res); (*delay*)
-    SYSTEM.PUT(spe3, FALSE); (*disable SPI3 peripheral*)
-    SYSTEM.PUT(SPI3_BASE + CR1, MSTRm + SSIm + SSMm + BRPS_8); (*Master, software slave management, DIV 8 prescaler*)
-    SYSTEM.PUT(SPI3_BASE + CR2, 0);
+    VAR res: BYTE; isStarted: BOOLEAN;
+  BEGIN (*SPI3*) SYSTEM.PUT(spi3En, TRUE); (*enable SPI3 clock*) SYSTEM.GET(spi3En, res); (*delay*)
+    SYSTEM.GET(spe3, isStarted); SYSTEM.PUT(spe3, FALSE); (*disable SPI3 peripheral*)
+    SYSTEM.PUT(SPI3_BASE + SPI_CR1, MSTRm + SSIm + SSMm + BRPS_8); (*Master, software slave management, DIV 8 prescaler*)
+    SYSTEM.PUT(SPI3_BASE + SPI_CR2, 0);
     SYSTEM.PUT(i2smod3, FALSE); (*make sure that SPI3 is in SPI mode*)
+    SYSTEM.PUT(spe3, isStarted) (*restart SPI if it was running before the configuration*)
   END InitNRF24L01P;
 
   PROCEDURE InitRTC*;
@@ -263,6 +310,22 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SYSTEM.PUT(rtcInit, FALSE); (*exit RTC from init mode*)
     SYSTEM.PUT(WPR, 0FFH); (*enable write protection on RTC registers*)
   END InitRTC;
+
+  PROCEDURE InitUART*;
+    CONST mantissa = PCLK2Freq*1000000 DIV (16*115200);
+      fraction = (PCLK2Freq*1000000 - 16*115200*mantissa) DIV 115200;
+    VAR res: BYTE; cr: SET;
+  BEGIN (*USART1*) SYSTEM.PUT(usart1En, TRUE); (*enable USART1 clock*) SYSTEM.GET(usart1En, res); (*delay*)
+    SYSTEM.PUT(ue1, FALSE); (*disable UART*)
+    SYSTEM.GET(UART_BASE + USART_CR2, cr); SYSTEM.PUT(UART_BASE + USART_CR2, cr - (STOPm + LINENm + CLKENm)); (*one stop bit*)
+    SYSTEM.GET(UART_BASE + USART_CR1, cr);
+    SYSTEM.PUT(UART_BASE + USART_CR1, cr - (Mm + PCEm + PSm + TEm + REm + OVER8m) + (TEm + REm)); (*8bits, parity disabled, transmit/receive enabled, 
+      oversampling by 16*)
+    SYSTEM.GET(UART_BASE + USART_CR3, cr);
+    SYSTEM.PUT(UART_BASE + USART_CR3, cr - (RTSEm + CTSEm + SCENm + HDSELm + IRENm)); (*RTS and CTS hardware flow control disabled*)
+    SYSTEM.PUT(UART_BASE + USART_BRR, LSL(mantissa, 4) + fraction);
+    SYSTEM.PUT(ue1, TRUE); (*enble UART*)
+  END InitUART;
 
   PROCEDURE Init*;
   BEGIN initGPIOs;

@@ -15,7 +15,7 @@ Minor bugs correction<br>
 <b>Registers usage control in procedures</b><br>
 Cortex M4 microcontrollers save automatically a set of registers on stack when servicing an interruption.
 If an Oberon exception handler contains too complicated expressions, there is a risk that a non saved register is used.
-To prevent that case to happen, I have introduce a new notation ^n after the PROCEDURE keyword:<br><br>
+To prevent that case to happen, I introduced a new notation ^n after the PROCEDURE keyword:<br><br>
 PROCEDURE^3 handler;<br>
 BEGIN ....<br>
 END handler;<br><br>
