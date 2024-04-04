@@ -41,6 +41,12 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+/*#define Base 0xD0000000*/
+#define Width 1366
+#define Height 768
+
+#define NofBPP 8
+#define Span ((((Width*8) / NofBPP)+63)/64*64)
 
 /* USER CODE END EC */
 

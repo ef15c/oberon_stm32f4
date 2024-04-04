@@ -281,7 +281,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "  loading "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
-      IF F # NIL THEN Texts.WriteString(W, " onto boot area"); Texts.WriteInt(W, Files.Length(F), 7);
+      IF (F # NIL) & (Files.Length(F) <= 63488) THEN Texts.WriteString(W, " onto boot area"); Texts.WriteInt(W, Files.Length(F), 7);
         secno := BootSec; i := 0; Files.Set(R, F, 0); Files.ReadByte(R, b); res := noerr;
         WHILE ~R.eof DO buf[i] := b; INC(i);
           IF i = Kernel.SectorLength THEN Kernel.PutSector(secno*29, buf); INC(secno); i := 0 END ;
@@ -291,7 +291,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
           WHILE i < Kernel.SectorLength DO buf[i] := 0; INC(i) END ;
           Kernel.PutSector(secno*29, buf)
         END
-      ELSE Texts.WriteString(W, " not found")
+      ELSE Texts.WriteString(W, " not found or too big")
       END
     ELSE Texts.WriteString(W, "Usage: OM4L.Load M.bin")
     END ;

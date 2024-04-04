@@ -2,8 +2,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   IMPORT Files, Texts, SCC, Oberon;
 
   CONST PakSize = 512;
-    (*T0 = 300; T1 = 1000; (*timeouts*)*)
-    T0 = 300; T1 = 3000; (*timeouts*)
+    T0 = 300; (*timeout*)
     ACK = 10H; NAK = 25H; NPR = 26H; (*acknowledgements*)
     NRQ = 34H; NRS = 35H; (*name request, response*)
     SND = 41H; REC = 42H; MSG = 44H;
@@ -88,13 +87,12 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
       REPEAT Files.ReadByte(R, x);
         IF ~R.eof THEN buf[k] := x; INC(k) END
       UNTIL R.eof OR (k = PakSize); retry := 20; nseqno := (seqno + 1) MOD 8;
-      REPEAT Send(seqno, k, buf); ReceiveHead(T1); DEC(retry);
+      REPEAT Send(seqno, k, buf); ReceiveHead(T0); DEC(retry);
         IF head1.typ # nseqno + ACK THEN SCC.Delayms(100); END
       UNTIL (head1.typ = nseqno + ACK) OR (retry = 0);
       seqno := nseqno; len := len + k;
       IF head1.typ # seqno + ACK THEN
         Texts.WriteString(W, " failed"); k := 0
-        ;Texts.WriteString(W, " recd type "); ;Texts.WriteInt(W, head1.typ, 1)
       END
     UNTIL k < PakSize;
     Texts.WriteInt(W, len, 7)
@@ -107,20 +105,19 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
      R!: Files.Rider;
   BEGIN Files.Set(R, F, 0); seqno := 0; len := 0; retry := 20; k := PakSize;
     REPEAT
-     IF head1.typ = seqno THEN
-       seqno := (seqno + 1) MOD 8; len := len + head1.len; retry := 2;
-       Send(seqno + ACK, 0, dmy); k := 0;
+     IF head1.typ = seqno THEN k := 0;
        WHILE k < head1.len DO
          SCC.Receive(x); Files.WriteByte(R, x); INC(k)
        END ;
+       seqno := (seqno + 1) MOD 8; len := len + head1.len;
+       REPEAT Send(seqno + ACK, 0, dmy); ReceiveHead(T0); DEC(retry) UNTIL head1.valid OR (retry = 0);
        IF k < PakSize THEN done := TRUE END
      ELSE SCC.Delayms(100); DEC(retry);
        IF retry = 0 THEN
          Texts.WriteString(W, " failed"); done := FALSE; k := 0
-       END ;
-       Send(seqno + ACK, 0, dmy)
+       END ; retry := 20;
+       REPEAT Send(seqno + ACK, 0, dmy); ReceiveHead(T0); DEC(retry) UNTIL head1.valid OR (retry = 0)
      END ;
-     ReceiveHead(T0)
     UNTIL k < PakSize;
     Texts.WriteInt(W, len, 7)
   END ReceiveData;
@@ -259,7 +256,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END SendFiles;
 
   PROCEDURE ReceiveFiles*;
-    VAR k: INTEGER; done: BOOLEAN;
+    VAR k, retry: INTEGER; done: BOOLEAN;
       end: LONGINT;
       S!: Texts.Scanner;
       F!: Files.File;
@@ -281,15 +278,14 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
               Texts.Write(W, ":"); Texts.WriteString(W, S.s)
             END
           END ;
-          Send(SND, k, buf);
-          Texts.WriteString(W, " receiving"); Texts.Append(Oberon.Log,
-            W.buf);
-          ReceiveHead(T1);
+          Texts.WriteString(W, " receiving"); Texts.Append(Oberon.Log, W.buf);
+          retry := 20;
+          REPEAT Send(SND, k, buf); ReceiveHead(T0); DEC(retry); UNTIL head1.valid OR (retry = 0);
           IF head1.typ = 0 THEN
             F := Files.New(S.s);
             IF F # NIL THEN
               ReceiveData(F, done);
-              IF done THEN Files.Register(F); reply(0) ELSE end := 0 END
+              IF done THEN Files.Register(F); reply(0) ELSE reply(3); end := 0 END
             ELSE reply(3); Send(NAK, 0, dmy)
             END
           ELSIF head1.typ = NAK THEN reply(4)
@@ -323,13 +319,13 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END SendMsg;
 
   PROCEDURE GetTime*;
-    VAR dt, res: INTEGER;
+    VAR dt, res, retry: INTEGER;
       S!: Texts.Scanner;
   BEGIN GetPar1(S);
     IF S.class = Texts.Name THEN
       FindPartner(S.s, res);
-      IF res = 0 THEN
-        Send(TRQ, 0, dmy); ReceiveHead(T1);
+      IF res = 0 THEN retry := 20;
+        REPEAT Send(TRQ, 0, dmy); ReceiveHead(T0); DEC(retry) UNTIL head1.valid OR (retry = 0);
         IF head1.typ = TIM THEN
           PickQ(dt); Oberon.SetClock(dt); reply(6)
         END

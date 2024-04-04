@@ -149,6 +149,14 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       T32MSK4 = {25, 27..28, 15}; T32MSK5 = {27..28, 15}; T32MSK6 = {24..28, 20};
       T32MSK7 = {25..28, 20..22}; T32MSK8 = {23..28}; T32MSK9 = {24..28};
       
+      (*T32MSK1 01 00xx0xx x Load Multiple and Store Multiple on page A5-144*)
+      LoadMultStoreMult  = {27};
+
+      T32MSK11 = {23..24, 20};
+
+      (*T32MSK11 10 0 11101 Push Multiple Registers to the stack on page A7-322*)
+      PushMultRegsT2 = {24};
+
       (*T32MSK2 01 01xxxxx x Data processing (shifted register) on page A5-150*)
       DataProcShiftedReg = {27, 25};
 
@@ -408,7 +416,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T16MSK43 1111xxx: If-Then, and hints on page A5-135*)
       IfThenHints = {8..11};
       (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)
-      PushMultRegs = {10};
+      PushMultRegsT1 = {10};
       (*T16MSK45 110xxxx Pop Multiple Registers POP on page A7-319*)
       PopMultRegs = {10..11};
       
@@ -621,6 +629,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
             ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
             END
+
           ELSIF op*T32MSK52 = MovToSpReg THEN
             (*T32MSK52 0x0 011100x: Move to Special Register MSR on page A7-301*)
             (*MSR<c><spec_reg>,Rn*)
@@ -925,6 +934,17 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           WriteOp(W, op, "LSR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm)
         ELSE Texts.WriteString(W, "TODO other DataProcReg on page A5-152")
         END
+      ELSIF op*T32MSK1 = LoadMultStoreMult THEN
+        (*T32MSK1 01 00xx0xx x Load Multiple and Store Multiple on page A5-144*)
+        Rn := b2 MOD OM4A.C4;
+        IF (op*T32MSK11 = PushMultRegsT2) & (op*{21} = {21}) & (Rn = 13) THEN
+          (*T32MSK11 10 0 11101 Push Multiple Registers to the stack on page A7-322*)
+          (*PUSH<c>,W <registers>*)
+          WriteOp(W, op, "PUSH", FALSE, FALSE);
+          FOR t := 0 TO 12 DO IF t IN op THEN WriteReg(W, t) END END;
+          IF 14 IN op THEN WriteReg(W, 14) END
+        ELSE Texts.WriteString(W, "TODO other LoadMultStoreMult on page A5-144")
+        END
       ELSE Texts.WriteString(W, "TODO other 32-bit thumb instruction")
       END
     ELSE op := SYSTEM.VAL(SET, 0+b2+100H*b1);
@@ -1042,7 +1062,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             Texts.WriteString(W, " "); Texts.WriteString(W, mnemo1[b3])
           ELSE Texts.WriteString(W, "TODO: not If-Then")
           END
-        ELSIF op*T16MSK45 = PushMultRegs THEN
+        ELSIF op*T16MSK45 = PushMultRegsT1 THEN
           (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)
           (*PUSH<c> <registers>*)
           WriteOp(W, op, "PUSH", FALSE, FALSE);

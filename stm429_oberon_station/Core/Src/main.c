@@ -24,7 +24,6 @@
 #include <string.h>
 #include "stm32_usec.h"
 #include "stm32f4xx_it.h"
-#include "raster.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,8 +46,6 @@ LTDC_HandleTypeDef hltdc;
 SD_HandleTypeDef hsd;
 DMA_HandleTypeDef hdma_sdio_rx;
 DMA_HandleTypeDef hdma_sdio_tx;
-
-UART_HandleTypeDef huart1;
 
 SDRAM_HandleTypeDef hsdram1;
 
@@ -100,7 +97,6 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_FMC_Init(void);
 static void MX_LTDC_Init(void);
-static void MX_USART1_UART_Init(void);
 static void MX_SDIO_SD_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
@@ -155,7 +151,6 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   MX_DMA_Init();
   MX_FMC_Init();
   MX_LTDC_Init();
-  MX_USART1_UART_Init();
   MX_SDIO_SD_Init();
   /* USER CODE BEGIN 2 */
   // Configure MPU to allow execution in range 0xD0201000 - 0xD0800000
@@ -289,7 +284,7 @@ static void MX_LTDC_Init(void)
   }
 
   __HAL_LTDC_LAYER_ENABLE(&hltdc, 0);
-  __HAL_LTDC_ENABLE_IT(&hltdc, LTDC_IT_RR);
+/*  __HAL_LTDC_ENABLE_IT(&hltdc, LTDC_IT_RR);*/
   /* USER CODE END LTDC_Init 2 */
 
 }
@@ -359,39 +354,6 @@ static void MX_SDIO_SD_Init(void)
   HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
 
   /* USER CODE END SDIO_Init 2 */
-
-}
-
-/**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART1_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART1_Init 0 */
-
-  /* USER CODE END USART1_Init 0 */
-
-  /* USER CODE BEGIN USART1_Init 1 */
-
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART1_Init 2 */
-
-  /* USER CODE END USART1_Init 2 */
 
 }
 
