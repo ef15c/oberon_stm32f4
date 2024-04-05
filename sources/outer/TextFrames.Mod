@@ -72,7 +72,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     VAR DW, DH: INTEGER;
   BEGIN DW := Display.Width; DH := Display.Height;
     IF X < 3 THEN X := 3 ELSIF X > DW - 4 THEN X := DW - 4 END;
-    IF Y < 6 THEN Y := 6 ELSIF Y > DH - 12 THEN Y := DH - 12 END;
+    IF Y < 6 THEN Y := 6 ELSIF Y > DH - 24 THEN Y := DH - 24 END;
     Display.CopyPattern(Display.white, Display.updown, X-3, Y-3, Display.invert)
   END FlipSM;
 
@@ -858,5 +858,5 @@ BEGIN NEW(TBuf); NEW(DelBuf);
   selH := lsp; markW := lsp DIV 2;
   eolW := lsp DIV 2;
   ScrollMarker.Fade := FlipSM; ScrollMarker.Draw := FlipSM;
-  Texts.OpenWriter(W); Texts.OpenWriter(KW)
+  Texts.OpenWriter(W); W.col := Display.white; Texts.OpenWriter(KW)
 END TextFrames.

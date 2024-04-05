@@ -5,7 +5,7 @@ PROCEDURE hello*;
   VAR d: INTEGER;
 BEGIN
   RS232.SendStr("Hello from Oberon!");
-  RS232.Rec(d)
+(*  RS232.Rec(d)*)
 END hello;
 
 END testRS232.

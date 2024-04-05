@@ -209,9 +209,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     NRF24L01P_CSOut* = PeriphBBAlias + (NRF24L01P_CSPort + ODR - PeriphBase + NRF24L01P_CSPin DIV 8)*32 + NRF24L01P_CSPin MOD 8*4;
 
     (*UART pins*)
-    UARTPort = GPIOA; UARTAFR = AFRH; uartPortEn* = gpioaEn;
-    UART_RXPin* = 10; UART_RXPort* = UARTPort;
-    UART_TXPin* = 9; UART_TXProt* = UARTPort;
+    UART_RXPin* = 10; UART_RXPort* = GPIOA;
+    UART_TXPin* = 9; UART_TXProt* = GPIOA;
 
     (*nRF24L01+*)
     NRF24L01P_spi* = SPI3_BASE; NRF24L01P_spiEnable* = spe3;
@@ -265,28 +264,26 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     configureGPIO(GPIOB, mask_1b, mask_2b, mask_4b, {}, afm, ms, {}, {}, af, {});
   END NRF_initGPIOs;
 
-  PROCEDURE initGPIOs; (*Initialize GPIOs for all sub systems*)
+  PROCEDURE UART_initGPIOs;
     CONST
-      maskUART_1b = {UART_RXPin, UART_TXPin};
-      maskUART_2b = LSL(MASK2, UART_RXPin*2) + LSL(MASK2, UART_TXPin*2);
-      maskUART_4b = LSL(MASK4, UART_RXPin MOD 8*4) + LSL(MASK4, UART_TXPin MOD 8*4);
-      afUART =  LSL(SYSTEM.VAL(SET, 7), UART_RXPin MOD 8*4) + LSL(SYSTEM.VAL(SET, 7), UART_TXPin MOD 8*4); (*AF7*)
-      afmUART = LSL(AF_MODE, UART_RXPin*2) + LSL(AF_MODE, UART_TXPin*2);
+      mask_1b = {UART_RXPin, UART_TXPin};
+      mask_2b = LSL(MASK2, UART_RXPin*2) + LSL(MASK2, UART_TXPin*2);
+      mask_4b = LSL(MASK4, UART_RXPin MOD 8*4) + LSL(MASK4, UART_TXPin MOD 8*4);
+      af =  LSL(SYSTEM.VAL(SET, 7), UART_RXPin MOD 8*4) + LSL(SYSTEM.VAL(SET, 7), UART_TXPin MOD 8*4); (*AF7*)
+      afm = LSL(AF_MODE, UART_RXPin*2) + LSL(AF_MODE, UART_TXPin*2);
+    VAR en: BYTE;
+  BEGIN SYSTEM.PUT(gpioaEn, TRUE); SYSTEM.GET(gpioaEn, en); (*delay*)
+    configureGPIO(GPIOA, mask_1b, mask_2b, {}, mask_4b, afm, {}, {}, {}, {}, af);
+  END UART_initGPIOs;
 
+  PROCEDURE initGPIOs; (*Initialize GPIOs for all sub systems*)
     VAR reg: SET;
   BEGIN
     (*Display*) SYSTEM.GET(RCC_BASE + AHB1ENR, reg); SYSTEM.PUT(RCC_BASE + AHB1ENR, reg + DisplayPortsEnS);
     SYSTEM.GET(RCC_BASE + AHB1ENR, reg); (*delay*)
 (*TODO*)
 
-    PS2_initGPIOs; NRF_initGPIOs;
-        
-    (*USART1 for UART*) SYSTEM.PUT(uartPortEn, TRUE); SYSTEM.GET(uartPortEn, reg); (*delay*)
-    SYSTEM.GET(UARTPort + OSPEEDR, reg); SYSTEM.PUT(UARTPort + OSPEEDR, reg - maskUART_2b); (*UART pins are low speed*)
-    SYSTEM.GET(UARTPort + OTYPER, reg); SYSTEM.PUT(UARTPort + OTYPER, reg - maskUART_1b); (*push-pull when output*)
-    SYSTEM.GET(UARTPort + PUPDR, reg); SYSTEM.PUT(UARTPort + PUPDR, reg - maskUART_2b); (*no pullup nor pulldown*)
-    SYSTEM.GET(UARTPort + UARTAFR, reg); SYSTEM.PUT(UARTPort + UARTAFR, reg - maskUART_4b + afUART); (*AF7*)
-    SYSTEM.GET(UARTPort + MODER, reg); SYSTEM.PUT(UARTPort + MODER, reg - maskUART_2b + afmUART); (*alternate function mode*)
+    PS2_initGPIOs; NRF_initGPIOs; UART_initGPIOs
   END initGPIOs;
 
   PROCEDURE InitCRC*;

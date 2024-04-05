@@ -27,10 +27,12 @@ Tools.Recall  Tools.Clear
 
 Edit.Open BuildM4.Tool
 
-Net.SendFiles CS System.Tool ~
-Net.ReceiveFiles CS main.h ~
+Net.SendFiles CS Texts.Mod ~
+Net.ReceiveFiles CS BSP.Mod ~
 
 testForever.Mod testForever.loop testForever.ovfl System.Free testForever
 RS232.Mod System.Free RS232 ~
 System.Free Net SCC ~
 testRS232.Mod testRS232.hello System.Free testRS232 ~
+Edit.ChangeColor 0FFH 
+Edit.ChangeColor 0FCH Edit.ChangeColor 0E3H Edit.ChangeColor 1FH

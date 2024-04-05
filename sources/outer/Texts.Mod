@@ -115,7 +115,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
       IF tag = TextTag THEN Load(R, T)
       ELSE (*Ascii file*)
         len := Files.Length(f); Q := Trailer();
-        NEW(q); q.fnt := Fonts.Default; q.col := 1; q.voff := 0; q.f := f; q.off := 0; q.len := len;
+        NEW(q); q.fnt := Fonts.Default; q.col := 0E3H; q.voff := 0; q.f := f; q.off := 0; q.len := len;
         Q.next := q; q.prev := Q; q.next := Q; Q.prev := q; T.trailer := Q; T.len := len
       END
     ELSE (*create new text*)
@@ -401,7 +401,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
 
   PROCEDURE OpenWriter* (VAR W: Writer);
   BEGIN NEW(W.buf);
-    OpenBuf(W.buf); W.fnt := Fonts.Default; W.col := 15; W.voff := 0;
+    OpenBuf(W.buf); W.fnt := Fonts.Default; W.col := 1FH; W.voff := 0;
     Files.Set(W.rider, Files.New(""), 0)
   END OpenWriter;
 
