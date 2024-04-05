@@ -53,6 +53,9 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     HCLCFreq* = 168; PCLK1Freq* = 42; PCLK2Freq* = 84;(*MHz*)
 
     RCC_BASE* = 40023800H;
+    RCC_CR* = 0; PLLSAIRDY* = 29; PLLSAION* = 28;
+    pllsaiEn* = PeriphBBAlias + (RCC_BASE + RCC_CR - PeriphBase + PLLSAION DIV 8)*32 + PLLSAION MOD 8*4;
+
     CFGR* = 8; RTCPRE* = {16..20}; (*clock configuration register*)
 
     AHB1ENR* = 30H; CRCEN* = 12; GPIOAEN* = 0; GPIOBEN* = 1; GPIOCEN* = 2; GPIODEN* = 3; GPIOEEN* = 4; GPIOFEN* = 5;
@@ -70,17 +73,21 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     gpiojEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOJEN DIV 8)*32 + GPIOJEN MOD 8*4;
     gpiokEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOKEN DIV 8)*32 + GPIOKEN MOD 8*4;
 
-
     APB1ENR* = 40H; SPI3EN* = 15; PWREN* = 28; (*APB1 peripheral clock enable register*)
     pwrEn* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + PWREN DIV 8)*32 + PWREN MOD 8*4;
     spi3En* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + SPI3EN DIV 8)*32 + SPI3EN MOD 8*4;
 
-    APB2ENR* = 44H; USART1EN* = 4;
+    APB2ENR* = 44H; USART1EN* = 4; LTDCEN* = 26;
     usart1En* = PeriphBBAlias + (RCC_BASE +APB2ENR - PeriphBase + USART1EN DIV 8)*32 + USART1EN MOD 8*4;
+    ltdcEn* = PeriphBBAlias + (RCC_BASE +APB2ENR - PeriphBase + LTDCEN DIV 8)*32 + LTDCEN MOD 8*4;
 
     BDCR* = 70H; RTCEN* = 15; BDRST* = 16; RTCSEL* = {8..9}; (*backup domain control register*)
     rtcEn* = PeriphBBAlias + (RCC_BASE + BDCR - PeriphBase + RTCEN DIV 8)*32 + RTCEN MOD 8*4;
     bdRst* = PeriphBBAlias + (RCC_BASE + BDCR - PeriphBase + BDRST DIV 8)*32 + BDRST MOD 8*4;
+
+    PLLSAICFGR* = 88H; PLLSAIRm* = {28..30}; PLLSAIQm* = {24..27}; PLLSAINm* = {6..14};
+    DCKCFGR* = 8CH; TIMPREm* = {24}; SAI1BSRCm* = {22..23}; SAI1ASRCm* = {20..21}; PLLSAIDIVRm* = {16..17};
+      PLLSAIDIVQm* = {8..12}; PLLS2DIVQm* = {0..4};
 
     (*RTC*)
     RTC_BASE* =  40002800H; 
@@ -174,9 +181,6 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     LD3Out* = PeriphBBAlias + (LD3Port + ODR - PeriphBase + LD3Pin DIV 8)*32 + LD3Pin MOD 8*4;
     LD4Pin* = 14; LD4Port* = GPIOG;
     LD4Out* = PeriphBBAlias + (LD4Port + ODR - PeriphBase + LD4Pin DIV 8)*32 + LD4Pin MOD 8*4;
-
-    (*Display*)
-    DisplayPortsEnS* = {GPIOAEN, GPIOBEN, GPIOCEN, GPIODEN, GPIOFEN, GPIOGEN};
 
     (*PS/2 pins*)
     PS2CLOCK1Pin* = 2; PS2CLOCK1Port* = GPIOE; PS2CLOCK1ExtiIrqNum* =  EXTI2_IRQNum;
@@ -276,14 +280,75 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     configureGPIO(GPIOA, mask_1b, mask_2b, {}, mask_4b, afm, {}, {}, {}, {}, af);
   END UART_initGPIOs;
 
-  PROCEDURE initGPIOs; (*Initialize GPIOs for all sub systems*)
+  PROCEDURE Display_InitGPIOs;
+    CONST
+      maskA_1b = {3, 4, 6, 11, 12};
+      maskA_2b = LSL(MASK2, 3*2) + LSL(MASK2, 4*2) + LSL(MASK2, 6*2) + LSL(MASK2, 11*2) + LSL(MASK2, 12*2);
+      maskA_4bl = LSL(MASK4, 3*4) + LSL(MASK4, 4*4) + LSL(MASK4, 6*4);
+      maskA_4bh = LSL(MASK4, 11 MOD 8*4) + LSL(MASK4, 12 MOD 8*4);
+      maskB_1b = {0, 1, 8, 9, 10, 11};
+      maskB_2b = LSL(MASK2, 0*2) + LSL(MASK2, 1*2) + LSL(MASK2, 8*2) + LSL(MASK2, 9*2) + LSL(MASK2, 10*2) + LSL(MASK2, 11*2);
+      maskB_4bl = LSL(MASK4, 0*4) + LSL(MASK4, 1*4);
+      maskB_4bh =  LSL(MASK4, 8 MOD 8*4) + LSL(MASK4, 9 MOD 8*4) + LSL(MASK4, 10 MOD 8*4) + LSL(MASK4, 11 MOD 8*4);
+      maskC_1b = {6, 7};
+      maskC_2b =  LSL(MASK2, 6*2) + LSL(MASK2, 7*2);
+      maskC_4bl = LSL(MASK4, 6*4) + LSL(MASK4, 7*4);
+      maskG_1b = {6, 10, 11, 12};
+      maskG_2b = LSL(MASK2, 6*2) + LSL(MASK2, 10*2) + LSL(MASK2, 11*2) + LSL(MASK2, 12*2);
+      maskG_4bl = LSL(MASK4, 6*4);
+      maskG_4bh = LSL(MASK4, 10 MOD 8*4) + LSL(MASK4, 11 MOD 8*4) + LSL(MASK4, 12 MOD 8*4);
     VAR reg: SET;
-  BEGIN
-    (*Display*) SYSTEM.GET(RCC_BASE + AHB1ENR, reg); SYSTEM.PUT(RCC_BASE + AHB1ENR, reg + DisplayPortsEnS);
+  BEGIN SYSTEM.GET(RCC_BASE + AHB1ENR, reg); SYSTEM.PUT(RCC_BASE + AHB1ENR, reg + {GPIOAEN, GPIOBEN, GPIOCEN, GPIODEN, GPIOGEN});
     SYSTEM.GET(RCC_BASE + AHB1ENR, reg); (*delay*)
-(*TODO*)
+    (**LTDC GPIO Configuration
+    PA3     ------> LTDC_B5
+    PA4     ------> LTDC_VSYNC
+    PA6     ------> LTDC_G2
+    PA11     ------> LTDC_R4
+    PA12     ------> LTDC_R5
+    PB0     ------> LTDC_R3
+    PB1     ------> LTDC_R6
+    PB8     ------> LTDC_B6
+    PB9     ------> LTDC_B7
+    PB10     ------> LTDC_G4
+    PB11     ------> LTDC_G5
+    PC6     ------> LTDC_HSYNC
+    PC7     ------> LTDC_G6
+    PD3     ------> LTDC_G7
+    PG6     ------> LTDC_R7
+    PG10     ------> LTDC_G3
+    PG11     ------> LTDC_B3
+    PG12     ------> LTDC_B4*)
+    configureGPIO(GPIOA, maskA_1b, maskA_2b, maskA_4bl, maskA_4bh,
+      LSL(AF_MODE, 3*2) + LSL(AF_MODE, 4*2) + LSL(AF_MODE, 6*2) + LSL(AF_MODE, 11*2) + LSL(AF_MODE, 12*2), (*PA3, 4, 6, 11 and 12 in AF_Mode*)
+      LSL(HIGH_SPEED, 3*2) + LSL(LOW_SPEED, 4*2) + LSL(HIGH_SPEED, 6*2) + LSL(HIGH_SPEED, 11*2) + LSL(HIGH_SPEED, 12*2), (*PA3, 6, 11 and 12 in high speed*)
+      {}, (*push-pull*) {}, (*no pullup nor pulldown*)
+      LSL(SYSTEM.VAL(SET, 14), 3*4) + LSL(SYSTEM.VAL(SET, 14), 4*4) + LSL(SYSTEM.VAL(SET, 14), 6*4), (*PA3, 4 and 6 in AF14*)
+      LSL(SYSTEM.VAL(SET, 14), 11 MOD 8*4) + LSL(SYSTEM.VAL(SET, 14), 12 MOD 8*4)); (*PA 11 and 12 in AF14*)
+    configureGPIO(GPIOB, maskB_1b, maskB_2b, maskB_4bl, maskB_4bh,
+      LSL(AF_MODE, 0*2) + LSL(AF_MODE, 1*2) + LSL(AF_MODE, 8*2) + LSL(AF_MODE, 9*2) + LSL(AF_MODE, 10*2) + LSL(AF_MODE, 11*2),
+      LSL(HIGH_SPEED, 0*2) + LSL(HIGH_SPEED, 1*2) + LSL(HIGH_SPEED, 8*2) + LSL(HIGH_SPEED, 9*2) + LSL(HIGH_SPEED, 10*2) + LSL(HIGH_SPEED, 11*2),
+      {}, (*push-pull*) {}, (*no pullup nor pulldown*)
+      LSL(SYSTEM.VAL(SET, 9), 0*4) + LSL(SYSTEM.VAL(SET, 9), 1*4), (*PB0 and 1 in AF9*)
+      LSL(SYSTEM.VAL(SET, 14), 8 MOD 8*4) + LSL(SYSTEM.VAL(SET, 14), 9 MOD 8*4) +
+        LSL(SYSTEM.VAL(SET, 14), 10 MOD 8*4) + LSL(SYSTEM.VAL(SET, 14), 11 MOD 8*4)); (*PB8, 9, 10 and 11 in AF14*)
+    configureGPIO(GPIOC, maskC_1b, maskC_2b, maskC_4bl, {},
+      LSL(AF_MODE, 6*2) + LSL(AF_MODE, 7*2), LSL(HIGH_SPEED, 6*2) + LSL(HIGH_SPEED, 7*2),
+      {}, (*push-pull*) {}, (*no pullup nor pulldown*)
+      LSL(SYSTEM.VAL(SET, 14), 6*4) + LSL(SYSTEM.VAL(SET, 14), 7*4), {});
+    configureGPIO(GPIOD, {3}, LSL(MASK2, 3*2), LSL(MASK4, 3*4), {}, LSL(AF_MODE, 3*2), LSL(HIGH_SPEED, 3*2),
+      {}, (*push-pull*) {}, (*no pullup nor pulldown*)
+      LSL(SYSTEM.VAL(SET, 14), 3*4), {});
+    configureGPIO(GPIOG, maskG_1b, maskG_2b, maskG_4bl, maskG_4bh,
+      LSL(AF_MODE, 6*2) + LSL(AF_MODE, 10*2) + LSL(AF_MODE, 11*2) + LSL(AF_MODE, 12*2),
+      LSL(HIGH_SPEED, 6*2) + LSL(HIGH_SPEED, 10*2) + LSL(HIGH_SPEED, 11*2) + LSL(HIGH_SPEED, 12*2),
+      {}, {},
+      LSL(SYSTEM.VAL(SET, 14), 6*4),
+      LSL(SYSTEM.VAL(SET, 9), 10 MOD 8*4) + LSL(SYSTEM.VAL(SET, 14),  11 MOD 8*4) + LSL(SYSTEM.VAL(SET, 9),  12 MOD 8*4))
+  END Display_InitGPIOs;
 
-    PS2_initGPIOs; NRF_initGPIOs; UART_initGPIOs
+  PROCEDURE initGPIOs; (*Initialize GPIOs for all sub systems*)
+  BEGIN Display_InitGPIOs; PS2_initGPIOs; NRF_initGPIOs; UART_initGPIOs
   END initGPIOs;
 
   PROCEDURE InitCRC*;
@@ -292,8 +357,14 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   END InitCRC;
 
   PROCEDURE InitDisplay*;
-    VAR res: BYTE;
-  BEGIN (*LTDC*)
+    VAR reg: SET;
+  BEGIN (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
+    SYSTEM.GET(RCC_BASE + PLLSAICFGR, reg);
+    SYSTEM.PUT(RCC_BASE + PLLSAICFGR, reg - (PLLSAINm + PLLSAIRm) + SYSTEM.VAL(SET, LSL(160, 6) + LSL(2, 28))); (*PLLSAIN = 160, PLLSAIR = 2*)
+    SYSTEM.GET(RCC_BASE + DCKCFGR, reg); SYSTEM.PUT(RCC_BASE + DCKCFGR, reg - PLLSAIDIVRm); (*PLLSADIVR = 2*)
+    SYSTEM.PUT(pllsaiEn, TRUE); REPEAT UNTIL SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
+    (*LTDC*) SYSTEM.PUT(ltdcEn, TRUE); SYSTEM.GET(ltdcEn, reg); (*delay*)
+(*TODO la suite apres HAL_LTDC_MspInit...*)
   END InitDisplay;
 
   PROCEDURE InitNRF24L01P*;
