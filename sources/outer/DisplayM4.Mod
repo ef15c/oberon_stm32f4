@@ -1,13 +1,14 @@
 MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 (*CS 23/12/2023*)
 
-  IMPORT SYSTEM;
+  IMPORT SYSTEM, BSP;
 
   CONST black* = 0; white* = 255;  (*black = background*) midgrey* = 49H; (*010 010 01*)
      yellow* = 0FCH;
     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
-    Base* = 0D0000000H; Width* = 1366; Height* = 768; NofBPP* = 8;
-    NofPixperWord* = 32 DIV NofBPP; Span = (Width*8 DIV NofBPP+63) DIV 64*64;
+    Base* = BSP.Display_FBA; Width* = BSP.Display_Width; Height* = BSP.Display_Height; NofBPP* = BSP.Display_BPP;
+    Span = BSP.Display_Pitch;
+    NofPixperWord* = 32 DIV NofBPP;
 
   TYPE Frame* = POINTER TO FrameDesc;
     FrameMsg* = RECORD END ;
@@ -262,7 +263,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END test5;
 *)
 
-BEGIN 
+BEGIN BSP.InitDisplay;
   arrow := SYSTEM.ADR($ 0F00 0F00
      00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
      00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00
