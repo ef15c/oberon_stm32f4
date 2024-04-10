@@ -41,6 +41,24 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     CRC_CR* = 8; CRC_RESET* = 0;
     crcReset* = PeriphBBAlias + (CRC_BASE + CRC_CR - PeriphBase + CRC_RESET DIV 8)*32 + CRC_RESET MOD 8*4;
 
+    (*DMA*)
+    DMA1_BASE* = 40026000H; DMA2_BASE* = 40026400H;
+    LISR* = 0; LIFCR* = 8; LI_OFS0* = 0; LI_OFS1* = 6; LI_OFS2* = 16; LI_OFS3* = 22;
+    HISR* = 4; HICFR* = 0CH; HI_OFS4* = 0; HI_OFS5* = 6; HI_OFS6* = 16; HI_OFS7* = 22;
+
+    TCIFx* = 5; HTIFx* = 4; TEIFx* = 3; DMEIFx* = 2; FEIFx* = 0;
+
+    STREAM_PARAM_SIZE* = 18H;
+    SxCR* = 10H; CT* = 19; DBM* = 18; PINCOS* = 15; MINC* = 10; PINC* = 9; CIRC* = 8; PFCTRL* = 5; SxCR_TCIE* = 4; HTIE* = 3;
+       TEIE* = 2; DMEIE* = 1; SxCR_EN* = 0;
+      CHSELm* = {25..27}; MBURSTm* = {23..24}; PBURSTm* = {21..22}; PLm* = {16..17}; MSIZEm* = {13..14}; PSIZEm* = {11..12};
+      DIRm* = {6..7}; SxCR_TCIEm* = {SxCR_TCIE}; HTIEm* = {HTIE}; TEIEm* = {TEIE}; DMEIEm* = {DMEIE};
+ 
+    SxNDTR* = 14H; NDTm* = {0..15};
+    SxPAR* = 18H; SxM0AR* = 1CH; SxM1AR* = 20H;
+    SxFCR* = 24H; FEIE* = 7; DMDIS* = 2;
+      FSm* = {3..5}; FTHm* = {0..1};
+
     (*EXTI*)
     EXTI_BASE* = 40013C00H; PR* = 14H;
 
@@ -63,6 +81,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     BCCR* = 2CH; BCREDm* = {16..23}; BCGREENm* = {8..15}; BCBLUEm* = {0..8};
 
     L0CR* = 84H; CLUTEN* = 4; COLKEN* = 1; LEN* = 0;
+    CLUTENm* = {CLUTEN}; COLKENm* = {COLKEN}; LENm* = {LEN};
     l0En* = PeriphBBAlias + (LTDC_BASE + L0CR - PeriphBase + LEN DIV 8)*32 + LEN MOD 8*4;
     l0Cluten* = PeriphBBAlias + (LTDC_BASE + L0CR - PeriphBase + CLUTEN DIV 8)*32 + CLUTEN MOD 8*4;
 
@@ -129,6 +148,29 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     ISR* = 0CH; INIT* = 7; INITF* = 6; RSF* = 5;(*flags*)
     rtcInit* = PeriphBBAlias + (RTC_BASE + ISR - PeriphBase + INIT DIV 8)*32 + INIT MOD 8*4;
 
+    (*SDIO*)
+    SDIO_BASE* = 40012C00H;
+    ARG* = 8; 
+
+    CMD* = 0CH; RESPCMD* = 10H;
+      ATACMDm* = {14}; nIENm* = {13}; ENCMDcomplm* = {12}; SDIOSuspendm* = {11}; CPSMENm* = {10}; WAITPENDm* = {9};
+      WAITINTm* = {8}; WAITRESPm* = {6..7}; CMDINDEXm* = {0..5};
+      RESPONSE_SHORT* = {6}; RESPONSE_LONG* = {6..7};
+
+    RESP1* = 14H; DTIMER* = 24H; DLEN* = 28H;
+
+    DCTRL* = 2CH; SDIOEN* = 11; RWMOD* = 10; RWSTOP* = 9; RWSTART* = 8; DMAEN* = 3; DTMODE* = 2; DTDIR* = 1; DTEN* = 0;
+      DBLOCKSIZEm* = {4..7}; DTMODEm* = {DTMODE}; DTDIRm* = {DTDIR}; DTENm* = {DTEN};
+    sdioDmaEn* = PeriphBBAlias + (SDIO_BASE + DCTRL - PeriphBase + DMAEN DIV 8)*32 +DMAEN MOD 8*4;
+
+    STA* = 34H; ICR* = 38H;
+    CEDATAENDm* = {23}; SDIOITm* = {22}; RXDAVLm* = {21}; TXDAVLm* = {20}; RXFIFOEm* = {19}; TXFIFOEm* = {18}; RXFIFOFm* = {17};
+    TXFIFOFm* = {16}; RXFIFOHFm*= {15}; TXFIFOHEm* = {14}; RXACTm* = {13}; TXACTm* = {12}; CMDACTm* = {11}; DBCKENDm* = {10};
+    STBITERRm* = {9}; DATAENDm* = {8}; CMDSENTm* = {7}; CMDRENDm* = {6}; RXOVERRm* = {5}; TXUNDERRm* = {4}; DTIMEOUTm* = {3};
+    CTIMEOUTm* = {2}; DCRCFAILm* = {1}; CCRCFAILm* = {0};
+
+    MASK* = 3CH; FIFO* = 80H;
+
     (*SPI*)
     SPI2_BASE* = 40003800; SPI3_BASE* = 40003C00H;
     SPI_CR1* = 0; SPE* = 6;
@@ -155,7 +197,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     USART_BRR* = 8; DIV_Mantissa* = {4..15}; DIV_Fraction* = {0..3};
 
     USART_CR1* = 0CH; UE* = 13;
-    OVER8m* = {15}; UEm* = {UE}; Mm* = {12}; WAKEm* = {11}; PCEm* = {10}; PSm* = {9}; PEIEm* = {8}; TXEIEm* = {7}; TCIEm* = {6};
+    OVER8m* = {15}; UEm* = {UE}; Mm* = {12}; WAKEm* = {11}; PCEm* = {10}; PSm* = {9}; PEIEm* = {8}; TXEIEm* = {7}; USART_TCIEm* = {6};
       RXNEIEm* = {5}; IDLEIEm* = {4}; TEm* = {3}; REm* = {2}; RWUm* = {1}; SBKm* = {0};
     ue1 = PeriphBBAlias + (USART1_BASE + USART_CR1 - PeriphBase + UE DIV 8)*32 + UE MOD 8*4;
 
@@ -431,9 +473,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     FOR i := 0 TO 255 DO r := LSR(i, 5) MOD 8; g := LSR(i, 2) MOD 8; b := i MOD 4;
       SYSTEM.PUT(LTDC_BASE + L0CLUTWR, LSL(i, 24) + LSL(r*255 DIV 7, 16) + LSL(g*255 DIV 7, 8) + b*255 DIV 3)
     END;
-    SYSTEM.PUT(l0En, TRUE);(*finally (re)enable layer 0*)
-    SYSTEM.PUT(imr, TRUE); (*reload shadow registers immediately*)
-    SYSTEM.PUT(l0Cluten, TRUE); (*enable color lookup table*)
+    SYSTEM.PUT(LTDC_BASE + L0CR, CLUTENm + LENm); (*finally (re)enable layer 0 and color lookup table*)
     SYSTEM.PUT(imr, TRUE) (*reload shadow registers immediately*)
   END InitDisplay;
 

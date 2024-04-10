@@ -4,7 +4,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   IMPORT SYSTEM, BSP;
 
   CONST black* = 0; white* = 255;  (*black = background*) midgrey* = 49H; (*010 010 01*)
-     yellow* = 0FCH;
+     red* = 0E0; yellow* = 0FCH;
     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
     Base* = BSP.Display_FBA; Width* = BSP.Display_Width; Height* = BSP.Display_Height; NofBPP* = BSP.Display_BPP;
     Span = BSP.Display_Pitch;

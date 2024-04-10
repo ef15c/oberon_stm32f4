@@ -1,6 +1,6 @@
 MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   C. Schoffit 19/10/2023 Oberon compiler for Cortex M4 in Oberon-07*)
-  IMPORT Texts, Oberon, OM4S, OM4B, OM4G;
+  IMPORT Display, Texts, Oberon, OM4S, OM4B, OM4G;
   (*Author: Niklaus Wirth, 2014.
     Parser of Oberon-RISC compiler. Uses Scanner OM4S to obtain symbols (tokens),
     OM4B for definition of data structures and for handling import and export, and
@@ -966,7 +966,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END Import;
 
   PROCEDURE Module;
-    VAR key: LONGINT;
+    VAR key: LONGINT; oldCol: INTEGER;
   BEGIN Texts.WriteString(W, "  compiling "); OM4S.Get(sym);
     IF sym = OM4S.module THEN
       OM4S.Get(sym);
@@ -1001,7 +1001,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       IF OM4S.errcnt = 0 THEN
         Texts.WriteInt(W, OM4G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key);
         OM4G.Close(modid, key, exno)
-      ELSE Texts.WriteLn(W); Texts.WriteString(W, "compilation FAILED")
+      ELSE Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol 
       END ;
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
       OM4B.CloseScope; pbsList := NIL
