@@ -43,7 +43,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-static uint8_t buf[NB_BLOCKS_MAX*512];
+static __attribute__ ((aligned (16))) uint8_t buf[NB_BLOCKS_MAX*512];
 
 /* USER CODE END PV */
 
@@ -263,7 +263,6 @@ __STATIC_FORCEINLINE uint32_t __get_LR(void)
 void Oberon_SVC_Handler(sContextStateFrame *frame)
 {
     uint8_t param = *((uint8_t *)(frame->return_address)-2);
-	uint8_t *pbuf;
     uint32_t *wsrc, *wdst;
     int i;
 
@@ -271,36 +270,30 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
     case 2:
         /* Process SD card multi blocks read */
     	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
-    	if (frame->r1 >= 0x20000000 && frame->r1 < 0x20000000 + 192*1024) { /*SRAM region accessible to DMA*/
-    		pbuf =  (uint8_t *)frame->r1;
-    	} else {
-    		if (frame->r2 > NB_BLOCKS_MAX) {
-    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
-    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-    			frame->r0 = HAL_ERROR;
-    			return ;
-    		}
-    		pbuf = buf;
-    	}
+		if (frame->r2 > NB_BLOCKS_MAX) {
+			HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+			frame->r0 = HAL_ERROR;
+			return ;
+		}
 
     	SD_ErrorOcurred = false;
-		frame->r0 = HAL_SD_ReadBlocks_DMA(&hsd, pbuf, frame->r0, frame->r2);
+		frame->r0 = HAL_SD_ReadBlocks_DMA(&hsd, buf, frame->r0, frame->r2);
 		if (frame->r0 == HAL_OK) {
-			frame->r0 = 300;
-			while (frame->r0 && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
-				frame->r0--;
+			while (hsd.State != HAL_SD_STATE_READY) {
 				DWT_Delay_us(1000);
 			}
-			frame->r0 = (frame->r0 != 0 && !SD_ErrorOcurred)?HAL_OK:HAL_ERROR;
+			while (HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
+				DWT_Delay_us(1000);
+			}
+			frame->r0 = (!SD_ErrorOcurred)?HAL_OK:HAL_ERROR;
 		}
 
 		if (frame->r0 == HAL_OK) {
-	    	if ((uint8_t *)frame->r1 != pbuf) {
-	    		wsrc = (uint32_t *) buf; wdst = (uint32_t *) frame->r1;
-	    		for (i = 0; i < frame->r2*512/4; i++) {
-	    			*wdst++ = *wsrc++;
-	    		}
-	    	}
+			wsrc = (uint32_t *) buf; wdst = (uint32_t *) frame->r1;
+			for (i = 0; i < frame->r2*512/4; i++) {
+				*wdst++ = *wsrc++;
+			}
 		} else {
 	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
 			hsd.State = HAL_SD_STATE_READY;
@@ -311,32 +304,27 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
         /* Process SD card multi blocks write */
         HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
 
-    	if (frame->r1 >= 0x20000000 && frame->r1 < 0x20000000 + 192*1024) { /*SRAM region accessible to DMA*/
-    		pbuf =  (uint8_t *)frame->r1;
-    	} else {
-    		if (frame->r2 > NB_BLOCKS_MAX) {
-    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
-    	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-    			frame->r0 = HAL_ERROR;
-    			return ;
-    		}
-    		wdst = (uint32_t *) buf; wsrc = (uint32_t *) frame->r1;
-    		for (i = 0; i < frame->r2*512/4; i++) {
-    			*wdst++ = *wsrc++;
-    		}
-
-    		pbuf = buf;
-    	}
+		if (frame->r2 > NB_BLOCKS_MAX) {
+			HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+			frame->r0 = HAL_ERROR;
+			return ;
+		}
+		wdst = (uint32_t *) buf; wsrc = (uint32_t *) frame->r1;
+		for (i = 0; i < frame->r2*512/4; i++) {
+			*wdst++ = *wsrc++;
+		}
 
     	SD_ErrorOcurred = false;
-		frame->r0 = HAL_SD_WriteBlocks_DMA(&hsd, pbuf, frame->r0, frame->r2);
+		frame->r0 = HAL_SD_WriteBlocks_DMA(&hsd, buf, frame->r0, frame->r2);
 		if (frame->r0 == HAL_OK) {
-			frame->r0 = 1000;
-			while (frame->r0 && HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
-				frame->r0--;
+			while (hsd.State != HAL_SD_STATE_READY) {
 				DWT_Delay_us(1000);
 			}
-			frame->r0 = (frame->r0 != 0 && !SD_ErrorOcurred)?HAL_OK:HAL_ERROR;
+			while (HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
+				DWT_Delay_us(1000);
+			}
+			frame->r0 = (!SD_ErrorOcurred)?HAL_OK:HAL_ERROR;
 		}
 		if (frame->r0 != HAL_OK) {
 			HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
@@ -344,6 +332,9 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
 		}
     	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
         break;
+    case 8:
+    	frame->r0 = (uint32_t) &hsd.SdCard;
+    	break;
     }
 }
 /* USER CODE END 1 */

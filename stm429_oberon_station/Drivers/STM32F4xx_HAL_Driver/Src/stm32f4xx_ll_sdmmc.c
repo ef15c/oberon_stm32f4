@@ -1219,14 +1219,14 @@ uint32_t SDMMC_GetCmdResp1(SDIO_TypeDef *SDIOx, uint8_t SD_CMD, uint32_t Timeout
   
   /* 8 is the number of required instructions cycles for the below loop statement.
   The Timeout is expressed in ms */
-  uint32_t count = Timeout * (SystemCoreClock / 8U /1000U);
+/*  uint32_t count = Timeout * (SystemCoreClock / 8U /1000U); */
   
   do
   {
-    if (count-- == 0U)
+/*    if (count-- == 0U)
     {
       return SDMMC_ERROR_TIMEOUT;
-    }
+    }*/
     sta_reg = SDIOx->STA;
   }while(((sta_reg & (SDIO_FLAG_CCRCFAIL | SDIO_FLAG_CMDREND | SDIO_FLAG_CTIMEOUT)) == 0U) ||
          ((sta_reg & SDIO_FLAG_CMDACT) != 0U ));
