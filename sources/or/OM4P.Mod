@@ -703,7 +703,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = OM4S.var THEN OM4S.Get(sym); cl := OM4B.Par ELSE cl := OM4B.Var END ;
     IdentList(cl, first); FormalType(tp, 0); rdo := FALSE;
     IF (cl = OM4B.Var) & (tp.form >= OM4B.Array) THEN cl := OM4B.Par; rdo := TRUE END ;
-    IF (tp.form = OM4B.Array) & (tp.len < 0) OR (tp.form = OM4B.Record) THEN
+    IF (tp.form = OM4B.Array) & (tp.len < 0) OR (OM4G.check & (tp.form = OM4B.Record)) THEN
       parsize := 2*OM4G.WordSize  (*open array or record, needs second word for length or type tag*)
     ELSE parsize := OM4G.WordSize
     END ;

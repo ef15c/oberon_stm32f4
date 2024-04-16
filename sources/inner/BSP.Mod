@@ -21,17 +21,14 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*NVIC*)
     (*Cortex M4*)
-    BusFaultExcNum* = 5;
-    UsageFaultExcNum* = 6;
-    SVCallExcNum* = 11;
-    PendSVExcNum* = 14;
-    SysTickExcNum* = 15;
+    BusFaultExcNum* = 5; UsageFaultExcNum* = 6; SVCallExcNum* = 11; PendSVExcNum* = 14; SysTickExcNum* = 15;
 
     (*STM32F429*)
 
     (*IRQ numbers*)
     EXTI0_IRQNum* = 16+6; EXTI1_IRQNum* = 16+7; EXTI2_IRQNum* = 16+8; EXTI3_IRQNum* = 16+9; EXTI4_IRQNum* = 16+10;
-    EXTI9_5_IRQNum* = 16+23; EXTI15_10_IRQNum* = 16+40;
+    EXTI9_5_IRQNum* = 16+23; EXTI15_10_IRQNum* = 16+40; SDIO_IRQNum* = 16+49; DMA2_Stream3_IRQNum* = 16+59;
+      DMA3_Stream6_IRQNum* = 16+69;
 
     (*CRC*)
     CRC_BASE* = 40023000H;
@@ -57,7 +54,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SxNDTR* = 14H; NDTm* = {0..15};
     SxPAR* = 18H; SxM0AR* = 1CH; SxM1AR* = 20H;
     SxFCR* = 24H; FEIE* = 7; DMDIS* = 2;
-      FSm* = {3..5}; FTHm* = {0..1};
+      FEIEm* = {FEIE}; FSm* = {3..5}; FTHm* = {0..1};
 
     (*EXTI*)
     EXTI_BASE* = 40013C00H; PR* = 14H;
@@ -164,10 +161,12 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     sdioDmaEn* = PeriphBBAlias + (SDIO_BASE + DCTRL - PeriphBase + DMAEN DIV 8)*32 +DMAEN MOD 8*4;
 
     STA* = 34H; ICR* = 38H;
-    CEDATAENDm* = {23}; SDIOITm* = {22}; RXDAVLm* = {21}; TXDAVLm* = {20}; RXFIFOEm* = {19}; TXFIFOEm* = {18}; RXFIFOFm* = {17};
-    TXFIFOFm* = {16}; RXFIFOHFm*= {15}; TXFIFOHEm* = {14}; RXACTm* = {13}; TXACTm* = {12}; CMDACTm* = {11}; DBCKENDm* = {10};
-    STBITERRm* = {9}; DATAENDm* = {8}; CMDSENTm* = {7}; CMDRENDm* = {6}; RXOVERRm* = {5}; TXUNDERRm* = {4}; DTIMEOUTm* = {3};
-    CTIMEOUTm* = {2}; DCRCFAILm* = {1}; CCRCFAILm* = {0};
+      CCRCFAIL* = 0; DCRCFAIL* = 1; CTIMEOUT* = 2; DTIMEOUT* = 3; TXUNDERR* = 4; RXOVERR* = 5; CMDREND* = 6; CMDSENT* = 7;
+      DATAEND* = 8; STBITERR* = 9;
+      CEDATAENDm* = {23}; SDIOITm* = {22}; RXDAVLm* = {21}; TXDAVLm* = {20}; RXFIFOEm* = {19}; TXFIFOEm* = {18}; RXFIFOFm* = {17};
+      TXFIFOFm* = {16}; RXFIFOHFm*= {15}; TXFIFOHEm* = {14}; RXACTm* = {13}; TXACTm* = {12}; CMDACTm* = {11}; DBCKENDm* = {10};
+      STBITERRm* = {STBITERR}; DATAENDm* = {DATAEND}; CMDSENTm* = {CMDSENT}; CMDRENDm* = {CMDREND}; RXOVERRm* = {RXOVERR}; 
+      TXUNDERRm* = {TXUNDERR}; DTIMEOUTm* = {DTIMEOUT}; CTIMEOUTm* = {CTIMEOUT}; DCRCFAILm* = {DCRCFAIL}; CCRCFAILm* = {CCRCFAIL};
 
     MASK* = 3CH; FIFO* = 80H;
 
@@ -310,6 +309,14 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   BEGIN
     FOR i := 0 TO 6 DO SYSTEM.PUT(Leds[i], ODD(n)); n := n DIV 2 END
   END led;
+
+  PROCEDURE ledsOnOff*(on, off: SET);
+    VAR i: INTEGER;
+  BEGIN
+    FOR i := 0 TO 6 DO 
+      IF i IN on THEN SYSTEM.PUT(Leds[i], TRUE) ELSIF i IN off THEN SYSTEM.PUT(Leds[i], FALSE) END
+    END
+  END ledsOnOff;
 
   PROCEDURE configureGPIO(port: INTEGER; m1b, m2b, m4bl, m4bh, m, os, ot, pup, afrl, afrh: SET);
     VAR reg: SET;

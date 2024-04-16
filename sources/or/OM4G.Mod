@@ -42,7 +42,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     SH: LONGINT;      (*in use floating point registers S[0] ... S[H-1]*)
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
     fixORGP, fixORGD, fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by loader*)
-    check: BOOLEAN;   (*emit run-time checks*)
+    check*: BOOLEAN;   (*emit run-time checks*)
     version: INTEGER; (*0 = bare metal program, 1 = oberon system module*)
     
     relmap: ARRAY 6 OF INTEGER;    (*condition codes for relations*)
@@ -429,7 +429,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE TypeTest*(VAR x: Item; T: OM4B.Type; varpar, isguard: BOOLEAN);
     VAR pc0: LONGINT;
   BEGIN
-    IF T = NIL THEN
+    IF ~check OR (T = NIL) THEN
       IF x.mode >= Reg THEN DEC(RH) END ;
       SetCC(x, OM4A.AL)
     ELSE (*fetch tag into RH*)
@@ -818,7 +818,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.type.len >= 0 THEN OM4A.encMOVImm32(mcode, RH, x.type.len) 
       ELSE  incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a+4+frame); DEC(RH)
       END; incR
-    ELSIF ftype.form = OM4B.Record THEN
+    ELSIF (ftype.form = OM4B.Record) & check THEN
       IF xmd = OM4B.Par THEN
         OM4A.encMemImm32(mcode, OM4A.LDR, RH, SP, RH, x.a+4+frame); incR 
       ELSE loadTypTagAdr(x.type)

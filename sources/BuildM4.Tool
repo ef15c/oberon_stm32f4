@@ -15,16 +15,16 @@ Commands for generation of the compiler
 OM4P.Compile TextsEx.Mod/s OM4S.Mod/s OM4B.Mod/s OM4A.Mod/s OM4G.Mod/s OM4P.Mod/s
   OM4X.Mod/s OM4L.Mod/s OM4D.Mod/s ~
 
+Commands for generation of net
+OM4P.Compile SCCM4.Mod/s NetM4.Mod/s ~
+OM4P.Compile RS232.Mod ~
+
 Command for generation of tools
 OM4P.Compile OM4Tool.Mod/s Tools.Mod/s ~
 
 Commands for generation of graphic system
 OM4P.Compile Graphics.Mod/s GraphicFramesM4.Mod/s Draw.Mod Rectangles.Mod/s Curves.Mod/s
   MacroTool.Mod GraphTool.Mod ~
-
-Commands for generation of net
-OM4P.Compile SCCM4.Mod/s NetM4.Mod/s ~
-OM4P.Compile RS232.Mod ~
 
 Command for generating programs
 OM4P.Compile Hilbert.Mod/s Sierpinski.Mod/s Blink.Mod/s Stars.Mod/s ~
