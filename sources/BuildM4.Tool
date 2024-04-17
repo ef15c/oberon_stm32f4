@@ -3,7 +3,7 @@ OM4P.Compile BootLoadM4.Mod ~
 OM4X.WriteASM BootLoadM4.m4c BootLoadM4.s ~
 
 Commands for generation of the boot file (inner core)
-OM4P.Compile BSP.Mod/s KernelM4.Mod/s FileDir.Mod/s Files.Mod/s ModulesM4.Mod/s ~ 
+OM4P.Compile BSP.Mod/s SDCard.Mod/s KernelM4.Mod/s FileDir.Mod/s Files.Mod/s ModulesM4.Mod/s ~ 
 OM4L.Link Modules ~
 OM4L.Load Modules.bin ~
 

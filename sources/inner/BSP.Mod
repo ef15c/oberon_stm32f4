@@ -304,6 +304,13 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
   VAR Leds*: ARRAY 7 OF LONGINT;
 
+  PROCEDURE Delayus*(d: INTEGER);
+    VAR beg, now: INTEGER;
+  BEGIN SYSTEM.GET(DWTBase + CYCCNT, beg);
+    REPEAT SYSTEM.GET(DWTBase + CYCCNT, now) UNTIL now - beg >= HCLCFreq*d
+  END  Delayus;
+
+
   PROCEDURE led*(n: INTEGER);
     VAR i: INTEGER;
   BEGIN

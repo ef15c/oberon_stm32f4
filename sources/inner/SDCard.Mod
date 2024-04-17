@@ -1,5 +1,5 @@
-MODULE testSDCard;
-  IMPORT SYSTEM, BSP, Kernel, Texts, Oberon, System;
+MODULE SDCard;
+  IMPORT SYSTEM, BSP;
 
   CONST
     (*common error flag*) NONE = {}; 
@@ -46,21 +46,21 @@ MODULE testSDCard;
     BLOCKSIZE = 512;
 
   TYPE
-    SDCardInfoDesc = RECORD
-      CardType, CardVersion, Class, RelCardAdd, BlockNbr, BlockSize, LogBlockNbr, LogBlockSize: INTEGER
+    SDCardInfoDesc* = RECORD
+      CardType*, CardVersion*, Class*, RelCardAdd*, BlockNbr*, BlockSize*, LogBlockNbr*, LogBlockSize*: INTEGER
     END;
     SDCardInfo = POINTER TO SDCardInfoDesc;
 
-    SDHandleDesc = RECORD
-      ErrorCode: SET;
-      SdCard: SDCardInfo
+    SDHandleDesc* = RECORD
+      ErrorCode*: SET;
+      SdCard*: SDCardInfo;
+      readErrors*: INTEGER
     END;
 
-  VAR hsd: SDHandleDesc; sdBuf: INTEGER;
-    W: Texts.Writer;
+  VAR hsd*: SDHandleDesc; sdBuf: INTEGER;
 
-PROCEDURE GetCmdResp1(cmd: SET): SET;
-  VAR rc, reg: SET;
+  PROCEDURE GetCmdResp1(cmd: SET): SET;
+    VAR rc, reg: SET;
   BEGIN rc := NONE;
     REPEAT SYSTEM.GET(STA, reg) UNTIL (reg*(BSP.CCRCFAILm + BSP.CMDRENDm + BSP.CTIMEOUTm) # {}) & (reg*BSP.CMDACTm = {}); (*wait for response*)
     reg := reg*(BSP.CTIMEOUTm + BSP.CCRCFAILm);
@@ -117,7 +117,7 @@ PROCEDURE GetCmdResp1(cmd: SET): SET;
     RETURN GetCmdResp1(CMD_STOP_TRANSMISSION) (*check response*)
   END CmdStopTransfer;
 
-  PROCEDURE SDReadBlocksDMA*(pData, blockAdd, nofBlocks: INTEGER): SET;
+  PROCEDURE SDReadBlocksDMA(pData, blockAdd, nofBlocks: INTEGER): SET;
     VAR reg, lisr, sta: SET;
   BEGIN hsd.ErrorCode := NONE;
     IF nofBlocks < 1 THEN hsd.ErrorCode := INVALID_PARAMETER END;
@@ -152,7 +152,7 @@ PROCEDURE GetCmdResp1(cmd: SET): SET;
         SYSTEM.GET(BSP.DMA2_BASE + BSP.LISR, lisr); SYSTEM.GET(STA, sta);
         WHILE ~(BSP.TEIFx + BSP.LI_OFS3 IN lisr) &
           (sta*(BSP.DCRCFAILm + BSP.DTIMEOUTm + BSP.RXOVERRm + BSP.DATAENDm + BSP.STBITERRm) = {}) DO
-          Kernel.Delayus(100); SYSTEM.GET(BSP.DMA2_BASE + BSP.LISR, lisr); SYSTEM.GET(STA, sta)
+          BSP.Delayus(100); SYSTEM.GET(BSP.DMA2_BASE + BSP.LISR, lisr); SYSTEM.GET(STA, sta)
         END;
         hsd.ErrorCode := CmdStopTransfer();
         IF ~(BSP.DATAEND IN sta) THEN
@@ -173,65 +173,22 @@ PROCEDURE GetCmdResp1(cmd: SET): SET;
     RETURN hsd.ErrorCode
   END SDReadBlocksDMA;
 
-  PROCEDURE showInfos*;
-  BEGIN Texts.WriteString(W, "CardType "); Texts.WriteHex(W, hsd.SdCard.CardType); Texts.WriteLn(W);
-    Texts.WriteString(W, "CardVersion "); Texts.WriteHex(W, hsd.SdCard.CardVersion); Texts.WriteLn(W);
-    Texts.WriteString(W, "Class "); Texts.WriteHex(W, hsd.SdCard.Class); Texts.WriteLn(W);
-    Texts.WriteString(W, "RelCardAddr "); Texts.WriteHex(W, hsd.SdCard.RelCardAdd); Texts.WriteLn(W);
-    Texts.WriteString(W, "BlockNbr "); Texts.WriteHex(W, hsd.SdCard.BlockNbr); Texts.WriteLn(W);
-    Texts.WriteString(W, "BlockSize "); Texts.WriteHex(W, hsd.SdCard.BlockSize); Texts.WriteLn(W);
-    Texts.WriteString(W, "LogBlockNbr "); Texts.WriteHex(W, hsd.SdCard.LogBlockNbr); Texts.WriteLn(W);
-    Texts.WriteString(W, "LogBlockSize "); Texts.WriteHex(W, hsd.SdCard.LogBlockSize); Texts.WriteLn(W);
-    Texts.WriteString(W, "@buf "); Texts.WriteHex(W, sdBuf); Texts.WriteLn(W);
-    Texts.WriteString(W, "DMA2S3_CR "); Texts.WriteHex(W, STREAM_BASE + BSP.SxCR); Texts.WriteLn(W);
-    Texts.WriteString(W, "DMA2_LISR "); Texts.WriteHex(W, BSP.DMA2_BASE + BSP.LISR); Texts.WriteLn(W);
-
-    Texts.Append(Oberon.Log, W.buf)
-  END showInfos;
-
-  PROCEDURE ReadSD(src, dst, nofblocks: INTEGER);
+  PROCEDURE Read*(src, dst, nofblocks: INTEGER);
   VAR rc: SET;
   BEGIN
     BSP.ledsOnOff({0}, {});
     IF nofblocks > 128 THEN BSP.ledsOnOff({1}, {0}); ASSERT(FALSE) END;
     rc := SDReadBlocksDMA(sdBuf, src, nofblocks);
     IF rc = NONE THEN
-      WHILE GetCardState() #CARD_TRANSFER DO Kernel.Delayus(1000) END
+      WHILE GetCardState() #CARD_TRANSFER DO BSP.Delayus(1000) END
     END;
 
-    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(sdBuf, dst, nofblocks*(512 DIV 4)) ELSE BSP.ledsOnOff({1}, {}) END;
+    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(sdBuf, dst, nofblocks*(512 DIV 4)) ELSE INC(hsd.readErrors); BSP.ledsOnOff({1}, {}) END;
     BSP.ledsOnOff({}, {0});
-  END ReadSD;
+  END Read;
 
-  PROCEDURE test*;
-    CONST SS = 1024; NBS = SS DIV 512;
-    VAR a,b: ARRAY SS OF BYTE; src, r, i: INTEGER; same: BOOLEAN;
-  BEGIN LED(0); System.Date;
-    FOR src :=  8000H TO 8000H + NBS*1000 BY NBS DO
-      IF src MOD (NBS*1000) = NBS*999 THEN Texts.Write(W,".");
-        IF src MOD (NBS*40000) = NBS*39999 THEN Texts.WriteLn(W) END; Texts.Append(Oberon.Log, W.buf) 
-      END;
-      SYSTEM.LDREG(0, src); SYSTEM.LDREG(1, SYSTEM.ADR(a)); SYSTEM.LDREG(2, NBS); r := SYSTEM.SVC(2); (*read SD via C firmware*)
-      ReadSD(src, SYSTEM.ADR(b), NBS); (*read SD via Oberon driver*)
-      (*compare*) same := TRUE; i := 0; WHILE same & (i < SS DIV 4) DO same := a[i] = b[i]; INC(i) END;
-      IF same THEN BSP.ledsOnOff({2}, {}) ELSE BSP.ledsOnOff({1}, {}) END
-    END;
-    System.Date;
-  END test;
+  PROCEDURE Init*;
+  BEGIN hsd.SdCard := SYSTEM.VAL(SDCardInfo, SYSTEM.SVC(8)); sdBuf := SYSTEM.SVC(9)
+  END Init;
 
-  PROCEDURE perf*;
-    CONST BS = 10240; NBS = BS DIV 512;
-    VAR b: ARRAY BS OF BYTE; src, r, i: INTEGER; same: BOOLEAN;
-  BEGIN LED(0); System.Date;
-    FOR src := 5000000 TO 5000000 + NBS*10000 BY NBS DO
-      IF src MOD (NBS*1000) = NBS*999 THEN Texts.Write(W,".");
-        IF src MOD (NBS*40000) = NBS*39999 THEN Texts.WriteLn(W) END; Texts.Append(Oberon.Log, W.buf) 
-      END;
-      ReadSD(src, SYSTEM.ADR(b), NBS) (*read SD via Oberon driver*)
-    END;
-    System.Date;
-  END perf;
-
-BEGIN hsd.SdCard := SYSTEM.VAL(SDCardInfo, SYSTEM.SVC(8)); sdBuf := SYSTEM.SVC(9)
-; Texts.OpenWriter(W)
-END testSDCard.
+END SDCard.

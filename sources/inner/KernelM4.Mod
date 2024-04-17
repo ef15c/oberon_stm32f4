@@ -1,5 +1,5 @@
 MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
-  IMPORT SYSTEM, BSP;
+  IMPORT SYSTEM, BSP, SDCard;
   CONST SectorLength* = 1024; SDBlockSize = 512;
     FS_OFFSET = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*64K sectors, 64*1024*SectorLength bytes*)
@@ -22,10 +22,10 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       returnAddress*, xpsr*: LONGINT
     END;
 
-  VAR FSoffset, allocated*, NofSectors*: INTEGER;
+  VAR allocated*, NofSectors*: INTEGER;
     heapOrg*, heapLim*: INTEGER; 
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
-    readErrors*, writeErrors*, unrecoverableErrors*: INTEGER;
+    writeErrors*, unrecoverableErrors*: INTEGER;
     tick: INTEGER;
 
     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
@@ -151,13 +151,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
 (* ---------- Disk storage management ----------*)
 
-  PROCEDURE ReadSD(src, dst, nofblocks: INTEGER);
-    VAR r: INTEGER;
-  BEGIN SYSTEM.LDREG(0, src); SYSTEM.LDREG(1, dst); 
-    SYSTEM.LDREG(2, nofblocks); r := SYSTEM.SVC(2);
-    INC(readErrors, r)
-  END ReadSD;
-
   PROCEDURE WriteSD(dst, src, nofblocks: INTEGER);
     VAR r, retry, t: INTEGER;
   BEGIN retry := 5;
@@ -203,14 +196,14 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE GetSector*(src29: INTEGER; VAR dst: Sector);
     VAR src: INTEGER;
   BEGIN src := src29 DIV 29; ASSERT(src29 = src*29);
-    src := src * (SectorLength DIV SDBlockSize) + FSoffset;
-    ReadSD(src, SYSTEM.ADR(dst), SectorLength DIV SDBlockSize)
+    src := src * (SectorLength DIV SDBlockSize) + FS_OFFSET;
+    SDCard.Read(src, SYSTEM.ADR(dst), SectorLength DIV SDBlockSize)
   END GetSector;
 
   PROCEDURE PutSector*(dst29: INTEGER; VAR src: Sector);
     VAR dst: INTEGER;
   BEGIN dst := dst29 DIV 29; ASSERT(dst29 = dst*29);
-    dst := dst * (SectorLength DIV SDBlockSize) + FSoffset;
+    dst := dst * (SectorLength DIV SDBlockSize) + FS_OFFSET;
     WriteSD(dst, SYSTEM.ADR(src), SectorLength DIV SDBlockSize);
 (*    WriteSD(dst+(mapsize*(SectorLength DIV SDBlockSize)), SYSTEM.ADR(src), SectorLength DIV SDBlockSize) (*backup*)*)
   END PutSector;
@@ -220,12 +213,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE Time*(): INTEGER;
   BEGIN RETURN tick
   END Time;
-
-  PROCEDURE Delayus*(d: INTEGER);
-    VAR beg, now: INTEGER;
-  BEGIN SYSTEM.GET(BSP.DWTBase + BSP.CYCCNT, beg);
-    REPEAT SYSTEM.GET(BSP.DWTBase + BSP.CYCCNT, now) UNTIL now - beg >= BSP.HCLCFreq*d
-  END  Delayus;
 
   PROCEDURE Clock*(): INTEGER;
     VAR d,  h, newss, ss: INTEGER;
@@ -293,14 +280,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE Init*;
     VAR currentSVCHandlerAddr, r: INTEGER;
       pb2up: BOOLEAN; param: ARRAY 128 OF INTEGER;
-  BEGIN BSP.Init; BSP.InitRTC;
-    SYSTEM.GET(BSP.PB2In, pb2up); (*Check PB2 statte*)
-    IF ~pb2up THEN FSoffset := FS_OFFSET
-    ELSE (*Get and verify Oberon file system configuration*)
-      SYSTEM.LDREG(0, FS_OFFSET); SYSTEM.LDREG(1, SYSTEM.ADR(param)); SYSTEM.LDREG(2, 1); r := SYSTEM.SVC(2);
-      ASSERT ((param[4] = 0)  OR (param[4] = SectorLength));
-      IF param[3] = 0 THEN FSoffset := FS_OFFSET ELSE FSoffset := param[3] END
-    END;
+  BEGIN BSP.Init; BSP.InitRTC; SDCard.Init;
     Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);  (*install temporary trap*)
     Install(SYSTEM.ADR(IncTick), BSP.VecTabBase+BSP.SysTickExcNum*4);
     (*tail chain old SVC handler*)

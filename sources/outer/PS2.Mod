@@ -66,7 +66,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   PROCEDURE^3 requestToSend(VAR dev: DeviceDesc);
   BEGIN
     IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, ON) END;
-    SYSTEM.PUT(dev.clock_Out, LOW); Kernel.Delayus(150); (*wait for at least 100 microseconds*)
+    SYSTEM.PUT(dev.clock_Out, LOW); BSP.Delayus(150); (*wait for at least 100 microseconds*)
     SYSTEM.PUT(dev.data_Out, LOW); SYSTEM.PUT(dev.clock_Out, HIGH)
     (*now, wait for device to generate clock pulses*)
   END requestToSend;
@@ -98,7 +98,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   BEGIN
     answer := DrawByteFormFIFOBuffer(dev);
     WHILE (answer = -1) & (timeout # 0) DO DEC(timeout); (*Wait until buffer is not empty*)
-    	Kernel.Delayus(1000);
+    	BSP.Delayus(1000);
         answer := DrawByteFormFIFOBuffer(dev)
     END;
     RETURN answer
@@ -221,7 +221,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   END ProbeDevice;
 
   PROCEDURE InitDevice*(VAR dev: DeviceDesc);
-  BEGIN (*Inhibit device data transmission*) SYSTEM.PUT(dev.clock_Out, LOW); Kernel.Delayus(150);
+  BEGIN (*Inhibit device data transmission*) SYSTEM.PUT(dev.clock_Out, LOW); BSP.Delayus(150);
      dev.connectedDevice := NO_DEVICE; dev.direction := NONE; dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(dev.buf));
     dev.buf.head := 0; dev.buf.tail := 0;
     dev.activityLED := 0;
