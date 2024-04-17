@@ -388,7 +388,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     
     IF val DIV C8 = 0 THEN res := d; retv := TRUE
     ELSIF (a = 0) & (b = d) & (c = 0) THEN res := C12 + d; retv := TRUE
-    ELSIF (a = c) & (b = 0) & (d = 0) THEN res := C13 + d; retv := TRUE
+    ELSIF (a = c) & (b = 0) & (d = 0) THEN res := C13 + c; retv := TRUE
     ELSIF (a = b) & (a = c) & (a = d) THEN res := C12+ C13 + d; retv := TRUE
     ELSE a := 31; 
       WHILE (val DIV C8 # 1) & ~ODD(val) DO
