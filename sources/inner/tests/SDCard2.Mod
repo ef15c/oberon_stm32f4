@@ -1,4 +1,4 @@
-MODULE SDCard;
+MODULE SDCard2;
   IMPORT SYSTEM, BSP;
 
   CONST
@@ -281,4 +281,4 @@ MODULE SDCard;
     hsd.readErrors := 0; hsd.writeErrors := 0; hsd.unrecoverableErrors := 0
   END Init;
 
-END SDCard.
+END SDCard2.

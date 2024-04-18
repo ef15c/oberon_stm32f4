@@ -76,9 +76,8 @@ N° de service   Nom         R0                                                  
 -------------   -------     --------------------------------------------------  ------------------------------------    ------------------------
             0   NEW         Adresse du pointeur vers la zone à allouer          Taille de la zone à allouer
             1   LED         <7:0> : un bit par LED à allumer (1) ou éteindre 0
-            2   ReadSD      N° du premier secteur à lire sur la carte SD        Addresse de destination en mémoire      Nombre de blocs à lire
-                            Retourne 0 si OK
-            3   WriteSD     N° du premier secteur à écrire sur la carte SD      Addresse de destination en mémoire      Nombre de blocs à écrire
+            2   <supprimé>
+            3   <supprimé>
             4   <supprimé>  
             5   <supprimé>
             6   <supprimé>
@@ -100,12 +99,3 @@ trap number trap cause
 8           Bus Fault: data access precise error
 9           Bus Fault: stack overflow
 10          User abort
-
-Utilisation du secteur 0 (à la position 262144KiB sur la carte) pour ranger des paramètres de configuration
-Décalage    Longeur     Signification
---------    -------     --------------------------------------------------------------------------------
-      12          4     Si différent de 0, indique la position de démarrage du système de fichier Oberon
-      16          4     Si différent de 0, indique la taille en octets d'un secteur Oberon
-
-
-

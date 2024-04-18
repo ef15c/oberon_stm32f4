@@ -41,7 +41,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     (*DMA*)
     DMA1_BASE* = 40026000H; DMA2_BASE* = 40026400H;
     LISR* = 0; LIFCR* = 8; LI_OFS0* = 0; LI_OFS1* = 6; LI_OFS2* = 16; LI_OFS3* = 22;
-    HISR* = 4; HICFR* = 0CH; HI_OFS4* = 0; HI_OFS5* = 6; HI_OFS6* = 16; HI_OFS7* = 22;
+    HISR* = 4; HIFCR* = 0CH; HI_OFS4* = 0; HI_OFS5* = 6; HI_OFS6* = 16; HI_OFS7* = 22;
 
     TCIFx* = 5; HTIFx* = 4; TEIFx* = 3; DMEIFx* = 2; FEIFx* = 0; STREAM_FLAGSm* = {TCIFx, HTIFx, TEIFx, DMEIFx, FEIFx};
 

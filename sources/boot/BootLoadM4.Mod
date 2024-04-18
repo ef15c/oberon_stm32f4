@@ -157,11 +157,12 @@ PROCEDURE GetCmdResp1(cmd: SET): SET;
       SYSTEM.PUT(DCTRL, reg - DCTRL_CLEAR_MASK + SYSTEM.VAL(SET, LSL(9, 4)) + BSP.DTDIRm + BSP.DTENm);
       SYSTEM.PUT(ARG, blockAdd); SYSTEM.GET(CMD, reg);
       IF nofBlocks > 1 THEN (*issue multiple blocks read command*)
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_READ_MULT_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm)
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_READ_MULT_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+        hsd.ErrorCode := GetCmdResp1(CMD_READ_MULT_BLOCK) (*check response*)
       ELSE (*issue single block read command*)
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_READ_SINGLE_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm)
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_READ_SINGLE_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+        hsd.ErrorCode := GetCmdResp1(CMD_READ_SINGLE_BLOCK) (*check response*)
       END;
-      hsd.ErrorCode := GetCmdResp1(CMD_READ_MULT_BLOCK); (*check response*)
       IF hsd.ErrorCode = NONE THEN (*wait for end of operation*)
         SYSTEM.GET(BSP.DMA2_BASE + BSP.LISR, lisr); SYSTEM.GET(STA, sta);
         WHILE ~(BSP.TEIFx + BSP.LI_OFS3 IN lisr) &
