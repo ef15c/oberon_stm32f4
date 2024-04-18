@@ -25,7 +25,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   VAR allocated*, NofSectors*: INTEGER;
     heapOrg*, heapLim*: INTEGER; 
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
-    writeErrors*, unrecoverableErrors*: INTEGER;
     tick: INTEGER;
 
     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
@@ -151,16 +150,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
 (* ---------- Disk storage management ----------*)
 
-  PROCEDURE WriteSD(dst, src, nofblocks: INTEGER);
-    VAR r, retry, t: INTEGER;
-  BEGIN retry := 5;
-    REPEAT SYSTEM.LDREG(0, dst); SYSTEM.LDREG(1, src);
-    SYSTEM.LDREG(2, nofblocks); r := SYSTEM.SVC(3); DEC(retry); INC(writeErrors, r);
-     IF (r # 0) THEN t := tick; REPEAT UNTIL tick - t >= 100 END (*wait 100ms*)
-    UNTIL (r = 0) OR (retry = 0);
-    INC(unrecoverableErrors, r)
-  END WriteSD;
-
   PROCEDURE InitSecMap*;
     CONST NofReservedSectors = (BootReservedSize + SectorLength - 1) DIV SectorLength + 2;
     VAR i, r: INTEGER;
@@ -204,7 +193,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     VAR dst: INTEGER;
   BEGIN dst := dst29 DIV 29; ASSERT(dst29 = dst*29);
     dst := dst * (SectorLength DIV SDBlockSize) + FS_OFFSET;
-    WriteSD(dst, SYSTEM.ADR(src), SectorLength DIV SDBlockSize);
+    SDCard.Write(dst, SYSTEM.ADR(src), SectorLength DIV SDBlockSize);
 (*    WriteSD(dst+(mapsize*(SectorLength DIV SDBlockSize)), SYSTEM.ADR(src), SectorLength DIV SDBlockSize) (*backup*)*)
   END PutSector;
 
