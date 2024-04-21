@@ -105,7 +105,7 @@ MODULE SDCard;
   PROCEDURE GetCardState(): INTEGER;
     VAR reg: SET;
   BEGIN SYSTEM.PUT(ARG, LSL(hsd.SdCard.RelCardAdd, 16)); SYSTEM.GET(CMD, reg);
-    SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_SEND_STATUS + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+    SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_SEND_STATUS + BSP.RESPONSE_SHORT + BSP.CPSMENm));
     hsd.ErrorCode := hsd.ErrorCode + GetCmdResp1(CMD_SEND_STATUS); (*check response*)
     SYSTEM.GET(RESP1, reg);
 
@@ -116,7 +116,7 @@ MODULE SDCard;
     VAR reg: SET;
   BEGIN
     SYSTEM.PUT(ARG, 0); SYSTEM.GET(CMD, reg);
-    SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_STOP_TRANSMISSION + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+    SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_STOP_TRANSMISSION + BSP.RESPONSE_SHORT + BSP.CPSMENm));
 
     RETURN GetCmdResp1(CMD_STOP_TRANSMISSION) (*check response*)
   END CmdStopTransfer;
@@ -143,13 +143,13 @@ MODULE SDCard;
       (*Configure the SD DPSM (Data Path State Machine*)
       SYSTEM.PUT(DTIMER, 0FFFFFFFFH); SYSTEM.PUT(DLEN, BLOCKSIZE*nofBlocks);
       SYSTEM.GET(DCTRL, reg); (*bs 512, card to host, block mode, enable data transfer*)
-      SYSTEM.PUT(DCTRL, reg - DCTRL_CLEAR_MASK + SYSTEM.VAL(SET, LSL(9, 4)) + BSP.DTDIRm + BSP.DTENm + BSP.DMAENm);
+      SYSTEM.PUT(DCTRL, reg - DCTRL_CLEAR_MASK + (BSP.DATABLOCK_SIZE_512B + BSP.DTDIRm + BSP.DTENm + BSP.DMAENm));
       SYSTEM.PUT(ARG, blockAdd); SYSTEM.GET(CMD, reg);
       IF nofBlocks > 1 THEN (*issue multiple blocks read command*)
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_READ_MULT_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_READ_MULT_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm));
         hsd.ErrorCode := GetCmdResp1(CMD_READ_MULT_BLOCK) (*check response*)
       ELSE (*issue single block read command*)
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_READ_SINGLE_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_READ_SINGLE_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm));
         hsd.ErrorCode := GetCmdResp1(CMD_READ_SINGLE_BLOCK) (*check response*)
       END;
       IF hsd.ErrorCode = NONE THEN (*wait for end of operation*)
@@ -199,27 +199,27 @@ MODULE SDCard;
       IF hsd.SdCard.CardType # CARD_SDHC_SDXC THEN blockAdd := blockAdd*512 (*convert block to byte*) END;
       IF nofBlocks > 1 THEN (*multiple blocks write*)
         SYSTEM.PUT(ARG, LSL(hsd.SdCard.RelCardAdd, 16)); (*Send CMD55 APP_CMD with argument as card's RCA*)
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_APP_CMD + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_APP_CMD + BSP.RESPONSE_SHORT + BSP.CPSMENm));
         hsd.ErrorCode := GetCmdResp1(CMD_APP_CMD);
         IF hsd.ErrorCode = NONE THEN SYSTEM.PUT(ARG, nofBlocks); (*Send ACMD23 with argument as number of blocks*)
-          SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_APP_SET_WR_BLK_ERASE_COUNT + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+          SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_APP_SET_WR_BLK_ERASE_COUNT + BSP.RESPONSE_SHORT + BSP.CPSMENm));
           hsd.ErrorCode := GetCmdResp1(CMD_APP_SET_WR_BLK_ERASE_COUNT);
         END; (*now the SD card knows how many blocks will be overwritten*)
         IF hsd.ErrorCode = NONE THEN 
           SYSTEM.PUT(ARG, blockAdd); SYSTEM.GET(CMD, reg);
-          SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_WRITE_MULT_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+          SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_WRITE_MULT_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm));
           hsd.ErrorCode := GetCmdResp1(CMD_WRITE_MULT_BLOCK) (*check response*)
         END
       ELSE (*issue single block write command*)
         SYSTEM.PUT(ARG, blockAdd); SYSTEM.GET(CMD, reg);
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_WRITE_SINGLE_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_WRITE_SINGLE_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm));
         hsd.ErrorCode := GetCmdResp1(CMD_WRITE_SINGLE_BLOCK) (*check response*)
       END;
 
       IF hsd.ErrorCode = NONE THEN (*Configure the SD DPSM (Data Path State Machine*)
         SYSTEM.PUT(DTIMER, 0FFFFFFFFH); SYSTEM.PUT(DLEN, BLOCKSIZE*nofBlocks);
         SYSTEM.GET(DCTRL, reg); (*bs 512, host to card, block mode, enable data transfer, DMA enabled*)
-        SYSTEM.PUT(DCTRL, reg - DCTRL_CLEAR_MASK + SYSTEM.VAL(SET, LSL(9, 4)) + BSP.DTENm + BSP.DMAENm);
+        SYSTEM.PUT(DCTRL, reg - DCTRL_CLEAR_MASK + (BSP.DATABLOCK_SIZE_512B + BSP.DTENm + BSP.DMAENm));
 
         (*wait for end of operation*)
         SYSTEM.GET(BSP.DMA2_BASE + BSP.HISR, hisr); SYSTEM.GET(STA, sta);

@@ -82,6 +82,9 @@ N° de service   Nom         R0                                                  
             5   <supprimé>
             6   <supprimé>
             7   <supprimé>
+            8   SdCard      retourne l'adresse du bloc de description de la carte SD
+            9   SD buffer   retourne l'adresse du buffer d'échange avec la carte SD
+                            (64KO, aligné sur un multiple de 16)
 à faire
 N° de service   Nom         R0                                                  R1                                      R2 et suivants
 -------------   -------     --------------------------------------------------  ------------------------------------    ------------------------

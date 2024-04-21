@@ -115,7 +115,7 @@ PROCEDURE GetCmdResp1(cmd: SET): SET;
   PROCEDURE GetCardState(VAR hsd: SDHandleDesc): INTEGER;
     VAR reg: SET;
   BEGIN SYSTEM.PUT(ARG, LSL(hsd.SdCard.RelCardAdd, 16)); SYSTEM.GET(CMD, reg);
-    SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_SEND_STATUS + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+    SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_SEND_STATUS + BSP.RESPONSE_SHORT + BSP.CPSMENm));
     hsd.ErrorCode := hsd.ErrorCode + GetCmdResp1(CMD_SEND_STATUS); (*check response*)
     SYSTEM.GET(RESP1, reg);
 
@@ -126,7 +126,7 @@ PROCEDURE GetCmdResp1(cmd: SET): SET;
     VAR reg: SET;
   BEGIN
     SYSTEM.PUT(ARG, 0); SYSTEM.GET(CMD, reg);
-    SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_STOP_TRANSMISSION + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+    SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_STOP_TRANSMISSION + BSP.RESPONSE_SHORT + BSP.CPSMENm));
 
     RETURN GetCmdResp1(CMD_STOP_TRANSMISSION) (*check response*)
   END CmdStopTransfer;
@@ -154,13 +154,13 @@ PROCEDURE GetCmdResp1(cmd: SET): SET;
       (*Configure the SD DPSM (Data Path State Machine*)
       SYSTEM.PUT(DTIMER, 0FFFFFFFFH); SYSTEM.PUT(DLEN, BLOCKSIZE*nofBlocks);
       SYSTEM.GET(DCTRL, reg); (*bs 512, card to host, block mode, enable data transfer*)
-      SYSTEM.PUT(DCTRL, reg - DCTRL_CLEAR_MASK + SYSTEM.VAL(SET, LSL(9, 4)) + BSP.DTDIRm + BSP.DTENm);
+      SYSTEM.PUT(DCTRL, reg - DCTRL_CLEAR_MASK + (BSP.DATABLOCK_SIZE_512B + BSP.DTDIRm + BSP.DTENm));
       SYSTEM.PUT(ARG, blockAdd); SYSTEM.GET(CMD, reg);
       IF nofBlocks > 1 THEN (*issue multiple blocks read command*)
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_READ_MULT_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_READ_MULT_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm));
         hsd.ErrorCode := GetCmdResp1(CMD_READ_MULT_BLOCK) (*check response*)
       ELSE (*issue single block read command*)
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + CMD_READ_SINGLE_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm);
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_READ_SINGLE_BLOCK + BSP.RESPONSE_SHORT + BSP.CPSMENm));
         hsd.ErrorCode := GetCmdResp1(CMD_READ_SINGLE_BLOCK) (*check response*)
       END;
       IF hsd.ErrorCode = NONE THEN (*wait for end of operation*)

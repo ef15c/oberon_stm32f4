@@ -58,10 +58,9 @@ __STATIC_FORCEINLINE uint32_t __get_LR(void);
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern DMA_HandleTypeDef hdma_sdio_rx;
-extern DMA_HandleTypeDef hdma_sdio_tx;
-extern SD_HandleTypeDef hsd;
+
 /* USER CODE BEGIN EV */
+extern SD_HandleTypeDef hsd;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -202,47 +201,6 @@ void EXTI4_IRQHandler(void)
   /* USER CODE END EXTI4_IRQn 1 */
 }
 
-/**
-  * @brief This function handles SDIO global interrupt.
-  */
-void SDIO_IRQHandler(void)
-{
-  /* USER CODE BEGIN SDIO_IRQn 0 */
-
-  /* USER CODE END SDIO_IRQn 0 */
-  HAL_SD_IRQHandler(&hsd);
-  /* USER CODE BEGIN SDIO_IRQn 1 */
-
-  /* USER CODE END SDIO_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA2 stream3 global interrupt.
-  */
-void DMA2_Stream3_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA2_Stream3_IRQn 0 */
-
-  /* USER CODE END DMA2_Stream3_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_sdio_rx);
-  /* USER CODE BEGIN DMA2_Stream3_IRQn 1 */
-
-  /* USER CODE END DMA2_Stream3_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA2 stream6 global interrupt.
-  */
-void DMA2_Stream6_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA2_Stream6_IRQn 0 */
-
-  /* USER CODE END DMA2_Stream6_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_sdio_tx);
-  /* USER CODE BEGIN DMA2_Stream6_IRQn 1 */
-  /* USER CODE END DMA2_Stream6_IRQn 1 */
-}
-
 /* USER CODE BEGIN 1 */
 /**
 \brief Get Link Register
@@ -263,77 +221,13 @@ __STATIC_FORCEINLINE uint32_t __get_LR(void)
 void Oberon_SVC_Handler(sContextStateFrame *frame)
 {
     uint8_t param = *((uint8_t *)(frame->return_address)-2);
-    uint32_t *wsrc, *wdst;
-    int i;
 
     switch (param) {
-    case 2:
-        /* Process SD card multi blocks read */
-    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
-		if (frame->r2 > NB_BLOCKS_MAX) {
-			HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
-			HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-			frame->r0 = HAL_ERROR;
-			return ;
-		}
-
-    	SD_ErrorOcurred = false;
-		frame->r0 = HAL_SD_ReadBlocks_DMA(&hsd, buf, frame->r0, frame->r2);
-		if (frame->r0 == HAL_OK) {
-			while (hsd.State != HAL_SD_STATE_READY) {
-				DWT_Delay_us(1000);
-			}
-			while (HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
-				DWT_Delay_us(1000);
-			}
-			frame->r0 = (!SD_ErrorOcurred)?HAL_OK:HAL_ERROR;
-		}
-
-		if (frame->r0 == HAL_OK) {
-			wsrc = (uint32_t *) buf; wdst = (uint32_t *) frame->r1;
-			for (i = 0; i < frame->r2*512/4; i++) {
-				*wdst++ = *wsrc++;
-			}
-		} else {
-	    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
-			hsd.State = HAL_SD_STATE_READY;
-		}
-    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-        break;
-    case 3:
-        /* Process SD card multi blocks write */
-        HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
-
-		if (frame->r2 > NB_BLOCKS_MAX) {
-			HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
-			HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-			frame->r0 = HAL_ERROR;
-			return ;
-		}
-		wdst = (uint32_t *) buf; wsrc = (uint32_t *) frame->r1;
-		for (i = 0; i < frame->r2*512/4; i++) {
-			*wdst++ = *wsrc++;
-		}
-
-    	SD_ErrorOcurred = false;
-		frame->r0 = HAL_SD_WriteBlocks_DMA(&hsd, buf, frame->r0, frame->r2);
-		if (frame->r0 == HAL_OK) {
-			while (hsd.State != HAL_SD_STATE_READY) {
-				DWT_Delay_us(1000);
-			}
-			while (HAL_SD_GetCardState(&hsd) != HAL_SD_CARD_TRANSFER) {
-				DWT_Delay_us(1000);
-			}
-			frame->r0 = (!SD_ErrorOcurred)?HAL_OK:HAL_ERROR;
-		}
-		if (frame->r0 != HAL_OK) {
-			HAL_GPIO_WritePin((GPIO_TypeDef *) LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
-			hsd.State = HAL_SD_STATE_READY;
-		}
-    	HAL_GPIO_WritePin((GPIO_TypeDef *) LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-        break;
     case 8:
     	frame->r0 = (uint32_t) &hsd.SdCard;
+    	break;
+    case 9:
+    	frame->r0 = (uint32_t) buf;
     	break;
     }
 }

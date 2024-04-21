@@ -46,15 +46,21 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     TCIFx* = 5; HTIFx* = 4; TEIFx* = 3; DMEIFx* = 2; FEIFx* = 0; STREAM_FLAGSm* = {TCIFx, HTIFx, TEIFx, DMEIFx, FEIFx};
 
     STREAM_PARAM_SIZE* = 18H;
-    SxCR* = 10H; CT* = 19; DBM* = 18; PINCOS* = 15; MINC* = 10; PINC* = 9; CIRC* = 8; PFCTRL* = 5; SxCR_TCIE* = 4; HTIE* = 3;
+    SxCR* = 10H; CHSEL* = 25; MBURST* = 23; PBURST* = 21; CT* = 19; DBM* = 18; PINCOS* = 15; MSIZE* = 13; PSIZE* = 11;
+        MINC* = 10; PINC* = 9; CIRC* = 8; PFCTRL* = 5; SxCR_TCIE* = 4; HTIE* = 3;
        TEIE* = 2; DMEIE* = 1; SxCR_EN* = 0;
-      CHSELm* = {25..27}; MBURSTm* = {23..24}; PBURSTm* = {21..22}; PLm* = {16..17}; MSIZEm* = {13..14}; PSIZEm* = {11..12};
-      DIRm* = {6..7}; SxCR_TCIEm* = {SxCR_TCIE}; HTIEm* = {HTIE}; TEIEm* = {TEIE}; DMEIEm* = {DMEIE};
+      CHSELm* = {CHSEL..27}; MBURSTm* = {23..24}; PBURSTm* = {21..22}; PLm* = {16..17}; MSIZEm* = {13..14}; PSIZEm* = {11..12};
+      MINCm* = {MINC}; DIRm* = {6..7}; PFCTRLm* = {PFCTRL}; SxCR_TCIEm* = {SxCR_TCIE}; HTIEm* = {HTIE}; TEIEm* = {TEIE}; DMEIEm* = {DMEIE};
+
+      SINGLE_TRANSFERT* = {}; INCR4* = {0}; INCR8* = {1}; INCR16* = {0, 1};
+      SBYTE* = {}; SHALF_WORD* = {0}; SWORD* = {1};
+      PERIPH_TO_MEMORY* = {}; MEMORY_TO_PERIPH* = {6}; MEMORY_TO_MEMORY* = {7};
  
     SxNDTR* = 14H; NDTm* = {0..15};
     SxPAR* = 18H; SxM0AR* = 1CH; SxM1AR* = 20H;
     SxFCR* = 24H; FEIE* = 7; DMDIS* = 2;
-      FEIEm* = {FEIE}; FSm* = {3..5}; FTHm* = {0..1};
+      FEIEm* = {FEIE}; FSm* = {3..5}; DMDISm* = {DMDIS}; FTHm* = {0..1};
+      QUARTER_FULL_FIFO* = {}; HALF_FULL_FIFO* = {0}; THREE_QUARTER_FULL_FIFO* = {1}; FULL_FIFO* = {0, 1};
 
     (*EXTI*)
     EXTI_BASE* = 40013C00H; PR* = 14H;
@@ -126,8 +132,9 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     pwrEn* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + PWREN DIV 8)*32 + PWREN MOD 8*4;
     spi3En* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + SPI3EN DIV 8)*32 + SPI3EN MOD 8*4;
 
-    APB2ENR* = 44H; USART1EN* = 4; APB2ENR_LTDCEN* = 26;
+    APB2ENR* = 44H; USART1EN* = 4; APB2ENR_SDIOEN* = 11; APB2ENR_LTDCEN* = 26;
     usart1En* = PeriphBBAlias + (RCC_BASE + APB2ENR - PeriphBase + USART1EN DIV 8)*32 + USART1EN MOD 8*4;
+    sdioEn* = PeriphBBAlias + (RCC_BASE + APB2ENR - PeriphBase + APB2ENR_SDIOEN DIV 8)*32 + APB2ENR_SDIOEN MOD 8*4;
     rcc_ltdcEn* = PeriphBBAlias + (RCC_BASE + APB2ENR - PeriphBase + APB2ENR_LTDCEN DIV 8)*32 + APB2ENR_LTDCEN MOD 8*4;
 
     BDCR* = 70H; RTCEN* = 15; BDRST* = 16; RTCSEL* = {8..9}; (*backup domain control register*)
@@ -147,7 +154,14 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*SDIO*)
     SDIO_BASE* = 40012C00H;
-    ARG* = 8; 
+    POWER* = 0; PWRCTRLm* = {0..1}; POWER_OFF* = {}; POWER_ON* = {0,1};
+
+    CLKCR* = 4; HWFC_EN* = 14; NEGEDGE* = 13; BYPASS* = 10; PWRSAV* = 9; CLKEN* = 8;
+      WIDBUSm* = {11..12}; WIDE_1B* = {}; WIDE_4B* = {11}; WIDE_8B* = {12};
+      CLKDIVm* = {0..7}; INIT_CLK_DIV* = 76H (*400kHz*); TRANSFER_CLK_DIV* = 0 (*24MHz*);
+    sdioClkEn* =PeriphBBAlias + (SDIO_BASE + CLKCR - PeriphBase + CLKEN DIV 8)*32 + CLKEN MOD 8*4;
+
+    ARG* = 8;
 
     CMD* = 0CH; RESPCMD* = 10H;
       ATACMDm* = {14}; nIENm* = {13}; ENCMDcomplm* = {12}; SDIOSuspendm* = {11}; CPSMENm* = {10}; WAITPENDm* = {9};
@@ -156,9 +170,13 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     RESP1* = 14H; DTIMER* = 24H; DLEN* = 28H;
 
-    DCTRL* = 2CH; SDIOEN* = 11; RWMOD* = 10; RWSTOP* = 9; RWSTART* = 8; DMAEN* = 3; DTMODE* = 2; DTDIR* = 1; DTEN* = 0;
-      DBLOCKSIZEm* = {4..7}; DTMODEm* = {DTMODE}; DTDIRm* = {DTDIR}; DTENm* = {DTEN};
-    sdioDmaEn* = PeriphBBAlias + (SDIO_BASE + DCTRL - PeriphBase + DMAEN DIV 8)*32 +DMAEN MOD 8*4;
+    DCTRL* = 2CH; DCTRL_SDIOEN* = 11; RWMOD* = 10; RWSTOP* = 9; RWSTART* = 8; DMAEN* = 3; DTMODE* = 2; DTDIR* = 1; DTEN* = 0;
+      DBLOCKSIZEm* = {4..7}; DMAENm* = {DMAEN}; DTMODEm* = {DTMODE}; DTDIRm* = {DTDIR}; DTENm* = {DTEN};
+      DATABLOCK_SIZE_1B* = {}; DATABLOCK_SIZE_2B* = {4}; DATABLOCK_SIZE_4B* = {5}; DATABLOCK_SIZE_8B* = {4, 5};
+      DATABLOCK_SIZE_16B* = {6}; DATABLOCK_SIZE_32B* = {4, 6}; DATABLOCK_SIZE_64B* = {5, 6}; DATABLOCK_SIZE_128B* = {4, 5, 6};
+      DATABLOCK_SIZE_256B* = {7}; DATABLOCK_SIZE_512B* = {4, 7}; DATABLOCK_SIZE_1024B* = {5, 7}; DATABLOCK_SIZE_2048B* = {4, 5, 7};
+      DATABLOCK_SIZE_4096B* = {6, 7}; DATABLOCK_SIZE_8192B* = {4, 6, 7}; DATABLOCK_SIZE_16384B* = {5, 6, 7};
+    sdioDmaEn* = PeriphBBAlias + (SDIO_BASE + DCTRL - PeriphBase + DMAEN DIV 8)*32 + DMAEN MOD 8*4;
 
     STA* = 34H; ICR* = 38H;
       CCRCFAIL* = 0; DCRCFAIL* = 1; CTIMEOUT* = 2; DTIMEOUT* = 3; TXUNDERR* = 4; RXOVERR* = 5; CMDREND* = 6; CMDSENT* = 7;
@@ -211,7 +229,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     GPIOA* = 40020000H; GPIOB* = 40020400H; GPIOC* = 40020800H; GPIOD* = 40020C00H; 
     GPIOE* = 40021000H; GPIOF* = 40021400H; GPIOG* = 40021800H; GPIOH* = 40021C00H;
     GPIOI* = 40022000H; GPIOJ* = 40022400H; GPIOK* = 40022800H;
-    MODER* = 0; OTYPER* = 4; OSPEEDR* = 8; PUPDR* = 0CH; IDR* = 10H; ODR* = 14H; BSRR* = 18H; AFRL = 20H; AFRH = 24H;
+    MODER* = 0; OTYPER* = 4; OSPEEDR* = 8; PUPDR* = 0CH; IDR* = 10H; ODR* = 14H; BSRR* = 18H; AFRL* = 20H; AFRH* = 24H;
     INPUT_MODE* = {}; OUTPUT_MODE* = {0}; AF_MODE* = {1}; ANALOG_MODE* = {0..1};
     LOW_SPEED* = {}; MEDIUM_SPEED* = {0}; HIGH_SPEED* = {1}; VERY_HIGH_SPEED* = {0..1};
     NO_PULL* = {}; PULL_UP* = {0}; PULL_DOWN* = {1};
