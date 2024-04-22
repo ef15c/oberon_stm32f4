@@ -34,10 +34,13 @@ MODULE SDCard2;
       CMD_READ_SINGLE_BLOCK = SYSTEM.VAL(SET, 17); CMD_READ_MULT_BLOCK = SYSTEM.VAL(SET, 18);
       CMD_WRITE_SINGLE_BLOCK = SYSTEM.VAL(SET, 24); CMD_WRITE_MULT_BLOCK = SYSTEM.VAL(SET, 25);
       CMD_APP_CMD = SYSTEM.VAL(SET, 55);
-    (*Application specific commands*) CMD_APP_SET_WR_BLK_ERASE_COUNT = SYSTEM.VAL(SET, 23);
-      CMD_SEND_OP_COND = SYSTEM.VAL(SET, 41);
+    (*Application specific commands*) CMD_APP_SET_BUS_WIDTH = SYSTEM.VAL(SET, 6);
+      CMD_APP_SET_WR_BLK_ERASE_COUNT = SYSTEM.VAL(SET, 23);
+      CMD_APP_SEND_OP_COND = SYSTEM.VAL(SET, 41); CMD_APP_SEND_SCR = SYSTEM.VAL(SET, 51);
 
     (*ACM41 parameters*) VOLTAGE_WINDOW_SD = {31, 17}; HIGH_CAPACITY = {30}; SWITCH_1_8V_CAPACITY = {24};
+
+    (*SCR flags*) WIDE_BUS_SUPPORT = 18; SINGLE_BIT_BUS_SUPPORT = 16;
 
     ARG =  BSP.SDIO_BASE + BSP.ARG; CMD =  BSP.SDIO_BASE + BSP.CMD; RESPCMD = BSP.SDIO_BASE + BSP.RESPCMD;
     RESP1 = BSP.SDIO_BASE + BSP.RESP1; RESP2 = BSP.SDIO_BASE + BSP.RESP1 + 4;  RESP3 = BSP.SDIO_BASE + BSP.RESP1 + 8;
@@ -65,37 +68,41 @@ MODULE SDCard2;
     SDCardInfoDesc* = RECORD
       CardType*, CardVersion*, Class*, RelCardAdd*, BlockNbr*, BlockSize*, LogBlockNbr*, LogBlockSize*: INTEGER
     END;
-    SDCardInfo = POINTER TO SDCardInfoDesc;
 
     SDHandleDesc* = RECORD
       ErrorCode*: SET;
-      SdCard*: SDCardInfo;
-      readErrors*, writeErrors*, unrecoverableErrors*: INTEGER;
-      CID, CSD: ARRAY 4 OF INTEGER;
+      SdCard*: SDCardInfoDesc;
+      CID*, CSD*: ARRAY 4 OF INTEGER;
+      readErrors*, writeErrors*, unrecoverableErrors*: INTEGER
     END;
 
-    SDCardCSDDesc = RECORD
-      CSDStruct (*CSD structure*),
-      TAAC (*Data read access time 1*), NSAC (*Data read access time 2 in CLK cycles*), MaxBusClkFreq (*Max. bus clock frequency*): BYTE;
-      CardComdClasses (*Card command classes*): INTEGER;
-      RdBlockLen (*Max. read data block length*): BYTE;
-      PartBlockRead (*Partial blocks for read allowed*), WrBlockMisalign (*Write block misalignment*), RdBlockMisalign (*Read block misalignment*),
-      DSRImpl (*DSR implemented*): BOOLEAN;
-      DeviceSize (*Device Size*): INTEGER;
-      MaxRdCurrentVDDMin (*Max. read current @ VDD min*), MaxRdCurrentVDDMax (*Max. read current @ VDD max*),
-      MaxWrCurrentVDDMin (*Max. write current @ VDD min*), MaxWrCurrentVDDMax (*Max. write current @ VDD max*),
-      DeviceSizeMul (*Device size multiplier*): BYTE;
-      EraseBlkEn (*Erase single group enabled*): BOOLEAN;
-      SectorSize (*erase sector size*), WrProtectGrSize (*Write protect group size*): BYTE;
-      WrProtectGrEnable (*Write protect group enabled*): BOOLEAN;
-      WrSpeedFact (*Write speed factor*), MaxWrBlockLen (*Max. write data block length*): BYTE;
-      WriteBlockPartial (*Partial blocks for write allowed*): BOOLEAN;
-      FileFormatGroup (*File format group*): BYTE;
-      CopyFlag (*Copy flag (OTP)*), PermWrProtect (*Permanent write protection*), TempWrProtect (*Temporary write protection*): BOOLEAN;
-      FileFormat (*File format*), ECC (*ECC code*), CSD_CRC (*CSD CRC*): BYTE
+    SDCardCSDDesc* = RECORD
+      CSDStruct* (*CSD structure*),
+      TAAC* (*Data read access time 1*), NSAC* (*Data read access time 2 in CLK cycles*), MaxBusClkFreq* (*Max. bus clock frequency*): BYTE;
+      CardComdClasses* (*Card command classes*): INTEGER;
+      RdBlockLen* (*Max. read data block length*): BYTE;
+      PartBlockRead* (*Partial blocks for read allowed*), WrBlockMisalign* (*Write block misalignment*), RdBlockMisalign* (*Read block misalignment*),
+      DSRImpl* (*DSR implemented*): BOOLEAN;
+      DeviceSize* (*Device Size*): INTEGER;
+      MaxRdCurrentVDDMin* (*Max. read current @ VDD min*), MaxRdCurrentVDDMax* (*Max. read current @ VDD max*),
+      MaxWrCurrentVDDMin* (*Max. write current @ VDD min*), MaxWrCurrentVDDMax* (*Max. write current @ VDD max*),
+      DeviceSizeMul* (*Device size multiplier*): BYTE;
+      EraseBlkEn* (*Erase single group enabled*): BOOLEAN;
+      SectorSize* (*erase sector size*), WrProtectGrSize* (*Write protect group size*): BYTE;
+      WrProtectGrEnable* (*Write protect group enabled*): BOOLEAN;
+      WrSpeedFact* (*Write speed factor*), MaxWrBlockLen* (*Max. write data block length*): BYTE;
+      WriteBlockPartial* (*Partial blocks for write allowed*): BOOLEAN;
+      FileFormatGroup* (*File format group*): BYTE;
+      CopyFlag* (*Copy flag (OTP)*), PermWrProtect* (*Permanent write protection*), TempWrProtect* (*Temporary write protection*): BOOLEAN;
+      FileFormat* (*File format*), CSD_CRC* (*CSD CRC*): BYTE
     END;
 
   VAR hsd*: SDHandleDesc; sdBuf: INTEGER;
+
+  PROCEDURE reverseBytes(d: INTEGER): INTEGER;
+  BEGIN
+    RETURN LSL(d MOD 100H, 24) + LSL(LSR(d, 8) MOD 100H, 16) + LSL(LSR(d, 16) MOD 100H, 8) + LSR(d, 24) MOD 100H
+  END reverseBytes;
 
   PROCEDURE WaitForCmd;
     VAR rc, reg: SET;
@@ -355,16 +362,11 @@ MODULE SDCard2;
     BSP.ledsOnOff({}, {0});
   END Write;
 
-  PROCEDURE Init*;
-  BEGIN hsd.SdCard := SYSTEM.VAL(SDCardInfo, SYSTEM.SVC(8)); sdBuf := SYSTEM.SVC(9);
-    hsd.readErrors := 0; hsd.writeErrors := 0; hsd.unrecoverableErrors := 0
-  END Init;
-
   PROCEDURE SDPowerOn(VAR hsd: SDHandleDesc): SET;
     VAR reg, errorcode: SET;
       count: INTEGER;
       validvoltage: BOOLEAN;
-  BEGIN errorcode := NONE;
+  BEGIN errorcode := NONE; validvoltage := FALSE;
     SYSTEM.PUT(ARG, 0); SYSTEM.GET(CMD, reg);
     SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_GO_IDLE_STATE + BSP.CPSMENm));
     WaitForCmd;
@@ -381,7 +383,7 @@ MODULE SDCard2;
       IF errorcode = NONE THEN (*send ACMD41*)
         SYSTEM.PUT(ARG, VOLTAGE_WINDOW_SD + HIGH_CAPACITY + SWITCH_1_8V_CAPACITY);
         SYSTEM.GET(CMD, reg); (*send APP_CMD with 0 as RCA*)
-        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_SEND_OP_COND + BSP.RESPONSE_SHORT + BSP.CPSMENm));
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_APP_SEND_OP_COND + BSP.RESPONSE_SHORT + BSP.CPSMENm));
         errorcode := GetCmdResp3();
       END;
       IF errorcode = NONE THEN (*get response*)
@@ -527,6 +529,8 @@ MODULE SDCard2;
       maskD_4bl = LSL(BSP.MASK4, 2*4);
       maskF_1b = {BSP.LED1Pin}; maskF_2b = LSL(BSP.MASK2, BSP.LED1Pin);
     VAR reg: SET; en: BYTE;
+      scr: ARRAY 2 OF SET;
+      index: INTEGER;
   BEGIN SYSTEM.PUT(BSP.sdioEn, TRUE);
     SYSTEM.PUT(BSP.gpiocEn, TRUE); SYSTEM.PUT(BSP.gpiodEn, TRUE); SYSTEM.PUT(BSP.gpiodEn, TRUE); SYSTEM.PUT(BSP.gpiofEn, TRUE);
     SYSTEM.GET(BSP.gpiofEn, en); (*delay*)
@@ -555,8 +559,8 @@ MODULE SDCard2;
     END;
     SYSTEM.GET(BSP.GPIOD + BSP.PUPDR, reg); (*remove PD4 and PD5 pull up to reduce consumption*)
     SYSTEM.PUT(BSP.GPIOD + BSP.PUPDR, reg - (LSL(BSP.MASK2, BSP.WRITE_PROTECTPin*2) + LSL(BSP.MASK2, BSP.CARD_DETECTPin*2)));
-
     SYSTEM.PUT(BSP.LED1Out, TRUE); SYSTEM.PUT(BSP.LED2Out, TRUE);
+
     (*DMAs*)
     SYSTEM.PUT(s3En, 0); REPEAT SYSTEM.GET(s3En, reg) UNTIL reg = NONE; (*wait until DMA is effectively disabled*)
     SYSTEM.PUT(STREAM3_BASE + BSP.SxCR, LSL(SYSTEM.VAL(SET, 4), BSP.CHSEL) + LSL(BSP.INCR4, BSP.MBURST) +
@@ -569,39 +573,76 @@ MODULE SDCard2;
       LSL(BSP.INCR4, BSP.PBURST) + LSL(BSP.SWORD, BSP.MSIZE) + LSL(BSP.SWORD, BSP.PSIZE) + BSP.MINCm +
       BSP.MEMORY_TO_PERIPH + BSP.PFCTRLm);
     SYSTEM.PUT(STREAM6_BASE + BSP.SxFCR, BSP.DMDISm + BSP.FULL_FIFO);
-
     (*Initialize SDIO*)
     SYSTEM.PUT(BSP.SDIO_BASE + BSP.CLKCR, (BSP.WIDE_1B + SYSTEM.VAL(SET, BSP.INIT_CLK_DIV)));
     SYSTEM.PUT(BSP.SDIO_BASE + BSP.POWER, BSP.POWER_ON);
     SYSTEM.PUT(BSP.sdioClkEn, 1); BSP.Delayus(2000); (*waiting time required before starting SD initialization*)
     (*Initialize the card*) 
     hsd.ErrorCode := SDPowerOn(hsd); (*identify card operating voltage*)
-    IF hsd.ErrorCode # NONE THEN
+    IF hsd.ErrorCode = NONE THEN
       hsd.ErrorCode := SDInitCard(hsd); (*Initialize the card*)
     END;
-    IF hsd.ErrorCode # NONE THEN (*configure wide bus operation*)
+    IF hsd.ErrorCode = NONE THEN (*configure wide bus operation*)
       IF hsd.SdCard.CardType = CARD_SDSC THEN
         SYSTEM.PUT(ARG, 8); (*set block size to 8 bytes (for SDSC only*)
         SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_SET_BLOCKLEN + BSP.RESPONSE_SHORT + BSP.CPSMENm));
-        hsd.ErrorCode := hsd.ErrorCode + GetCmdResp1(CMD_SET_BLOCKLEN); (*check response*)
+        hsd.ErrorCode := hsd.ErrorCode + GetCmdResp1(CMD_SET_BLOCKLEN) (*check response*)
       END;
-      IF hsd.ErrorCode # NONE THEN
+      IF hsd.ErrorCode = NONE THEN
         SYSTEM.PUT(ARG, LSL(hsd.SdCard.RelCardAdd, 16)); SYSTEM.GET(CMD, reg);
         SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_APP_CMD + BSP.RESPONSE_SHORT + BSP.CPSMENm));
-        hsd.ErrorCode := GetCmdResp1(CMD_APP_CMD); (*check response*)
+        hsd.ErrorCode := GetCmdResp1(CMD_APP_CMD) (*check response*)
       END;
-      IF hsd.ErrorCode # NONE THEN
-        SYSTEM.PUT(DTIMER, 0FFFFFFFFH); SYSTEM.PUT(DLEN, 8);
+      IF hsd.ErrorCode = NONE THEN (*Get SCR*)
+        SYSTEM.PUT(DTIMER, 0FFFFFFFFH); SYSTEM.PUT(DLEN, 8); (*set DPSM*)
         SYSTEM.GET(DCTRL, reg); (*bs 8, card to host, block mode, enable data transfer*)
         SYSTEM.PUT(DCTRL, reg - DCTRL_CLEAR_MASK + (BSP.DATABLOCK_SIZE_8B + BSP.DTDIRm + BSP.DTENm));
-(*todo*)
-       END;
-(*todo
-      SYSTEM.GET(BSP.SDIO_BASE + BSP.CLKCR, reg);
-      SYSTEM.PUT(BSP.SDIO_BASE + BSP.CLKCR, reg - (BSP.WIDBUSm + BSP.CLKDIVm) + (BSP.WIDE_4B + SYSTEM.VAL(SET, BSP.TRANSFER_CLK_DIV)))*)
-    END;
-
-(*todo*)
+        SYSTEM.PUT(ARG, 0); (*ACMD51 CMD_APP_SEND_SCR with argument as 0*)
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_APP_SEND_SCR + BSP.RESPONSE_SHORT + BSP.CPSMENm));
+        hsd.ErrorCode := GetCmdResp1(CMD_APP_SEND_SCR) (*check response*)
+      END;
+      IF hsd.ErrorCode = NONE THEN (*poll DPSM flags*) SYSTEM.GET(STA, reg); index := 0;
+        WHILE reg*(BSP.DCRCFAILm + BSP.DTIMEOUTm + BSP.RXOVERRm + BSP.STBITERRm + BSP.RXACTm) = BSP.RXACTm DO
+          IF BSP.RXDAVL IN reg THEN SYSTEM.GET(FIFO, scr[index]); INC(index) END;
+          SYSTEM.GET(STA, reg)
+        END;
+        IF BSP.DATAEND IN reg THEN scr[0] := SYSTEM.VAL(SET, reverseBytes(ORD(scr[0]))); scr[1] := SYSTEM.VAL(SET, reverseBytes(ORD(scr[1])))
+        ELSIF BSP.DCRCFAIL IN reg THEN hsd.ErrorCode := DATA_CRC_FAIL
+        ELSIF BSP.RXOVERR IN reg THEN hsd.ErrorCode := RX_OVERRUN
+        ELSIF BSP.STBITERR IN reg THEN hsd.ErrorCode := DATA_TIMEOUT
+        END;
+        SYSTEM.PUT(ICR, STATIC_FLAGS); (*clear data static flags*)
+        IF WIDE_BUS_SUPPORT IN scr[1] THEN
+          SYSTEM.PUT(ARG, LSL(hsd.SdCard.RelCardAdd, 16)); SYSTEM.GET(CMD, reg);
+          SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_APP_CMD + BSP.RESPONSE_SHORT + BSP.CPSMENm));
+          hsd.ErrorCode := GetCmdResp1(CMD_APP_CMD); (*check response*)
+          IF hsd.ErrorCode = NONE THEN (*ACMD6 CMD_APP_SET_BUS_WIDTH with argument as 2 for wide bus mode*)
+            SYSTEM.PUT(ARG, 2);
+            SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_APP_SET_BUS_WIDTH + BSP.RESPONSE_SHORT + BSP.CPSMENm));
+            hsd.ErrorCode := GetCmdResp1(CMD_APP_SET_BUS_WIDTH) (*check response*)
+          END;
+          IF hsd.ErrorCode = NONE THEN (*switch SDIO to wide bus mode*)
+            SYSTEM.GET(BSP.SDIO_BASE + BSP.CLKCR, reg);
+            SYSTEM.PUT(BSP.SDIO_BASE + BSP.CLKCR, reg - BSP.WIDBUSm + BSP.WIDE_4B)
+          END
+        END
+      END;
+      IF hsd.ErrorCode = NONE THEN (*switch to transfer frequency*)
+        SYSTEM.GET(BSP.SDIO_BASE + BSP.CLKCR, reg);
+        SYSTEM.PUT(BSP.SDIO_BASE + BSP.CLKCR, reg - BSP.CLKDIVm + SYSTEM.VAL(SET, BSP.TRANSFER_CLK_DIV));
+        SYSTEM.PUT(ARG, 512); (*set block size to 512 bytes (for SDSC only*)
+        SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_SET_BLOCKLEN + BSP.RESPONSE_SHORT + BSP.CPSMENm));
+        hsd.ErrorCode := hsd.ErrorCode + GetCmdResp1(CMD_SET_BLOCKLEN) (*check response*)
+      END;
+      IF hsd.ErrorCode = NONE THEN (*turn LEDs off*)
+        SYSTEM.PUT(BSP.LED1Out, FALSE); SYSTEM.PUT(BSP.LED2Out, FALSE);
+      END
+    END
   END LLInit;
+
+  PROCEDURE Init*;
+  BEGIN sdBuf := SYSTEM.SVC(9); LLInit;
+    hsd.readErrors := 0; hsd.writeErrors := 0; hsd.unrecoverableErrors := 0
+  END Init;
 
 END SDCard2.
