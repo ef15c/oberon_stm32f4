@@ -80,13 +80,13 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     SDCardInfoDesc = RECORD
       CardType, CardVersion, Class, RelCardAdd, BlockNbr, BlockSize, LogBlockNbr, LogBlockSize: INTEGER
     END;
-    SDCardInfo = POINTER TO SDCardInfoDesc;
 
     SDHandleDesc = RECORD
       ErrorCode: SET;
       SdCard: SDCardInfoDesc;
       CID, CSD: ARRAY 4 OF INTEGER;
-      readErrors, writeErrors, unrecoverableErrors: INTEGER
+      readErrors, writeErrors, unrecoverableErrors: INTEGER;
+      buf: INTEGER (*address of data buffer*)
     END;
     SDHandle = POINTER TO SDHandleDesc;
 
@@ -283,10 +283,9 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
   END SDReadBlocksDMA;
 
   PROCEDURE ReadSD(VAR hsd: SDHandleDesc; src, dst, nofblocks: INTEGER);
-  VAR rc: SET; sdBuf: INTEGER;
-  BEGIN sdBuf := SYSTEM.SVC(9);
-    IF nofblocks > 128 THEN REPEAT UNTIL FALSE END;
-    rc := SDReadBlocksDMA(hsd, sdBuf, src, nofblocks);
+  VAR rc: SET;
+  BEGIN IF nofblocks > 128 THEN REPEAT UNTIL FALSE END;
+    rc := SDReadBlocksDMA(hsd, hsd.buf, src, nofblocks);
     IF rc = NONE THEN
       WHILE GetCardState(hsd) #CARD_TRANSFER DO Delayus(1000) END
     END;
@@ -574,7 +573,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
 
   PROCEDURE LoadFromDisk;
     VAR lim, r: INTEGER; hsd!: SDHandle;
-  BEGIN hsd := SYSTEM.VAL(SDHandle, SDHandleDescAddr); SDInit(hsd^);
+  BEGIN hsd := SYSTEM.VAL(SDHandle, SDHandleDescAddr); hsd.buf := sdBuf; SDInit(hsd^);
     (*start at boot block*)
     ReadSD(hsd^, FSoffset + 2*bps, VarORG0, bps);
     SYSTEM.GET(VarORG0 + 16, lim);

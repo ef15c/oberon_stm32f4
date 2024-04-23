@@ -10,10 +10,7 @@ System.Directory ^
 
 OM4P.Compile @  OM4P.Compile @/s  OM4P.Compile ^/s
 
-System.Free ~
-System.Open Draw.Tool
-System.CopyFiles ~
-System.RenameFiles ~
+System.Free ~ System.Open Draw.Tool System.CopyFiles ~ System.RenameFiles ~
 System.DeleteFiles ~
 
 System.ShowModules  System.ShowCommands ^ 
@@ -21,8 +18,8 @@ System.ShowModules  System.ShowCommands ^
 PCLink1.Run
 Hilbert.Draw  Sierpinski.Draw  Blink.Run  Stars.Open
 
-Tools.Inspect 0D0201000H Tools.Inspect 40016800H
-Tools.Sector 1
+Tools.Inspect 0D0201000H Tools.Inspect 400264A0H
+Tools.Sector 0 Tools.Sector 200000H
 Tools.ShowFile 
 Tools.Recall  Tools.Clear
 
@@ -35,4 +32,3 @@ testForever.Mod testForever.loop testForever.ovfl System.Free testForever
 RS232.Mod System.Free RS232 ~
 System.Free Net SCC ~
 testRS232.Mod testRS232.hello System.Free testRS232 ~
-Net.SendFiles CS testSDCard.Mod ~

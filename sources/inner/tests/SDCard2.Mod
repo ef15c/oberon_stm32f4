@@ -1,7 +1,7 @@
 MODULE SDCard2;
   IMPORT SYSTEM, BSP;
 
-  CONST
+  CONST SDHandleDescAddr = 20000368H;
     (*common error flag*) NONE = {}; 
 
     (*SDIO error flags*) CMD_CRC_FAIL = {0}; DATA_CRC_FAIL = {1}; CMD_RSP_TIMEOUT = {2}; DATA_TIMEOUT = {3}; TX_UNDERRUN = {4};
@@ -73,8 +73,10 @@ MODULE SDCard2;
       ErrorCode*: SET;
       SdCard*: SDCardInfoDesc;
       CID*, CSD*: ARRAY 4 OF INTEGER;
-      readErrors*, writeErrors*, unrecoverableErrors*: INTEGER
+      readErrors*, writeErrors*, unrecoverableErrors*: INTEGER;
+      buf*: INTEGER (*address of data buffer*)
     END;
+    SDHandle = POINTER TO SDHandleDesc;
 
     SDCardCSDDesc* = RECORD
       CSDStruct* (*CSD structure*),
@@ -97,7 +99,7 @@ MODULE SDCard2;
       FileFormat* (*File format*), CSD_CRC* (*CSD CRC*): BYTE
     END;
 
-  VAR hsd*: SDHandleDesc; sdBuf: INTEGER;
+  VAR hsd*: SDHandle;
 
   PROCEDURE reverseBytes(d: INTEGER): INTEGER;
   BEGIN
@@ -336,12 +338,12 @@ MODULE SDCard2;
   VAR rc: SET;
   BEGIN BSP.ledsOnOff({0}, {});
     IF nofblocks > 128 THEN BSP.ledsOnOff({1}, {0}); ASSERT(FALSE) END;
-    rc := SDReadBlocksDMA(sdBuf, src, nofblocks);
+    rc := SDReadBlocksDMA(hsd.buf, src, nofblocks);
     IF rc = NONE THEN
       WHILE GetCardState() #CARD_TRANSFER DO BSP.Delayus(1000) END
     END;
 
-    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(sdBuf, dst, nofblocks*(512 DIV 4)) ELSE INC(hsd.readErrors); BSP.ledsOnOff({1}, {}) END;
+    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(hsd.buf, dst, nofblocks*(512 DIV 4)) ELSE INC(hsd.readErrors); BSP.ledsOnOff({1}, {}) END;
     BSP.ledsOnOff({}, {0});
   END Read;
 
@@ -349,8 +351,8 @@ MODULE SDCard2;
   VAR rc: SET; retry: INTEGER;
   BEGIN BSP.ledsOnOff({0}, {});
     IF nofblocks > 128 THEN BSP.ledsOnOff({1}, {0}); ASSERT(FALSE) END;
-    SYSTEM.COPY(src, sdBuf, nofblocks*(512 DIV 4));
-    REPEAT rc := SDWriteBlocksDMA(sdBuf, dst, nofblocks);
+    SYSTEM.COPY(src, hsd.buf, nofblocks*(512 DIV 4));
+    REPEAT rc := SDWriteBlocksDMA(hsd.buf, dst, nofblocks);
       IF rc = NONE THEN
         WHILE GetCardState() #CARD_TRANSFER DO BSP.Delayus(1000) END
       END;
@@ -578,9 +580,9 @@ MODULE SDCard2;
     SYSTEM.PUT(BSP.SDIO_BASE + BSP.POWER, BSP.POWER_ON);
     SYSTEM.PUT(BSP.sdioClkEn, 1); BSP.Delayus(2000); (*waiting time required before starting SD initialization*)
     (*Initialize the card*) 
-    hsd.ErrorCode := SDPowerOn(hsd); (*identify card operating voltage*)
+    hsd.ErrorCode := SDPowerOn(hsd^); (*identify card operating voltage*)
     IF hsd.ErrorCode = NONE THEN
-      hsd.ErrorCode := SDInitCard(hsd); (*Initialize the card*)
+      hsd.ErrorCode := SDInitCard(hsd^); (*Initialize the card*)
     END;
     IF hsd.ErrorCode = NONE THEN (*configure wide bus operation*)
       IF hsd.SdCard.CardType = CARD_SDSC THEN
@@ -641,7 +643,7 @@ MODULE SDCard2;
   END LLInit;
 
   PROCEDURE Init*;
-  BEGIN sdBuf := SYSTEM.SVC(9); LLInit;
+  BEGIN hsd := SYSTEM.VAL(SDHandle, SDHandleDescAddr);
     hsd.readErrors := 0; hsd.writeErrors := 0; hsd.unrecoverableErrors := 0
   END Init;
 

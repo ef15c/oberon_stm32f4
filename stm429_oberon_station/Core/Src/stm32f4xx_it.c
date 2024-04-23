@@ -43,8 +43,15 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-static __attribute__ ((aligned (16))) uint8_t buf[NB_BLOCKS_MAX*512];
-
+__attribute__ ((aligned (16))) uint8_t buf[NB_BLOCKS_MAX*512];
+struct {
+	uint32_t ErrorCode;
+	uint32_t SdCard[8];
+	uint32_t CID[4], CSD[4];
+	uint32_t readErrors, writeErrors, unrecoverableErrors;
+	uint32_t buf;
+} oberonSdHandle;
+uint32_t padding[81];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,7 +67,6 @@ __STATIC_FORCEINLINE uint32_t __get_LR(void);
 /* External variables --------------------------------------------------------*/
 
 /* USER CODE BEGIN EV */
-extern SD_HandleTypeDef hsd;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -223,11 +229,14 @@ void Oberon_SVC_Handler(sContextStateFrame *frame)
     uint8_t param = *((uint8_t *)(frame->return_address)-2);
 
     switch (param) {
-    case 8:
-    	frame->r0 = (uint32_t) &hsd.SdCard;
+    case 2:
+    	frame->r0 = (uint32_t) &oberonSdHandle;
     	break;
     case 9:
     	frame->r0 = (uint32_t) buf;
+    	break;
+    case 10:
+    	frame->r0 = (uint32_t) padding;
     	break;
     }
 }

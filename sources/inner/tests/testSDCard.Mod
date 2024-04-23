@@ -15,6 +15,8 @@ MODULE testSDCard;
     Texts.WriteString(W, "Errors: "); Texts.WriteInt(W, SDCard2.hsd.readErrors, 1); Texts.WriteString(W, ", ");
     Texts.WriteInt(W, SDCard2.hsd.writeErrors, 1); Texts.WriteString(W, ", ");
     Texts.WriteInt(W, SDCard2.hsd.unrecoverableErrors, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "ErrorCode "); Texts.WriteHex(W, ORD(SDCard2.hsd.ErrorCode)); Texts.WriteLn(W);
+    Texts.WriteString(W, "@buf "); Texts.WriteHex(W, ORD(SDCard2.hsd.buf)); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END showInfos;
 

@@ -689,6 +689,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN
     cond := c.code[at+1] MOD C2*C2 + c.code[at] DIV C6;
     IF cond = NV THEN modify(c, at, NOPT2) (*branch never is equivalent to NOP*)
+    ELSIF cond = AL THEN modify(c, at, BT4 + formatEvenImm25(with)) (*use unconditional branch*)
     ELSE
       ASSERT(cond < 14);
       ASSERT (~ODD(with)); with := with DIV C1;

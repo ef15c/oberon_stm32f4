@@ -20,15 +20,17 @@ MODULE Stars;   (*NW 15.1.2013, 15.11.2013*)
 
   PROCEDURE Restore(F: Frame);
     VAR x0, y0: INTEGER;
-  BEGIN Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
-    Display.ReplConst(0, F.X+1, F.Y, F.W-1, F.H, 0);
-    x0 := F.W DIV 2 + F.X; y0 := F.H DIV 2 + F.Y;
-    F.s[0].x := x0; F.s[0].y := y0; F.s[0].dx := 2; F.s[0].dy := 4; Draw(F.s[0].x, F.s[0].y);
-    F.s[1].x := x0; F.s[1].y := y0; F.s[1].dx := 3; F.s[1].dy := 9; Draw(F.s[1].x, F.s[1].y);
-    F.s[2].x := x0; F.s[2].y := y0; F.s[2].dx := -5; F.s[2].dy := -2; Draw(F.s[2].x, F.s[2].y);
-    F.s[3].x := x0; F.s[3].y := y0; F.s[3].dx := -10; F.s[3].dy := 8; Draw(F.s[3].x, F.s[3].y);
-    F.s[4].x := x0; F.s[4].y := y0; F.s[4].dx := -7; F.s[4].dy := -4; Draw(F.s[4].x, F.s[4].y);
-    F.s[5].x := x0; F.s[5].y := y0; F.s[5].dx := 8; F.s[5].dy := -10; Draw(F.s[5].x, F.s[5].y)
+  BEGIN IF F.H > 0 THEN
+      Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
+      Display.ReplConst(0, F.X+1, F.Y, F.W-1, F.H, 0);
+      x0 := F.W DIV 2 + F.X; y0 := F.H DIV 2 + F.Y;
+      F.s[0].x := x0; F.s[0].y := y0; F.s[0].dx := 2; F.s[0].dy := 4; Draw(F.s[0].x, F.s[0].y);
+      F.s[1].x := x0; F.s[1].y := y0; F.s[1].dx := 3; F.s[1].dy := 9; Draw(F.s[1].x, F.s[1].y);
+      F.s[2].x := x0; F.s[2].y := y0; F.s[2].dx := -5; F.s[2].dy := -2; Draw(F.s[2].x, F.s[2].y);
+      F.s[3].x := x0; F.s[3].y := y0; F.s[3].dx := -10; F.s[3].dy := 8; Draw(F.s[3].x, F.s[3].y);
+      F.s[4].x := x0; F.s[4].y := y0; F.s[4].dx := -7; F.s[4].dy := -4; Draw(F.s[4].x, F.s[4].y);
+      F.s[5].x := x0; F.s[5].y := y0; F.s[5].dx := 8; F.s[5].dy := -10; Draw(F.s[5].x, F.s[5].y);
+    END
   END Restore;
 
   PROCEDURE Move(F: Frame; VAR p: Pos);

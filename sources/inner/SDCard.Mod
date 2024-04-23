@@ -1,7 +1,7 @@
 MODULE SDCard;
   IMPORT SYSTEM, BSP;
 
-  CONST
+  CONST SDHandleDescAddr = 20000368H;
     (*common error flag*) NONE = {}; 
 
     (*SDIO error flags*) CMD_CRC_FAIL = {0}; DATA_CRC_FAIL = {1}; CMD_RSP_TIMEOUT = {2}; DATA_TIMEOUT = {3}; TX_UNDERRUN = {4};
@@ -53,22 +53,22 @@ MODULE SDCard;
     SDCardInfoDesc* = RECORD
       CardType*, CardVersion*, Class*, RelCardAdd*, BlockNbr*, BlockSize*, LogBlockNbr*, LogBlockSize*: INTEGER
     END;
-    SDCardInfo = POINTER TO SDCardInfoDesc;
 
     SDHandleDesc* = RECORD
       ErrorCode*: SET;
-      SdCard*: SDCardInfo;
-      readErrors*, writeErrors*, unrecoverableErrors*: INTEGER
+      SdCard*: SDCardInfoDesc;
+      CID*, CSD*: ARRAY 4 OF INTEGER;
+      readErrors*, writeErrors*, unrecoverableErrors*: INTEGER;
+      buf*: INTEGER (*address of data buffer*)
     END;
+    SDHandle = POINTER TO SDHandleDesc;
 
-  VAR hsd*: SDHandleDesc; sdBuf: INTEGER;
+  VAR hsd*: SDHandle;
 
   PROCEDURE GetCmdResp1(cmd: SET): SET;
     VAR rc, reg: SET;
-  BEGIN rc := NONE;
-    REPEAT SYSTEM.GET(STA, reg) UNTIL (reg*(BSP.CCRCFAILm + BSP.CMDRENDm + BSP.CTIMEOUTm) # {}) & (reg*BSP.CMDACTm = {}); (*wait for response*)
-    reg := reg*(BSP.CTIMEOUTm + BSP.CCRCFAILm);
-    IF reg # {} THEN (*error*) rc := reg END;
+  BEGIN REPEAT SYSTEM.GET(STA, rc) UNTIL (rc*(BSP.CCRCFAILm + BSP.CMDRENDm + BSP.CTIMEOUTm) # {}) & (rc*BSP.CMDACTm = {}); (*wait for response*)
+    rc := rc*(BSP.CTIMEOUTm + BSP.CCRCFAILm);
     SYSTEM.PUT(ICR, STATIC_CMD_FLAGS); (*clear cmd static flags*)
     IF rc = NONE THEN
       SYSTEM.GET(RESPCMD, reg);
@@ -250,12 +250,12 @@ MODULE SDCard;
   VAR rc: SET;
   BEGIN BSP.ledsOnOff({0}, {});
     IF nofblocks > 128 THEN BSP.ledsOnOff({1}, {0}); ASSERT(FALSE) END;
-    rc := SDReadBlocksDMA(sdBuf, src, nofblocks);
+    rc := SDReadBlocksDMA(hsd.buf, src, nofblocks);
     IF rc = NONE THEN
       WHILE GetCardState() #CARD_TRANSFER DO BSP.Delayus(1000) END
     END;
 
-    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(sdBuf, dst, nofblocks*(512 DIV 4)) ELSE INC(hsd.readErrors); BSP.ledsOnOff({1}, {}) END;
+    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(hsd.buf, dst, nofblocks*(512 DIV 4)) ELSE INC(hsd.readErrors); BSP.ledsOnOff({1}, {}) END;
     BSP.ledsOnOff({}, {0});
   END Read;
 
@@ -263,8 +263,8 @@ MODULE SDCard;
   VAR rc: SET; retry: INTEGER;
   BEGIN BSP.ledsOnOff({0}, {});
     IF nofblocks > 128 THEN BSP.ledsOnOff({1}, {0}); ASSERT(FALSE) END;
-    SYSTEM.COPY(src, sdBuf, nofblocks*(512 DIV 4));
-    REPEAT rc := SDWriteBlocksDMA(sdBuf, dst, nofblocks);
+    SYSTEM.COPY(src, hsd.buf, nofblocks*(512 DIV 4));
+    REPEAT rc := SDWriteBlocksDMA(hsd.buf, dst, nofblocks);
       IF rc = NONE THEN
         WHILE GetCardState() #CARD_TRANSFER DO BSP.Delayus(1000) END
       END;
@@ -277,7 +277,7 @@ MODULE SDCard;
   END Write;
 
   PROCEDURE Init*;
-  BEGIN hsd.SdCard := SYSTEM.VAL(SDCardInfo, SYSTEM.SVC(8)); sdBuf := SYSTEM.SVC(9);
+  BEGIN hsd := SYSTEM.VAL(SDHandle, SDHandleDescAddr);
     hsd.readErrors := 0; hsd.writeErrors := 0; hsd.unrecoverableErrors := 0
   END Init;
 
