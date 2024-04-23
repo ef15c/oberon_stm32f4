@@ -2,16 +2,32 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   IMPORT SYSTEM;
 
   CONST  MASK2* = {0..1}; MASK4* = {0..3};
-    (*STM32F429*)
     (*Cortex M4*)
+    (*DWT*)
+     DWTBase* = 0E0001000H;  CYCCNT* = 4;
+
+    (*SCB*)
     SCB_BASE* =  0E000ED00H;
     ICSR* = 4; CFSR* = 28H; BFAR* = 38H;
     PENDSVSET* = 28;
     UFSR_Mask* = {16..31}; BFSR_Mask* = {8..15};
     NOCP* = 19; INVSTATE* = 17; PRECISERR* = 9; STKERR* = 12;
 
-    (*DWT*)
-    DWTBase* = 0E0001000H;  CYCCNT* = 4;
+    SHCSR* = 24H; USGFAULTENA* = 18; BUSFAULTENA* = 17; MEMFAULTENA* = 16; SVCALLPENDED* = 15;
+      BUSFAULTPENDED* = 14; MEMFAULTPENDED* = 13; USGFAULTPENDED* = 12; SYSTICKACT* = 11; PENDSVACT* = 10;
+      MONITORACT* = 8; SVCALLACT* = 7; USGFAULTACT* = 3; BUSFAULTACT* = 1; MEMFAULTACT* = 0;
+
+    (*MPU*)
+    MPU_BASE* = 0E000ED90H;
+    TYPER* = 0; DREGIONm* = {8..15};
+    MPU_CTRL* = 4; PRIVDEFENA* = 2; HFNMIENA* = 1; MPU_ENABLE* = 0;
+    RNR* = 8; RNR_REGIONm* = {0..7};
+    RBAR* = 0CH; MPU_ADDRm* = {5..31}; VALID* = 4; RBAR_REGIONm* = {0..3};
+    RASR* = 10H; XN* = 28; RASR_ENABLE* = 0;
+      APm* = {24..26}; TEXm* = {19..21}; S* = 18; C* = 17; B* = 16; SRDm* = {8..15}; SIZEm* = {1..5};
+      AP_NO_ACCESS* = {}; AP_PRIV_RW* = {24}; AP_PRIV_RW_URO* = {25}; AP_FULL_ACCESS* = {24, 25};
+      AP_PRIV_RO* = {24, 26}; AP_PRIV_RO_URO* = {25, 26};
+      TEX_LEVEL0* = {}; TEX_LEVEL1* = {19}; TEX_LEVEL2* = {20}; 
 
     (*Memory*)
     SRAMBase* = 20000000H; VecTabBase* = SRAMBase;
@@ -114,7 +130,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     CFGR* = 8; RTCPRE* = {16..20}; (*clock configuration register*)
 
     AHB1ENR* = 30H; CRCEN* = 12; GPIOAEN* = 0; GPIOBEN* = 1; GPIOCEN* = 2; GPIODEN* = 3; GPIOEEN* = 4; GPIOFEN* = 5;
-      GPIOGEN* = 6; GPIOHEN* = 7; GPIOIEN* = 8; GPIOJEN* = 9; GPIOKEN* = 10;
+      GPIOGEN* = 6; GPIOHEN* = 7; GPIOIEN* = 8; GPIOJEN* = 9; GPIOKEN* = 10; DMA1EN* = 21; DMA2EN* = 22;
     crcEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + CRCEN DIV 8)*32 + CRCEN MOD 8*4;
     gpioaEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOAEN DIV 8)*32 + GPIOAEN MOD 8*4;
     gpiobEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOBEN DIV 8)*32 + GPIOBEN MOD 8*4;
@@ -127,6 +143,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     gpioiEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOIEN DIV 8)*32 + GPIOIEN MOD 8*4;
     gpiojEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOJEN DIV 8)*32 + GPIOJEN MOD 8*4;
     gpiokEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOKEN DIV 8)*32 + GPIOKEN MOD 8*4;
+    dma1En* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + DMA1EN DIV 8)*32 + DMA1EN MOD 8*4;
+    dma2En* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + DMA2EN DIV 8)*32 + DMA2EN MOD 8*4;
 
     APB1ENR* = 40H; SPI3EN* = 15; PWREN* = 28; (*APB1 peripheral clock enable register*)
     pwrEn* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + PWREN DIV 8)*32 + PWREN MOD 8*4;

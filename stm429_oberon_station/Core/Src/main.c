@@ -51,14 +51,12 @@ static FMC_SDRAM_CommandTypeDef Command;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_FMC_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void MPU_RegionConfig(void);
 void BootLoadM4(void);
 /* USER CODE END 0 */
 
@@ -103,11 +101,8 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_FMC_Init();
   /* USER CODE BEGIN 2 */
-  // Configure MPU to allow execution in range 0xD0201000 - 0xD0800000
-  MPU_RegionConfig();
 
   BootLoadM4();
 
@@ -164,25 +159,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 1, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-  /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 1, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-
 }
 
 /* FMC initialization function */
@@ -470,32 +446,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void MPU_RegionConfig(void)
-{
-    MPU_Region_InitTypeDef MPU_InitStruct;
-    /* Disable MPU */
-    HAL_MPU_Disable();
-    /* Configure SDRAM region as Region N°0, 4M of size and R/W region */
-    MPU_InitStruct.Number = MPU_REGION_NUMBER0;
-    MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-    MPU_InitStruct.BaseAddress = 0xD0201000;
-    MPU_InitStruct.Size = MPU_REGION_SIZE_4MB;
-    MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-    MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
-    MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-    MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
-    MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-    MPU_InitStruct.SubRegionDisable = 0x00;
-    MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-    HAL_MPU_ConfigRegion(&MPU_InitStruct);
-    /* Configure SDRAM region as REGION N°1, 4MB of size and R/W region */
-    MPU_InitStruct.BaseAddress = 0xD0400000;
-    MPU_InitStruct.Size = MPU_REGION_SIZE_4MB;
-    MPU_InitStruct.Number = MPU_REGION_NUMBER1;
-    HAL_MPU_ConfigRegion(&MPU_InitStruct);
-    /* Enable MPU */
-    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
-}
 
 /* USER CODE END 4 */
 

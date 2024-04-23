@@ -230,8 +230,6 @@ typedef struct
 #define SDMMC_CMD_SD_APP_STATUS                                 13U   /*!< (ACMD13) Sends the SD status.                                                            */
 #define SDMMC_CMD_SD_APP_SEND_NUM_WRITE_BLOCKS                  22U   /*!< (ACMD22) Sends the number of the written (without errors) write blocks. Responds with
                                                                            32bit+CRC data block.                                                                    */
-#define SDMMC_CMD_SD_APP_SET_WR_BLK_ERASE_COUNT                 23U   /*!< (ACMD23) Set the number of write blocks to be pre-erased before writing (to be used
-                                                                           for faster Multiple Block WR command). "1"=default (one wr block).                       */
 #define SDMMC_CMD_SD_APP_OP_COND                                41U   /*!< (ACMD41) Sends host capacity support information (HCS) and asks the accessed card to
                                                                            send its operating condition register (OCR) content in the response on the CMD line.     */
 #define SDMMC_CMD_SD_APP_SET_CLR_CARD_DETECT                    42U   /*!< (ACMD42) Connect/Disconnect the 50 KOhm pull-up resistor on CD/DAT3 (pin 1) of the card  */
@@ -286,9 +284,7 @@ typedef struct
 #define SDMMC_R6_ILLEGAL_CMD                          0x00004000U
 #define SDMMC_R6_COM_CRC_FAILED                       0x00008000U
 
-/* On SMT32F429I-DISCO, the available voltage is between 2.9V and 3.0V */
-//#define SDMMC_VOLTAGE_WINDOW_SD                       0x80100000U
-#define SDMMC_VOLTAGE_WINDOW_SD                       0x80010000U
+#define SDMMC_VOLTAGE_WINDOW_SD                       0x80100000U
 #define SDMMC_HIGH_CAPACITY                           0x40000000U
 #define SDMMC_STD_CAPACITY                            0x00000000U
 #define SDMMC_CHECK_PATTERN                           0x000001AAU
@@ -1096,7 +1092,6 @@ uint32_t SDMMC_CmdGoIdleState(SDIO_TypeDef *SDIOx);
 uint32_t SDMMC_CmdOperCond(SDIO_TypeDef *SDIOx);
 uint32_t SDMMC_CmdAppCommand(SDIO_TypeDef *SDIOx, uint32_t Argument);
 uint32_t SDMMC_CmdAppOperCommand(SDIO_TypeDef *SDIOx, uint32_t Argument);
-uint32_t SDMMC_CmdAppSetWrBlkEraseCount(SDIO_TypeDef *SDIOx, uint32_t Argument);
 uint32_t SDMMC_CmdBusWidth(SDIO_TypeDef *SDIOx, uint32_t BusWidth);
 uint32_t SDMMC_CmdSendSCR(SDIO_TypeDef *SDIOx);
 uint32_t SDMMC_CmdSendCID(SDIO_TypeDef *SDIOx);

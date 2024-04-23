@@ -462,7 +462,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     VAR reg: SET; en: BYTE;
       scr: ARRAY 2 OF SET;
       index: INTEGER;
-  BEGIN SYSTEM.PUT(BSP.sdioEn, TRUE);
+  BEGIN SYSTEM.PUT(BSP.dma2En, TRUE); SYSTEM.PUT(BSP.sdioEn, TRUE);
     SYSTEM.PUT(BSP.gpiocEn, TRUE); SYSTEM.PUT(BSP.gpiodEn, TRUE); SYSTEM.PUT(BSP.gpiodEn, TRUE); SYSTEM.PUT(BSP.gpiofEn, TRUE);
     SYSTEM.GET(BSP.gpiofEn, en); (*delay*)
     (*GPIOs*)
@@ -582,8 +582,24 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     IF r > 0 THEN ReadSD(hsd^, FSoffset + 2*(bps+1), VarORG0+SectorSize, r) END
   END LoadFromDisk;
 
+  PROCEDURE MPUInit; (*initialize the memory protection unit*)
+    VAR reg: SET;
+  BEGIN (*Make region D0200000 to D07FFFFF executable*)
+    SYSTEM.MBI(1); (*DMB*) SYSTEM.GET(BSP.SCB_BASE + BSP.SHCSR, reg); SYSTEM.PUT(BSP.SCB_BASE + BSP.SHCSR, reg - {BSP.MEMFAULTENA});
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.MPU_CTRL, 0); (*disable MPU*)
+    (*Region 0: start at D0000000, size 8MB, RWX*)
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.RNR, 0); SYSTEM.PUT(BSP.MPU_BASE + BSP.RBAR, BSP.Display_FBA + 0);
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.RASR, BSP.AP_FULL_ACCESS + BSP.TEX_LEVEL0 + {BSP.C, BSP. S} + SYSTEM.VAL(SET, 22*2) + {BSP.RASR_ENABLE});
+    (*Region 1: start at D0000000, size 2MB, RW*)
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.RNR, 1); SYSTEM.PUT(BSP.MPU_BASE + BSP.RBAR, BSP.Display_FBA + 1);
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.RASR, {BSP.XN} + BSP.AP_FULL_ACCESS + BSP.TEX_LEVEL0 + {BSP.C, BSP. S} + SYSTEM.VAL(SET, 20*2) + {BSP.RASR_ENABLE});
+    SYSTEM.GET(BSP.MPU_BASE + BSP.MPU_CTRL, reg); SYSTEM.PUT(BSP.MPU_BASE + BSP.MPU_CTRL, reg + {BSP.MPU_ENABLE, BSP.PRIVDEFENA}); (*enable MPU*)
+    SYSTEM.GET(BSP.SCB_BASE + BSP.SHCSR, reg); SYSTEM.PUT(BSP.SCB_BASE + BSP.SHCSR, reg + {BSP.MEMFAULTENA});
+    SYSTEM.MBI(2); (*DSB*); SYSTEM.MBI(3) (*ISB, ensure that MPU settings take effects*)
+  END MPUInit;
+
 BEGIN
-  SYSTEM.PUT(BSP.LED2Out, TRUE); LoadFromDisk;
+  SYSTEM.PUT(BSP.LED2Out, TRUE); MPUInit; LoadFromDisk;
   SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg);
   SYSTEM.PUT(BSP.LED7Out, TRUE)
 END BootLoadM4.

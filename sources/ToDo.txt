@@ -82,12 +82,7 @@ N° de service   Nom         R0                                                  
             5   <supprimé>
             6   <supprimé>
             7   <supprimé>
-            8   SdCard      retourne l'adresse du bloc de description de la carte SD
-            9   SD buffer   retourne l'adresse du buffer d'échange avec la carte SD
-                            (64KO, aligné sur un multiple de 16)
-à faire
-N° de service   Nom         R0                                                  R1                                      R2 et suivants
--------------   -------     --------------------------------------------------  ------------------------------------    ------------------------
+
 
 Runtime checks:
 
@@ -102,3 +97,10 @@ trap number trap cause
 8           Bus Fault: data access precise error
 9           Bus Fault: stack overflow
 10          User abort
+
+Memory Barrier Instructions:
+Elle peuvent être placées à l'aide de la procédure SYSTEM.MBI(<type>)
+type:
+ 1 DMB,
+ 2 DSB et
+ 3 ISB.
