@@ -44,7 +44,30 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     (*IRQ numbers*)
     EXTI0_IRQNum* = 16+6; EXTI1_IRQNum* = 16+7; EXTI2_IRQNum* = 16+8; EXTI3_IRQNum* = 16+9; EXTI4_IRQNum* = 16+10;
     EXTI9_5_IRQNum* = 16+23; EXTI15_10_IRQNum* = 16+40; SDIO_IRQNum* = 16+49; DMA2_Stream3_IRQNum* = 16+59;
-      DMA3_Stream6_IRQNum* = 16+69;
+    DMA3_Stream6_IRQNum* = 16+69;
+
+    (*FMC for SDRAM*)
+    FMC_R_BASE* = 0A0000000H; FMC_Bank5_6_R_Base* = FMC_R_BASE + 140H;
+    SDCR1* = 0; SDCR2* = 4;
+      RPIPEm* = {13..14}; RBURST* = 12; SDCLKm* = {10..11}; WP* = 9; CASm* = {7..8}; NB* = 6; MWIDm* = {4..5}; NRm* = {2..3}; NCm* = {0..1};
+      RPIPE_DELAY_0* = {}; RPIPE_DELAY_1* = {13}; RPIPE_DELAY_2* = {14}; 
+      CLOCK_PERIOD_DISABLE* = {}; CLOCK_PERIOD_2* = {11}; CLOCK_PERIOD_3* = {10, 11};
+      CAS_LATENCY_1* = {7}; CAS_LATENCY_2* = {8}; CAS_LATENCY_3* = {7, 8};
+      MEM_BUS_WIDTH_8* = {}; MEM_BUS_WIDTH_16* = {4}; MEM_BUS_WIDTH_32* = {5};
+      ROW_BITS_NUM_11* = {}; ROW_BITS_NUM_12* = {2}; ROW_BITS_NUM_13* = {3};
+      COLUMN_BITS_NUM_8* = {}; COLUMN_BITS_NUM_9* = {0}; COLUMN_BITS_NUM_10* = {1}; COLUMN_BITS_NUM_11* = {0, 1};
+    SDTR1* = 8; SDTR2* = 0CH;
+      TRCD* = 24; TRP* = 20; TWR* = 16; TRC* = 12; TRAS* = 8; TXSR* = 4; TMRD* = 0;
+      TRCDm* = {TRCD..TRCD+3}; TRPm* = {TRP..TRP+3}; TWRm* = {TWR..TWR+3}; TRCm* = {TRC..TRC+3}; 
+        TRASm* = {TRAS..TRAS+3}; TXSRm* = {TXSR..TXSR+3}; TMRDm* = {TMRD..TMRD+3};
+    SDCMR* = 10H;
+      MRDm* = {9..21}; NRFSm* = {5..8}; CBT1* = 4; CBT2* = 3; MODEm* = {0..2};
+      CMD_NORMAL_MODE* = {}; CMD_CLK_CONF_ENABLE* = SYSTEM.VAL(SET, 1); CMD_PALL* = SYSTEM.VAL(SET, 2);
+      CMD_AUTOREFRESH_MODE* = SYSTEM.VAL(SET, 3); CMD_LOAD_MODE* = SYSTEM.VAL(SET, 4); CMD_SELFREFRESH_MODE* = SYSTEM.VAL(SET, 5);
+      CMD_POWERDOWN_MODE* = SYSTEM.VAL(SET, 6);
+    SDRTR* = 14H;
+      REIE* = 0; COUNT* = 1; CRE* = 0;
+     COUNTm* = {COUNT..COUNT+12};
 
     (*CRC*)
     CRC_BASE* = 40023000H;
@@ -65,7 +88,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SxCR* = 10H; CHSEL* = 25; MBURST* = 23; PBURST* = 21; CT* = 19; DBM* = 18; PINCOS* = 15; MSIZE* = 13; PSIZE* = 11;
         MINC* = 10; PINC* = 9; CIRC* = 8; PFCTRL* = 5; SxCR_TCIE* = 4; HTIE* = 3;
        TEIE* = 2; DMEIE* = 1; SxCR_EN* = 0;
-      CHSELm* = {CHSEL..27}; MBURSTm* = {23..24}; PBURSTm* = {21..22}; PLm* = {16..17}; MSIZEm* = {13..14}; PSIZEm* = {11..12};
+      CHSELm* = {CHSEL..CHSEL+2}; MBURSTm* = {23..24}; PBURSTm* = {21..22}; PLm* = {16..17}; MSIZEm* = {13..14}; PSIZEm* = {11..12};
       MINCm* = {MINC}; DIRm* = {6..7}; PFCTRLm* = {PFCTRL}; SxCR_TCIEm* = {SxCR_TCIE}; HTIEm* = {HTIE}; TEIEm* = {TEIE}; DMEIEm* = {DMEIE};
 
       SINGLE_TRANSFERT* = {}; INCR4* = {0}; INCR8* = {1}; INCR16* = {0, 1};
@@ -146,6 +169,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     dma1En* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + DMA1EN DIV 8)*32 + DMA1EN MOD 8*4;
     dma2En* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + DMA2EN DIV 8)*32 + DMA2EN MOD 8*4;
 
+    AHB3ENR* = 38H; FMCEN* = 0;
+
     APB1ENR* = 40H; SPI3EN* = 15; PWREN* = 28; (*APB1 peripheral clock enable register*)
     pwrEn* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + PWREN DIV 8)*32 + PWREN MOD 8*4;
     spi3En* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + SPI3EN DIV 8)*32 + SPI3EN MOD 8*4;
@@ -209,8 +234,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     (*SPI*)
     SPI2_BASE* = 40003800; SPI3_BASE* = 40003C00H;
     SPI_CR1* = 0; SPE* = 6;
-    SPI_CPHAm* = {0}; SPI_CPOLm* = {1};  MSTRm* = {2}; BRm* = {3..5}; SPEm = {SPE}; LSBFIRSTm* = {7}; SSIm* = {8}; SSMm* = {9};
-    RXONLYm* = {10}; DFFm* = {11}; CRCNEXTm* = {12}; CECENm = {13}; BIDIOEm* = {14}; BIDIMODEm* = {15};
+    SPI_CPHAm* = {0}; SPI_CPOLm* = {1};  MSTRm* = {2}; BRm* = {3..5}; SPEm* = {SPE}; LSBFIRSTm* = {7}; SSIm* = {8}; SSMm* = {9};
+    RXONLYm* = {10}; DFFm* = {11}; CRCNEXTm* = {12}; CECENm* = {13}; BIDIOEm* = {14}; BIDIMODEm* = {15};
     BRPS_2* = {}; BRPS_4* = {3}; BRPS_8* = {4}; BRPS_16* = {3,4}; BRPS_32* = {5}; BRPS_64* = {3,5}; BRPS_128* = {4,5}; BRPS_256* = {3..5};
     spe3* = PeriphBBAlias + (SPI3_BASE +SPI_CR1 - PeriphBase + SPE DIV 8)*32 + SPE MOD 8*4;
 

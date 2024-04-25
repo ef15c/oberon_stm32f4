@@ -458,7 +458,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
       maskD_1b = {2, BSP.WRITE_PROTECTPin, BSP.CARD_DETECTPin};
       maskD_2b = LSL(BSP.MASK2, 2*2) + LSL(BSP.MASK2, BSP.WRITE_PROTECTPin*2) + LSL(BSP.MASK2, BSP.CARD_DETECTPin*2);
       maskD_4bl = LSL(BSP.MASK4, 2*4);
-      maskF_1b = {BSP.LED1Pin}; maskF_2b = LSL(BSP.MASK2, BSP.LED1Pin);
+      maskF_1b = {BSP.LED1Pin}; maskF_2b = LSL(BSP.MASK2, BSP.LED1Pin*2);
     VAR reg: SET; en: BYTE;
       scr: ARRAY 2 OF SET;
       index: INTEGER;
@@ -480,8 +480,9 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
       {}, {},
       LSL(SYSTEM.VAL(SET, 12), 2*4),
       {}); (*PD2 AF12 pp hs, PD4 and PD5 inputs pulled up*)
-    configureGPIO(BSP.GPIOF, maskF_1b, maskF_2b, {}, {}, LSL(BSP.OUTPUT_MODE, BSP.LED1Pin), {}, {}, {}, {}, {}); (*PF9 output pp ls*)
+    configureGPIO(BSP.GPIOF, maskF_1b, maskF_2b, {}, {}, LSL(BSP.OUTPUT_MODE, BSP.LED1Pin*2), {}, {}, {}, {}, {}); (*PF9 output pp ls*)
 
+    Delayus(100); (*wait for pull up to stabilize*)
     IF SYSTEM.BIT(BSP.CARD_DETECTPort + BSP.IDR, BSP.CARD_DETECTPin) THEN
       SYSTEM.PUT(BSP.LED1Out, TRUE); REPEAT UNTIL FALSE (*card missing*)
     END;
@@ -598,8 +599,56 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     SYSTEM.MBI(2); (*DSB*); SYSTEM.MBI(3) (*ISB, ensure that MPU settings take effects*)
   END MPUInit;
 
-BEGIN
-  SYSTEM.PUT(BSP.LED2Out, TRUE); MPUInit; LoadFromDisk;
+  PROCEDURE SDRAMInit;
+(* FMC GPIO Configuration
+  PB5   ------> FMC_SDCKE1
+  PB6   ------> FMC_SDNE1
+  PC0   ------> FMC_SDNWE
+  PD0   ------> FMC_D2
+  PD1   ------> FMC_D3
+  PD8   ------> FMC_D13
+  PD9   ------> FMC_D14
+  PD10   ------> FMC_D15
+  PD14   ------> FMC_D0
+  PD15   ------> FMC_D1
+  PE0   ------> FMC_NBL0
+  PE1   ------> FMC_NBL1
+  PE7   ------> FMC_D4
+  PE8   ------> FMC_D5
+  PE9   ------> FMC_D6
+  PE10   ------> FMC_D7
+  PE11   ------> FMC_D8
+  PE12   ------> FMC_D9
+  PE13   ------> FMC_D10
+  PE14   ------> FMC_D11
+  PE15   ------> FMC_D12
+  PF0   ------> FMC_A0
+  PF1   ------> FMC_A1
+  PF2   ------> FMC_A2
+  PF3   ------> FMC_A3
+  PF4   ------> FMC_A4
+  PF5   ------> FMC_A5
+  PF11   ------> FMC_SDNRAS
+  PF12   ------> FMC_A6
+  PF13   ------> FMC_A7
+  PF14   ------> FMC_A8
+  PF15   ------> FMC_A9
+  PG0   ------> FMC_A10
+  PG1   ------> FMC_A11
+  PG4   ------> FMC_BA0
+  PG5   ------> FMC_BA1
+  PG8   ------> FMC_SDCLK
+  PG15   ------> FMC_SDNCAS
+*)
+    VAR reg: SET;
+  BEGIN SYSTEM.GET(BSP.RCC_BASE + BSP.AHB1ENR, reg);
+    SYSTEM.PUT(BSP.RCC_BASE + BSP.AHB1ENR, reg + {BSP.GPIOBEN, BSP.GPIOCEN, BSP.GPIODEN, BSP.GPIODEN, BSP.GPIOFEN, BSP.GPIOGEN});
+    SYSTEM.PUT(BSP.RCC_BASE + BSP.AHB3ENR, {BSP.FMCEN});
+    
+(*todo*)
+  END SDRAMInit;
+
+BEGIN SDRAMInit; MPUInit; LoadFromDisk;
   SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg);
   SYSTEM.PUT(BSP.LED7Out, TRUE)
 END BootLoadM4.
