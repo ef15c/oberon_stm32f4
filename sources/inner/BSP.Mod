@@ -61,13 +61,18 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       TRCDm* = {TRCD..TRCD+3}; TRPm* = {TRP..TRP+3}; TWRm* = {TWR..TWR+3}; TRCm* = {TRC..TRC+3}; 
         TRASm* = {TRAS..TRAS+3}; TXSRm* = {TXSR..TXSR+3}; TMRDm* = {TMRD..TMRD+3};
     SDCMR* = 10H;
-      MRDm* = {9..21}; NRFSm* = {5..8}; CBT1* = 4; CBT2* = 3; MODEm* = {0..2};
+      MRD* = 9; NRFS* = 5; CBT1* = 4; CBT2* = 3; MODEm* = {0..2};
+      MRDm* = {MRD..MRD+12}; NRFSm* = {NRFS..NRFS+3}; 
       CMD_NORMAL_MODE* = {}; CMD_CLK_CONF_ENABLE* = SYSTEM.VAL(SET, 1); CMD_PALL* = SYSTEM.VAL(SET, 2);
       CMD_AUTOREFRESH_MODE* = SYSTEM.VAL(SET, 3); CMD_LOAD_MODE* = SYSTEM.VAL(SET, 4); CMD_SELFREFRESH_MODE* = SYSTEM.VAL(SET, 5);
       CMD_POWERDOWN_MODE* = SYSTEM.VAL(SET, 6);
     SDRTR* = 14H;
       REIE* = 0; COUNT* = 1; CRE* = 0;
      COUNTm* = {COUNT..COUNT+12};
+    SDSR* = 18H;
+      BUSY* = 5; MODES2* = 3; MODES1* = 1; RE* = 0;
+      MODES2m* = {MODES2..MODES2+1}; MODES1m* = {MODES1..MODES1+1};
+      SR_NORMAL_MODE* = {}; SR_SELFREFRESH_MODE* = {0}; SR_POWERDOWN_MODE* = {1};
 
     (*CRC*)
     CRC_BASE* = 40023000H;
