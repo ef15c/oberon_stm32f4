@@ -107,7 +107,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       QUARTER_FULL_FIFO* = {}; HALF_FULL_FIFO* = {0}; THREE_QUARTER_FULL_FIFO* = {1}; FULL_FIFO* = {0, 1};
 
     (*EXTI*)
-    EXTI_BASE* = 40013C00H; PR* = 14H;
+    EXTI_BASE* = 40013C00H; EXTI_IMR* = 0; EMR* = 4; RTSR* = 8; FTSR* = 0CH; SWIER* = 10H; PR* = 14H;
 
     (*LTDC*)
     LTDC_BASE* = 40016800H; 
@@ -121,9 +121,9 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     DRWm* = {12..14}; DGWm* = {8..10}; DBWm* = {4..6}; GCR_LTDCENm* = {GCR_LTDCEN};
     gcr_ltdcEn* = PeriphBBAlias + (LTDC_BASE + GCR - PeriphBase + GCR_LTDCEN DIV 8)*32 + GCR_LTDCEN MOD 8*4;
 
-    SRCR* = 24H; VBR* = 1; IMR* = 0;
+    SRCR* = 24H; VBR* = 1; SRCR_IMR* = 0;
     vbr* = PeriphBBAlias + (LTDC_BASE + SRCR - PeriphBase + VBR DIV 8)*32 + VBR MOD 8*4;
-    imr* = PeriphBBAlias + (LTDC_BASE + SRCR - PeriphBase + IMR DIV 8)*32 + IMR MOD 8*4;
+    imr* = PeriphBBAlias + (LTDC_BASE + SRCR - PeriphBase + SRCR_IMR DIV 8)*32 + SRCR_IMR MOD 8*4;
 
     BCCR* = 2CH; BCREDm* = {16..23}; BCGREENm* = {8..15}; BCBLUEm* = {0..8};
 
@@ -252,6 +252,9 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SPI_SR* = 08H; SPI_RXNE* = 0; SPI_TXE* = 1; BSY* = 7;
 
     SPI_DR* = 0CH;
+
+    (*SYSCFG*)
+    SYSCFG_BASE* = 40013800H; EXTI_CR1* = 8;
 
     (*USART*)
     USART1_BASE* = 40011000H;
@@ -408,25 +411,44 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       od = mask_1b;
       om = LSL(OUTPUT_MODE, PS2CLOCK1Pin*2) + LSL(OUTPUT_MODE, PS2DATA1Pin*2) +
         LSL(OUTPUT_MODE, PS2CLOCK2Pin*2) + LSL(OUTPUT_MODE, PS2DATA2Pin*2);
-    VAR en: BYTE;
+    VAR en: BYTE; reg: SET;
   BEGIN SYSTEM.PUT(gpioeEn, TRUE); SYSTEM.GET(gpioeEn, en); (*delay*)
     configureGPIO(GPIOE, mask_1b, mask_2b, {}, {}, om, {}, od, {}, {}, {}); (*all pins are output, low speed, open-drain, no pullups nor pulldowns*)
+    SYSTEM.GET(SYSCFG_BASE + EXTI_CR1, reg); (*PE2 generates interrupt at falldown*)
+    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1, reg - {8..11} + LSL(SYSTEM.VAL(SET, 4), 8)); (*EXTI 2 connected to GPIOE*)
+    SYSTEM.GET(SYSCFG_BASE + EXTI_CR1+4, reg); (*PE4 generates interrupt at falldown*)
+    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1+4, reg - {0..3} + SYSTEM.VAL(SET, 4)); (*EXTI 2 connected to GPIOE*)
+    SYSTEM.GET(EXTI_BASE + FTSR, reg); SYSTEM.PUT(EXTI_BASE + FTSR, reg + {2, 4});
+    SYSTEM.GET(EXTI_BASE + EXTI_IMR, reg); SYSTEM.PUT(EXTI_BASE + EXTI_IMR, reg + {2, 4})
   END PS2_initGPIOs;
 
   PROCEDURE NRF_initGPIOs; (*nrf24L01+*)
-    CONST mask_1b = {NRF24L01P_SCKPin, NRF24L01P_MISOPin};
-      mask_2b = LSL(MASK2, NRF24L01P_SCKPin*2) + LSL(MASK2, NRF24L01P_MISOPin*2);
-      mask_4b = LSL(MASK4, NRF24L01P_SCKPin*4) + LSL(MASK4, NRF24L01P_MISOPin*4);
-      afm =  LSL(AF_MODE, NRF24L01P_SCKPin*2) + LSL(AF_MODE, NRF24L01P_MISOPin*2);
-      ms = LSL(MEDIUM_SPEED, NRF24L01P_SCKPin*2) + LSL(MEDIUM_SPEED, NRF24L01P_MISOPin*2);
-      af = LSL(SYSTEM.VAL(SET, 6), NRF24L01P_SCKPin*4) + LSL(SYSTEM.VAL(SET, 6), NRF24L01P_MISOPin*4); (*AF6*)
-    VAR en: BYTE;
-  BEGIN
-    (*SPI3 for nRF24L01+*)
-    (*MOSI*) SYSTEM.PUT(gpiobEn, TRUE); SYSTEM.PUT(gpiodEn, TRUE); SYSTEM.GET(gpiodEn, en); (*delay*)
-    configureGPIO(GPIOD, {NRF24L01P_MOSIPin}, LSL(MASK2, NRF24L01P_MOSIPin*2), LSL(MASK4, NRF24L01P_MOSIPin*4), {},
-      LSL(AF_MODE, NRF24L01P_MOSIPin*2), LSL(MEDIUM_SPEED, NRF24L01P_MOSIPin*2), {}, {}, SYSTEM.VAL(SET, LSL(5, NRF24L01P_MOSIPin*4)), {}); (*AF5: MOSI*)
-    configureGPIO(GPIOB, mask_1b, mask_2b, mask_4b, {}, afm, ms, {}, {}, af, {});
+    CONST
+      maskB_1b = {NRF24L01P_SCKPin, NRF24L01P_MISOPin, NRF24L01P_CSPin};
+      maskB_2b = LSL(MASK2, NRF24L01P_SCKPin*2) + LSL(MASK2, NRF24L01P_MISOPin*2) + LSL(MASK2, NRF24L01P_CSPin*2);
+      maskB_4bl = LSL(MASK4, NRF24L01P_SCKPin*4) + LSL(MASK4, NRF24L01P_MISOPin*4) + LSL(MASK4, NRF24L01P_CSPin*4);
+      maskD_1b = {NRF24L01P_MOSIPin, NRF24L01P_IRQPin};
+      maskD_2b = LSL(MASK2, NRF24L01P_MOSIPin*2) + LSL(MASK2, NRF24L01P_IRQPin*2);
+      maskD_4bl = LSL(MASK4, NRF24L01P_MOSIPin*4) + LSL(MASK4, NRF24L01P_IRQPin*4);
+      maskG_1b = {NRF24L01P_CEPin};
+      maskG_2b = LSL(MASK2, NRF24L01P_CEPin*2);
+      maskG_4bh = LSL(MASK4, NRF24L01P_CEPin MOD 8*4);
+    VAR en: BYTE; reg: SET;
+  BEGIN SYSTEM.GET(RCC_BASE + AHB1ENR, reg); SYSTEM.PUT(RCC_BASE + AHB1ENR, reg + {GPIOBEN, GPIODEN, GPIOGEN});
+    SYSTEM.GET(RCC_BASE + AHB1ENR, reg);  (*delay*)
+    (*GPIO*)
+    SYSTEM.PUT(NRF24L01P_CSOut, 1); (*unselect NRF24L01+ peripheral*);
+    (*SPI3*)
+    configureGPIO(GPIOB, maskB_1b, maskB_2b, maskB_4bl, {},
+      LSL(AF_MODE, NRF24L01P_SCKPin*2) + LSL(AF_MODE, NRF24L01P_MISOPin*2) + LSL(OUTPUT_MODE, NRF24L01P_CSPin*2),
+      LSL(MEDIUM_SPEED, NRF24L01P_SCKPin*2) + LSL(MEDIUM_SPEED, NRF24L01P_MISOPin*2), {}, {},
+      LSL(SYSTEM.VAL(SET, 6), NRF24L01P_SCKPin*4) + LSL(SYSTEM.VAL(SET, 6), NRF24L01P_MISOPin*4) (*AF6*), {});
+    configureGPIO(GPIOD, maskD_1b, maskD_2b, maskD_4bl, {},
+      LSL(AF_MODE, NRF24L01P_MOSIPin*2),
+      LSL(MEDIUM_SPEED, NRF24L01P_MOSIPin*2), {}, {},
+      LSL(SYSTEM.VAL(SET, 5), NRF24L01P_MOSIPin*4), {}); (*AF5: MOSI*)
+    configureGPIO(GPIOG, maskG_1b, maskG_2b, {}, maskG_4bh,
+      LSL(OUTPUT_MODE, NRF24L01P_CEPin*2), {}, {}, {}, {}, {});
   END NRF_initGPIOs;
 
   PROCEDURE UART_initGPIOs;
@@ -508,9 +530,52 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       LSL(SYSTEM.VAL(SET, 9), 10 MOD 8*4) + LSL(SYSTEM.VAL(SET, 14),  11 MOD 8*4) + LSL(SYSTEM.VAL(SET, 9),  12 MOD 8*4))
   END Display_InitGPIOs;
 
-  PROCEDURE initGPIOs; (*Initialize GPIOs for all sub systems*)
-  BEGIN Display_InitGPIOs; PS2_initGPIOs; NRF_initGPIOs; UART_initGPIOs
+  PROCEDURE initGPIOs; (*Initialize GPIOs not associated to an hardware module*)
+    CONST NCS_MEMSPin = 1; NCS_MEMSPort = GPIOC;
+      NCS_MEMSOut =  PeriphBBAlias + (NCS_MEMSPort + IDR - PeriphBase + NCS_MEMSPin DIV 8)*32 + NCS_MEMSPin MOD 8*4;
+      maskA_1b = {0, 5, 7};
+      maskA_2b = LSL(MASK2, 0*2) + LSL(MASK2, 5*2) + LSL(PULL_UP, 7*2);
+      maskC_1b = {1, 2, 3, 13, 14, 15};
+      maskC_2b = LSL(MASK2, 1*2) + LSL(MASK2, 2*2) + LSL(PULL_UP, 3*2) + LSL(MASK2, 13*2) + LSL(MASK2, 14*2) + LSL(PULL_UP, 15*2);
+      maskD_1b = {12, 13};
+      maskD_2b = LSL(MASK2, 12*2) + LSL(MASK2, 13*2) + LSL(PULL_UP, 3*2);
+      maskE_1b = {6};
+      maskE_2b = LSL(MASK2, 6*2);
+      maskF_1b = {6, 7, 8, 9};
+      maskF_2b = LSL(MASK2, 6*2) + LSL(MASK2, 7*2) + LSL(MASK2, 8*2) + LSL(MASK2, 9*2);
+      maskG_1b = {2, 3, 13, 14};
+      maskG_2b = LSL(MASK2, 2*2) + LSL(MASK2, 3*2) + LSL(PULL_UP, 13*2) + LSL(MASK2, 14*2);
+    VAR reg: SET;
+  BEGIN NRF_initGPIOs; (*GPIOs initialized now to prevent NRF24L01P_CSPin to float, so nRF24L01+ is deselected*)
+    SYSTEM.GET(RCC_BASE + AHB1ENR, reg);
+    SYSTEM.PUT(RCC_BASE + AHB1ENR, reg + {GPIOAEN, GPIOCEN, GPIODEN, GPIOEEN, GPIOFEN, GPIOGEN});
+    SYSTEM.GET(RCC_BASE + AHB1ENR, reg); (*delay*)
+    SYSTEM.PUT(NCS_MEMSOut, 1); (*unselect MEMS peripheral*)
+
+    (*PA0 as blue push button, PA5 and 7 as LEDs 3 and 4*)
+    configureGPIO(GPIOA, maskA_1b, maskA_2b, {}, {}, LSL(OUTPUT_MODE, 5*2) + LSL(OUTPUT_MODE, 7*2), {}, {}, {}, {}, {});
+    (*PC14, 15 and 13 as push buttons 1, 2 and 4*)
+    configureGPIO(GPIOC, maskC_1b, maskE_2b, {}, {}, LSL(OUTPUT_MODE, 1*2) + LSL(OUTPUT_MODE, 2*2) + LSL(OUTPUT_MODE, 3*2),
+      {}, {}, LSL(PULL_UP, 13*2) + LSL(PULL_UP, 14*2) + LSL(PULL_UP, 15*2), {}, {});
+    SYSTEM.GET(SYSCFG_BASE + EXTI_CR1 + PB1Pin DIV 4*4, reg); (*push button 1 (PC14) generates interrupt at falldown*)
+    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1 + PB1Pin DIV 4*4, reg - {PB1Pin MOD 4*4..PB1Pin MOD 4*4+3} + LSL(SYSTEM.VAL(SET, 2), PB1Pin MOD 4*4)); 
+    (*EXTI 14 now connected to GPIOD*)
+    SYSTEM.GET(EXTI_BASE + FTSR, reg); SYSTEM.PUT(EXTI_BASE + FTSR, reg + {PB1Pin});
+    SYSTEM.GET(EXTI_BASE + EXTI_IMR, reg); SYSTEM.PUT(EXTI_BASE + EXTI_IMR, reg + {PB1Pin});
+    (*PD12 and 13 as LED 6 and 5*)
+    configureGPIO(GPIOD, maskD_1b, maskD_2b, {}, {}, LSL(OUTPUT_MODE, 12*2) + LSL(OUTPUT_MODE, 13*2), {}, {}, {}, {}, {});
+   (*PE6 as push button 3*)
+    configureGPIO(GPIOE, maskE_1b, maskE_2b, {}, {}, {}, {}, {}, LSL(PULL_UP, 6*2), {}, {});
+    (*PF6, 8 and 7 as push buttons 6, 7, 8*)
+    configureGPIO(GPIOF, maskF_1b, maskF_2b, {}, {}, LSL(OUTPUT_MODE, 9*2), {}, {}, LSL(PULL_UP, 6*2) + LSL(PULL_UP, 7*2) + LSL(PULL_UP, 8*2), {}, {});
+    (*PG2 as push button 5, PG3 as LED 7, PG13 and 14 as LD 3 and 4*)
+    configureGPIO(GPIOG, maskG_1b, maskG_2b, {}, {}, LSL(OUTPUT_MODE, 3*2) + LSL(OUTPUT_MODE, 13*2) + LSL(OUTPUT_MODE, 14*2), {}, {},
+      LSL(PULL_UP, 2*2), {}, {});
   END initGPIOs;
+
+  PROCEDURE InitPS2*;
+  BEGIN PS2_initGPIOs
+  END InitPS2;
 
   PROCEDURE InitCRC*;
     VAR res: BYTE;
@@ -520,7 +585,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   PROCEDURE InitDisplay*;
     VAR reg: SET;
       i: INTEGER; r, g, b: BYTE;
-  BEGIN (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
+  BEGIN Display_InitGPIOs;
+    (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
     SYSTEM.GET(RCC_BASE + PLLSAICFGR, reg);
     SYSTEM.PUT(RCC_BASE + PLLSAICFGR, reg - (PLLSAINm + PLLSAIRm) + SYSTEM.VAL(SET, LSL(160, 6) + LSL(2, 28))); (*PLLSAIN = 160, PLLSAIR = 2*)
     SYSTEM.GET(RCC_BASE + DCKCFGR, reg); SYSTEM.PUT(RCC_BASE + DCKCFGR, reg - PLLSAIDIVRm); (*PLLSADIVR = 2*)
@@ -559,7 +625,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
   PROCEDURE InitNRF24L01P*;
     VAR res: BYTE; isStarted: BOOLEAN;
-  BEGIN (*SPI3*) SYSTEM.PUT(spi3En, TRUE); (*enable SPI3 clock*) SYSTEM.GET(spi3En, res); (*delay*)
+  BEGIN NRF_initGPIOs; 
+    (*SPI3*) SYSTEM.PUT(spi3En, TRUE); (*enable SPI3 clock*) SYSTEM.GET(spi3En, res); (*delay*)
     SYSTEM.GET(spe3, isStarted); SYSTEM.PUT(spe3, FALSE); (*disable SPI3 peripheral*)
     SYSTEM.PUT(SPI3_BASE + SPI_CR1, MSTRm + SSIm + SSMm + BRPS_8); (*Master, software slave management, DIV 8 prescaler*)
     SYSTEM.PUT(SPI3_BASE + SPI_CR2, 0);
@@ -594,7 +661,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     CONST mantissa = PCLK2Freq*1000000 DIV (16*115200);
       fraction = (PCLK2Freq*1000000 - 16*115200*mantissa) DIV 115200;
     VAR res: BYTE; cr: SET;
-  BEGIN (*USART1*) SYSTEM.PUT(usart1En, TRUE); (*enable USART1 clock*) SYSTEM.GET(usart1En, res); (*delay*)
+  BEGIN UART_initGPIOs;
+    (*USART1*) SYSTEM.PUT(usart1En, TRUE); (*enable USART1 clock*) SYSTEM.GET(usart1En, res); (*delay*)
     SYSTEM.PUT(ue1, FALSE); (*disable UART*)
     SYSTEM.GET(UART_BASE + USART_CR2, cr); SYSTEM.PUT(UART_BASE + USART_CR2, cr - (STOPm + LINENm + CLKENm)); (*one stop bit*)
     SYSTEM.GET(UART_BASE + USART_CR1, cr);

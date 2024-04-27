@@ -477,7 +477,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     configureGPIO(BSP.GPIOD, maskD_1b, maskD_2b, maskD_4bl, {},
       LSL(BSP.AF_MODE, 2*2),
       LSL(BSP.HIGH_SPEED, 2*2),
-      {}, {},
+      {}, LSL(BSP.PULL_UP, BSP.WRITE_PROTECTPin*2) + LSL(BSP.PULL_UP, BSP.CARD_DETECTPin*2),
       LSL(SYSTEM.VAL(SET, 12), 2*4),
       {}); (*PD2 AF12 pp hs, PD4 and PD5 inputs pulled up*)
     configureGPIO(BSP.GPIOF, maskF_1b, maskF_2b, {}, {}, LSL(BSP.OUTPUT_MODE, BSP.LED1Pin*2), {}, {}, {}, {}, {}); (*PF9 output pp ls*)
@@ -508,7 +508,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     (*Initialize SDIO*)
     SYSTEM.PUT(BSP.SDIO_BASE + BSP.CLKCR, (BSP.WIDE_1B + SYSTEM.VAL(SET, BSP.INIT_CLK_DIV)));
     SYSTEM.PUT(BSP.SDIO_BASE + BSP.POWER, BSP.POWER_ON);
-    SYSTEM.PUT(BSP.sdioClkEn, 1); Delayus(2000); (*waiting time required before starting SD initialization*)
+    SYSTEM.PUT(BSP.sdioClkEn, 1); Delayus(4000); (*waiting time required before starting SD initialization*)
     (*Initialize the card*) 
     hsd.ErrorCode := SDPowerOn(hsd); (*identify card operating voltage*)
     IF hsd.ErrorCode = NONE THEN
@@ -747,8 +747,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
   END SDRAMInit;
 
 BEGIN SDRAMInit; MPUInit; LoadFromDisk;
-  SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg);
-  SYSTEM.PUT(BSP.LED7Out, TRUE)
+  SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg)
 END BootLoadM4.
 
 OM4Tool.DecObj BootLoadM4.m4c

@@ -18,8 +18,8 @@ System.ShowModules  System.ShowCommands ^
 PCLink1.Run
 Hilbert.Draw  Sierpinski.Draw  Blink.Run  Stars.Open
 
-Tools.Inspect 0D0201000H Tools.Inspect 400264A0H
-Tools.Sector 0 Tools.Sector 200000H
+Tools.Inspect 0D0201000H Tools.Inspect 0A0000140H
+Tools.Sector 0
 Tools.ShowFile 
 Tools.Recall  Tools.Clear
 

@@ -7,7 +7,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     off = 0; idle = 1; active = 2;   (*task states*)
     BasicCycle = 20;
     ESC = 1BX; SETSTAR = 1AX;
-    EXTI_PR = BSP.EXTI_BASE + BSP.EXTI_PR;
+    PR = BSP.EXTI_BASE + BSP.PR;
 
   TYPE Painter* = PROCEDURE (x, y: INTEGER);
     Marker* = RECORD Fade*, Draw*: Painter END;
@@ -396,9 +396,9 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE^3 ps2_1IrqHandler;
     VAR pr: SET;
-  BEGIN SYSTEM.GET(EXTI_PR, pr);
+  BEGIN SYSTEM.GET(PR, pr);
     IF ps2[0].clockPin IN pr THEN
-      pr := {ps2[0].clockPin}; SYSTEM.PUT(EXTI_PR, pr); (*clear pending IRQ*)
+      pr := {ps2[0].clockPin}; SYSTEM.PUT(PR, pr); (*clear pending IRQ*)
       PS2.ProcessData(ps2[0])
     END
   END ps2_1IrqHandler;
@@ -406,9 +406,9 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   PROCEDURE^3 ps2_2IrqHandler;
     VAR pr: SET;
   BEGIN
-    SYSTEM.GET(EXTI_PR, pr);
+    SYSTEM.GET(PR, pr);
     IF ps2[1].clockPin IN pr THEN
-      pr := {ps2[1].clockPin}; SYSTEM.PUT(EXTI_PR, pr); (*clear pending IRQ*)
+      pr := {ps2[1].clockPin}; SYSTEM.PUT(PR, pr); (*clear pending IRQ*)
       PS2.ProcessData(ps2[1])
     END
   END ps2_2IrqHandler;
@@ -444,13 +444,18 @@ BEGIN User[0] := 0X;
 
   ActCnt := 0; CurTask := NewTask(GC, 1000); Install(CurTask);
 
+  Modules.Load("System", Mod); Mod := NIL;
+
   (*Initialize PS/2 devices*)
+  Kernel.Install(SYSTEM.ADR(ps2_1IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK1ExtiIrqNum*4);
+  Kernel.Install(SYSTEM.ADR(ps2_2IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK2ExtiIrqNum*4);
+  BSP.InitPS2;
+
   ps2[0].connectedDevice := PS2.NO_DEVICE;
   ps2[0].clockPin := BSP.PS2CLOCK1Pin;
   ps2[0].clock_In := BSP.PS2CLOCK1In; ps2[0].clock_Out := BSP.PS2CLOCK1Out;
   ps2[0].data_In := BSP.PS2DATA1In; ps2[0].data_Out := BSP.PS2DATA1Out;
   ps2[0].keyboardLED := BSP.LD3Out; ps2[0].mouseLED := BSP.LD4Out;
-  Kernel.Install(SYSTEM.ADR(ps2_1IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK1ExtiIrqNum*4);
   PS2.InitDevice(ps2[0]);
 
   ps2[1].connectedDevice := PS2.NO_DEVICE;
@@ -458,8 +463,7 @@ BEGIN User[0] := 0X;
   ps2[1].clock_In := BSP.PS2CLOCK2In; ps2[1].clock_Out := BSP.PS2CLOCK2Out;
   ps2[1].data_In := BSP.PS2DATA2In; ps2[1].data_Out := BSP.PS2DATA2Out;
   ps2[1].keyboardLED := BSP.LD3Out; ps2[1].mouseLED := BSP.LD4Out;
-  Kernel.Install(SYSTEM.ADR(ps2_2IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK2ExtiIrqNum*4);
   PS2.InitDevice(ps2[1]);
 
-  Modules.Load("System", Mod); Mod := NIL; Loop
+  Loop
 END Oberon.
