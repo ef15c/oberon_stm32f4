@@ -1,0 +1,19 @@
+Oberon STM32F429I-DISCO station release 3
+-----------------------------------------
+28/04/2024
+
+Installation
+------------
+
+Install firmware stm429_oberon_station.hex on the STM32F429I-DISCO board.
+See STMicroelectronics documentation to know how to do that.
+
+Copy the oberon filesystem on the SD Card. Under Linux, execute:
+sudo dd if=rel3_oberon_stm32.partition of=/dev/<your sd card> bs=1024 seek=262145 status=progress
+
+Install the SD card in the base board branch the keyboard, the mouse and the VGA monitor.
+Finally, power up the STM32F429I-DISCO board.
+
+Enjoy Oberon!
+
+Christian Schoffit

@@ -572,6 +572,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1 + PB1Pin DIV 4*4, reg - {PB1Pin MOD 4*4..PB1Pin MOD 4*4+3} + LSL(SYSTEM.VAL(SET, 2), PB1Pin MOD 4*4)); 
     (*EXTI 14 now connected to GPIOD*)
     SYSTEM.GET(EXTI_BASE + FTSR, reg); SYSTEM.PUT(EXTI_BASE + FTSR, reg + {PB1Pin});
+    SYSTEM.GET(EXTI_BASE + RTSR, reg); SYSTEM.PUT(EXTI_BASE + RTSR, reg + {PB1Pin}); (*rising and falling edge detection*)
     SYSTEM.GET(EXTI_BASE + EXTI_IMR, reg); SYSTEM.PUT(EXTI_BASE + EXTI_IMR, reg + {PB1Pin});
     (*PD12 and 13 as LED 6 and 5*)
     configureGPIO(GPIOD, maskD_1b, maskD_2b, {}, {}, LSL(OUTPUT_MODE, 12*2) + LSL(OUTPUT_MODE, 13*2), {}, {}, {}, {}, {});

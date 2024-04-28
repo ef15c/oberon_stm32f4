@@ -447,11 +447,11 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     VAR icsr, pr: SET;
   BEGIN SYSTEM.GET(PR, pr);
     IF BSP.PB1Pin IN pr THEN
-      cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
       pr := {BSP.PB1Pin}; SYSTEM.PUT(PR, pr); (* Clear pending IRQ*)
-      IF Kernel.Time() - DebounceTime < 30 THEN INC(DebounceTime, 30)
+      IF (Kernel.Time() - DebounceTime < 60) OR SYSTEM.BIT(BSP.PB1Port + BSP.IDR, BSP.PB1Pin) THEN DebounceTime := Kernel.Time() + 60
       ELSE
         DebounceTime := Kernel.Time();
+        cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
         (*Trigger abort by requesting a PendSV interrupt*)
         SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3) (*ISB*)
       END
