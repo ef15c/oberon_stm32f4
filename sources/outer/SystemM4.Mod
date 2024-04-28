@@ -508,12 +508,20 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END
   END PendSVHandler;
 
+  PROCEDURE installAbortHandler;
+    VAR reg: SET; irqNum: INTEGER;
+  BEGIN Kernel.Install(SYSTEM.ADR(AbortHandler), BSP.VecTabBase+BSP.PB1ExtiIrqNum*4);
+    irqNum := BSP.PB1ExtiIrqNum - 16;
+    SYSTEM.GET(BSP.NVIC_ISER + irqNum DIV 32*4, reg);
+    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, reg + {irqNum MOD 32})
+  END installAbortHandler;
+
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
   DebounceTime := Kernel.Time();
   Kernel.Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);
   Kernel.Install(SYSTEM.ADR(BusFaultHandler), BSP.VecTabBase+BSP.BusFaultExcNum*4);
-  Kernel.Install(SYSTEM.ADR(AbortHandler), BSP.VecTabBase+BSP.PB1ExtiIrqNum*4);
+  installAbortHandler;
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
 END System.

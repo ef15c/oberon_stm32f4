@@ -6,6 +6,10 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     (*DWT*)
      DWTBase* = 0E0001000H;  CYCCNT* = 4;
 
+     (*SCS_NVIC*)
+     NVIC_ISER* = 0E000E100H; NVIC_ICER* = NVIC_ISER + 80H; NVIC_ISPR* = NVIC_ISER + 100H; NVIC_ICPR* = NVIC_ISER + 180H;
+     NVIC_IABR* = NVIC_ISER + 200H; NVIC_IPR* = NVIC_ISER + 300H;  
+
     (*SCB*)
     SCB_BASE* =  0E000ED00H;
     ICSR* = 4; CFSR* = 28H; BFAR* = 38H;
@@ -320,6 +324,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     LED7Out* = PeriphBBAlias + (LED7Port + ODR - PeriphBase + LED7Pin DIV 8)*32 + LED7Pin MOD 8*4;
 
     (*discovery board push button*)
+    B1Pin* = 0; B1Port* = GPIOA;
+    (*discovery board LEDs*)
     LD3Pin* = 13; LD3Port* = GPIOG;
     LD3Out* = PeriphBBAlias + (LD3Port + ODR - PeriphBase + LD3Pin DIV 8)*32 + LD3Pin MOD 8*4;
     LD4Pin* = 14; LD4Port* = GPIOG;
@@ -554,6 +560,11 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*PA0 as blue push button, PA5 and 7 as LEDs 3 and 4*)
     configureGPIO(GPIOA, maskA_1b, maskA_2b, {}, {}, LSL(OUTPUT_MODE, 5*2) + LSL(OUTPUT_MODE, 7*2), {}, {}, {}, {}, {});
+    SYSTEM.GET(SYSCFG_BASE + EXTI_CR1 + B1Pin DIV 4*4, reg); (*blue push button (PA0) generates event at rising*)
+    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1 + B1Pin DIV 4*4, reg - {B1Pin MOD 4*4..B1Pin MOD 4*4+3} + LSL(SYSTEM.VAL(SET, 0), B1Pin MOD 4*4)); 
+    (*EXTI 0 now connected to GPIOA*)
+    SYSTEM.GET(EXTI_BASE + RTSR, reg); SYSTEM.PUT(EXTI_BASE + RTSR, reg + {B1Pin});
+    SYSTEM.GET(EXTI_BASE + EMR, reg); SYSTEM.PUT(EXTI_BASE + EMR, reg + {B1Pin});
     (*PC14, 15 and 13 as push buttons 1, 2 and 4*)
     configureGPIO(GPIOC, maskC_1b, maskE_2b, {}, {}, LSL(OUTPUT_MODE, 1*2) + LSL(OUTPUT_MODE, 2*2) + LSL(OUTPUT_MODE, 3*2),
       {}, {}, LSL(PULL_UP, 13*2) + LSL(PULL_UP, 14*2) + LSL(PULL_UP, 15*2), {}, {});
@@ -625,7 +636,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
   PROCEDURE InitNRF24L01P*;
     VAR res: BYTE; isStarted: BOOLEAN;
-  BEGIN NRF_initGPIOs; 
+  BEGIN
     (*SPI3*) SYSTEM.PUT(spi3En, TRUE); (*enable SPI3 clock*) SYSTEM.GET(spi3En, res); (*delay*)
     SYSTEM.GET(spe3, isStarted); SYSTEM.PUT(spe3, FALSE); (*disable SPI3 peripheral*)
     SYSTEM.PUT(SPI3_BASE + SPI_CR1, MSTRm + SSIm + SSMm + BRPS_8); (*Master, software slave management, DIV 8 prescaler*)

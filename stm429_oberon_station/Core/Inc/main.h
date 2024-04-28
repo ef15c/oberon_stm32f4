@@ -69,12 +69,10 @@ void Counter(void) __attribute__ ((noreturn));
 /* Private defines -----------------------------------------------------------*/
 #define PS2_CLOCK_1_Pin GPIO_PIN_2
 #define PS2_CLOCK_1_GPIO_Port GPIOE
-#define PS2_CLOCK_1_EXTI_IRQn EXTI2_IRQn
 #define PS2_DATA_1_Pin GPIO_PIN_3
 #define PS2_DATA_1_GPIO_Port GPIOE
 #define PS2_CLOCK_2_Pin GPIO_PIN_4
 #define PS2_CLOCK_2_GPIO_Port GPIOE
-#define PS2_CLOCK_2_EXTI_IRQn EXTI4_IRQn
 #define PS2_DATA_2_Pin GPIO_PIN_5
 #define PS2_DATA_2_GPIO_Port GPIOE
 #define PB3_Pin GPIO_PIN_6
@@ -83,7 +81,6 @@ void Counter(void) __attribute__ ((noreturn));
 #define PB4_GPIO_Port GPIOC
 #define PB1_Pin GPIO_PIN_14
 #define PB1_GPIO_Port GPIOC
-#define PB1_EXTI_IRQn EXTI15_10_IRQn
 #define PB2_Pin GPIO_PIN_15
 #define PB2_GPIO_Port GPIOC
 #define A0_Pin GPIO_PIN_0

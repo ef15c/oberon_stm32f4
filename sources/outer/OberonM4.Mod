@@ -432,6 +432,22 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     RETURN res
   END WaitForAnswer;
 
+  PROCEDURE installPS2IrqHandlers;
+    VAR reg: SET; irqNum: INTEGER;
+  BEGIN BSP.InitPS2;
+    Kernel.Install(SYSTEM.ADR(ps2_1IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK1ExtiIrqNum*4);
+    Kernel.Install(SYSTEM.ADR(ps2_2IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK2ExtiIrqNum*4);
+
+    irqNum := BSP.PS2CLOCK1ExtiIrqNum - 16;
+    SYSTEM.GET(BSP.NVIC_ISER + irqNum DIV 32*4, reg);
+    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, reg + {irqNum MOD 32});
+
+    irqNum := BSP.PS2CLOCK2ExtiIrqNum - 16;
+    SYSTEM.GET(BSP.NVIC_ISER + irqNum DIV 32*4, reg);
+    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, reg + {irqNum MOD 32})
+
+  END installPS2IrqHandlers;
+
 BEGIN User[0] := 0X;
   Arrow.Fade := FlipArrow; Arrow.Draw := FlipArrow;
   Star.Fade := FlipStar; Star.Draw := FlipStar;
@@ -447,9 +463,7 @@ BEGIN User[0] := 0X;
   Modules.Load("System", Mod); Mod := NIL;
 
   (*Initialize PS/2 devices*)
-  Kernel.Install(SYSTEM.ADR(ps2_1IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK1ExtiIrqNum*4);
-  Kernel.Install(SYSTEM.ADR(ps2_2IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK2ExtiIrqNum*4);
-  BSP.InitPS2;
+  installPS2IrqHandlers;
 
   ps2[0].connectedDevice := PS2.NO_DEVICE;
   ps2[0].clockPin := BSP.PS2CLOCK1Pin;
