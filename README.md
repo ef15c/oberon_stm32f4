@@ -1,14 +1,11 @@
 # oberon_stm32f4
-Portage of Oberon system to stm32f429i-disco board
+Portage of Oberon system to stm32f429i-disco board<br><br>
+<b>Version 3 released!</b><br>
+256 colors are now available on screen.<br><br>
+USART, LTDC, SDIO, MPU, FMC/SDRAM and GPIO drivers ported from C to Oberon.<br>
+![OberonRunningR3](https://github.com/ef15c/oberon_stm32f4/assets/8286839/32ec5160-54e4-4188-9445-5ce0f7f4f413)
 
-<b>Version 2 released!</b><br>
 ![OberonRunningR2](https://github.com/ef15c/oberon_stm32f4/assets/8286839/87f5d58e-1d84-4705-a15d-ad8de9eb8cd8)
-
-Improved SD card write reliability<br>
-Improved VGA signals<br>
-Improved keyboard support<br>
-PS/2, RTC, nRF24L01+ (CRC + SPI) drivers ported from C to Oberon<br>
-Minor bugs correction<br>
 
 <b>Changes in oberon 07 compiler:</b>
 
