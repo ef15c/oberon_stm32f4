@@ -4,18 +4,27 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   CONST  MASK2* = {0..1}; MASK4* = {0..3};
     (*Cortex M4*)
     (*DWT*)
-     DWTBase* = 0E0001000H;  CYCCNT* = 4;
+     DWTBase* = 0E0001000H;  DWT_CTRL* = 0; CYCCNT* = 4;
+      CYCCNTENA* = 0;
 
-     (*SCS_NVIC*)
-     NVIC_ISER* = 0E000E100H; NVIC_ICER* = NVIC_ISER + 80H; NVIC_ISPR* = NVIC_ISER + 100H; NVIC_ICPR* = NVIC_ISER + 180H;
-     NVIC_IABR* = NVIC_ISER + 200H; NVIC_IPR* = NVIC_ISER + 300H;  
+    (*SCS_NVIC*)
+    NVIC_ISER* = 0E000E100H; NVIC_ICER* = NVIC_ISER + 80H; NVIC_ISPR* = NVIC_ISER + 100H; NVIC_ICPR* = NVIC_ISER + 180H;
+    NVIC_IABR* = NVIC_ISER + 200H; NVIC_IPR* = NVIC_ISER + 300H;  
+
+    (*SCS_SysTick*)
+    SYST_CSR* = 0E000E010H;
+      COUNTFLAG* = 16; CLKSOURCE* = 2; TICKINT*= 1; SYST_ENABLE* = 0;
+    SYST_RVR* = SYST_CSR + 4; SYST_CVR* = SYST_CSR + 8; SYST_CALIB* = SYST_CSR + 0CH;
+      NOREF* = 31; SKEW* = 30; TENMSm* = {0..23};
 
     (*SCB*)
     SCB_BASE* =  0E000ED00H;
     ICSR* = 4; CFSR* = 28H; BFAR* = 38H;
-    PENDSVSET* = 28;
-    UFSR_Mask* = {16..31}; BFSR_Mask* = {8..15};
-    NOCP* = 19; INVSTATE* = 17; PRECISERR* = 9; STKERR* = 12;
+      PENDSVSET* = 28;
+      UFSR_Mask* = {16..31}; BFSR_Mask* = {8..15};
+      NOCP* = 19; INVSTATE* = 17; PRECISERR* = 9; STKERR* = 12;
+    DEMCR* = 0FCH;
+      TRCENA* = 24;
 
     SHCSR* = 24H; USGFAULTENA* = 18; BUSFAULTENA* = 17; MEMFAULTENA* = 16; SVCALLPENDED* = 15;
       BUSFAULTPENDED* = 14; MEMFAULTPENDED* = 13; USGFAULTPENDED* = 12; SYSTICKACT* = 11; PENDSVACT* = 10;
@@ -113,6 +122,11 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     (*EXTI*)
     EXTI_BASE* = 40013C00H; EXTI_IMR* = 0; EMR* = 4; RTSR* = 8; FTSR* = 0CH; SWIER* = 10H; PR* = 14H;
 
+    (*FLASH*)
+    FLASH_BASE* = 40023C00H;
+    ACR* = 0;
+      DCRST* = 12; ICRST* = 11; DCEN* = 10; ICEN* = 9; PRFTEN* = 8; LATENCYm* = {0..3};
+
     (*LTDC*)
     LTDC_BASE* = 40016800H; 
     SSCR* = 8; HSWm* = {16..27}; VSHm* = {0..10};
@@ -145,7 +159,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     L0CFBAR* = 0ACH;
     L0CFBLR* = 0B0H; CFBPm* = {16..28}; CFBLLm* = {0..12};
     L0CFBLNR* = 0B4H; CFBLNRm* = {0..10};
-    L0CLUTWR* = 0C4H; CLUTADDm* = {24..31}; REDm* = {16..23}; GREEMm* = {8..15}; BLUE%* = {0..7};
+    L0CLUTWR* = 0C4H; CLUTADDm* = {24..31}; REDm* = {16..23}; GREEMm* = {8..15}; BLUEm* = {0..7};
 
     (*PWR*)
     PWR_BASE* = 40007000H;
@@ -153,13 +167,27 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     dbp* = PeriphBBAlias + (PWR_BASE + PWR_CR - PeriphBase + DBP DIV 8)*32 + DBP MOD 8*4;
 
     (*RCC*)
-    HCLCFreq* = 168; PCLK1Freq* = 42; PCLK2Freq* = 84;(*MHz*)
+    HCLKFreq* = 168; PCLK1Freq* = 42; PCLK2Freq* = 84;(*MHz*)
 
     RCC_BASE* = 40023800H;
-    RCC_CR* = 0; PLLSAIRDY* = 29; PLLSAION* = 28;
+    RCC_CR* = 0;
+      PLLSAIRDY* = 29; PLLSAION* = 28; PLLI2SRDY* = 27; PLLI2SON* = 26; PLLRDY* = 25; PLLON* = 24; CSSON* = 19;
+      HSEBYP* = 18; HSERDY* = 17; HSEON* = 16; HSICAL* = 8; HSITRIM* = 3; HSIRDY* = 1; HSION* = 0;
+      HSICALm* = {HSICAL..HSICAL+7}; HSITRIMm* = {HSITRIM..HSITRIM+4};
     pllsaiEn* = PeriphBBAlias + (RCC_BASE + RCC_CR - PeriphBase + PLLSAION DIV 8)*32 + PLLSAION MOD 8*4;
+    hseOn* = PeriphBBAlias + (RCC_BASE + RCC_CR - PeriphBase + HSEON DIV 8)*32 + HSEON MOD 8*4;
+    pllOn* = PeriphBBAlias + (RCC_BASE + RCC_CR - PeriphBase + PLLON DIV 8)*32 + PLLON MOD 8*4;
 
-    CFGR* = 8; RTCPRE* = {16..20}; (*clock configuration register*)
+    PLLCFGR* = 4;
+      PLLQ* = 24; PLLSCR* = 22; PLLP* = 16; PLLN* = 6; PLLM* = 0;
+      PLLQm* = {PLLQ..PLLQ+3}; (*0, 1: wrong configuration*) PLLPm* = {PLLP..PLLP+1}; (*PLLP in {2, 4, 6, 8}, field encoded as PLLP DIV 2-1*)
+      PLLNm* = {PLLN..PLLN+8}; (*PLLN in {50..432}*) PLLMM* = {PLLM..PLLM+5}; (*PLLM in {2..63}*)
+
+    CFGR* = 8; (*clock configuration register*)
+      PPRE2* = 13; PPRE1* = 10; HPRE* = 4;
+      MCO2m* = {30..31}; MCO2PREm* = {23..29}; MCO1PREm* = {24..26}; I2SSRC* = 23; MCO1m* = {21..22};
+      RTCPREm* = {16..20}; PPRE2m* = {PPRE2..PPRE2+2}; PPRE1m* = {PPRE1..PPRE1+2}; HPREm* = {HPRE..HPRE+3}; SWSm* = {2..3}; SWm* = {0..1};
+      HCLK_DIV1* = {}; HCLK_DIV2* = {2}; HCLK_DIV4* = {2, 0}; HCLK_DIV8* = {2, 1};HCLK_DIV16* = {2, 1, 0}; 
 
     AHB1ENR* = 30H; CRCEN* = 12; GPIOAEN* = 0; GPIOBEN* = 1; GPIOCEN* = 2; GPIODEN* = 3; GPIOEEN* = 4; GPIOFEN* = 5;
       GPIOGEN* = 6; GPIOHEN* = 7; GPIOIEN* = 8; GPIOJEN* = 9; GPIOKEN* = 10; DMA1EN* = 21; DMA2EN* = 22;
@@ -382,7 +410,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   PROCEDURE Delayus*(d: INTEGER);
     VAR beg, now: INTEGER;
   BEGIN SYSTEM.GET(DWTBase + CYCCNT, beg);
-    REPEAT SYSTEM.GET(DWTBase + CYCCNT, now) UNTIL now - beg >= HCLCFreq*d
+    REPEAT SYSTEM.GET(DWTBase + CYCCNT, now) UNTIL now - beg >= HCLKFreq*d
   END  Delayus;
 
 
@@ -656,7 +684,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       SYSTEM.PUT(bdRst, TRUE); SYSTEM.PUT(bdRst, FALSE)
     END;
     SYSTEM.PUT(RCC_BASE + BDCR, bdcr - {0..2} + RTCSEL); (*select HSE oscillator  divided by prescaler as RTC clock source*)
-    SYSTEM.GET(RCC_BASE + CFGR, cfgr); SYSTEM.PUT(RCC_BASE + CFGR, ORD(cfgr - RTCPRE) + LSL(16, 16)); (*sets RTC division factor to 16*)
+    SYSTEM.GET(RCC_BASE + CFGR, cfgr); SYSTEM.PUT(RCC_BASE + CFGR, ORD(cfgr - RTCPREm) + LSL(16, 16)); (*sets RTC division factor to 16*)
     SYSTEM.PUT(rtcEn, TRUE); (*enable RTC clock*)
 
     SYSTEM.PUT(RTC_BASE + WPR, 0CAH); SYSTEM.PUT(RTC_BASE + WPR, 53H); (*disable write protection on RTC registers*)

@@ -75,22 +75,7 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
   /* USER CODE BEGIN Init */
   /* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
-
   /* USER CODE BEGIN SysInit */
-
-  /* Enable microseconds delay via DWT */
-  /* Disable TRC */
-  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
-  /* Enable TRC */
-  CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
-  /* Disable clock cycle counter */
-  DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
-  /* Reset the clock cycle counter value */
-  DWT->CYCCNT = 0;
-  /* Enable  clock cycle counter */
-  DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
 
   /* USER CODE END SysInit */
 
@@ -106,6 +91,7 @@ SCnSCB->ACTLR |= SCnSCB_ACTLR_DISMCYCINT_Msk;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+#if 0
   /* USER CODE END 3 */
 }
 
@@ -155,7 +141,8 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+#endif
+}
 /* USER CODE END 4 */
 
 /**

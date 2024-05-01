@@ -114,7 +114,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
   PROCEDURE Delayus*(d: INTEGER);
     VAR beg, now: INTEGER;
   BEGIN SYSTEM.GET(BSP.DWTBase + BSP.CYCCNT, beg);
-    REPEAT SYSTEM.GET(BSP.DWTBase + BSP.CYCCNT, now) UNTIL now - beg >= BSP.HCLCFreq*d
+    REPEAT SYSTEM.GET(BSP.DWTBase + BSP.CYCCNT, now) UNTIL now - beg >= BSP.HCLKFreq*d
   END  Delayus;
 
   PROCEDURE reverseBytes(d: INTEGER): INTEGER;
@@ -508,7 +508,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     (*Initialize SDIO*)
     SYSTEM.PUT(BSP.SDIO_BASE + BSP.CLKCR, (BSP.WIDE_1B + SYSTEM.VAL(SET, BSP.INIT_CLK_DIV)));
     SYSTEM.PUT(BSP.SDIO_BASE + BSP.POWER, BSP.POWER_ON);
-    SYSTEM.PUT(BSP.sdioClkEn, 1); Delayus(4000); (*waiting time required before starting SD initialization*)
+    SYSTEM.PUT(BSP.sdioClkEn, 1); Delayus(2000); (*waiting time required before starting SD initialization*)
     (*Initialize the card*) 
     hsd.ErrorCode := SDPowerOn(hsd); (*identify card operating voltage*)
     IF hsd.ErrorCode = NONE THEN
@@ -746,7 +746,45 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     SYSTEM.PUT(BSP.FMC_Bank5_6_R_Base + BSP.SDRTR, LSL(1292, BSP.COUNT)); (*step 6 set refresh rate counter to 1292*)
   END SDRAMInit;
 
-BEGIN SDRAMInit; MPUInit; LoadFromDisk;
+  PROCEDURE CYCNTInit;
+    VAR reg: SET;
+  BEGIN (*enable micriseconds delay via DWT*)
+    SYSTEM.GET(BSP.SCB_BASE + BSP.DEMCR, reg); SYSTEM.PUT(BSP.SCB_BASE + BSP.DEMCR, reg - {BSP.TRCENA}); (*disable TRC*)
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.DEMCR, reg + {BSP.TRCENA}); (*enable TRC*)
+    SYSTEM.GET(BSP.DWTBase + BSP.DWT_CTRL, reg); SYSTEM.PUT(BSP.DWTBase + BSP.DWT_CTRL, reg - {BSP.CYCCNTENA}); (*disable clock cycle counter*)
+    SYSTEM.PUT(BSP.DWTBase + BSP.CYCCNT, 0); (*reset clock cycle counter*)
+    SYSTEM.PUT(BSP.DWTBase + BSP.DWT_CTRL, reg + {BSP.CYCCNTENA}); (*enable clock cycle counter*)
+  END CYCNTInit;
+
+  PROCEDURE SystemClockInit;
+    VAR reg: SET;
+  BEGIN SYSTEM.PUT(BSP.pwrEn, TRUE); SYSTEM.PUT(BSP.hseOn, TRUE);
+    REPEAT UNTIL SYSTEM.BIT(BSP.RCC_BASE + BSP.RCC_CR, BSP.HSERDY); (*wait until HSE is ready*)
+    SYSTEM.PUT(BSP.pllOn, FALSE); (*disable main PLL*)
+    REPEAT UNTIL ~SYSTEM.BIT(BSP.RCC_BASE + BSP.RCC_CR, BSP.PLLRDY); (*wait until PLL is stopped*)
+    (*source HSE, PLLQ = 7, PLLP = 2, PLLN = 168, PLLM = 4*)
+    SYSTEM.PUT(BSP.RCC_BASE + BSP.PLLCFGR, LSL(SYSTEM.VAL(SET, 7), BSP.PLLQ) + {BSP.PLLSCR} + LSL(SYSTEM.VAL(SET, 2 DIV 2 - 1), BSP.PLLP) +
+      LSL(SYSTEM.VAL(SET, 168), BSP.PLLN) + LSL(SYSTEM.VAL(SET, 4), BSP.PLLM));
+    SYSTEM.PUT(BSP.pllOn, TRUE); (*disable main PLL*)
+    REPEAT UNTIL SYSTEM.BIT(BSP.RCC_BASE + BSP.RCC_CR, BSP.PLLRDY); (*wait until PLL is ready*)
+
+    SYSTEM.GET(BSP.FLASH_BASE + BSP.ACR, reg);
+    IF ORD(reg*BSP.LATENCYm) < 5 THEN (*latency must be greater or equal than 5 according to 168MHz CPU clock*)
+      SYSTEM.PUT(BSP.FLASH_BASE + BSP.ACR, 5X); (*byte access to LSB of ACR register*)
+      REPEAT SYSTEM.GET(BSP.FLASH_BASE + BSP.ACR, reg) UNTIL ORD(reg*BSP.LATENCYm) = 5
+    END;
+    (*set the highest APBx dividers to ensure that we did not go through a non-spec phase when we increase HCLK,
+       set HPRE = 1 and SW = PLL*)
+    SYSTEM.GET(BSP.RCC_BASE + BSP.CFGR, reg);
+    SYSTEM.PUT(BSP.RCC_BASE + BSP.CFGR, reg - (BSP.PPRE1m + BSP.PPRE2m + BSP.HPREm + BSP.SWm) +
+      (LSL(BSP.HCLK_DIV16, BSP.PPRE1) + LSL(BSP.HCLK_DIV16, BSP.PPRE2) + {1}));
+    REPEAT SYSTEM.GET(BSP.RCC_BASE + BSP.CFGR, reg) UNTIL (reg*BSP.SWSm) = {3}; (*wait until system clock is ready*)
+    (*set target dividers for APB1 and APN2*)
+    SYSTEM.PUT(BSP.RCC_BASE + BSP.CFGR, reg - (BSP.PPRE1m + BSP.PPRE2m) + (LSL(BSP.HCLK_DIV4, BSP.PPRE1) + LSL(BSP.HCLK_DIV2, BSP.PPRE2)));
+    SYSTEM.PUT(BSP.SYST_RVR, BSP.HCLKFreq*1000 - 1);
+  END SystemClockInit;
+
+BEGIN SystemClockInit; CYCNTInit; SDRAMInit; MPUInit; LoadFromDisk;
   SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg)
 END BootLoadM4.
 
