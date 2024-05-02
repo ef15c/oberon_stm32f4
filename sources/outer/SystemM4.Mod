@@ -518,6 +518,13 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, reg + {irqNum MOD 32})
   END installAbortHandler;
 
+  PROCEDURE activateHandlers;
+    VAR reg: SET;
+  BEGIN
+    SYSTEM.GET(BSP.SCB_BASE + BSP.SHCSR, reg); (*enable usage fault and bus fault exceptions*)
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHCSR, reg + {BSP.USGFAULTENA, BSP.BUSFAULTENA});
+  END activateHandlers;
+
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
   DebounceTime := Kernel.Time();
@@ -526,4 +533,5 @@ BEGIN Texts.OpenWriter(W);
   installAbortHandler;
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
+  activateHandlers;
 END System.

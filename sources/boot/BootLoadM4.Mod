@@ -781,10 +781,25 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
     REPEAT SYSTEM.GET(BSP.RCC_BASE + BSP.CFGR, reg) UNTIL (reg*BSP.SWSm) = {3}; (*wait until system clock is ready*)
     (*set target dividers for APB1 and APN2*)
     SYSTEM.PUT(BSP.RCC_BASE + BSP.CFGR, reg - (BSP.PPRE1m + BSP.PPRE2m) + (LSL(BSP.HCLK_DIV4, BSP.PPRE1) + LSL(BSP.HCLK_DIV2, BSP.PPRE2)));
-    SYSTEM.PUT(BSP.SYST_RVR, BSP.HCLKFreq*1000 - 1);
+    SYSTEM.PUT(BSP.SYST_RVR, BSP.HCLKFreq*1000 - 1)
   END SystemClockInit;
 
-BEGIN SystemClockInit; CYCNTInit; SDRAMInit; MPUInit; LoadFromDisk;
+  PROCEDURE SystemInit;
+    VAR reg: SET;
+  BEGIN SYSTEM.PUT(BSP.ACTLR, {BSP.DISMCYCINT}); (*disable interrupt on multi_cycle instructions, as a workaround for 2.3.15 SDRAM silicon bug*)
+    (*enable instruction cache, data cache and instruction prefetch*)
+    SYSTEM.GET(BSP.FLASH_BASE + BSP.ACR, reg); SYSTEM.PUT(BSP.FLASH_BASE + BSP.ACR, reg + {BSP.ICEN, BSP.DCEN, BSP.PRFTEN});
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.AIRCR, LSL(5FAH, 16) + LSL(3, 8)); (*4 bits for group priority field*)
+    (*set Systick interrupt priority to 10*)
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.SysTickExcNum - 4), CHR(LSL(10, 4)));
+    SYSTEM.PUT(BSP.syscfgEn, TRUE); SYSTEM.PUT(BSP.pwrEn, TRUE);
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.BusFaultExcNum - 4), CHR(LSL(1, 4)));
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.UsageFaultExcNum - 4), CHR(LSL(1, 4)));
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.SVCallExcNum - 4), CHR(LSL(15, 4)));
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.PendSVExcNum - 4), CHR(LSL(15, 4)))
+  END SystemInit;
+
+BEGIN SystemInit; SystemClockInit; CYCNTInit; SDRAMInit; MPUInit; LoadFromDisk;
   SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg)
 END BootLoadM4.
 

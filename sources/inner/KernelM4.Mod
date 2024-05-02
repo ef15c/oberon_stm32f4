@@ -272,6 +272,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN BSP.Init; BSP.InitRTC; SDCard.Init;
     Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);  (*install temporary trap*)
     Install(SYSTEM.ADR(IncTick), BSP.VecTabBase+BSP.SysTickExcNum*4);
+    SYSTEM.PUT(BSP.SYST_CVR, 0); SYSTEM.PUT(BSP.SYST_CSR, {BSP.CLKSOURCE, BSP.TICKINT, BSP.SYST_ENABLE});
     (*tail chain old SVC handler*)
     SYSTEM.GET(BSP.VecTabBase+BSP.SVCallExcNum*4, currentSVCHandlerAddr);
     SYSTEM.PUT(SYSTEM.ADR(OldSVCallHandler), currentSVCHandlerAddr + 14); (*Skip stack determination code*)

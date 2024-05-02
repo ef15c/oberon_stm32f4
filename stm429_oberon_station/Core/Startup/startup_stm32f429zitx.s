@@ -112,8 +112,7 @@ LoopFillZerobss:
   isb
 
 /* Call the application's entry point.*/
-  bl  main
-  bx  lr
+  b  BootLoadM4
 
    .thumb_func
 CopyDataInit:
