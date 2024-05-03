@@ -6,7 +6,7 @@ OM4X.WriteFile BootLoadM4.m4c BootLoadM4.hex 0F000000H ~
 
 MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC disk only*)
   IMPORT SYSTEM, BSP;
-  CONST SP = 13; LR = 14; PC = 15; (*dedicated registers*)
+  CONST SP = 13; LR = 14; PC = 15; (*dedicated registers*) PSP = 16+9; CONTROL = 16+20; (*special registers*)
     VarORG0 = 0D0201000H; MemLim = 0D0800000H; stackOrg = 10010000H;
     SDHandleDescAddr = 200001ACH;
 
@@ -802,7 +802,8 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
 
 BEGIN SystemInit; SystemClockInit; CYCNTInit; SDRAMInit; MPUInit; LoadFromDisk;
   SYSTEM.PUT(VarORG0+4, SDHandleDescAddr); (*store hsd address for SDCard module*)
-  SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg)
+  SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg);
+  SYSTEM.LDREG(PSP, stackOrg); (*initialize process stack*) SYSTEM.LDREG(CONTROL, 2); (*switch to process stack in thread mode*); SYSTEM.MBI(3); (*ISB*)
 END BootLoadM4.
 
 OM4Tool.DecObj BootLoadM4.m4c

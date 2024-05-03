@@ -1,6 +1,7 @@
 Commands for generation of the bootloader
 OM4P.Compile BootLoadM4.Mod ~
 OM4X.WriteASM BootLoadM4.m4c BootLoadM4.s ~
+OM4X.WriteFile BootLoadM4.m4c BootLoadM4.hex 08000000H 1ACH 20030000H ~
 
 Commands for generation of the boot file (inner core)
 OM4P.Compile BSP.Mod/s SDCard.Mod/s KernelM4.Mod/s FileDir.Mod/s Files.Mod/s ModulesM4.Mod/s ~ 
@@ -30,4 +31,3 @@ Command for generating programs
 OM4P.Compile Hilbert.Mod/s Sierpinski.Mod/s Blink.Mod/s Stars.Mod/s ~
 
 OM4Tool.DecBin Modules.bin ~
-System.Directory *.m4c ~ System.Directory *.sm4 ~

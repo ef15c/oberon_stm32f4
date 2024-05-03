@@ -1,5 +1,5 @@
 MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
-  IMPORT Files, Texts, Oberon;
+  IMPORT Display, Files, Texts, Oberon;
   CONST CR = 0DX; noerr = 0; badfile = 4;  (*copied from Modules for use as cross development tool*)
     fixup = 1;
   TYPE record = RECORD
@@ -68,7 +68,18 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     a[0] := ad DIV 100H MOD 100H;
     a[1] := ad MOD 100H
   END SetAddress;
-  
+
+  PROCEDURE IntToByteArray(i: INTEGER; VAR ba: ARRAY OF BYTE; pos: INTEGER; le: BOOLEAN);
+  BEGIN
+    IF le THEN
+      ba[pos+3] := i DIV 1000000H MOD 100H; ba[pos+2] := i DIV 10000H MOD 100H;
+      ba[pos+1] := i DIV 100H MOD 100H; ba[pos] := i MOD 100H
+    ELSE
+      ba[pos] := i DIV 1000000H MOD 100H; ba[pos+1] := i DIV 10000H MOD 100H;
+      ba[pos+2] := i DIV 100H MOD 100H; ba[pos+3] := i MOD 100H
+    END
+  END IntToByteArray;
+
   PROCEDURE OutCode(VAR R, R1: Files.Rider; write: Writer; loadaddress: INTEGER; VAR codelen, entry, res: INTEGER);
     VAR n, data: INTEGER; ch: CHAR; b: BYTE;               (*codelen in bytes, entry in bytes*)
       F!: Files.File;
@@ -113,9 +124,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     Files.ReadInt(R, entry);
     (*write start linear address record (MDK-ARM only)*)
     la := loadaddress + entry + 1; (*Odd value means thumb mode*)
-    r.t := 5; r.a[0] := 0; r.a[1] := 0; r.l := 4; r.d[0] := la DIV 1000000H MOD 100H;
-    r.d[1] := la DIV 10000H MOD 100H; r.d[2] := la DIV 100H MOD 100H;
-    r.d[3] := la MOD 100H; write(R1, r);
+    r.t := 5; r.a[0] := 0; r.a[1] := 0; r.l := 4; IntToByteArray(la, r.d, 0, FALSE); write(R1, r);
     Files.Read(R, ch);
     IF ch # "O" THEN res := badfile END;
     (*write End-of-File (EOF) Record*)
@@ -124,9 +133,10 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
 
   PROCEDURE WriteFile*;  (*write code section of M.m4c in hex format to output file*)
     VAR f!, g!: Files.File; Rf!, Rg!: Files.Rider;
-      n, codelen, filelen, entry: INTEGER;
+      org, vtsize, codelen, entry, lah, oldCol: INTEGER;
       name: ARRAY 32 OF CHAR;
       S!: Texts.Scanner;
+      r: record;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN name := S.s; Texts.Scan(S);
       IF S.class = Texts.Name THEN Texts.WriteString(W, "  WriteFile "); res := -2;
@@ -137,12 +147,22 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
             g := Files.New(S.s); Files.Set(Rf, f, 0); Files.Set(Rg, g, 0);
             Texts.Scan(S);
             IF S.class = Texts.Int THEN
-              OutCode(Rf, Rg, WriteIntelHex, S.i, codelen, entry, res);
-              IF res = noerr THEN
-                Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
-                Texts.WriteString(W, "  done"); Files.Register(g)
-              ELSIF res = fixup THEN Texts.WriteString(W, "  program need fixup error")
-              ELSIF res = badfile THEN Texts.WriteString(W, "  input file format error")
+              org := S.i; Texts.Scan(S);
+              IF S.class = Texts.Int THEN
+                vtsize := S.i; Texts.Scan(S);
+                IF S.class = Texts.Int THEN lah := LSR(org, 16); r.t := 4; r.l := 2; r.a[0] := 0; r.a[1] := 0; (*extended linear address record*)
+                  r.d[0] := LSR(lah, 8); r.d[1] := lah MOD 100H; WriteIntelHex(Rg, r); SetAddress(r.a, org); r.t := 0; (*prepare for data record*)
+                  IntToByteArray(S.i, r.d, 0, TRUE); IntToByteArray(org + vtsize + 1, r.d, 4, TRUE); r.l := 8; WriteIntelHex(Rg, r);
+                  OutCode(Rf, Rg, WriteIntelHex, org + vtsize, codelen, entry, res);
+                  IF res = noerr THEN
+                    Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
+                    Texts.WriteString(W, "  done"); Files.Register(g)
+                  ELSIF res = fixup THEN Texts.WriteString(W, "  program need fixup error")
+                  ELSIF res = badfile THEN Texts.WriteString(W, "  input file format error")
+                  END
+                ELSE res := -1
+                END
+              ELSE res := -1
               END
             ELSE res := -1
             END
@@ -151,8 +171,11 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
         ELSE Texts.WriteString(W, "  input file not found")
         END
       END
+    END;
+    IF res = -1 THEN Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; 
+      Texts.WriteString(W, "Usage: OM4X.WriteFile M.m4c M.hex LoadAddress VecTabSize StackAddr");
+      W.col := oldCol
     END ;
-    IF res = -1 THEN Texts.WriteString(W, "Usage: OM4X.WriteFile M.m4c M.hex LoadAddress") END ;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END WriteFile;
 
