@@ -27,7 +27,7 @@ Paramètres de boot
 Paramètres de boot
  Adresse   Contenu
  D0201000 ( 0)  xxxxxxxx ; Instruction de saut vers la procédure d'initialisation du module racine.
- D0201004 ( 4)  00000000 ; 
+ D0201004 ( 4)  200001AC ; Adresse du bloc de contrôle SDIO
  D0201008 ( 8)  D0201000 ; Adresse de début de chargement du ficher de boot
  D020100C (12)  D0800000 ; Adresse de fin de la mémoire
  D0201010 (16)  D020xxxx ; Adresse de fin de chargement du ficher de boot

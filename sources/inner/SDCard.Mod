@@ -1,7 +1,7 @@
 MODULE SDCard;
   IMPORT SYSTEM, BSP;
 
-  CONST SDHandleDescAddr = 20000368H;
+  CONST
     (*common error flag*) NONE = {}; 
 
     (*SDIO error flags*) CMD_CRC_FAIL = {0}; DATA_CRC_FAIL = {1}; CMD_RSP_TIMEOUT = {2}; DATA_TIMEOUT = {3}; TX_UNDERRUN = {4};
@@ -277,7 +277,7 @@ MODULE SDCard;
   END Write;
 
   PROCEDURE Init*;
-  BEGIN hsd := SYSTEM.VAL(SDHandle, SDHandleDescAddr);
+  BEGIN SYSTEM.GET(0D0201004H, hsd);
     hsd.readErrors := 0; hsd.writeErrors := 0; hsd.unrecoverableErrors := 0
   END Init;
 

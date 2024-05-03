@@ -8,10 +8,10 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
   IMPORT SYSTEM, BSP;
   CONST SP = 13; LR = 14; PC = 15; (*dedicated registers*)
     VarORG0 = 0D0201000H; MemLim = 0D0800000H; stackOrg = 10010000H;
-    SDHandleDescAddr = 20000368H; sdBuf = 200003C0H;
+    SDHandleDescAddr = 200001ACH;
 
     (*Peripherals*)
-    PeriphBase* = 40000000H; PeriphBBAlias* = 42000000H;
+    PeriphBase = 40000000H; PeriphBBAlias = 42000000H;
 
     BLOCKSIZE = 512;
     FSoffset = 80000H; (*block offset*) SectorSize = 1024; bps = SectorSize DIV BLOCKSIZE;
@@ -290,7 +290,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
       WHILE GetCardState(hsd) #CARD_TRANSFER DO Delayus(1000) END
     END;
 
-    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(sdBuf, dst, nofblocks*(512 DIV 4)) END
+    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(hsd.buf, dst, nofblocks*(512 DIV 4)) END
   END ReadSD;
 
   PROCEDURE SDPowerOn(VAR hsd: SDHandleDesc): SET;
@@ -573,6 +573,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
   END SDInit;
 
   PROCEDURE LoadFromDisk;
+    CONST sdBuf = (SDHandleDescAddr + SYSTEM.SIZE(SDHandleDesc) + 15) DIV 16*16; (*free SRAM after hsd, aligned to 16-bytes boundary*)
     VAR lim, r: INTEGER; hsd!: SDHandle;
   BEGIN hsd := SYSTEM.VAL(SDHandle, SDHandleDescAddr); hsd.buf := sdBuf; SDInit(hsd^);
     (*start at boot block*)
@@ -800,6 +801,7 @@ MODULE* BootLoadM4;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SD
   END SystemInit;
 
 BEGIN SystemInit; SystemClockInit; CYCNTInit; SDRAMInit; MPUInit; LoadFromDisk;
+  SYSTEM.PUT(VarORG0+4, SDHandleDescAddr); (*store hsd address for SDCard module*)
   SYSTEM.PUT(VarORG0+12, MemLim); SYSTEM.PUT(VarORG0+24, stackOrg)
 END BootLoadM4.
 
