@@ -30,7 +30,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
     sectorMap: ARRAY mapsize DIV 32 OF SET;
 
-    OldSVCallHandler: PROCEDURE(VAR f: ExceptionFrameDesc);
     
 (* ---------- New: heap allocation ----------*)
 
@@ -263,19 +262,24 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     IF param = 0 THEN (*Allocate dynamic memory*)
       New(m, f.r1); SYSTEM.PUT(f.r0, m)
     ELSIF param = 1 THEN BSP.led(f.r0)
-    ELSE OldSVCallHandler(f) END
+    END
   END SVCallHandler;
 
+  PROCEDURE defaultHandler; (*infinite loop*)
+  BEGIN REPEAT BSP.led(128); BSP.Delayus(10000); BSP.led(0); BSP.Delayus(10000) UNTIL FALSE
+  END defaultHandler;
+
   PROCEDURE Init*;
-    VAR currentSVCHandlerAddr, r: INTEGER;
-      pb2up: BOOLEAN; param: ARRAY 128 OF INTEGER;
-  BEGIN BSP.Init; BSP.InitRTC; SDCard.Init;
+    VAR i: INTEGER;
+  BEGIN (*relocate vector table at beginning of SRAM*)
+    SYSTEM.GET(08000000H, i); SYSTEM.PUT(20000000H, i); SYSTEM.GET(08000004H, i); SYSTEM.PUT(20000004H, i); 
+    FOR i := 20000008H TO 200001A8H BY 4 DO SYSTEM.PUT(i, SYSTEM.ADR(defaultHandler)) END; (*initialize vectors to default trap*)
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.VTOR, 20000000H);
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.CPACR, (BSP.CP10m + BSP.CP11m)); (*set CP10 and CP11 full access to activate FPU*)
+    BSP.Init; BSP.InitRTC; SDCard.Init;
     Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);  (*install temporary trap*)
     Install(SYSTEM.ADR(IncTick), BSP.VecTabBase+BSP.SysTickExcNum*4);
     SYSTEM.PUT(BSP.SYST_CVR, 0); SYSTEM.PUT(BSP.SYST_CSR, {BSP.CLKSOURCE, BSP.TICKINT, BSP.SYST_ENABLE});
-    (*tail chain old SVC handler*)
-    SYSTEM.GET(BSP.VecTabBase+BSP.SVCallExcNum*4, currentSVCHandlerAddr);
-    SYSTEM.PUT(SYSTEM.ADR(OldSVCallHandler), currentSVCHandlerAddr + 14); (*Skip stack determination code*)
     Install(SYSTEM.ADR(SVCallHandler), BSP.VecTabBase+BSP.SVCallExcNum*4);
     SYSTEM.GET(VarORG0+12, MemLim); SYSTEM.GET(VarORG0+24, stackOrg);
     SYSTEM.GET(VarORG0+28, heapOrg); stackSize := 10000H; heapLim := MemLim;

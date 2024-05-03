@@ -69,41 +69,6 @@ defined in linker script */
   .weak  Reset_Handler
   .type  Reset_Handler, %function
 Reset_Handler:
-  ldr   sp, =_estack       /* set stack pointer */
-
-/* Copy the isr_vector segment from flash to SRAM */
-  ldr r0, =_sisr_vector
-  ldr r1, =_eisr_vector
-  ldr r2, =_siisr_vector
-  movs r3, #0
-  bl LoopCopyDataInit
-
-/* Copy the data segment initializers from flash to SRAM */
-  ldr r0, =_sdata
-  ldr r1, =_edata
-  ldr r2, =_sidata
-  movs r3, #0
-  bl LoopCopyDataInit
-
-/* Zero fill the bss segment. */
-  ldr r2, =_sbss
-  ldr r4, =_ebss
-  movs r3, #0
-  b LoopFillZerobss
-
-FillZerobss:
-  str  r3, [r2]
-  adds r2, r2, #4
-
-LoopFillZerobss:
-  cmp r2, r4
-  bcc FillZerobss
-
-/* Call the clock system initialization function.*/
-  bl  SystemInit
-/* Call static constructors */
-  bl __libc_init_array
-
 /* Switch stack pointer to PSP @ end of CCM */
   ldr r0, =_epstack
   msr psp, r0
@@ -113,18 +78,6 @@ LoopFillZerobss:
 
 /* Call the application's entry point.*/
   b  BootLoadM4
-
-   .thumb_func
-CopyDataInit:
-  ldr r4, [r2, r3]
-  str r4, [r0, r3]
-  adds r3, r3, #4
-
-LoopCopyDataInit:
-  adds r4, r0, r3
-  cmp r4, r1
-  bcc CopyDataInit
-  bx  lr
 
 .size  Reset_Handler, .-Reset_Handler
 

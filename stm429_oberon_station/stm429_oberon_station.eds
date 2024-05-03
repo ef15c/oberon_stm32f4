@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
-<EmBitz_debug_session>
-	<debuggerLastSession>
-		<breakpoints>
-			<break type="0" enabled="1" file="Core/Src/stm32f4xx_it.c" line="74" />
-		</breakpoints>
-		<memory_view address="sa0" locked="0" live="0" options="289" />
-	</debuggerLastSession>
-</EmBitz_debug_session>
