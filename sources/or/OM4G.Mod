@@ -1156,6 +1156,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END MBI;
 
+  PROCEDURE Rbit*(VAR x: Item);
+  BEGIN load(x); OM4A.Put0(mcode, OM4A.RBIT + x.r*OM4A.C16 + x.r*OM4A.C8 + x.r)
+  END Rbit;
+
   PROCEDURE Bit*(VAR x, y: Item);
   BEGIN IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) &
     ((x.a >= 20000000H) & (x.a < 20100000H) OR (x.a >= 40000000H) & (x.a < 40100000H)) THEN

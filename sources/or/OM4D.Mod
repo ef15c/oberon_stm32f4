@@ -355,7 +355,17 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       AsrReg = {22};
       (*T32MSK91 001x 0000 Logical Shift Right LSR (register) on page A7-285*)
       LsrReg = {21};
-      
+
+      T32MSK92 = {22..23, 6..7};
+
+      (*T32MSK92 10xx 10xx Miscellaneous operations on page A5-155*)
+      MiscOps = {23, 7};
+
+      T32MSK921 = {20..21, 4..5};
+
+     (*T32MSK921 01 10 Reverse Bits RBIT on page A7-334*)
+     Rbit = {20, 5};
+
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
       T16MSK5 = {13..15};
@@ -932,6 +942,13 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T32MSK91 001x 0000 Logical Shift Right LSR (register) on page A7-285*)
           (*LSR{S}<c>.W <Rd>,<Rn>,<Rm>*)
           WriteOp(W, op, "LSR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm)
+        ELSIF op*T32MSK92 = MiscOps THEN
+          (*T32MSK92 10xx 10xx Miscellaneous operations on page A5-155*)
+          IF op*T32MSK921 = Rbit THEN
+            ASSERT(Rn = Rm);
+            WriteOp(W, op, "RBIT", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm)
+          ELSE Texts.WriteString(W, "TODO other Miscellaneous operations on page A5-155")
+        END
         ELSE Texts.WriteString(W, "TODO other DataProcReg on page A5-152")
         END
       ELSIF op*T32MSK1 = LoadMultStoreMult THEN

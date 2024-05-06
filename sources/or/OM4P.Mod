@@ -291,6 +291,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 21 THEN (*SVC*) CheckConst(x); CheckInt(x); OM4G.SVC(x)
       ELSIF fct = 22 THEN (*Int Compare*)
         CheckInt(x); CheckInt(y); CheckConst(z); CheckInt(z); OM4G.IntCompare(x, y, z)
+      ELSIF fct = 23 THEN (*reverse bits*) CheckInt(x); OM4G.Rbit(x)
       END ;
       x.type := restyp
     ELSE OM4S.Mark("wrong nof params")

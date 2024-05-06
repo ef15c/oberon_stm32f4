@@ -76,7 +76,7 @@ BEGIN F := root;
         a0 := SYSTEM.ADR(F.raster);
         SYSTEM.PUT(a0, 400H); INC(a0, 4); SYSTEM.PUT(a0, 30003H);
         SYSTEM.PUT(a0+4, 0E0E0E0H); SYSTEM.PUT(a0+8, 0E000E0H); SYSTEM.PUT(a0+12, 0E0E0E0H); 
-        (*null pattern for characters not in a run*)
+        (*red square pattern for characters not in a run*)
         a := a0+16; j := 0; k := 0; m := 0;
         WHILE k < NofRuns DO
           WHILE (m < run[k].beg) & (m < 256) DO F.T[m] := a0; INC(m) END;
@@ -146,12 +146,7 @@ BEGIN
 END test;
 *)
 
-BEGIN (*For testing only:
-  SYSTEM.PUT(0D0201000H+12, 0D0800000H); SYSTEM.PUT(0D0201000H+24, 10010000H);
-  Files.Init; *)
+BEGIN
   root := NIL; Default := NIL; Default := This("Oberon10.Scn.Fnt");
   ASSERT(Default # NIL);
-  
-  (*For testing only:
-  test;*)
 END Fonts.

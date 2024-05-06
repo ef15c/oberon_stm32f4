@@ -224,6 +224,10 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       ISB<c><q> {<opt>}
       opti musb be 1111*)
 
+    RBIT* = 0FA90F0A0H;
+    (*|1111/1010/1001/ Rm /1111/ Rd /1010/ Rm |
+      RBIT <c><q> <Rd>, <Rm>
+      Rm must be encoded twice*)
     BRSIG*   = 1EH; (*Pseudo branch op signature*)
     BRCSIG*  = 1FH; (*Pseudo conditional branch op signature*)
 
