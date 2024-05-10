@@ -15,8 +15,8 @@ MODULE Fonts; (*JG 18.11.90; PDR 8.6.12; NW 18.1.2019
 
     LargeFontDesc = RECORD (FontDesc) ext: ARRAY 20480 OF BYTE END ;
     LargeFont = POINTER TO LargeFontDesc;
-    RunRec = RECORD beg, end: BYTE END ;
-    BoxRec = RECORD dx, x, y, w, h: BYTE END ;
+    RunRec = RECORD beg, end: INTEGER END ;
+    BoxRec = RECORD dx, x, y, w, h: INTEGER END ;
 
 VAR Default*, root*: Font;
 
@@ -31,18 +31,20 @@ END GetPat;
 PROCEDURE This*(name: ARRAY OF CHAR): Font;
   VAR F!: Font; LF!: LargeFont;
     f!: Files.File; R!: Files.Rider;
-    NofRuns, NofBoxes: BYTE;
+    NofRuns, NofBoxes, beg, end: INTEGER;
     NofBytes: INTEGER;
-    height, minX, maxX, minY, maxY: BYTE;
+    height, minX, maxX, minY, maxY: INTEGER;
     i, j, k, m, n, o, w, pw: INTEGER;
     a, a0: INTEGER;
-    b, beg, end: BYTE;
+    b: BYTE;
     run: ARRAY 16 OF RunRec;
     box: ARRAY 512 OF BoxRec;
 
-  PROCEDURE RdInt16(VAR R: Files.Rider; VAR b0: BYTE);
-    VAR b1: BYTE;
-  BEGIN Files.ReadByte(R, b0); Files.ReadByte(R, b1)
+  PROCEDURE RdInt16(VAR R: Files.Rider; VAR x: INTEGER);
+    VAR b0, b1: BYTE;
+  BEGIN Files.ReadByte(R, b0); Files.ReadByte(R, b1);
+    x := b0 + b1*100H;
+    IF x > 8000H THEN x := x - 10000H END
   END RdInt16;
 
 BEGIN F := root;
