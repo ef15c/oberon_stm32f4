@@ -1,8 +1,12 @@
 # oberon_stm32f4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 3 released!</b><br>
-256 colors are now available on screen.<br><br>
-USART, LTDC, SDIO, MPU, FMC/SDRAM and GPIO drivers ported from C to Oberon.<br>
+<b>Version 4 released!</b><br>
+* All previous C code is migrated to Oberon. External tools are no more required, except for flashing the bootloader.<br>
+* QWERTY keyboard is now supported. To activate it, middle click on the text "OM4P.Compile InputM4Qwerty.Mod ~" , displayed in yellow in the middle of the System.Tool window<br>
+* The default font has been upgraded to Windows1252 code page, to allow accented characters. AZERTY keyboard driver has been updated to allow entering of circumflex and dieresis characters.<br>
+* Small improvements and corrections have been added to the compiler.<br><br>
+![System_Tool](https://github.com/ef15c/oberon_stm32f4/assets/8286839/867c913a-35e0-49ab-a81b-0c658132c971)
+
 ![OberonRunningR3](https://github.com/ef15c/oberon_stm32f4/assets/8286839/32ec5160-54e4-4188-9445-5ce0f7f4f413)
 
 ![OberonRunningR2](https://github.com/ef15c/oberon_stm32f4/assets/8286839/87f5d58e-1d84-4705-a15d-ad8de9eb8cd8)
