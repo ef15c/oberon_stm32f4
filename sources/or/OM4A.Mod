@@ -605,12 +605,18 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     Put0(co, UDIV + format3Reg4(a, b, c))
   END encUDIV;
   
+  PROCEDURE encFPMOVReg*(VAR co: ModuleCode; op: LONGINT; r, s: BYTE);
+  BEGIN
+    ASSERT((r < 13) & (s < C5));
+    (*  VMOVSR (s := r)
+    *  VMOVRS (r := s) *)
+    Put0(co, op + s DIV C1*C16 + r*C12 + s MOD C1*C7)
+  END encFPMOVReg;
+
   PROCEDURE encFPOpReg*(VAR co: ModuleCode; op: LONGINT; a, b, c: BYTE);
   BEGIN
     ASSERT((a < C5) & (b < C5) & (c < C5));
-    (* VNEG (a := -c)
-    *  VMOVSR (b := a)
-    *  VMOVRS (a := b) *)
+    (* VNEG (a := -c) *)
     Put0(co, op + a MOD C1*C22 + b DIV C1*C16 + a DIV C1*C12 + b MOD C1*C7 + c MOD C1*C5 + c DIV C1)
   END encFPOpReg;
 

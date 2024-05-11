@@ -218,6 +218,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       AddWide12BitOrAdr = {};
       (*T32MSK42 01010 Rn not 1111 Subtract Wide, 12-bit SUB (immediate) on page A7-402*)
       SubWide12BitOrAdr = {23, 21};
+     (*T32MSK42 10110 Rn = 1111 Bit Field Clear BFC on page A7-207*)
+      BitField = {24, 21..22};
       
       T32MSK61 = {21..23}; T32MSK62 = {21..23, 11};
       (*T32MSK61 100 xxxxxx Store Register Byte STRB (immediate) on page A7-389*)
@@ -566,6 +568,12 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           WriteOp(W, op, "SUB", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); Texts.WriteString(W, " #");
           Texts.WriteInt(W, 0 + b1 DIV OM4A.C2 MOD OM4A.C1*OM4A.C11 +
             b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C8 + b4, 1)
+        ELSIF (op*T32MSK42 = BitField) & (Rn = 15) THEN
+          (*T32MSK42 10110 Rn = 1111 Bit Field Clear BFC on page A7-207*)
+          (*BFC<c><q>  <Rd>,#<lsb>,#<witdth>*)
+          t := b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C2 + b4 DIV OM4A.C6 MOD OM4A.C2;
+          WriteOp(W, op, "BFC", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " #"); Texts.WriteInt(W, t, 1);
+          Texts.WriteString(W, " #"); Texts.WriteInt(W, b4 MOD OM4A.C5 - t + 1, 1);
         ELSE Texts.WriteString(W, "TODO: other DataProcPlainBinImm on page A5-141")
         END
       ELSIF op*T32MSK6 = StrSingleDataItem THEN

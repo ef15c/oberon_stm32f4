@@ -197,7 +197,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           x.r := RH; incR
         ELSE OM4A.encMOVImm32(mcode, RH, x.a);
           IF target = FPReg THEN
-            OM4A.encFPOpReg(mcode, OM4A.VMOVSR, RH, SH, 0);
+            OM4A.encFPMOVReg(mcode, OM4A.VMOVSR, RH, SH);
             x.r := SH; incS
           ELSE x.r := RH; incR
           END
@@ -239,8 +239,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           OM4A.fix11(mcode, pc1, mcode.pc - pc1 - 4);
         END;
         x.r := RH; incR
-      ELSIF x.mode = Reg THEN OM4A.encFPOpReg(mcode, OM4A.VMOVSR, x.r, SH, 0) (*Reg to FPReg*); x.r := SH; incS; DEC(RH)
-      ELSIF x.mode = FPReg THEN OM4A.encFPOpReg(mcode, OM4A.VMOVRS, RH, x.r, 0) (*FPReg to Reg*); x.r := RH; incR; DEC(SH)
+      ELSIF x.mode = Reg THEN OM4A.encFPMOVReg(mcode, OM4A.VMOVSR, x.r, SH) (*Reg to FPReg*); x.r := SH; incS; DEC(RH)
+      ELSIF x.mode = FPReg THEN OM4A.encFPMOVReg(mcode, OM4A.VMOVRS, RH, x.r) (*FPReg to Reg*); x.r := RH; incR; DEC(SH)
       END;
       x.mode := target
     END
@@ -553,8 +553,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
         IF y.a > 0 THEN x.a := x.a MOD y.a ELSE OM4S.Mark("bad modulus") END
       ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x);
-        (* TODO : on peut gagner une instruction en utilisant BFC x.r #e, #32-e*)
-        OM4A.encShiftImm5(mcode, OM4A.LSl, x.r, x.r, 32-e); OM4A.encShiftImm5(mcode, OM4A.LSr, x.r, x.r, 32-e)
+        OM4A.encBFC(mcode, x.r, e, 31)
       ELSIF y.mode = OM4B.Const THEN
         IF y.a > 0 THEN load(x); load(y); 
           OM4A.encUDIV(mcode, RH, x.r, y.r); OM4A.encMUL(mcode, RH, RH, y.r); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, x.r, RH, 0);
@@ -1088,10 +1087,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Sqrt*(VAR x: Item);
   BEGIN
-(* TODO uncomment only when using OM4 native compiler 
-    IF x.mode = OM4B.Const THEN x.a := SQRT(x.a)
-    ELSE *) loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VSQRT, x.r, 0, x.r)
-(*    END*)
+    IF x.mode = OM4B.Const THEN x.a := SYSTEM.VAL(INTEGER, SQRT(SYSTEM.VAL(REAL, x.a)))
+    ELSE loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VSQRT, x.r, 0, x.r)
+    END
   END Sqrt;
 
   PROCEDURE Odd*(VAR x: Item);
