@@ -220,7 +220,7 @@ MODULE FontUtils;
           ELSE Texts.WriteString(W, "missing VARIANT property"); res := -1 END
         END;
         IF res = 0 THEN IF (St.class = Texts.Int) THEN Files.WriteByte(Rg, St.i); Texts.Scan(St);
-          WrInt16(Rg, height); WrInt16(Rg, minX); WrInt16(Rg, minX + width - 1); WrInt16(Rg, minY); WrInt16(Rg, minY + height -1); 
+          WrInt16(Rg, height); WrInt16(Rg, minX); WrInt16(Rg, minX + width); WrInt16(Rg, minY); WrInt16(Rg, minY + height); 
         ELSE Texts.WriteString(W, "missing FAMILY value"); res := -1 END
         END;
         IF res = 0 THEN
