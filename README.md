@@ -20,7 +20,7 @@ To prevent that case to happen, I introduced a new notation ^n after the PROCEDU
 PROCEDURE^3 handler;<br>
 BEGIN ....<br>
 END handler;<br><br>
-With this information, the compiler can check  that no more than n register are used. The save/restoration instructions are automatically generated according to the declared number of used registers.<br>
+With this information, the compiler can check  that no more than n registers are used. The save/restoration instructions are automatically generated according to the declared number of used registers.<br>
 
 <b>Unsafe local variables marking</b><br>
 This Oberon compiler allow allocation of unitialized pointers on stack.
