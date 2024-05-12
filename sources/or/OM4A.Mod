@@ -250,6 +250,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       nbRmnITBlockInsts: LONGINT; (*Number of remaining instructions in current IT block*)
       lastInstrSetFlags*: BOOLEAN; (*TRUE if last instructions set flags*)
       code*: ARRAY maxCode OF BYTE;   (*Cortex M4 thumb uses 16bit half-words, but this size does not exists in Oberon 07*)
+      pos*: ARRAY maxCode DIV 2 OF INTEGER
     END;
 
   VAR
@@ -308,7 +309,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
          format: op8:p24 *)
     c.lastInstrSetFlags := FALSE;
     IF c.nbRmnITBlockInsts > 0 THEN DEC(c.nbRmnITBlockInsts) END;
-    modify(c, c.pc, op);
+    modify(c, c.pc, op); c.pos[c.pc DIV 2] := OM4S.Pos(); c.pos[c.pc DIV 2 + 1] := OM4S.Pos();
     INC(c.pc, 4)
   END Put0;
 
@@ -318,7 +319,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     IF c.nbRmnITBlockInsts > 0 THEN DEC(c.nbRmnITBlockInsts) END;
     c.code[c.pc+1] := op DIV C8 MOD C8;
     c.code[c.pc]   := op MOD C8;
-    INC(c.pc, 2)
+    c.pos[c.pc DIV 2] := OM4S.Pos(); INC(c.pc, 2)
   END Put1;
 
   PROCEDURE formatEvenImm25*(disp: LONGINT): LONGINT;

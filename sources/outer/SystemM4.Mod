@@ -16,9 +16,19 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
     PR = BSP.EXTI_BASE + BSP.PR;
 
+  TYPE
+    StackDumpDesc* = RECORD
+      cause*: BYTE;
+      PC*, LR*: INTEGER;
+      len*: INTEGER;
+      stack*: ARRAY 10000H DIV 4 OF INTEGER
+    END;
+    StackDump* = POINTER TO StackDumpDesc;
+
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
     TrappedAdr, DebounceTime: INTEGER; cfsr: SET;
+    stack*: StackDump;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
     VAR T!: Texts.Text; beg, end, time: LONGINT;
@@ -318,7 +328,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     Texts.WriteInt(W, Kernel.NofSectors * 100 DIV 10000H, 4); Texts.WriteString(W, "%, read errors: "); Texts.WriteInt(W, SDCard.hsd.readErrors, 1);
     Texts.WriteString(W, ", write errors: "); Texts.WriteInt(W, SDCard.hsd.writeErrors, 1); Texts.WriteString(W, ", unrecoverable: ");
     Texts.WriteInt(W, SDCard.hsd.unrecoverableErrors, 1); EndLine;
-    Texts.WriteString(W, "  Tasks"); Texts.WriteInt(W, Oberon.NofTasks, 4); EndLine
+    Texts.WriteString(W, "  Tasks"); Texts.WriteInt(W, Oberon.NofTasks, 4); EndLine;
+    Texts.WriteString(W, "  Time"); Texts.WriteInt(W, Kernel.Time(), 11); EndLine
   END Watch;
 
   PROCEDURE ShowModules*;
@@ -444,19 +455,17 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   (*Handle abort key press*)
   PROCEDURE* AbortHandler(VAR f: Kernel.ExceptionFrameDesc);
-   CONST maxTime = 100;
-    VAR icsr, pr: SET; elapsed: INTEGER;
+   CONST maxTime = 200;
+    VAR icsr, pr: SET;
   BEGIN SYSTEM.GET(PR, pr);
     IF BSP.PB1Pin IN pr THEN
-      elapsed := Kernel.Time() - DebounceTime;
-      IF (elapsed >= 0) & (elapsed < maxTime) THEN DebounceTime := Kernel.Time() + maxTime
-      ELSIF ~SYSTEM.BIT(BSP.PB1Port + BSP.IDR, BSP.PB1Pin) & (cfsr = {}) THEN
-        DebounceTime := Kernel.Time();
-        cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
+      IF ((Kernel.Time() - DebounceTime) >= maxTime) & ~SYSTEM.BIT(BSP.PB1Port + BSP.IDR, BSP.PB1Pin) & (cfsr = {}) THEN
+         cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
         (*Trigger abort by requesting a PendSV interrupt*)
         SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3) (*ISB*)
       END;
-      pr := {BSP.PB1Pin}; SYSTEM.PUT(PR, pr) (* Clear pending IRQ*)
+      pr := {BSP.PB1Pin}; SYSTEM.PUT(PR, pr); (* Clear pending IRQ*)
+      DebounceTime := Kernel.Time()
     END
   END AbortHandler;
 
@@ -477,9 +486,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     ELSIF INVSTATE IN cfsr THEN w := 5 (*probably illegal procedure call*)
     ELSIF STKERR IN cfsr THEN w := 9; (*Bus Fault: stack overflow*)
       (*trying to find nearest return adress*)
-      SYSTEM.GET(Kernel.VarORG0 + 16, base); i := 10000000H;
-      REPEAT SYSTEM.GET(i, TrappedAdr); INC(i, 4) UNTIL ((TrappedAdr >= base) & (TrappedAdr < Modules.AllocPtr)) OR (i >= 10010000H);
-      IF i >= 10010000H THEN TrappedAdr := 0 END
+      SYSTEM.GET(Kernel.VarORG0 + 16, base); i := 0;
+      REPEAT TrappedAdr := stack.stack[i] - 1; INC(i) UNTIL ((TrappedAdr >= base) & (TrappedAdr < Modules.AllocPtr)) OR (i >= stack.len);
+      IF i >=  stack.len THEN TrappedAdr := 0 END
     ELSIF PRECISERR IN cfsr THEN w := 8 (*Bus Fault: data access precise error*)
     ELSIF ABORTKEY IN cfsr THEN w := 10 (*User pressed the abort key*)
     ELSE w := 11 (*TODO Fault to be characterized*)
@@ -490,7 +499,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       WHILE (mod # NIL) & ((TrappedAdr < mod.code) OR (TrappedAdr >= mod.imp)) DO mod := mod.next END ;
       IF mod # NIL THEN base := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
       Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - base);
-      TrappedAdr := 0
+      stack.PC := TrappedAdr; stack.cause := w; TrappedAdr := 0
     END; Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); cfsr := {}; Oberon.Reset
   END Reset;
   
@@ -498,10 +507,15 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   (*Abort current command by resetting stack and reentering the main loop*)
     CONST LR = 14; PSP=16+9;
     VAR f!: Kernel.ExceptionFrame;
-      lr: SET; sz: INTEGER;
+      lr: SET; sz, eos: INTEGER;
   BEGIN
     lr := SYSTEM.VAL(SET, SYSTEM.REG(LR)); IF 4 IN lr THEN sz := 20H ELSE sz := 68H END;
     IF ORD(lr*{0..3}) = 0DH THEN (*return to thread mode with process stack*)
+      (*dump the stack*)
+      IF STKERR IN cfsr THEN (*stack overflow*) eos := 10000000H 
+      ELSE eos := SYSTEM.VAL(INTEGER, f) + sz; IF 9 IN SYSTEM.VAL(SET, f.xpsr) THEN (*stack was realigned*) INC(eos, 4) END
+      END;
+      IF eos < 10010000H THEN stack.LR := f.lr; stack.len := (10010000H - eos) DIV 4; SYSTEM.COPY(eos, SYSTEM.ADR(stack.stack), stack.len) END;
       (*build exception frame*)
       f := SYSTEM.VAL(Kernel.ExceptionFrame, 10010000H - sz);
       f.r0 := 0; f.r1 := 0; f.r2 := 0; f.r3 := 0; f.r12 := 0; f.lr := 0FFFFFFFFH; f.returnAddress := SYSTEM.ADR(Reset);
@@ -534,4 +548,5 @@ BEGIN Texts.OpenWriter(W);
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
   activateHandlers;
+  stack := SYSTEM.VAL(StackDump, 20000600H); stack.len := 0; stack.cause := 0; stack.PC := 0; stack.LR := 0
 END System.
