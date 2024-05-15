@@ -19,7 +19,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   TYPE
     StackDumpDesc* = RECORD
       cause*: BYTE;
-      PC*, LR*: INTEGER;
+      eos*, PC*, LR*: INTEGER;
       len*: INTEGER;
       stack*: ARRAY 10000H DIV 4 OF INTEGER
     END;
@@ -429,15 +429,12 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       w := inst DIV 10000H MOD 10H;
     ELSIF INVSTATE IN cfsr THEN w := 5 (*probably illegal procedure call*)
     END;
-    IF w = 0 THEN Kernel.New(w, f.r1); SYSTEM.PUT(f.r0, w); INC(f.returnAddress, 4); (*move to next instruction*)
-    ELSE (*trap*) 
-      IF w = 5 THEN TrappedAdr := f.lr ELSE TrappedAdr := f.returnAddress END;
-      (*Trigger abort by requesting a PendSV interrupt*)
-      SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3) (*ISB*)
-    END;
+    IF w = 5 THEN TrappedAdr := f.lr ELSE TrappedAdr := f.returnAddress END;
+    (*Trigger abort by requesting a PendSV interrupt*)
     IF cfsr - {NOCP, INVSTATE} # {} THEN (*other fault*)
       BSP.led(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
+    SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
     SYSTEM.PUT(CFSR, cfsr*UFSR_Mask) (*reset UFSR flags*)
   END Trap;
 
@@ -499,23 +496,23 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       WHILE (mod # NIL) & ((TrappedAdr < mod.code) OR (TrappedAdr >= mod.imp)) DO mod := mod.next END ;
       IF mod # NIL THEN base := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
       Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - base);
-      stack.PC := TrappedAdr; stack.cause := w; TrappedAdr := 0
-    END; Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); cfsr := {}; Oberon.Reset
+      stack.PC := TrappedAdr; TrappedAdr := 0
+    END; stack.cause := w; Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); cfsr := {}; Oberon.Reset
   END Reset;
   
-  PROCEDURE PendSVHandler;
+  PROCEDURE* PendSVHandler(cf: Kernel.ExceptionFrame);
   (*Abort current command by resetting stack and reentering the main loop*)
     CONST LR = 14; PSP=16+9;
     VAR f!: Kernel.ExceptionFrame;
-      lr: SET; sz, eos: INTEGER;
+      lr: SET; sz: INTEGER;
   BEGIN
     lr := SYSTEM.VAL(SET, SYSTEM.REG(LR)); IF 4 IN lr THEN sz := 20H ELSE sz := 68H END;
     IF ORD(lr*{0..3}) = 0DH THEN (*return to thread mode with process stack*)
       (*dump the stack*)
-      IF STKERR IN cfsr THEN (*stack overflow*) eos := 10000000H 
-      ELSE eos := SYSTEM.VAL(INTEGER, f) + sz; IF 9 IN SYSTEM.VAL(SET, f.xpsr) THEN (*stack was realigned*) INC(eos, 4) END
-      END;
-      IF eos < 10010000H THEN stack.LR := f.lr; stack.len := (10010000H - eos) DIV 4; SYSTEM.COPY(eos, SYSTEM.ADR(stack.stack), stack.len) END;
+      IF STKERR IN cfsr THEN (*stack overflow*) stack.eos := 10000000H 
+      ELSE stack.eos := SYSTEM.VAL(INTEGER, cf) + sz; stack.LR := cf.lr; IF 9 IN SYSTEM.VAL(SET, cf.xpsr) THEN (*stack was realigned*) INC(stack.eos, 4) END
+      END; stack.len := (10010000H - stack.eos) DIV 4;
+      IF (stack.eos < 10010000H) & (stack.len <= 10000H DIV 4) THEN SYSTEM.COPY(stack.eos, SYSTEM.ADR(stack.stack), stack.len) END;
       (*build exception frame*)
       f := SYSTEM.VAL(Kernel.ExceptionFrame, 10010000H - sz);
       f.r0 := 0; f.r1 := 0; f.r2 := 0; f.r3 := 0; f.r12 := 0; f.lr := 0FFFFFFFFH; f.returnAddress := SYSTEM.ADR(Reset);
@@ -548,5 +545,5 @@ BEGIN Texts.OpenWriter(W);
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
   activateHandlers;
-  stack := SYSTEM.VAL(StackDump, 20000600H); stack.len := 0; stack.cause := 0; stack.PC := 0; stack.LR := 0
+  stack := SYSTEM.VAL(StackDump, 20000600H); stack.len := 0; stack.cause := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0
 END System.

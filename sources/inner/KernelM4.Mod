@@ -79,7 +79,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     END
   END GetBlock32;
 
-   PROCEDURE New*(VAR ptr: LONGINT; tag: LONGINT);
+   PROCEDURE New(ptr: LONGINT; tag: LONGINT);
     (*called by NEW via Trap 0; ptr and tag are pointers*)
     VAR p, size, lim: LONGINT;
   BEGIN SYSTEM.GET(tag, size);
@@ -88,8 +88,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     ELSIF size = 128 THEN GetBlock128(p)
     ELSE GetBlock(p, (size+255) DIV 256 * 256)
     END ;
-    IF p = 0 THEN ptr := 0
-    ELSE ptr := p+8; SYSTEM.PUT(p, tag); lim := p + size; INC(p, 4); INC(allocated, size);
+    IF p = 0 THEN SYSTEM.PUT(ptr, 0)
+    ELSE SYSTEM.PUT(ptr, p+8); SYSTEM.PUT(p, tag); lim := p + size; INC(p, 4); INC(allocated, size);
     (*Perform unsigned comparison*) 
       WHILE (*p < lim*) SYSTEM.CMP(p, lim, CC) DO SYSTEM.PUT(p, 0); INC(p, 4) END
     END
@@ -242,13 +242,9 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END Install;
 
   PROCEDURE* Trap(VAR f: ExceptionFrameDesc);
-    VAR u, v, w: INTEGER;
-  BEGIN 
-    SYSTEM.GET(f.returnAddress, u);
-    w := u DIV 10000H MOD 10H; (*trap number*)
-    IF w = 0 THEN New(v, f.r1); SYSTEM.PUT(f.r0, v); INC(f.returnAddress, 4); (*move to next instruction*)
-    ELSE (*stop*) BSP.led(w + 64); REPEAT UNTIL FALSE
-    END
+    VAR u, w: INTEGER;
+  BEGIN SYSTEM.GET(f.returnAddress, u); w := u DIV 10000H MOD 10H; (*trap number*)
+    (*stop*) BSP.led(w + 64); REPEAT UNTIL FALSE
   END Trap;
 
   PROCEDURE^3 IncTick;
@@ -257,10 +253,9 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END IncTick;
 
   PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
-    VAR param: BYTE; m: LONGINT;
+    VAR param: BYTE;
   BEGIN SYSTEM.GET(f.returnAddress - 2, param);
-    IF param = 0 THEN (*Allocate dynamic memory*)
-      New(m, f.r1); SYSTEM.PUT(f.r0, m)
+    IF param = 0 THEN (*Allocate dynamic memory*) New(f.r0, f.r1)
     ELSIF param = 1 THEN BSP.led(f.r0)
     END
   END SVCallHandler;
