@@ -493,7 +493,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4);
     IF TrappedAdr # 0 THEN
       base := 0; mod := Modules.root;
-      WHILE (mod # NIL) & ((TrappedAdr < mod.code) OR (TrappedAdr >= mod.imp)) DO mod := mod.next END ;
+      WHILE (mod # NIL) & ((mod.name[0] = 0X) OR (TrappedAdr < mod.code) OR (TrappedAdr >= mod.imp)) DO mod := mod.next END ;
       IF mod # NIL THEN base := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
       Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - base);
       stack.PC := TrappedAdr; TrappedAdr := 0
@@ -509,7 +509,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     lr := SYSTEM.VAL(SET, SYSTEM.REG(LR)); IF 4 IN lr THEN sz := 20H ELSE sz := 68H END;
     IF ORD(lr*{0..3}) = 0DH THEN (*return to thread mode with process stack*)
       (*dump the stack*)
-      IF STKERR IN cfsr THEN (*stack overflow*) stack.eos := 10000000H 
+      IF STKERR IN cfsr THEN (*stack overflow*) stack.eos := 10000000H; stack.LR := 0FFFFFFFFH;
       ELSE stack.eos := SYSTEM.VAL(INTEGER, cf) + sz; stack.LR := cf.lr; IF 9 IN SYSTEM.VAL(SET, cf.xpsr) THEN (*stack was realigned*) INC(stack.eos, 4) END
       END; stack.len := (10010000H - stack.eos) DIV 4;
       IF (stack.eos < 10010000H) & (stack.len <= 10000H DIV 4) THEN SYSTEM.COPY(stack.eos, SYSTEM.ADR(stack.stack), stack.len) END;

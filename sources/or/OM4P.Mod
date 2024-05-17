@@ -230,7 +230,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END Parameter;
 
-  PROCEDURE ParamList(VAR x: OM4G.Item);
+  PROCEDURE ParamList(x: OM4G.Item);
     VAR n: INTEGER; par!: OM4B.Object;
   BEGIN par := x.type.dsc; n := 0;
     IF sym # OM4S.rparen THEN

@@ -931,7 +931,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF x.mode <= OM4B.Par THEN load(x); DEC(RH)
       ELSE IF RH < 8 THEN (*POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + LSL(1, RH))
-        ELSE (*POP T3*) OM4A.Put0(mcode, OM4A.POPT3 + RH*OM4A.C12) END;
+        ELSE (*POP T3*) OM4A.Put0(mcode, OM4A.POPT3 + RH*OM4A.C12) END; OfsPTOS(-1, TRUE);
         DEC(r); DEC(frame, 4)
       END;
       (*No NIL check needed because every even address will cause an usage fault exception
@@ -941,9 +941,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0; SH := 0;
     ELSE (*function*)
       IF r > 0 THEN OM4A.encMOVReg(mcode, r, 0); 
-        OM4A.RestoreRegs(mcode, r, frame) END ;
+        OM4A.RestoreRegs(mcode, r, frame); OfsPTOS(-r, TRUE) END ;
       IF s > 0 THEN (* VMOV Ss, S0*) OM4A.Put0(mcode, OM4A.VMOVSS + s DIV OM4A.C1*OM4A.C12 +
-        s MOD OM4A.C1*OM4A.C22); OM4A.RestoreFPRegs(mcode, s, frame) END ;
+        s MOD OM4A.C1*OM4A.C22); OM4A.RestoreFPRegs(mcode, s, frame); OfsPTOS(-s, TRUE) END ;
       IF x.type.base.form = OM4B.Real THEN x.mode := FPReg; x.r := s; SH := s+1; RH := r 
       ELSE x.mode := Reg; x.r := r; RH := r+1; SH := s END
     END
@@ -982,6 +982,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, TRUE);
     IF reglim >= 0 THEN IF reglim >= 4 THEN OM4A.PopRegs(mcode, 4, reglim); OfsPTOS(3 - reglim, TRUE) END; RL := SP END;
     IF size # 4 THEN OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size - 4); OfsPTOS((4 - size) DIV 4, TRUE) END;
+    IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN OM4S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
     OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3); RH := 0; SH := 0;
   END Return;
 
