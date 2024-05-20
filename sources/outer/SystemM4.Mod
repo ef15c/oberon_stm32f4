@@ -19,7 +19,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   TYPE
     StackDumpDesc* = RECORD
       cause*: BYTE;
-      eos*, PC*, LR*: INTEGER;
+      cfsr*: SET; bfar*, eos*, PC*, LR*: INTEGER;
       len*: INTEGER;
       stack*: ARRAY 10000H DIV 4 OF INTEGER
     END;
@@ -440,10 +440,10 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
     VAR icsr: SET; w, inst: INTEGER;
-  BEGIN
-    SYSTEM.GET(CFSR, cfsr);
+  BEGIN SYSTEM.GET(CFSR, cfsr);
+    IF PRECISERR IN cfsr THEN SYSTEM.GET(BFAR, stack.bfar) END;
     IF ~(STKERR IN cfsr) THEN TrappedAdr := f.returnAddress 
-    ELSIF PRECISERR IN cfsr THEN SYSTEM.GET(BFAR, TrappedAdr)
+    ELSIF PRECISERR IN cfsr THEN TrappedAdr := stack.bfar
     END;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
@@ -508,7 +508,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   BEGIN
     lr := SYSTEM.VAL(SET, SYSTEM.REG(LR)); IF 4 IN lr THEN sz := 20H ELSE sz := 68H END;
     IF ORD(lr*{0..3}) = 0DH THEN (*return to thread mode with process stack*)
-      (*dump the stack*)
+      (*dump the stack*) stack.cfsr := cfsr;
+      IF ~(PRECISERR IN cfsr) THEN stack.bfar := 0 END;
       IF STKERR IN cfsr THEN (*stack overflow*) stack.eos := 10000000H; stack.LR := 0FFFFFFFFH;
       ELSE stack.eos := SYSTEM.VAL(INTEGER, cf) + sz; stack.LR := cf.lr; IF 9 IN SYSTEM.VAL(SET, cf.xpsr) THEN (*stack was realigned*) INC(stack.eos, 4) END
       END; stack.len := (10010000H - stack.eos) DIV 4;
@@ -545,5 +546,6 @@ BEGIN Texts.OpenWriter(W);
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
   activateHandlers;
-  stack := SYSTEM.VAL(StackDump, 20000600H); stack.len := 0; stack.cause := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0
+  stack := SYSTEM.VAL(StackDump, 20000600H); stack.len := 0; stack.cause := 0;
+  stack.cfsr := {}; stack.bfar := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0
 END System.

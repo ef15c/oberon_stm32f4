@@ -27,7 +27,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
     tick: INTEGER;
 
-    list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
+    list0*, list1*, list2*, list3*: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
     sectorMap: ARRAY mapsize DIV 32 OF SET;
 
     
@@ -146,6 +146,36 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       END;
     UNTIL (*p >= heapLim*) SYSTEM.CMP(p, heapLim, CS)
   END Scan;
+
+  PROCEDURE Coalesce*;
+    VAR p, q, mark, tag, size: LONGINT; done: BOOLEAN;
+  BEGIN p := heapOrg; list0 := 0; list1 := 0; list2 := 0; list3 := 0; (*empty free lists*) done := FALSE;
+    REPEAT SYSTEM.GET(p+4, mark); q := p;
+      WHILE ~done & (mark = -1) DO
+        SYSTEM.GET(p, size); INC(p, size); IF SYSTEM.CMP(p, heapLim, CS) THEN done := TRUE ELSE SYSTEM.GET(p+4, mark) END
+      END ;
+      size := p - q;
+      IF size > 0 THEN
+        IF size MOD 64 # 0 THEN
+          SYSTEM.PUT(q, 32); SYSTEM.PUT(q+8, list3); list3 := q; INC(q, 32); DEC(size, 32)
+        END ;
+        IF size MOD 128 # 0 THEN
+          SYSTEM.PUT(q, 64); SYSTEM.PUT(q+8, list2); list2 := q; INC(q, 64); DEC(size, 64)
+        END ;
+        IF size MOD 256 # 0 THEN
+          SYSTEM.PUT(q, 128); SYSTEM.PUT(q+8,  list1); list1 := q; INC(q, 128); DEC(size, 128)
+        END ;
+        IF size > 0 THEN
+          SYSTEM.PUT(q, size); SYSTEM.PUT(q+8, list0); list0 := q; INC(q, size)
+        END
+      END ;
+      IF ~done THEN
+        IF mark # -1 THEN SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); INC(p, size)
+        ELSE (*free*) SYSTEM.GET(p, size); INC(p, size)
+        END
+      END
+    UNTIL done
+  END Coalesce;
 
 (* ---------- Disk storage management ----------*)
 

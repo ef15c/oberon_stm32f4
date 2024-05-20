@@ -51,8 +51,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     MPU_CTRL* = 4; PRIVDEFENA* = 2; HFNMIENA* = 1; MPU_ENABLE* = 0;
     RNR* = 8; RNR_REGIONm* = {0..7};
     RBAR* = 0CH; MPU_ADDRm* = {5..31}; VALID* = 4; RBAR_REGIONm* = {0..3};
-    RASR* = 10H; XN* = 28; RASR_ENABLE* = 0;
-      APm* = {24..26}; TEXm* = {19..21}; S* = 18; C* = 17; B* = 16; SRDm* = {8..15}; SIZEm* = {1..5};
+    RASR* = 10H; XN* = 28; RASR_ENABLE* = 0; SRD* = 8;
+      APm* = {24..26}; TEXm* = {19..21}; S* = 18; C* = 17; B* = 16; SRDm* = {SRD..SRD+7}; SIZEm* = {1..5};
       AP_NO_ACCESS* = {}; AP_PRIV_RW* = {24}; AP_PRIV_RW_URO* = {25}; AP_FULL_ACCESS* = {24, 25};
       AP_PRIV_RO* = {24, 26}; AP_PRIV_RO_URO* = {25, 26};
       TEX_LEVEL0* = {}; TEX_LEVEL1* = {19}; TEX_LEVEL2* = {20}; 

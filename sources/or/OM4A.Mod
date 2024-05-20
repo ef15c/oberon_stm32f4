@@ -281,9 +281,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
 
   PROCEDURE log2*(m: LONGINT; VAR e: LONGINT): LONGINT;
   BEGIN e := 0;
-    WHILE ~ODD(m) DO m := m DIV 2; 
-      IF (m < 0) THEN INC(m, C31) END;
-      INC(e) END ;
+    WHILE ~ODD(m) DO m := LSR(m, 1); INC(e) END ;
     RETURN m
   END log2;
   
