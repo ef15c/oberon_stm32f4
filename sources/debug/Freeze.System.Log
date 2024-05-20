@@ -1,0 +1,21 @@
+OM4 Compiler  19/10/2023
+  compiling BSP  3342    28 A619BCEE
+  compiling SDCard  3784    44 E683A858
+  compiling Kernel
+  pos 6939 undef
+  pos 6956 undef
+  pos 7106 no match
+compilation FAILED
+  TRAP  10 in Texts at 0000081E
+Stack trace utility CS 16.05.24
+  pos  5863 in Texts at  D020F60E
+  pos  9971 in Texts at  D0210010
+  pos 10755 in Texts at  D0210168
+  pos  6534 in Edit at  D021DE0E
+  pos  9029 in Oberon at  D0212106
+  pos 23326 in TextFrames at  D0217904
+  pos 30421 in TextFrames at  D0218730
+  pos 31784 in TextFrames at  D0218964
+  pos  7003 in MenuViewers at  D0213EA6
+  pos 11538 in Oberon at  D021254E
+Edit.Store System.Log     620
