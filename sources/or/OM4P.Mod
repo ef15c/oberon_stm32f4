@@ -1022,8 +1022,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR beg, end, time: LONGINT;
       T!: Texts.Text;
       S!: Texts.Scanner;
-  BEGIN OM4G.Init;
-    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Char THEN
       IF S.c = "@" THEN
         Option(S); Oberon.GetSelection(T, beg, end, time);
@@ -1047,8 +1046,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         END ;
         IF (T.len # 0) & (OM4S.errcnt = 0) THEN Texts.Scan(S) ELSE S.class := 0 END
       END
-    END ;
-    OM4G.DeInit;
+    END;
     Oberon.Collect(0)
   END Compile;
 

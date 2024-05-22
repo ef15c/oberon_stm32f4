@@ -24,8 +24,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
     ObjDesc*= RECORD
       class*, exno*: BYTE;
-      expo*, unsafe*, rdo*, used*: BOOLEAN;   (*exported / read-only / used*)
-      lev*: INTEGER;
+      expo*, unsafe*, rdo*: BOOLEAN;   (*exported / unsafe / read-only *)
+      lev*, usedat*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
       name*: OMSPS.Ident;
@@ -74,7 +74,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN x := topScope;
     WHILE (x.next # NIL) & (x.next.name # id) DO x := x.next END ;
     IF x.next = NIL THEN
-      NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.used := FALSE; new.dsc := NIL;
+      NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.usedat := 0; new.dsc := NIL;
       x.next := new; obj := new
     ELSE obj := x.next; OMSPS.Mark("mult def")
     END 
@@ -237,7 +237,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
           ELSE
             IF class = Const THEN Files.ReadNum(R, obj.val)
-            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.used := FALSE;
+            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.usedat := 0;
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
@@ -402,7 +402,6 @@ BEGIN
   enter("ODD", SFunc, boolType, 11);
   enter("ABS", SFunc, intType, 1);
   enter("LED", SProc, noType, 81);  (*procedures*)
-  enter("NEW", SProc, noType, 51);
   enter("ASSERT", SProc, noType, 41);
   enter("EXCL", SProc, noType, 32);
   enter("INCL", SProc, noType, 22);

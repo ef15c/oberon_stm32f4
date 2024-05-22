@@ -1,38 +1,32 @@
-MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
-  C. Schoffit 19/10/2023 code generator for Cortex M4 STM32I-DISCO*)
-  IMPORT SYSTEM, Files, OM4A, OM4S, OM4B;
-  (*Code generator for Oberon compiler targetting Cortex M4F processor.
-     Procedural interface to Parser OM4P; result in record "code".
+MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
+  C. Schoffit 21.05.24 code generator for MSP430 processor family*)
+  IMPORT SYSTEM, Files, A := OMSPA, S := OMSPS, B := OMSPB;
+  (*Code generator for Oberon compiler targetting MSP430 processor.
+     Procedural interface to Parser OMSPP; result in record "code".
      Procedure Close writes code-files*)
 
-  CONST WordSize* = 4;
-    SP = 13; LR = 14; PC = 15; (*dedicated registers*)
-    MSP = 8; PSP = 9;
-    APSRnzcv = 15; (*APSR_nzcv is encoded as <Rt> = '1111'*)
-    NBS = 32; (* Number of single float registers in the FPU bank *)
-    VarORG0 = 0D0201000H;  (*for bare metal program only, 
-    0D0200400H is the end address of VGA buffers*)
+  CONST WordSize* = 2;
     maxStrx = 3000; maxTD = 160; maxFOS = 1000;
     
-    Reg = 10; RegI = 11; Cond = 12; FPReg = 13; (*internal item modes*)
+    Reg = 10; RegI = 11; Cond = 12; (*internal item modes*)
 
   TYPE Item* = RECORD
     mode*: INTEGER;
-    type*: OM4B.Type;
+    type*: B.Type;
+    obj: B.Object; (*for update of usedAt*)
     a*, b*, r: LONGINT;
     rdo*: BOOLEAN  (*read only*)
   END ;
 
   (* Item forms and meaning of fields:
-    mode    r      a       b
-    ---------------------------------
-    Const   -      value   (proc adr)  (immediate value)
-    Var     base   off     -           (direct adr)
-    Par      -     off0    off1        (indirect adr)
-    Reg     regno
-    FPReg   regno
-    RegI    regno  off     -
-    Cond    cond   Fchain  Tchain  *)
+    mode    r           a           b                      obj
+    ----------------------------------------------------------
+    Const   -        value   (proc adr)               -                    (immediate value)
+    Var     base      off           -            ext ref (base <= 0)    (direct adr)
+    Par      -          off0        off1                     -                     (indirect adr)
+    Reg     regno    -            -                        -
+    RegI    regno   off           -                        -
+    Cond    cond   Fchain  Tchain                   - *)
 
     FrameOffsetSegment = RECORD
       end, ofsptos (*offset with previous top of stack*): INTEGER
@@ -48,18 +42,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   VAR varsize: LONGINT;   (*data index*)
     tdx, strx: LONGINT;
     entry: LONGINT;   (*main entry point*)
-    RH: LONGINT;      (*in use registers R[0] ... R[H-1]*)
+    RH: LONGINT;      (*in use registers R[15] ... R[H+1]*)
     RL: INTEGER; (*register limit*)
-    SH: LONGINT;      (*in use floating point registers S[0] ... S[H-1]*)
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
-    fixORGP, fixORGD, fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by loader*)
-    check*: BOOLEAN;   (*emit run-time checks*)
-    version: INTEGER; (*0 = bare metal program, 1 = oberon system module*)
+    fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by linker*)
+    traps: ARRAY 7 OF B.Object;
     
     relmap: ARRAY 6 OF INTEGER;    (*condition codes for relations*)
     data: ARRAY maxTD OF LONGINT;  (*type descriptors*)
     str: ARRAY maxStrx OF CHAR;
-    mcode: OM4A.ModuleCode;
+    mcode: A.ModuleCode;
     frmOfsSegs: FrameOffset;
 
   PROCEDURE OfsPTOS(offset: INTEGER; increment: BOOLEAN);
@@ -71,330 +63,209 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END OfsPTOS;
 
   PROCEDURE FixOne*(at: LONGINT);
-  BEGIN OM4A.FixOne(mcode, at)
+  BEGIN A.FixOne(mcode, at)
   END FixOne;
 
   PROCEDURE FixLink*(L: LONGINT);
   BEGIN
-    OM4A.FixLink(mcode, L)
+    A.FixLink(mcode, L)
   END FixLink;
 
-  PROCEDURE incR;
-  BEGIN
-    IF RH < RL-1 THEN INC(RH) ELSE OM4S.Mark("register stack overflow") END
-  END incR;
-
-  PROCEDURE incS;
-  BEGIN
-    IF SH < NBS-1 THEN INC(SH) ELSE OM4S.Mark("FP register stack overflow") END
-  END incS;
+  PROCEDURE decR;
+  BEGIN (*register are allocated beginning from R15 to last register R4*)
+    IF RH > RL+1 THEN DEC(RH) ELSE S.Mark("register stack overflow") END
+  END decR;
 
   PROCEDURE SetRH*(r: BYTE);
   BEGIN
-    ASSERT(r < OM4A.C4);
+    ASSERT(r < A.C4);
     RH := r
   END SetRH;
   
   PROCEDURE CheckRegs*;
   BEGIN
-    IF RH # 0 THEN OM4S.Mark("Reg Stack"); RH := 0 END ;
-    IF SH # 0 THEN OM4S.Mark("FP Reg Stack"); SH := 0 END ;
-    IF mcode.pc >= OM4A.maxCode - 40 THEN OM4S.Mark("program too long") END ;
-    IF frame # 0 THEN OM4S.Mark("frame error"); frame := 0 END
+    IF RH # 15 THEN S.Mark("Reg Stack"); RH := 0 END ;
+    IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;
+    IF frame # 0 THEN S.Mark("frame error"); frame := 0 END
   END CheckRegs;
 
   PROCEDURE SetCC(VAR x: Item; n: LONGINT);
   BEGIN x.mode := Cond; x.a := 0; x.b := 0; x.r := n
   END SetCC;
 
-  PROCEDURE Trap(cond, num: LONGINT);
-  (*
-    Trap is implemented as a coprocessor instruction targeting a
-    non existing coprocessor, i.e. not CP10 or CP11 assocatied to FPU.
-    The encoding is 1110/11xx/xxxx/xxxx/xxxx/0xxx/xxxx/xxxx, that leaves 25 bits
-    for describing the trap number and file position.
-    
-    In this implementation, 24 bits will be used, like in RISC-5 code:
-    1110/110p/pppp/pppp/pppp/0ppp/pppp/nnnn
-    This will generate an exception trapped by the usage fault handler 
-    implemented as the trap procedure of the System module.
-  *)
-  VAR pos: LONGINT;
-  BEGIN 
-    IF cond # OM4A.AL THEN OM4A.IfThen(mcode, "", cond) END;
-    pos := OM4S.Pos();
-    ASSERT(pos < OM4A.C20);
-    ASSERT(num < OM4A.C4);
-    OM4A.Put0(mcode, OM4A.CoP + pos DIV OM4A.C7*OM4A.C12 + pos MOD OM4A.C7*OM4A.C4 + num)
-  END Trap;
+  PROCEDURE SetTrap*(num: INTEGER; proc: B.Object);
+  BEGIN traps[num] := proc
+  END SetTrap;
 
-(*  Format of pseudo operations for accessing static vars and procs
-
-    These pseudo-instructions will be fixup at load or link time by
-    the Modules or OM4L modules.
-
-  1/ Variables (entire address space is accessible)
-    We'll use pseudo  MOV and MOVT instructions and encode the fixup link in the pseudo MOV instruction.
-
-    a/ Getting lower 16-bits of absolute address
-    MOV a, #imm16:
-    aaaa/nnnn/dddd/dddd/dddd/dddd/dddd/dddd
-    
-    aaaa: destination register
-    nnnn: number of the module
-    dd24: offset DIV 2 of next op to fix for runtime absolute address
-    
-    b/ Getting higher 16-bits of absolute address
-    MOVT a, #imm16
-     
-    if nnnn < 0
-    0000/0000/0000/0000/0000/000p/vvvv/vvvv
-    a:    specified in previous instruction
-    p:    program based procedure
-    vvv8: number of the variable or procedure
-    
-    else if nnnn = 0, object cannot be a constant procedure
-    00000000/oooo/oooo/oooo/oooo/oooo/oooo
-    oo24: offset of the variable
-  
-  2/ Procedures (entire address space is accessible with veneer code
-                 when needed)
-    BL <proc address>:
-    
-    nnnn/pppp/pppp/dddd/dddd/dddd/dddd/dddd
-
-    nnnn:     number of the module
-    pppppppp: number of the procedure
-    dd20: offset DIV 2 of next op to fix for procedure address loading
-    
-*)
-
-  PROCEDURE GetStaticVarAddress(x: Item; a: BYTE);
-    VAR progbaseIndic: LONGINT;
+  PROCEDURE GetStaticVarAddress(VAR x: Item);
   BEGIN    
-    ASSERT((x.r <= 0) & (a < 13));
-    IF mcode.pc-fixORGD > OM4A.C25 THEN OM4S.Mark("too many instruction between static access") END;
-    (* MOV a, #imm16 *)
-    OM4A.Put0(mcode, a*OM4A.C28 + (-x.r)*OM4A.C24 + (mcode.pc-fixORGD) DIV OM4A.C1);
-    fixORGD := mcode.pc-4;
-    (*If x.r = 0, x.a contains the offset of the variable computed at compile time,
-      else if x.r < 0, x.a contains the variable or procedure number and the base indicator*)
-    IF (x.type # NIL) & (x.type.form = OM4B.Proc) & (x.r < 0) THEN progbaseIndic := OM4A.C8 
-    ELSE progbaseIndic := 0 END;
-    (* MOVT a, #imm16 *)
-    OM4A.Put0(mcode, progbaseIndic + x.a)
+    ASSERT(x.r <= 0); A.Emit(mcode, x.obj.usedat); x.obj.usedat := mcode.pc - 2
   END GetStaticVarAddress;
   
+  PROCEDURE Trap(cond, num: LONGINT);
+  (*Trap is implemented as calls to functions in the Trap special module.  
+     If the procedure Trap.Handle<num> procedure exists and is exported,
+     the trap checking code is generated.*)
+  VAR l: INTEGER;
+  BEGIN A.PutJ(mcode, A.negated(cond), 4);
+    A.PutSO(mcode, A.CALL, A.SR, A.Word + A.Im);
+    A.Emit(mcode, traps[num].usedat); traps[num].usedat := mcode.pc - 2
+  END Trap;
+
   PROCEDURE NilCheck(a: BYTE);
   BEGIN
-    IF check THEN
-      IF ~mcode.lastInstrSetFlags THEN  incR; OM4A.encCMPImm(mcode, a, RH, 0); DEC(RH) END ;
-      Trap(OM4A.EQ, 4) 
+    IF traps[4] # NIL THEN
+      A.PutDO(mcode, A.CMP, A.CG2, a, A.Word + A.Rm + A.Rdm);
+      Trap(A.EQ, 4) 
     END
   END NilCheck;
 
   (* loading of operands and addresses into registers *)
 
-  PROCEDURE doLoad(VAR x: Item; target: INTEGER);
-    VAR op, pc0, pc1: LONGINT;
+  PROCEDURE load(VAR x: Item);
+    VAR pc0, pc1: LONGINT; bw: SET;
   BEGIN
-    ASSERT(target IN {Reg, FPReg});
-    ASSERT((target # FPReg) OR (x.type.form = OM4B.Real));
-    IF x.type.size = 1 THEN op := OM4A.LDRB ELSE op := OM4A.LDR END ;
-    IF x.mode # target THEN
-      IF x.mode = OM4B.Const THEN
-        IF x.type.form = OM4B.Proc THEN
-          IF x.r > 0 THEN OM4S.Mark("not allowed")
-          ELSIF x.r = 0 THEN 
-            (*optimisation possible : si align(PC+4, 4) - x.a < 4096 on peut 
-              utiliser l'equivalent de l'assembleur ADR RH, <label>*)
-            OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(0)); (*Put address+1 of next statement in LR*)
-            OM4A.encDPImm32(mcode, OM4A.SUB, RH, LR, RH, mcode.pc - x.a)
-          ELSE GetStaticVarAddress(x, RH) 
-          END;
-          x.r := RH; incR
-        ELSE OM4A.encMOVImm32(mcode, RH, x.a);
-          IF target = FPReg THEN
-            OM4A.encFPMOVReg(mcode, OM4A.VMOVSR, RH, SH);
-            x.r := SH; incS
-          ELSE x.r := RH; incR
+    IF x.mode # Reg THEN
+      IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
+      IF x.mode = B.Const THEN
+        IF x.type.form = B.Proc THEN
+          IF x.r > 0 THEN S.Mark("not allowed")
+          ELSIF x.r = 0 THEN
+            A.PutDO(mcode, A.MOV, A.PC, RH, A.Word + A.Rm + A.Rdm); (*Put address of next statement in RH*)
+            A.PutDOImm16(mcode, A.SUB, mcode.pc - x.a, RH, A.Word + A.Rdm) (*substract offset to compute absolute address*)
+          ELSE A.PutDO(mcode, A.MOV, A.PC, RH, A.Word + A.IRAm + A.Rdm); GetStaticVarAddress(x) 
           END
+        ELSE A.PutDOImm16(mcode, A.MOV, A.PC, RH, A.Word + A.IRAm + A.Rdm); A.Emit(mcode, x.a)
         END;
-      ELSIF x.mode = OM4B.Var THEN
-        IF x.r > 0 THEN (*local*) 
-          IF target = FPReg THEN ASSERT((x.a + frame) MOD OM4A.C2 = 0);
-            IF x.a + frame >= OM4A.C10 THEN OM4S.Mark("local real var too far") END;
-            OM4A.Put0(mcode, OM4A.VLDRT2 + 1*OM4A.C23 + SH MOD OM4A.C1*OM4A.C22 + SP*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 + (x.a + frame) DIV OM4A.C2);
-            x.r := SH; incS
-          ELSE incR; OM4A.encMemImm32(mcode, op, RH-1, SP, RH, x.a + frame); x.r := RH-1
-          END
-        ELSE GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := 0; incR; doLoad(x, target)
-        END
-      ELSIF x.mode = OM4B.Par THEN
-        incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
-        IF target = FPReg THEN ASSERT((x.b) MOD OM4A.C2 = 0);
-          IF x.b >= OM4A.C10 THEN OM4S.Mark("real param offset 1 too far") END;
-          OM4A.Put0(mcode, OM4A.VLDRT2 + 1*OM4A.C23 + SH MOD OM4A.C1*OM4A.C22 + RH*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 + x.b DIV OM4A.C2);
-          x.r := SH; incS
-        ELSE  incR; OM4A.encMemImm32(mcode, op, RH-1, RH-1, RH, x.b); x.r := RH-1
-        END
-      ELSIF x.mode = RegI THEN 
-        IF target = FPReg THEN ASSERT(x.a MOD OM4A.C2 = 0);
-          IF x.a >= OM4A.C10 THEN OM4S.Mark("real RegI too far") END;
-          OM4A.Put0(mcode, OM4A.VLDRT2 + 1*OM4A.C23 + SH MOD OM4A.C1*OM4A.C22 + x.r*OM4A.C16 + SH DIV OM4A.C1*OM4A.C12 + x.a DIV OM4A.C2);
-          x.r := SH; incS; DEC(RH)
-        ELSE  OM4A.encMemImm32(mcode, op, x.r, x.r, RH, x.a)
-        END
+        x.r := RH; decR
+      ELSIF x.mode = B.Var THEN
+        IF x.r > 0 THEN (*local*) A.PutDO(mcode, A.MOV, A.SP, RH, bw + A.Im + A.Rdm); A.Emit(mcode, x.a + frame)
+        ELSE A.PutDO(mcode, A.MOV, A.SR, RH, bw + A.Im + A.Rdm); GetStaticVarAddress(x)
+        END; x.r := RH; decR
+      ELSIF x.mode = B.Par THEN A.PutDO(mcode, A.MOV, A.SP, RH, A.Word + A.Im + A.Rdm); A.Emit(mcode, x.a + frame);
+        A.PutDO(mcode, A.MOV, RH, RH, bw + A.Im + A.Rdm); A.Emit(mcode, x.b); x.r := RH; decR
+      ELSIF x.mode = RegI THEN A.PutDO(mcode, A.MOV, x.r, x.r, bw + A.Im + A.Rdm); A.Emit(mcode, x.a)
       ELSIF x.mode = Cond THEN
-        IF (x.a = 0) & (x.b = 0) THEN (*No "false" or "true" chains*)
-          OM4A.IfThen(mcode, "E", x.r);
-          OM4A.encMOVImm32(mcode, RH, 1);
-          OM4A.encMOVImm32(mcode, RH, 0)
-        ELSE (*A "true" and/or "false" chain need to be fixed, do it the classical way*)
-          pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.negated(x.r)*OM4A.C8);
-          FixLink(x.b); OM4A.encMOVImm32(mcode, RH, 1); pc1 := mcode.pc; OM4A.Put1(mcode, OM4A.BT2);
-          OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4); FixLink(x.a); OM4A.encMOVImm32(mcode, RH, 0);
-          OM4A.fix11(mcode, pc1, mcode.pc - pc1 - 4);
-        END;
-        x.r := RH; incR
-      ELSIF x.mode = Reg THEN OM4A.encFPMOVReg(mcode, OM4A.VMOVSR, x.r, SH) (*Reg to FPReg*); x.r := SH; incS; DEC(RH)
-      ELSIF x.mode = FPReg THEN OM4A.encFPMOVReg(mcode, OM4A.VMOVRS, RH, x.r) (*FPReg to Reg*); x.r := RH; incR; DEC(SH)
+        pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.r), 0);
+        FixLink(x.b); A.PutDOImm16(mcode, A.MOV, 1, RH, A.Word + A.Rdm); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
+        FixLink(x.a); A.PutDOImm16(mcode, A.MOV, 0, RH, A.Word + A.Rdm); A.fix(mcode, pc1, mcode.pc - pc1 - 2);
+        x.r := RH; decR
       END;
-      x.mode := target
+      x.mode := Reg
     END
-  END doLoad;
-
-  PROCEDURE load(VAR x: Item); (*Load item in top core register*)
-  BEGIN doLoad(x, Reg);
   END load;
-  
-  PROCEDURE loadFP(VAR x: Item); (*Load item in top FPU register*)
-  BEGIN doLoad(x, FPReg);
-  END loadFP;
-  
+
   PROCEDURE loadAdr(VAR x: Item);
   BEGIN
-    IF x.mode = OM4B.Var THEN
-      IF x.r > 0 THEN (*local*) OM4A.encDPImm32(mcode, OM4A.ADD, RH, SP, RH, x.a + frame)
-      ELSE GetStaticVarAddress(x, RH) 
+    IF x.mode = B.Var THEN
+      IF x.r > 0 THEN (*local*) A.PutDO(mcode, A.MOV, A.SP, RH, A.Word + A.Rm + A.Rdm);
+        IF x.a + frame # 0 THEN A.PutDOImm16(mcode, A.ADD, RH, x.a + frame, A.Word + A.Rdm) END
+      ELSE A.PutDO(mcode, A.MOV, A.PC, RH, A.Word + A.IRAm + A.Rdm); GetStaticVarAddress(x);
       END;
-      x.r := RH; incR
-    ELSIF x.mode = OM4B.Par THEN incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
-      IF x.b # 0 THEN incR; OM4A.encDPImm32(mcode, OM4A.ADD, RH-1, RH-1, RH, x.b); DEC(RH) END;
-      x.r := RH; incR
+      x.r := RH; decR
+    ELSIF x.mode = B.Par THEN A.PutDO(mcode, A.MOV, A.SP, RH, A.Word + A.Im + A.Rdm); A.Emit (mcode, x.a + frame);
+      IF x.b # 0 THEN A.PutDO(mcode, A.ADD, A.PC, RH, A.Word + A.IRAm + A.Rdm); A.Emit(mcode, x.b) END;
+      x.r := RH; decR
     ELSIF x.mode = RegI THEN
-      IF x.a # 0 THEN OM4A.encDPImm32(mcode, OM4A.ADD, x.r, x.r, RH, x.a) END
-    ELSE OM4S.Mark("address error")
+      IF x.a # 0 THEN A.PutDOImm16(mcode, A.ADD, x.a, x.r, A.Word + A.Rdm) END
+    ELSE S.Mark("address error")
     END;
     x.mode := Reg
   END loadAdr;
 
   PROCEDURE loadCond(VAR x: Item);
   BEGIN
-    IF x.type.form = OM4B.Bool THEN
-      IF x.mode = OM4B.Const THEN IF x.a = 0 THEN x.r := OM4A.NV ELSE x.r := OM4A.AL END
-      ELSE load(x);
-        IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, x.r, RH, 0) END;
-        x.r := OM4A.NE; DEC(RH)
-      END ;
+    IF x.type.form = B.Bool THEN
+      IF x.mode = B.Const THEN IF x.a = 0 THEN x.r := A.NV ELSE x.r := A.AL END
+      ELSE load(x); A.PutDOImm16(mcode, A.CMP, 0, x.r, A.Word + A.Rdm); x.r := A.NE; INC(RH)
+      END;
       x.mode := Cond; x.a := 0; x.b := 0
-    ELSE OM4S.Mark("not Boolean?")
+    ELSE S.Mark("not Boolean?")
     END
   END loadCond;
 
-  PROCEDURE loadTypTagAdr(T: OM4B.Type);
+  PROCEDURE loadTypTagAdr(T: B.Type);
     VAR x!: Item;
-  BEGIN x.mode := OM4B.Var; x.type := NIL; x.a := T.len; x.r := -T.mno; loadAdr(x)
+  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.r := -T.mno; loadAdr(x)
   END loadTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
-  BEGIN x.r := 0; x.a := varsize+x.a; GetStaticVarAddress(x, RH);
-    incR; x.mode := Reg; x.r := RH-1
+  BEGIN x.r := 0; x.a := varsize+x.a; A.PutDO(mcode, A.MOV, A.PC, RH, A.Word + A.IRAm + A.Rdm); GetStaticVarAddress(x);
+    x.mode := Reg; x.r := RH; decR
   END loadStringAdr;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
-  PROCEDURE MakeConstItem*(VAR x: Item; typ: OM4B.Type; val: LONGINT);
-  BEGIN x.mode := OM4B.Const; x.type := typ; x.a := val
+  PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: LONGINT);
+  BEGIN x.mode := B.Const; x.type := typ; x.a := val
   END MakeConstItem;
 
-  PROCEDURE MakeRealItem*(VAR x: Item; val: REAL);
-  BEGIN x.mode := OM4B.Const; x.type := OM4B.realType; x.a := SYSTEM.VAL(LONGINT, val)
-  END MakeRealItem;
-
-  PROCEDURE MakeStringItem*(VAR x: Item; len: LONGINT); (*copies string from OM4S-buffer to OM4G-string array*)
+  PROCEDURE MakeStringItem*(VAR x: Item; len: LONGINT); (*copies string from OMSPS-buffer to OMSPG-string array*)
     VAR i: LONGINT;
-  BEGIN x.mode := OM4B.Const; x.type := OM4B.strType; x.a := strx; x.b := len; i := 0;
+  BEGIN x.mode := B.Const; x.type := B.strType; x.a := strx; x.b := len; i := 0;
     IF strx + len + 4 < maxStrx THEN
-      WHILE len > 0 DO str[strx] := OM4S.str[i]; INC(strx); INC(i); DEC(len) END ;
+      WHILE len > 0 DO str[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END ;
       WHILE strx MOD 4 # 0 DO str[strx] := 0X; INC(strx) END
-    ELSE OM4S.Mark("too many strings")
+    ELSE S.Mark("too many strings")
     END
   END MakeStringItem;
 
-  PROCEDURE MakeItem*(VAR x: Item; y: OM4B.Object; curlev: LONGINT);
+  PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: LONGINT);
   BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo;
-    IF y.class = OM4B.Par THEN x.b := 0
-    ELSIF (y.class = OM4B.Const) & (y.type.form = OM4B.String) THEN x.b := y.lev  (*len*) ;
+    IF y.class = B.Par THEN x.b := 0
+    ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN x.b := y.lev  (*len*) ;
     ELSE x.r := y.lev
     END ;
-    IF (y.lev > 0) & (y.lev # curlev) & (y.class # OM4B.Const) THEN OM4S.Mark("not accessible ") END
+    IF (y.lev > 0) & (y.lev # curlev) & (y.class # B.Const) THEN S.Mark("not accessible ") END
   END MakeItem;
 
   (* Code generation for Selectors, Variables, Constants *)
 
-  PROCEDURE Field*(VAR x: Item; y: OM4B.Object);   (* x := x.y *)
+  PROCEDURE Field*(VAR x: Item; y: B.Object);   (* x := x.y *)
   BEGIN;
-    IF x.mode = OM4B.Var THEN
+    IF x.mode = B.Var THEN
       IF x.r >= 0 THEN x.a := x.a + y.val
       ELSE loadAdr(x); x.mode := RegI; x.a := y.val
       END
     ELSIF x.mode = RegI THEN x.a := x.a + y.val
-    ELSIF x.mode = OM4B.Par THEN x.b := x.b + y.val
+    ELSIF x.mode = B.Par THEN x.b := x.b + y.val
     END
   END Field;
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
-    VAR s, lim, p2: LONGINT;
+    VAR s, lim: LONGINT;
   BEGIN s := x.type.base.size; 
-    IF s=0 THEN OM4S.Mark("Invalid array item size")
+    IF s=0 THEN S.Mark("Invalid array item size")
     ELSE
       lim := x.type.len;
-      IF (y.mode = OM4B.Const) & (lim >= 0) THEN
-        IF (y.a < 0) OR (y.a >= lim) THEN OM4S.Mark("bad index") END ;
-        IF (x.mode # OM4B.Var) OR (x.r >= 0) OR (y.a = 0) THEN
-          IF x.mode IN {OM4B.Var, RegI} THEN INC(x.a, y.a * s)
-          ELSIF x.mode = OM4B.Par THEN x.b := y.a * s + x.b
+      IF (y.mode = B.Const) & (lim >= 0) THEN
+        IF (y.a < 0) OR (y.a >= lim) THEN S.Mark("bad index") END ;
+        IF (x.mode # B.Var) OR (x.r >= 0) OR (y.a = 0) THEN
+          IF x.mode IN {B.Var, RegI} THEN INC(x.a, y.a * s)
+          ELSIF x.mode = B.Par THEN x.b := y.a * s + x.b
           END
-        ELSE GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := y.a * s; incR
+        ELSE A.PutDO(mcode, A.MOV, A.PC, RH, A.Word + A.IRAm + A.Rdm); GetStaticVarAddress(x); x.mode := RegI; x.r := RH; x.a := y.a * s; decR
         END
       ELSE load(y);
-        IF check THEN  (*check array bounds*)
-          IF lim >= 0 THEN OM4A.encCMPImm(mcode, y.r, RH, lim)
+        IF traps[1] # NIL THEN  (*check array bounds*)
+          IF lim >= 0 THEN A.PutDOImm16(mcode, A.CMP, lim, RH, A.Word + A.Rdm)
           ELSE (*open array*)
-            IF x.mode IN {OM4B.Var, OM4B.Par} THEN
-              incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + 4 + frame); DEC(RH);
-              OM4A.encCMPReg(mcode, y.r, RH)
-            ELSE OM4S.Mark("error in Index")
+            IF x.mode IN {B.Var, B.Par} THEN A.PutDO(mcode, A.CMP, A.SP, y.r, A.Word + A.Im + A.Rdm); A.Emit(mcode, x.a + 4 + frame)
+            ELSE S.Mark("error in Index")
             END
-          END ;
-          Trap(OM4A.CS, 1) (*ARM inverts the carry with SUB and CMP instructions*)
-        END ;
-        (* Compute the shift to apply when s is a power of two *)
-        IF OM4A.log2(s, p2) # 1 THEN OM4A.encMOVImm32(mcode, RH, s);
-          OM4A.encMUL(mcode, y.r, y.r, RH); p2 := 0
-        END ;
-        IF x.mode = OM4B.Var THEN
-          IF x.r > 0 THEN OM4A.encDPReg(mcode, OM4A.ADD, y.r, SP, y.r, p2); INC(x.a, frame)
-          ELSE GetStaticVarAddress(x, RH);
-            OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.a := 0
-          END ;
+          END;
+          Trap(A.C, 1) (*MSP430 inverts the carry with SUB and CMP instructions*)
+        END;
+        A.eswDOImm16(mcode, A.MUL, s, y.r, A.Word + A.Rdm, RH);
+        IF x.mode = B.Var THEN
+          IF x.r > 0 THEN A.PutDO(mcode, A.ADD, A.SP, y.r, A.Word + A.Rm + A.Rdm); INC(x.a, frame)
+          ELSE A.PutDO(mcode, A.MOV, A.PC, RH, A.Word + A.IRAm + A.Rdm); GetStaticVarAddress(x);
+            A.PutDO(mcode, A.ADD, RH, y.r, A.Word + A.Rm + A.Rdm); x.a := 0
+          END;
           x.r := y.r; x.mode := RegI
-        ELSIF x.mode = OM4B.Par THEN
-          incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
-          OM4A.encDPReg(mcode, OM4A.ADD, y.r, RH, y.r, p2); x.mode := RegI; x.r := y.r; x.a := x.b
-        ELSIF x.mode = RegI THEN
-          OM4A.encDPReg(mcode, OM4A.ADD, x.r, x.r, y.r, p2); DEC(RH)
+        ELSIF x.mode = B.Par THEN A.PutDO(mcode, A.MOV, A.SP, RH, A.Word + A.Im + A.Rdm); A.Emit(mcode, x.a + frame);
+          A.PutDO(mcode, A.ADD, RH, y.r, A.Word + A.Rm + A.Rdm); x.mode := RegI; x.r := y.r; x.a := x.b
+        ELSIF x.mode = RegI THEN A.PutDO(mcode, A.ADD, y.r, x.r, A.Word + A.Rm + A.Rdm); INC(RH)
         END
       END
     END

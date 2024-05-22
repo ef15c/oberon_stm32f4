@@ -283,7 +283,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       FPSingle = {11, 9};
 
       T32MSK320 = {24..25, 4}; T32MSK321 = {25};
-      T32MSK3205 = {20..25, 4}; T32MSK3212 = {24..25, 20..21}; 
+      T32MSK3205 = {20..25, 4}; T32MSK3212 = {24, 20..21}; T32MSK3213 = {23..24, 20..21};
       T32MSK3206 = {20..23};
       
       (*T32MSK320 |111T/1110/opc1/opc2/xxxx/1010/o3x0/opc4|*)
@@ -316,6 +316,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       VSQRT = {23, 20..21, 16, 6..7};
       (*T32MSK3204 0 1x11 0000 11 FP Absolute VABS on page A7-455*)
       VABS = {23, 20..21, 6..7};
+      (*T32MSK3204 0 1x11 0000 01 P Move VMOV (register) on page A7-479*)
+      VMOV = {23, 20..21, 6};
 
       (*T32MSK325 0 1x11 010x x1 FP Compare VCMP, VCMPE on page A7-457*)
       VCMPT1 = {23, 20..21, 18, 6};
@@ -328,7 +330,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       VSTR = {24};
       (*T32MSK3212 1xx01 - FP Load Register VLDR on page A7-473*)
       VLDR = {20, 24};
-      
+      (*T32MSK3213 10x10 1101 FP Push Registers VPUSH on page A7-492*)
+      VPUSH = {21, 24};
+      (*T32MSK3213 01x11 1101 FP Pop Registers VPOP on page A7-491*)
+      VPOP = {20..21, 23};
       (*T32MSK320 |111T/1110/A3 L/    /    /101C/ B21/    |
         32-bit transfer between Arm core and extension registers on page A6.6-168*)
       FPTrCoreExtReg = {25, 4};
@@ -757,6 +762,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
               (*VABS{<c>}{<q>}.F32 <Sd>,<Sm>*)
               WriteOp(W, op, "VABS", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
+            ELSIF op*T32MSK3204 = VMOV THEN
+              (*T32MSK3204 0 1x11 0000 01 P Move VMOV (register) on page A7-479*)
+              (*VMOV{<c>}{<q>}.F32 <Sd>, <Sm>*)
+              WriteOp(W, op, "VMOV", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
+              Texts.WriteString(W, " S"); Texts.WriteInt(W, Sm, 1)
             ELSE Texts.WriteString(W, "TODO: other FPDataProc on page A6.4-165")
             END
           ELSIF op*T32MSK321 = FPExtRegLdSt THEN
@@ -776,6 +786,16 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
               Texts.WriteString(W, " ["); WriteReg(W, Rn);
               IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - " ) END;
               Texts.WriteInt(W, b4*OM4A.C2, 1); Texts.WriteString(W, " ]")
+            ELSIF op*T32MSK3213 = VPUSH THEN
+              (*T32MSK3213 10x10 1101 FP Push Registers VPUSH on page A7-492*)
+              (*VPUSH<c> <list> Encoding T2*)
+              WriteOp(W, op, "VPUSH", FALSE, FALSE);
+              FOR t := Sd TO Sd + b4 -1 DO Texts.WriteString(W, " S"); Texts.WriteInt(W, t, 1) END;
+            ELSIF op*T32MSK3213 = VPOP THEN
+              (*T32MSK3213 01x11 1101 FP Pop Registers VPOP on page A7-491*)
+              (*VPOP <list> Encoding T2*)
+              WriteOp(W, op, "VPOP", FALSE, FALSE);
+              FOR t := Sd TO Sd + b4 -1 DO Texts.WriteString(W, " S"); Texts.WriteInt(W, t, 1) END;
             ELSE Texts.WriteString(W, "TODO: other FPExtRegLdSt on page A6.5-167")
             END
           ELSIF op*T32MSK320 = FPTrCoreExtReg THEN
