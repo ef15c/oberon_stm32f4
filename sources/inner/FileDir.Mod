@@ -139,14 +139,14 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17/03/24*)
     VAR  oldroot: DiskAdr;
       h: BOOLEAN; U: DirEntry;
       a!: DirPg;
-  BEGIN NEW(a); h := FALSE;
+  BEGIN NEW(a); h := FALSE; Kernel.DisableAbortHandler;
     insert(name, DirRootAdr, h, U, fad);
     IF h THEN (*root overflow*)
       Kernel.GetSector(DirRootAdr, a^); ASSERT(a.mark = DirMark);
       Kernel.AllocSector(DirRootAdr, oldroot); Kernel.PutSector(oldroot, a^);
       a.mark := DirMark; a.m := 1; a.p0 := oldroot; a.e[0] := U;
       Kernel.PutSector(DirRootAdr, a^)
-    END
+    END; Kernel.EnableAbortHandler
   END Insert;
 
 
@@ -248,7 +248,7 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17/03/24*)
   PROCEDURE Delete*(name: FileName; VAR fad: DiskAdr);
     VAR h: BOOLEAN; newroot: DiskAdr;
       a!: DirPg;
-  BEGIN NEW(a); h := FALSE;
+  BEGIN NEW(a); h := FALSE; Kernel.DisableAbortHandler;
     delete(name, DirRootAdr, h, fad);
     IF h THEN (*root underflow*)
       Kernel.GetSector(DirRootAdr, a^); ASSERT(a.mark = DirMark);
@@ -256,7 +256,7 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17/03/24*)
         newroot := a.p0; Kernel.GetSector(newroot, a^); ASSERT(a.mark = DirMark);
         Kernel.PutSector(DirRootAdr, a^) (*discard newroot*)
       END
-    END
+    END; Kernel.EnableAbortHandler
   END Delete;
 
   PROCEDURE enumerate(prefix:   ARRAY OF CHAR;

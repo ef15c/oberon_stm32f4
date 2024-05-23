@@ -273,12 +273,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF x.mode IN {OM4B.Var, OM4B.Par, RegI} THEN load(x); NilCheck(x.r)
-    ELSIF x.mode # Reg THEN OM4S.Mark("bad mode in DeRef") END;
+    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.r)
+    ELSIF x.mode # Reg THEN S.Mark("bad mode in DeRef") END;
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
 
-  PROCEDURE Q(T: OM4B.Type; VAR dcw: LONGINT);
+  PROCEDURE Q(T: B.Type; VAR dcw: LONGINT);
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
       Q(T.base, dcw); data[dcw] := (T.mno*1000H + T.len) * 1000H + dcw - fixORGT;
@@ -286,20 +286,20 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Q;
 
-  PROCEDURE FindPtrFlds(typ: OM4B.Type; off: LONGINT; VAR dcw: LONGINT);
-    VAR fld!: OM4B.Object; i, s: LONGINT;
+  PROCEDURE FindPtrFlds(typ: B.Type; off: LONGINT; VAR dcw: LONGINT);
+    VAR fld!: B.Object; i, s: LONGINT;
   BEGIN
-    IF (typ.form = OM4B.Pointer) OR (typ.form = OM4B.NilTyp) THEN data[dcw] := off; INC(dcw)
-    ELSIF typ.form = OM4B.Record THEN
+    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN data[dcw] := off; INC(dcw)
+    ELSIF typ.form = B.Record THEN
       fld := typ.dsc;
       WHILE fld # NIL DO FindPtrFlds(fld.type, fld.val + off, dcw); fld := fld.next END
-    ELSIF typ.form = OM4B.Array THEN
+    ELSIF typ.form = B.Array THEN
       s := typ.base.size;
       FOR i := 0 TO typ.len-1 DO FindPtrFlds(typ.base, i*s + off, dcw) END
     END
   END FindPtrFlds;
 
-  PROCEDURE BuildTD*(T: OM4B.Type; VAR dc: LONGINT);
+  PROCEDURE BuildTD*(T: B.Type; VAR dc: LONGINT);
     VAR dcw, k, s: LONGINT;  (*dcw = word address*)
   BEGIN dcw := dc DIV 4; s := T.size; (*convert size for heap allocation*)
     IF s <= 24 THEN s := 32 ELSIF s <= 56 THEN s := 64 ELSIF s <= 120 THEN s := 128
@@ -307,36 +307,34 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     T.len := dc; data[dcw] := s; INC(dcw);  (*len used as address*)
     k := T.nofpar;   (*extension level!*)
-    IF k > 3 THEN OM4S.Mark("ext level too large")
+    IF k > 3 THEN S.Mark("ext level too large")
     ELSE Q(T, dcw);
       WHILE k < 3 DO data[dcw] := -1; INC(dcw); INC(k) END
     END ;
     FindPtrFlds(T, 0, dcw); data[dcw] := -1; INC(dcw); tdx := dcw; dc := dcw*4;
-    IF tdx >= maxTD THEN OM4S.Mark("too many record types"); tdx := 0 END
+    IF tdx >= maxTD THEN S.Mark("too many record types"); tdx := 0 END
   END BuildTD;
 
-  PROCEDURE TypeTest*(VAR x: Item; T: OM4B.Type; varpar, isguard: BOOLEAN);
+  PROCEDURE TypeTest*(VAR x: Item; T: B.Type; varpar, isguard: BOOLEAN);
     VAR pc0: LONGINT;
   BEGIN
-    IF ~check OR (T = NIL) THEN
-      IF x.mode >= Reg THEN DEC(RH) END ;
-      SetCC(x, OM4A.AL)
+    IF (traps[2] = NIL) OR (T = NIL) THEN
+      IF x.mode >= Reg THEN INC(RH) END ;
+      SetCC(x, A.AL)
     ELSE (*fetch tag into RH*)
-      IF varpar THEN incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a+4+frame); DEC(RH)
-      ELSE load(x);
-        IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, x.r, RH, 0) END ;
-        pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.EQ*OM4A.C8);  (*NIL belongs to every pointer type*)
-        incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, x.r, RH, -8); DEC(RH)
+      IF varpar THEN A.PutDO(mcode, A.MOV, A.SP, RH, A.Word + A.Im + A.Rdm); A.Emit(mcode, x.a+4+frame)
+      ELSE load(x); A.PutDOImm16(mcode, A.CMP, 0, RH, A.Word + A.Rdm);
+        pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*NIL belongs to every pointer type*)
+        A.PutDO(mcode, A.MOV, x.r, RH, A.Word + A.Im + A.Rdm); A.Emit(mcode, -8)
       END;
-      incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, RH-1, RH, T.nofpar*4);
-      loadTypTagAdr(T);  (*tag of T*)
-      OM4A.encCMPReg(mcode, RH-1, RH-2); DEC(RH, 2);
+      decR; A.PutDO(mcode, A.MOV, RH+1, RH+1, A.Word + A.Im + A.Rdm); A.Emit(mcode, T.nofpar*4);
+      loadTypTagAdr(T); (*tag of T*) A.PutDO(mcode, A.CMP, RH+2, RH+1, A.Word + A.Rm + A.Rdm); INC(RH, 2);
       IF isguard THEN
-        IF check THEN Trap(OM4A.NE, 2) END
-      ELSE SetCC(x, OM4A.EQ);
-        IF ~varpar THEN DEC(RH) END
+        IF traps[2] # NIL THEN Trap(A.NE, 2) END
+      ELSE SetCC(x, A.EQ);
+        IF ~varpar THEN INC(RH) END
       END;
-      IF ~varpar THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END
+      IF ~varpar THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END
     END
   END TypeTest;
 
@@ -346,67 +344,63 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t: LONGINT;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
-    x.r := OM4A.negated(x.r); t := x.a; x.a := x.b; x.b := t
+    x.r := A.negated(x.r); t := x.a; x.a := x.b; x.b := t
   END Not;
 
   PROCEDURE And1*(VAR x: Item);   (* x := x & *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.negated(x.r)*OM4A.C22 + x.a);
-    x.a := mcode.pc-4; OM4A.FixLink(mcode, x.b); x.b := 0
+    A.PutJ(mcode, A.negated(x.r), x.a);
+    x.a := mcode.pc-2; A.FixLink(mcode, x.b); x.b := 0
   END And1;
 
   PROCEDURE And2*(VAR x, y: Item);
   BEGIN
     IF y.mode # Cond THEN loadCond(y) END ;
-    x.a := OM4A.merged(mcode, y.a, x.a); x.b := y.b; x.r := y.r
+    x.a := A.merged(mcode, y.a, x.a); x.b := y.b; x.r := y.r
   END And2;
 
   PROCEDURE Or1*(VAR x: Item);   (* x := x OR *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + x.r*OM4A.C22 + x.b);
-    x.b := mcode.pc-4; OM4A.FixLink(mcode, x.a); x.a := 0
+    A.PutJ(mcode, x.r, x.b);
+    x.b := mcode.pc-2; A.FixLink(mcode, x.a); x.a := 0
   END Or1;
 
   PROCEDURE Or2*(VAR x, y: Item);
   BEGIN
     IF y.mode # Cond THEN loadCond(y) END ;
-    x.a := y.a; x.b := OM4A.merged(mcode, y.b, x.b); x.r := y.r
+    x.a := y.a; x.b := A.merged(mcode, y.b, x.b); x.r := y.r
   END Or2;
 
   (* Code generation for arithmetic operators *)
 
   PROCEDURE Neg*(VAR x: Item);   (* x := -x *)
   BEGIN
-    IF x.type.form = OM4B.Int THEN
-      IF x.mode = OM4B.Const THEN x.a := -x.a
-      ELSE load(x); OM4A.encDPImm32(mcode, OM4A.RSB, x.r, x.r, RH, 0)
-      END
-    ELSIF x.type.form = OM4B.Real THEN
-      IF x.mode = OM4B.Const THEN x.a := x.a + 7FFFFFFFH + 1
-      ELSE loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VNEG, x.r, 0, x.r)
+    IF x.type.form = B.Int THEN
+      IF x.mode = B.Const THEN x.a := -x.a
+      ELSE load(x); A.eswSO(mcode, A.NEG, x.r, A.Word + A.Rdm, RH)
       END
     ELSE (*form = Set*)
-      IF x.mode = OM4B.Const THEN x.a := -x.a-1 
-      ELSE load(x); OM4A.encDPImm32(mcode, OM4A.EOR, x.r, x.r, RH, -1)
+      IF x.mode = B.Const THEN x.a := -x.a-1 
+      ELSE load(x); A.PutDOImm16(mcode, A.XOR, -1, x.r, A.Word + A.Rdm)
       END
     END
   END Neg;
 
   PROCEDURE AddOp*(op: LONGINT; VAR x, y: Item);   (* x := x +- y *)
   BEGIN
-    IF op = OM4S.plus THEN
-      IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN x.a := x.a + y.a
-      ELSIF y.mode = OM4B.Const THEN load(x);
-        IF y.a # 0 THEN OM4A.encDPImm32(mcode, OM4A.ADD, x.r, x.r, RH, y.a) END
-      ELSE load(x); load(y); OM4A.encDPReg(mcode, OM4A.ADD, RH-2, x.r, y.r, 0); DEC(RH); x.r := RH-1
+    IF op = S.plus THEN
+      IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a + y.a
+      ELSIF y.mode = B.Const THEN load(x);
+        IF y.a # 0 THEN A.PutDOImm16(mcode, A.ADD, y.a, x.r, A.Word + A.Rdm) END
+      ELSE load(x); load(y); ASSERT(x.r = RH-2); A.PutDO(mcode, A.ADD, y.r, x.r, A.Word + A.Rm + A.Rdm); INC(RH)
       END
-    ELSE (*op = OM4S.minus*)
-      IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN x.a := x.a - y.a
-      ELSIF y.mode = OM4B.Const THEN load(x);
-        IF y.a # 0 THEN OM4A.encDPImm32(mcode, OM4A.SUB, x.r, x.r, RH, y.a) END
-      ELSE load(x); load(y); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, x.r, y.r, 0); DEC(RH); x.r := RH-1
+    ELSE (*op = S.minus*)
+      IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a - y.a
+      ELSIF y.mode = B.Const THEN load(x);
+        IF y.a # 0 THEN A.PutDOImm16(mcode, A.SUB, y.a, x.r, A.Word + A.Rdm) END
+      ELSE load(x); load(y); ASSERT(x.r = RH-2); A.PutDO(mcode, A.SUB, y.r, x.r, A.Word + A.Rm + A.Rdm); INC(RH)
       END
     END
   END AddOp;

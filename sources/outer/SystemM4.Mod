@@ -27,7 +27,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   VAR W: Texts.Writer;
     pat: ARRAY 32 OF CHAR;
-    TrappedAdr, DebounceTime: INTEGER; cfsr: SET;
+    TrappedAdr: INTEGER; cfsr: SET;
     stack*: StackDump;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
@@ -452,18 +452,11 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   (*Handle abort key press*)
   PROCEDURE* AbortHandler(VAR f: Kernel.ExceptionFrameDesc);
-   CONST maxTime = 200;
-    VAR icsr, pr: SET;
-  BEGIN SYSTEM.GET(PR, pr);
-    IF BSP.PB1Pin IN pr THEN
-      IF ((Kernel.Time() - DebounceTime) >= maxTime) & ~SYSTEM.BIT(BSP.PB1Port + BSP.IDR, BSP.PB1Pin) & (cfsr = {}) THEN
-         cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
-        (*Trigger abort by requesting a PendSV interrupt*)
-        SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3) (*ISB*)
-      END;
-      pr := {BSP.PB1Pin}; SYSTEM.PUT(PR, pr); (* Clear pending IRQ*)
-      DebounceTime := Kernel.Time()
-    END
+    VAR icsr: SET;
+  BEGIN cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
+    (*Trigger abort by requesting a PendSV interrupt*)
+    SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
+    SYSTEM.PUT(PR, {BSP.B1Pin}); (* Clear pending IRQ*)
   END AbortHandler;
 
   PROCEDURE Reset;
@@ -524,10 +517,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   PROCEDURE installAbortHandler;
     VAR reg: SET; irqNum: INTEGER;
-  BEGIN Kernel.Install(SYSTEM.ADR(AbortHandler), BSP.VecTabBase+BSP.PB1ExtiIrqNum*4);
-    irqNum := BSP.PB1ExtiIrqNum - 16;
-    SYSTEM.GET(BSP.NVIC_ISER + irqNum DIV 32*4, reg);
-    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, reg + {irqNum MOD 32})
+  BEGIN Kernel.Install(SYSTEM.ADR(AbortHandler), BSP.VecTabBase+BSP.B1ExtiIrqNum*4);
+    Kernel.EnableAbortHandler
   END installAbortHandler;
 
   PROCEDURE activateHandlers;
@@ -539,7 +530,6 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
 BEGIN Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
-  DebounceTime := Kernel.Time();
   Kernel.Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);
   Kernel.Install(SYSTEM.ADR(BusFaultHandler), BSP.VecTabBase+BSP.BusFaultExcNum*4);
   installAbortHandler;

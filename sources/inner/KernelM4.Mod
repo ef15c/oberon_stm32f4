@@ -294,6 +294,20 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN REPEAT BSP.led(128); BSP.Delayus(10000); BSP.led(0); BSP.Delayus(10000) UNTIL FALSE
   END defaultHandler;
 
+  PROCEDURE DisableAbortHandler*;
+    VAR irqNum: INTEGER;
+  BEGIN
+    irqNum := BSP.B1ExtiIrqNum - 16;
+    SYSTEM.PUT(BSP.NVIC_ICER + irqNum DIV 32*4, {irqNum MOD 32})
+  END DisableAbortHandler;
+
+  PROCEDURE EnableAbortHandler*;
+    VAR irqNum: INTEGER;
+  BEGIN
+    irqNum := BSP.B1ExtiIrqNum - 16;
+    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, {irqNum MOD 32})
+  END EnableAbortHandler;
+
   PROCEDURE Init*;
     VAR i: INTEGER;
   BEGIN (*relocate vector table at beginning of SRAM*)

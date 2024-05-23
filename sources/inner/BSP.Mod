@@ -334,7 +334,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     NO_PULL* = {}; PULL_UP* = {0}; PULL_DOWN* = {1};
 
     (*base board push buttons*)
-    PB1Pin* = 14; PB1Port* = GPIOC; PB1ExtiIrqNum* = EXTI15_10_IRQNum;
+    PB1Pin* = 14; PB1Port* = GPIOC;
     PB1In* = PeriphBBAlias + (PB1Port + IDR - PeriphBase + PB1Pin DIV 8)*32 + PB1Pin MOD 8*4;
     PB2Pin* = 15; PB2Port* = GPIOC;
     PB2In* = PeriphBBAlias + (PB2Port + IDR - PeriphBase + PB2Pin DIV 8)*32 + PB2Pin MOD 8*4;
@@ -368,7 +368,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     LED7Out* = PeriphBBAlias + (LED7Port + ODR - PeriphBase + LED7Pin DIV 8)*32 + LED7Pin MOD 8*4;
 
     (*discovery board push button*)
-    B1Pin* = 0; B1Port* = GPIOA;
+    B1Pin* = 0; B1Port* = GPIOA; B1ExtiIrqNum* = EXTI0_IRQNum;
     (*discovery board LEDs*)
     LD3Pin* = 13; LD3Port* = GPIOG;
     LD3Out* = PeriphBBAlias + (LD3Port + ODR - PeriphBase + LD3Pin DIV 8)*32 + LD3Pin MOD 8*4;
@@ -604,20 +604,14 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*PA0 as blue push button, PA5 and 7 as LEDs 3 and 4*)
     configureGPIO(GPIOA, maskA_1b, maskA_2b, {}, {}, LSL(OUTPUT_MODE, 5*2) + LSL(OUTPUT_MODE, 7*2), {}, {}, {}, {}, {});
-    SYSTEM.GET(SYSCFG_BASE + EXTI_CR1 + B1Pin DIV 4*4, reg); (*blue push button (PA0) generates event at rising*)
+    SYSTEM.GET(SYSCFG_BASE + EXTI_CR1 + B1Pin DIV 4*4, reg); (*blue push button (PA0) generates interrupt at rising*)
     SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1 + B1Pin DIV 4*4, reg - {B1Pin MOD 4*4..B1Pin MOD 4*4+3} + LSL(SYSTEM.VAL(SET, 0), B1Pin MOD 4*4)); 
     (*EXTI 0 now connected to GPIOA*)
     SYSTEM.GET(EXTI_BASE + RTSR, reg); SYSTEM.PUT(EXTI_BASE + RTSR, reg + {B1Pin});
-    SYSTEM.GET(EXTI_BASE + EMR, reg); SYSTEM.PUT(EXTI_BASE + EMR, reg + {B1Pin});
+    SYSTEM.GET(EXTI_BASE + EMR, reg); SYSTEM.PUT(EXTI_BASE + EXTI_IMR, reg + {B1Pin});
     (*PC14, 15 and 13 as push buttons 1, 2 and 4*)
     configureGPIO(GPIOC, maskC_1b, maskE_2b, {}, {}, LSL(OUTPUT_MODE, 1*2) + LSL(OUTPUT_MODE, 2*2) + LSL(OUTPUT_MODE, 3*2),
       {}, {}, LSL(PULL_UP, 13*2) + LSL(PULL_UP, 14*2) + LSL(PULL_UP, 15*2), {}, {});
-    SYSTEM.GET(SYSCFG_BASE + EXTI_CR1 + PB1Pin DIV 4*4, reg); (*push button 1 (PC14) generates interrupt at falldown*)
-    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1 + PB1Pin DIV 4*4, reg - {PB1Pin MOD 4*4..PB1Pin MOD 4*4+3} + LSL(SYSTEM.VAL(SET, 2), PB1Pin MOD 4*4)); 
-    (*EXTI 14 now connected to GPIOD*)
-    SYSTEM.GET(EXTI_BASE + FTSR, reg); SYSTEM.PUT(EXTI_BASE + FTSR, reg + {PB1Pin});
-    SYSTEM.GET(EXTI_BASE + RTSR, reg); SYSTEM.PUT(EXTI_BASE + RTSR, reg + {PB1Pin}); (*rising and falling edge detection*)
-    SYSTEM.GET(EXTI_BASE + EXTI_IMR, reg); SYSTEM.PUT(EXTI_BASE + EXTI_IMR, reg + {PB1Pin});
     (*PD12 and 13 as LED 6 and 5*)
     configureGPIO(GPIOD, maskD_1b, maskD_2b, {}, {}, LSL(OUTPUT_MODE, 12*2) + LSL(OUTPUT_MODE, 13*2), {}, {}, {}, {}, {});
    (*PE6 as push button 3*)

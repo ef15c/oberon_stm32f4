@@ -312,6 +312,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     VAR mod!: Modules.Module;
   BEGIN
     IF (ActCnt <= 0) OR (Kernel.allocated >= Kernel.heapLim - Kernel.heapOrg - 10000H) THEN
+      Kernel.DisableAbortHandler;
       mod := Modules.root; LED(21H);
       WHILE mod # NIL DO
         IF mod.name[0] # 0X THEN Kernel.Mark(mod.ptr) END ;
@@ -320,7 +321,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
       LED(23H);
       Files.RestoreList; LED(27H);
       Kernel.Scan; LED(20H);
-      ActCnt := BasicCycle
+      ActCnt := BasicCycle;
+      Kernel.EnableAbortHandler
     END
   END GC;
 
@@ -433,18 +435,16 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END WaitForAnswer;
 
   PROCEDURE installPS2IrqHandlers;
-    VAR reg: SET; irqNum: INTEGER;
+    VAR irqNum: INTEGER;
   BEGIN BSP.InitPS2;
     Kernel.Install(SYSTEM.ADR(ps2_1IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK1ExtiIrqNum*4);
     Kernel.Install(SYSTEM.ADR(ps2_2IrqHandler), BSP.VecTabBase + BSP.PS2CLOCK2ExtiIrqNum*4);
 
     irqNum := BSP.PS2CLOCK1ExtiIrqNum - 16;
-    SYSTEM.GET(BSP.NVIC_ISER + irqNum DIV 32*4, reg);
-    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, reg + {irqNum MOD 32});
+    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, {irqNum MOD 32});
 
     irqNum := BSP.PS2CLOCK2ExtiIrqNum - 16;
-    SYSTEM.GET(BSP.NVIC_ISER + irqNum DIV 32*4, reg);
-    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, reg + {irqNum MOD 32})
+    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, {irqNum MOD 32})
 
   END installPS2IrqHandlers;
 
