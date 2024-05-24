@@ -24,9 +24,12 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
  
     NE* = 0; EQ* = 1; NC* = 2; C* = 3; N* = 4; GE* = 5; L* = 6; AL* = 7; NV* = 8;
 
-  (* Addressing modes *)
+  (*Addressing modes flags*)
     Rm* = {}; Im* = {4}; IRm* = {5}; IRAm* = {4..5}; (*source for format I or dest for format II instructions*)
     Rdm* = {}; Idm* = {7}; (*dest for format I instructions*)
+
+  (*Addressing mode names*)
+    Register* = 0; Indexed* = 1; Symbolic* = 2; Absolute* = 3; Indirect* = 4; IndirectIncr* = 5; Immediate* = 6; 
 
   (*Instruction size*)
     Byte* = {6}; Word* = {}; 
@@ -65,94 +68,120 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       pos*: ARRAY maxCode DIV 2 OF INTEGER
     END;
 
+    Item* = RECORD reg*, am*: BYTE; ofs*: INTEGER END;
+    GetOffsetProc* = PROCEDURE(VAR x: Item): INTEGER;
+
+  VAR getOfs : GetOffsetProc;
+
+  PROCEDURE SetGetOfsProc*(p: GetOffsetProc);
+  BEGIN getOfs := p
+  END SetGetOfsProc;
+
   PROCEDURE log2*(m: LONGINT; VAR e: LONGINT): LONGINT;
   BEGIN e := 0;
     WHILE ~ODD(m) DO m := LSR(m, 1); INC(e); END;
     RETURN m
   END log2;
-
-  PROCEDURE AdToAs(params: SET): SET;
-  BEGIN RETURN params*Byte + LSR(params*Idm, 3)
-  END AdToAs;
-  
+ 
   (*instruction assemblers*)
 
   PROCEDURE Emit*(VAR c: ModuleCode; val: INTEGER);
   BEGIN
     c.code[c.pc+1] := LSR(val, 8) MOD C8;
     c.code[c.pc] := val MOD C8;
+    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
   END Emit;
+
+  PROCEDURE encSrc(op: INTEGER; VAR SReg: BYTE; sam: BYTE; SOff: INTEGER; VAR emitSOff: BOOLEAN; VAR params: SET);
+  BEGIN
+    IF sam = Register THEN ASSERT(SReg # CG2); params := params + Rm
+    ELSIF sam = Indexed THEN ASSERT(~(SReg IN {PC, SR, CG2}));
+      IF SOff # 0 THEN params := params + Im; emitSOff := TRUE ELSE params := params + IRAm END
+    ELSIF sam = Symbolic THEN SReg := PC; params := params + Im; emitSOff := TRUE
+    ELSIF sam = Absolute THEN SReg := SR; params := params + Im; emitSOff := TRUE
+    ELSIF sam = Indirect THEN ASSERT(~(SReg IN {SR, CG2})); params := params + IRm
+    ELSIF sam = IndirectIncr THEN ASSERT(~(SReg IN {SR, CG2})); params := params + IRAm
+    ELSIF sam = Immediate THEN 
+      IF (SOff = 4) & (op # PUSH) (*W/A CPU4 errata*) THEN SReg := CG1; params := params + IRm
+      ELSIF (SOff = 8) & (op # PUSH) THEN SReg := CG1; params := params + IRAm
+      ELSIF SOff = 0 THEN SReg := CG2; params := params + Rm
+      ELSIF SOff = 1 THEN SReg := CG2; params := params + Im
+      ELSIF SOff = 2 THEN SReg := CG2; params := params + IRm
+      ELSIF SOff = -1 THEN SReg := CG2; params := params + IRAm
+      ELSE SReg := PC; params := params + IRAm; emitSOff := TRUE
+    END
+    ELSE ASSERT(FALSE)
+    END;
+  END encSrc;
 
  (*double operand instructions format (I):
     |                 A B              |
     | op /Sreg/dWAs/Dreg| *)
 
-  PROCEDURE PutDO*(VAR c: ModuleCode; op, SReg, DReg: BYTE; params: SET);
-  BEGIN (*emit format I instruction*)
-    c.code[c.pc+1] := LSL(op, 4) + SReg;
-    c.code[c.pc] := ORD(params) + DReg;
-    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
-  END PutDO;
+  PROCEDURE PutDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET);
+    VAR emitSOff, emitDOff: BOOLEAN;
+  BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
+    ASSERT(s.reg < 16); ASSERT(d.reg < 16); ASSERT ((s.ofs >= -C15) & (s.ofs <= C16)); ASSERT ((d.ofs >= -C15) & (d.ofs <= C16));
+    encSrc(op, s.reg, s.am, s.ofs, emitSOff, params);
 
-  PROCEDURE PutDOImm16*(VAR c: ModuleCode; op: BYTE; imm16: INTEGER; DReg: BYTE; params: SET);
-  BEGIN (*use constant generator if possible*)
-    ASSERT (params*IRAm = {}); (*params must not contain any As flag*)
-    IF imm16 = 4 THEN PutDO(c, op, CG1, DReg, params + IRm)
-    ELSIF imm16 = 8 THEN PutDO(c, op, CG1, DReg, params + IRAm)
-    ELSIF imm16 = 0 THEN PutDO(c, op, CG2, DReg, params + Rm)
-    ELSIF imm16 = 1 THEN PutDO(c, op, CG2, DReg, params + Im)
-    ELSIF imm16 = 2 THEN PutDO(c, op, CG2, DReg, params + IRm)
-    ELSIF imm16 = -1 THEN PutDO(c, op, CG2, DReg, params + IRAm)
-    ELSE PutDO(c, op, PC, DReg, params + IRAm); Emit(c, imm16)
-    END
-  END PutDOImm16;
+    IF d.am = Register THEN ASSERT(d.reg # CG2); params := params + Rdm
+    ELSIF d.am = Indexed THEN ASSERT(~(d.reg IN {PC, SR, CG2})); params := params + Idm; emitDOff := TRUE
+    ELSIF d.am = Symbolic THEN d.reg := PC; params := params + Idm; emitDOff := TRUE
+    ELSIF d.am = Absolute THEN d.reg := SR; params := params + Idm; emitDOff := TRUE
+    ELSE ASSERT(FALSE)
+    END;
+
+    c.code[c.pc+1] := LSL(op, 4) + s.reg;
+    c.code[c.pc] := ORD(params) + d.reg;
+    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+    IF emitSOff THEN Emit(c, getOfs(s)) END;
+    IF emitDOff THEN Emit(c, getOfs(d)) END
+  END PutDO;
 
   (*single operand instructions format (II):
     |                   B               |
     | opc/ode / WAd/Dreg| *)
 
-  PROCEDURE PutSO*(VAR c: ModuleCode; op: LONGINT; DSReg: BYTE; params: SET);
-  BEGIN (*emit format II instruction*)
+  PROCEDURE PutSO*(VAR c: ModuleCode; op: INTEGER; VAR ds: Item; params: SET);
+    VAR emitDSOff: BOOLEAN;
+  BEGIN (*emit format II instruction*) ASSERT(params = params*Byte); emitDSOff := FALSE;
+    ASSERT(ds.reg < 16); ASSERT ((ds.ofs >= -C15) & (ds.ofs <= C16));
+    encSrc(op, ds.reg, ds.am, ds.ofs, emitDSOff, params);
+
     c.code[c.pc+1] := LSR(op, 1);
-    c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + DSReg;
-    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
+    c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + ds.reg;
+    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+    IF emitDSOff THEN Emit(c, getOfs(ds)) END
   END PutSO;
 
-  PROCEDURE PutSOImm16*(VAR c: ModuleCode; op: BYTE; imm16: INTEGER; params: SET);
-  BEGIN (*use constant generator if possible*)
-    IF (imm16 = 4) & (op # PUSH (*workaround CPU4*)) THEN PutSO(c, op, CG1, params + IRm)
-    ELSIF (imm16 = 8) & (op # PUSH (*workaround CPU4*)) THEN PutSO(c, op, CG1, params + IRAm)
-    ELSIF imm16 = 0 THEN PutSO(c, op, CG2, params + Rm)
-    ELSIF imm16 = 1 THEN PutSO(c, op, CG2, params + Im)
-    ELSIF imm16 = 2 THEN PutSO(c, op, CG2, params + IRm)
-    ELSIF imm16 = -1 THEN PutSO(c, op, CG2, params + IRAm)
-    ELSE PutSO(c, op, PC, params + IRAm); Emit(c, imm16)
-    END
-  END PutSOImm16;
-
-  PROCEDURE eswSO*(VAR c: ModuleCode; op: BYTE; DSReg: BYTE; params: SET; tmp: BYTE);
-  BEGIN ASSERT (tmp < C4);
-    IF op = NEG THEN PutDOImm16(c, XOR, -1, DSReg, params); PutDOImm16(c, ADD, 1, DSReg, params)
+  PROCEDURE eswSO*(VAR c: ModuleCode; op: BYTE; VAR d: Item; params: SET);
+    VAR t: Item;
+  BEGIN IF op = NEG THEN t.reg := 0; t.am := Immediate; t.ofs := -1; PutDO(c, XOR, t, d, params); t.ofs := 1; PutDO(c, ADD, t, d, params)
     ELSE (*TODO*) ASSERT(FALSE)
     END
   END eswSO;
 
-  PROCEDURE eswDOImm16*(VAR c: ModuleCode; op: BYTE; imm16: INTEGER; DReg: BYTE; params: SET; tmp: BYTE);
+  PROCEDURE eswDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET; tmp: BYTE);
+    VAR t: Item;
   BEGIN ASSERT (tmp < C4);
-    IF op = MUL THEN
-      IF imm16 = 0 THEN PutDOImm16(c, MOV, 0, DReg, params)
-      ELSIF imm16 < 0 THEN (*multiplicator is negative, change sign of multiplicator, do the multiplication, then change the sign of the result*)
-        eswDOImm16(c, op, -imm16, DReg, params, tmp); eswSO(c, NEG, DReg, AdToAs(params), tmp)
-      ELSE (*multiplicator is positive*) WHILE ~ODD(imm16) DO PutDO(c, ADD, DReg, DReg, AdToAs(params)); imm16 := imm16 DIV 2 END;
-        IF imm16 # 1 THEN PutDO(c, MOV, DReg, tmp, AdToAs(params) + Rdm);
-          REPEAT PutDO(c, ADD, tmp, tmp, params*Byte + Rm + Rdm); imm16 := imm16 DIV 2;
-            IF ODD(imm16) THEN PutDO(c, ADD, tmp, DReg, AdToAs(params)) END
-          UNTIL imm16 = 1
+    IF op = MUL THEN 
+      IF s.am = Immediate THEN
+        IF s.ofs = 0 THEN t.reg := 0; t.am := Immediate; t.ofs := 0; PutDO(c, MOV, t, d, params)
+        ELSIF s.ofs < 0 THEN (*multiplicator is negative, change sign of multiplicator, do the multiplication, then change the sign of the result*)
+          s.ofs := -s.ofs; eswDO(c, op, s, d, params, tmp); eswSO(c, NEG, d, params)
+        ELSE (*multiplicator is positive*) WHILE ~ODD(s.ofs) DO PutDO(c, ADD, d, d, params); s.ofs := s.ofs DIV 2 END;
+          t.reg := tmp; t.am := Register; t.ofs := 0;
+          IF s.ofs # 1 THEN PutDO(c, MOV, d, t, params);
+            REPEAT PutDO(c, ADD, t, t, params); s.ofs := s.ofs DIV 2;
+              IF ODD(s.ofs) THEN PutDO(c, ADD, t, d, params) END
+            UNTIL s.ofs = 1
         END
       END
-    ELSE (*TODO*) ASSERT(FALSE)
+      ELSE (*todo multiplication*) ASSERT(FALSE)
+      END
+    ELSE (*TODO other ops*) ASSERT(FALSE)
     END
-  END eswDOImm16;
+  END eswDO;
 
   (*jump instructions:
     |opcC/nd  /   o/ffse/t   | *)
@@ -222,9 +251,9 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   END merged;
 
   PROCEDURE PushRegs*(VAR c: ModuleCode; rl, rh: BYTE);
-    VAR i: INTEGER;
-  BEGIN
-    FOR i := rh TO rl BY -1 DO PutSO(c, PUSH, i, Word + Rm) END
+    VAR i: INTEGER; t: Item;
+  BEGIN t.am := Register; t.ofs := 0;
+    FOR i := rh TO rl BY -1 DO t.reg := i; PutSO(c, PUSH, t, Word) END
   END PushRegs;
 
   PROCEDURE SaveRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT);  (* R[16-r .. 15]*)
@@ -234,9 +263,9 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   END SaveRegs;
 
   PROCEDURE PopRegs*(VAR c: ModuleCode; rl, rh: BYTE);
-    VAR i: INTEGER;
-  BEGIN
-    FOR i := rl TO rh DO PutDO(c, MOV, SP, i, Word + IRAm + Rdm) END
+    VAR i: INTEGER; t, spi: Item;
+  BEGIN t.am := Register; t.ofs := 0; spi.reg := SP; spi.am := Indirect; spi.ofs := 0;
+    FOR i := rl TO rh DO t.reg := i; PutDO(c, MOV, spi, t, Word) END
   END PopRegs;
 
   PROCEDURE RestoreRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT); (*R[16-5 .. 15]*)
