@@ -938,10 +938,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0; SH := 0;
     ELSE (*function*)
-      IF r > 0 THEN OM4A.encMOVReg(mcode, r, 0); 
-        OM4A.RestoreRegs(mcode, r, frame); OfsPTOS(-r, TRUE) END ;
       IF s > 0 THEN (* VMOV Ss, S0*) OM4A.Put0(mcode, OM4A.VMOVSS + s DIV OM4A.C1*OM4A.C12 +
         s MOD OM4A.C1*OM4A.C22); OM4A.RestoreFPRegs(mcode, s, frame); OfsPTOS(-s, TRUE) END ;
+      IF r > 0 THEN OM4A.encMOVReg(mcode, r, 0); 
+        OM4A.RestoreRegs(mcode, r, frame); OfsPTOS(-r, TRUE) END ;
       IF x.type.base.form = OM4B.Real THEN x.mode := FPReg; x.r := s; SH := s+1; RH := r 
       ELSE x.mode := Reg; x.r := r; RH := r+1; SH := s END
     END

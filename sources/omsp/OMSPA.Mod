@@ -29,7 +29,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     Rdm* = {}; Idm* = {7}; (*dest for format I instructions*)
 
   (*Addressing mode names*)
-    Register* = 0; Indexed* = 1; Symbolic* = 2; Absolute* = 3; Indirect* = 4; IndirectIncr* = 5; Immediate* = 6; 
+    Register* = 0; Indexed* = 1; Symbolic* = 2; Absolute* = 3; Indirect* = 4; IndirectIncr* = 5; Immediate* = 6; Undefined* = 255;
 
   (*Instruction size*)
     Byte* = {6}; Word* = {}; 
@@ -256,9 +256,9 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     FOR i := rh TO rl BY -1 DO t.reg := i; PutSO(c, PUSH, t, Word) END
   END PushRegs;
 
-  PROCEDURE SaveRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT);  (* R[16-r .. 15]*)
-  BEGIN (*r > 0*)
-    PushRegs(c, 16-r, 15);
+  PROCEDURE SaveRegs*(VAR c: ModuleCode; r, n: BYTE; VAR frame: LONGINT);  (* R[r .. r+n-1]*)
+  BEGIN (*n > 0*)
+    PushRegs(c, r, r+n-1);
     INC(frame, 2*r)
   END SaveRegs;
 
@@ -268,9 +268,9 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     FOR i := rl TO rh DO t.reg := i; PutDO(c, MOV, spi, t, Word) END
   END PopRegs;
 
-  PROCEDURE RestoreRegs*(VAR c: ModuleCode; r: BYTE; VAR frame: LONGINT); (*R[16-5 .. 15]*)
-  BEGIN (*r > 0*)
-    PopRegs(c, 16-r, 15);
+  PROCEDURE RestoreRegs*(VAR c: ModuleCode; r, n: BYTE; VAR frame: LONGINT); (*R[r .. r+n-1]*)
+  BEGIN (*n > 0*)
+    PopRegs(c, r, r+n-1);
     DEC(frame, 2*r)
   END RestoreRegs;
 

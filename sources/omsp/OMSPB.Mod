@@ -41,6 +41,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       dsc*, typobj*: Object;
       base*: Type;  (*for arrays, records, pointers*)
       size*: LONGINT;  (*in bytes; always multiple of 4, except for Byte, Bool and Char*)
+      leaf*: BOOLEAN; ldr*: BYTE; (*for procedures, for register allocation optimization*)
     END ;
 
   (* Object classes and the meaning of "val":
@@ -163,7 +164,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     VAR key: LONGINT;
       ref, class, form, np, readonly: INTEGER;
       fld!, par!, obj!, mod!, last!: Object;
-      t!: Type;
+      t!: Type; leaf: BYTE;
       name, modname: OMSPS.Ident;
   BEGIN Read(R, ref);
     IF ref < 0 THEN T := typtab[-ref]  (*already read*)
@@ -188,7 +189,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         END ;
         IF last = NIL THEN t.dsc := obj ELSE last.next := obj END
       ELSIF form = Proc THEN
-        InType(R, thismod, t.base);
+        InType(R, thismod, t.base); Files.ReadByte(R, leaf); t.leaf := leaf = 1; Files.ReadByte(R, t.ldr);
         obj := NIL; np := 0; Read(R, class);
         WHILE class # 0 DO  (*parameters*)
           NEW(par); par.class := class; Read(R, readonly); par.rdo := readonly = 1; 
@@ -298,7 +299,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           fld := fld.next
         END ;
         Write(R, 0)
-      ELSIF t.form = Proc THEN OutType(R, t.base); OutPar(R, t.dsc, t.nofpar); Write(R, 0)
+      ELSIF t.form = Proc THEN OutType(R, t.base); IF t.leaf THEN Write(R, 1) ELSE Write(R, 0) END;
+        Files.WriteByte(R, t.ldr); OutPar(R, t.dsc, t.nofpar); Write(R, 0)
       END ;
       IF (t.mno > 0) & (obj # NIL) THEN  (*re-export, output name*)
         mod := topScope.next;
