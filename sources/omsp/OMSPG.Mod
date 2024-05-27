@@ -505,45 +505,34 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MUL, t, x, A.Word, RH)
     ELSIF (x.mode = B.Const) & (x.a >= 2) THEN load(y); t.ofs := x.a; A.eswDO(mcode, A.MUL, t, y, A.Word, RH);
       x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
-    ELSE IF arith[0] = NIL THEN S.Mark("import Arith module") 
+    ELSE IF arith[0] = NIL THEN S.Mark("import Arith.mul function") 
       ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n)
       END
     END
   END MulOp;
 
   PROCEDURE DivOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
-    VAR e: LONGINT;
-  BEGIN
-    IF op = OM4S.div THEN
-      IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
-        IF y.a > 0 THEN x.a := x.a DIV y.a ELSE OM4S.Mark("bad divisor") END
-      ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x); OM4A.encShiftImm5(mcode, OM4A.ASr, x.r, x.r, e)
-      ELSIF y.mode = OM4B.Const THEN
-        IF y.a > 0 THEN load(x); load(y); OM4A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1 ELSE OM4S.Mark("bad divisor") END
-      ELSE load(y);
-        IF check THEN 
-          IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, y.r, RH, 0) END;
-          Trap(OM4A.LE, 6)
-        END;
-        load(x); OM4A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+    VAR t!, p!, rh!: Item; r, n: INTEGER;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; rh.reg := RH; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL;
+    IF op = S.div THEN
+      IF (x.mode = B.Const) & (y.mode = B.Const) THEN
+        IF y.a > 0 THEN x.a := x.a DIV y.a ELSE S.Mark("bad divisor") END
+      ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.DIv, t, x, A.Word, RH);
+        x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
+      ELSE IF arith[1] = NIL THEN S.Mark("import Arith.div procedure")
+        ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0, A.Word); Trap(A.GE, 6); IF y.mode IN {Reg, RegI} THEN freeR END END;
+          MakeItem(p, arith[1], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n); PutDO(A.MOV, x, rh, A.Word); x.r := RH; x.mode := Reg; allocR
+        END
       END
     ELSE (*op = OM4S.mod*)
-      IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
-        IF y.a > 0 THEN x.a := x.a MOD y.a ELSE OM4S.Mark("bad modulus") END
-      ELSIF (y.mode = OM4B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x);
-        OM4A.encBFC(mcode, x.r, e, 31)
-      ELSIF y.mode = OM4B.Const THEN
-        IF y.a > 0 THEN load(x); load(y); 
-          OM4A.encUDIV(mcode, RH, x.r, y.r); OM4A.encMUL(mcode, RH, RH, y.r); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, x.r, RH, 0);
-          DEC(RH); x.r := RH-1
-        ELSE OM4S.Mark("bad modulus") END
-      ELSE load(y);
-        IF check THEN 
-          IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, y.r, RH, 0) END;
-          Trap(OM4A.LE, 6)
-        END;
-        load(x); OM4A.encUDIV(mcode, RH, x.r, y.r); OM4A.encMUL(mcode, RH, RH, y.r); OM4A.encDPReg(mcode, OM4A.SUB, RH-2, x.r, RH, 0);
-        DEC(RH); x.r := RH-1
+      IF (x.mode = B.Const) & (y.mode = B.Const) THEN
+        IF y.a > 0 THEN x.a := x.a MOD y.a ELSE S.Mark("bad modulus") END
+      ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MOd, t, x, A.Word, RH);
+        x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
+      ELSE IF arith[1] = NIL THEN S.Mark("import Arith.div procedure")
+        ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0, A.Word); Trap(A.GE, 6); IF y.mode IN {Reg, RegI} THEN freeR END END;
+          MakeItem(p, arith[1], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n); PutDO(A.MOV, y, rh, A.Word); x.r := RH; x.mode := Reg; allocR
+        END
       END
     END
   END DivOp;

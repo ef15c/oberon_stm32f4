@@ -61,6 +61,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   (*|0000|*) MUL* = 0; (*software implemented operations*)
   (*|0001|*) NEG* = 1;
+  (*|0002|*) DIv* = 2;
+  (*|0003|*) MOd* = 3;
 
   TYPE
     ModuleCode* = POINTER TO ModuleCodeDesc;

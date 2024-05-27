@@ -175,9 +175,11 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
     VAR p!: Piece; porg: LONGINT;
   BEGIN p := T.pce; porg := T.org;
     IF pos >= porg THEN
-      WHILE pos >= porg + p.len DO INC(porg, p.len); p := p.next END
-    ELSE p := p.prev; DEC(porg, p.len);
-      WHILE pos < porg DO p := p.prev; DEC(porg, p.len) END
+      IF  pos >= porg + p.len THEN REPEAT INC(porg, p.len); p := p.next UNTIL (pos < porg + p.len) OR (p = T.pce) END
+(*WHILE pos >= porg + p.len DO INC(porg, p.len); p := p.next END*)
+    ELSE (*p := p.prev; DEC(porg, p.len);*)
+      REPEAT p := p.prev; DEC(porg, p.len) UNTIL (pos >= porg) OR (p = T.pce) 
+(*WHILE pos < porg DO p := p.prev; DEC(porg, p.len) END*)
     END ;
     T.pce := p; T.org := porg;  (*update cache*)
     pce := p; org := porg
