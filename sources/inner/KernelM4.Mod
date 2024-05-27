@@ -172,7 +172,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       IF ~done THEN
         IF mark # -1 THEN SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); INC(p, size)
         ELSE (*free*) SYSTEM.GET(p, size); INC(p, size)
-        END
+        END;
+        done := SYSTEM.CMP(p, heapLim, CS)
       END
     UNTIL done
   END Coalesce;

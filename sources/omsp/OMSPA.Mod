@@ -53,8 +53,13 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   (*|1111|*) AND* = 15;
 
   (*single operand*)
+  (* |0/0010/0000| *) RRC* = 20H;
+  (* |0/0010/0001| *) SWPB* = 21H;
+  (* |0/0010/0010| *) RRA* = 22H;
+  (* |0/0010/0011| *) SXT* = 23H;
   (* |0/0010/0100| *) PUSH* = 24H;
   (* |0/0010/0101| *) CALL* = 25H;
+  (* |0/0010/0110| *) RETI* = 26H;
 
   (*emulated single operand*)
   (* |1/0000/0000| *) POP* = 100H;

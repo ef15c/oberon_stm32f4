@@ -612,7 +612,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Set*(VAR x, y: Item);   (* x := {x .. y} *)
   BEGIN
     IF (x.mode = OM4B.Const) & ( y.mode = OM4B.Const) THEN
-      IF x.a <= y.a THEN x.a := LSL(2, y.a) - LSL(1, x.a) ELSE x.a := 0 END
+      IF x.a <= y.a THEN x.a := ORD({x.a .. y.a})(*LSL(2, y.a) - LSL(1, x.a)*) ELSE x.a := 0 END
     ELSE
       IF (x.mode = OM4B.Const) & (x.a <= 8) THEN x.a := LSL(-1, x.a)
       ELSE load(x); OM4A.encMOVImm32(mcode, RH, -1); OM4A.encShiftReg(mcode, OM4A.LSl, x.r, RH, x.r)

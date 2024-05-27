@@ -383,8 +383,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE PutDO(op: BYTE; VAR src, dst: Item; params: SET);
   BEGIN 
-    IF ~(src.mode IN {B.Const, B.Var, Reg, RegI}) THEN load(src) END;
     IF ~(dst.mode IN {B.Var, Reg, RegI}) THEN load(dst) END;
+    IF ~(src.mode IN {B.Const, B.Var, Reg, RegI}) THEN load(src) END;
 
     IF src.mode = B.Const THEN src.reg := 0; src.am := A.Immediate; src.ofs := src.a ELSE setRAO(src) END; 
     setRAO(dst);
@@ -541,66 +541,59 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation for set operators *)
 
   PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
-  BEGIN
-    IF x.mode = OM4B.Const THEN x.a := LSL(1, x.a)
-    ELSE load(x); OM4A.encMOVImm32(mcode, RH, 1); OM4A.encShiftReg(mcode, OM4A.LSl, x.r, RH,  x.r)
+    VAR rh!: Item; pc0, pc1: INTEGER;
+  BEGIN rh.reg := RH; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL;
+    IF x.mode = B.Const THEN x.a := LSL(1, x.a)
+    ELSE allocR; load(x); PutDO(A.MOV, c1, rh, A.Word); PutDO(A.ADD, c1, x, A.Word);
+      pc0 := mcode.pc; PutDO(A.SUB, c1, x, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.EQ, 0);
+      PutDO(A.ADD, rh, rh, A.Word); A.PutJ(mcode, A.AL, pc0 - mcode.pc -2); A.fix(mcode, pc1, mcode.pc - pc1 - 2);
+      x.r := rh.reg; x.reg := x.r; freeR
     END
   END Singleton;
 
-  PROCEDURE Set*(VAR x, y: Item);   (* x := {x .. y} *)
+  PROCEDURE Set*(VAR x, y: Item); (* x := {x .. y} *)
+    VAR p!: Item; r, n: INTEGER;
   BEGIN
-    IF (x.mode = OM4B.Const) & ( y.mode = OM4B.Const) THEN
-      IF x.a <= y.a THEN x.a := LSL(2, y.a) - LSL(1, x.a) ELSE x.a := 0 END
-    ELSE
-      IF (x.mode = OM4B.Const) & (x.a <= 8) THEN x.a := LSL(-1, x.a)
-      ELSE load(x); OM4A.encMOVImm32(mcode, RH, -1); OM4A.encShiftReg(mcode, OM4A.LSl, x.r, RH, x.r)
-      END;
-      IF (y.mode = OM4B.Const) & (y.a < 8) THEN OM4A.encMOVImm32(mcode, RH, LSL(-2, y.a)); y.mode := Reg; y.r := RH; incR
-      ELSE load(y); OM4A.encMOVImm32(mcode, RH, -2); OM4A.encShiftReg(mcode, OM4A.LSl, y.r, RH, y.r)
-      END;      
-      IF x.mode = OM4B.Const THEN
-        IF x.a # 0 THEN OM4A.encDPImm32(mcode, OM4A.EOR, y.r, y.r, RH, -1);
-          OM4A.encDPImm32(mcode, OM4A.AND, RH-1, y.r, RH, x.a)
-        END;
-        x.mode := Reg; x.r := RH-1
-      ELSE DEC(RH); OM4A.encDPReg(mcode, OM4A.BIC, x.r, x.r, y.r, 0)
+    IF (x.mode = B.Const) & ( y.mode = B.Const) THEN
+      IF x.a <= y.a THEN x.a := ORD({x.a .. y.a}) ELSE x.a := 0 END
+    ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set procedure")
+      ELSE MakeItem(p, arith[2], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n)
       END
     END
   END Set;
 
   PROCEDURE In*(VAR x, y: Item);  (* x := x IN y *)
-  BEGIN load(y);
-    IF x.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROr, y.r, y.r, (x.a + 1) MOD 20H); DEC(RH)
-    ELSE load(x); OM4A.encDPImm32(mcode, OM4A.ADD, x.r, x.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROr, y.r, y.r, x.r); DEC(RH, 2)
-    END ;
-    SetCC(x, OM4A.MI)
+    VAR c!: Item; pc0, pc1: INTEGER;
+  BEGIN 
+    IF x.mode = B.Const THEN  c.reg := 0; c.am := A.Immediate; c.ofs := LSL(1, x.a); c.obj := NIL; PutDO(A.BIT, c, y, A.Word);
+      IF x.mode IN {Reg, RegI} THEN freeR END;
+    ELSE load(x); load(y); PutDO(A.ADD, c1, x, A.Word); 
+      pc0 := mcode.pc; PutDO(A.SUB, c1, x, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.EQ, 0);
+      PutSO(A.RRC, y, A.Word); A.PutJ(mcode, A.AL, pc0 - mcode.pc -2); A.fix(mcode, pc1, mcode.pc - pc1 - 2);
+      PutDO(A.BIT, c1, y, A.Word); freeR; freeR
+    END;
+    SetCC(x, A.NE)
   END In;
 
   PROCEDURE SetOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
     VAR xset, yset: SET; (*x.type.form = Set*)
   BEGIN
-    IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
+    IF (x.mode = B.Const) & (y.mode = B.Const) THEN
       xset := SYSTEM.VAL(SET, x.a); yset := SYSTEM.VAL(SET, y.a);
-      IF op = OM4S.plus THEN xset := xset + yset
-      ELSIF op = OM4S.minus THEN xset := xset - yset
-      ELSIF op = OM4S.times THEN xset := xset * yset
-      ELSIF op = OM4S.rdiv THEN xset := xset / yset
+      IF op = S.plus THEN xset := xset + yset
+      ELSIF op = S.minus THEN xset := xset - yset
+      ELSIF op = S.times THEN xset := xset * yset
+      ELSIF op = S.rdiv THEN xset := xset / yset
       END ;
       x.a := SYSTEM.VAL(LONGINT, xset)
-    ELSIF y.mode = OM4B.Const THEN
-      load(x);
-      IF op = OM4S.plus THEN OM4A.encDPImm32(mcode, OM4A.ORR, x.r, x.r, RH, y.a)
-      ELSIF op = OM4S.minus THEN OM4A.encDPImm32(mcode, OM4A.BIC, x.r, x.r, RH, y.a)
-      ELSIF op = OM4S.times THEN OM4A.encDPImm32(mcode, OM4A.AND, x.r, x.r, RH, y.a)
-      ELSIF op = OM4S.rdiv THEN OM4A.encDPImm32(mcode, OM4A.EOR, x.r, x.r, RH, y.a)
+    ELSE
+      IF op = S.plus THEN PutDO(A.BIS, y, x, A.Word)
+      ELSIF op = S.minus THEN PutDO(A.BIC, y, x, A.Word)
+      ELSIF op = S.times THEN PutDO(A.AND, y, x, A.Word)
+      ELSIF op = S.rdiv THEN PutDO(A.XOR, y, x, A.Word)
       END ;
-    ELSE load(x); load(y);
-      IF op = OM4S.plus THEN OM4A.encDPReg(mcode, OM4A.ORR, RH-2, x.r, y.r, 0)
-      ELSIF op = OM4S.minus THEN OM4A.encDPReg(mcode, OM4A.BIC, RH-2, x.r, y.r, 0)
-      ELSIF op = OM4S.times THEN OM4A.encDPReg(mcode, OM4A.AND, RH-2, x.r, y.r, 0)
-      ELSIF op = OM4S.rdiv THEN OM4A.encDPReg(mcode, OM4A.EOR, RH-2, x.r, y.r, 0)
-      END ;
-      DEC(RH); x.r := RH-1
+      IF y.mode IN {Reg, RegI} THEN freeR END;
+      ASSERT(x.r = RH+1)
     END 
   END SetOp;
 
