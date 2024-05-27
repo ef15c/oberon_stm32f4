@@ -55,7 +55,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     mcode: A.ModuleCode;
     frmOfsSegs: FrameOffset;
 
-    cm1, c0, c1, pc, sp: Item;
+    cm1, c0, c1, pc, sp, r4, r15: Item;
 
   PROCEDURE OfsPTOS(offset: INTEGER; increment: BOOLEAN);
   BEGIN IF increment THEN INC(offset, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
@@ -93,6 +93,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
     IF ~success THEN S.Mark("register stack underflow") END
   END freeR;
+
+  PROCEDURE resultRegister(VAR res: Item);
+  BEGIN
+    IF AllocUp THEN res := r4 ELSE res := r15 END
+  END resultRegister;
 
   PROCEDURE SetRH*(r: BYTE);
   BEGIN
@@ -367,16 +372,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END TypeTest;
 
-  PROCEDURE PutDO(op: BYTE; VAR src, dst: Item; params: SET);
-    PROCEDURE setRAO(VAR i: Item);
-    BEGIN
-      IF i.mode = B.Var THEN
-        IF i.r > 0 THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame ELSE i.reg := 0; i.am := A.Absolute; i.ofs := A.C16 (*use static var address*) END
-    ELSIF i.mode = Reg THEN i.reg := i.r; i.am := A.Register; i.ofs := 0
-    ELSIF i.mode = RegI THEN i.reg := i.r; i.am := A.Indexed; i.ofs := i.a
-    END;
-    END setRAO;
+  PROCEDURE setRAO(VAR i: Item);
+  BEGIN
+    IF i.mode = B.Var THEN
+      IF i.r > 0 THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame ELSE i.reg := 0; i.am := A.Absolute; i.ofs := A.C16 (*use static var address*) END
+  ELSIF i.mode = Reg THEN i.reg := i.r; i.am := A.Register; i.ofs := 0
+  ELSIF i.mode = RegI THEN i.reg := i.r; i.am := A.Indexed; i.ofs := i.a
+  END;
+  END setRAO;
 
+  PROCEDURE PutDO(op: BYTE; VAR src, dst: Item; params: SET);
   BEGIN 
     IF ~(src.mode IN {B.Const, B.Var, Reg, RegI}) THEN load(src) END;
     IF ~(dst.mode IN {B.Var, Reg, RegI}) THEN load(dst) END;
@@ -386,6 +391,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     A.PutDO(mcode, op, src, dst, params)
   END PutDO;
+
+  PROCEDURE PutSO(op: INTEGER; VAR sd: Item; params: SET);
+  BEGIN 
+    IF ~(sd.mode IN {B.Const, B.Var, Reg, RegI}) THEN load(sd) END;
+ 
+    IF sd.mode = B.Const THEN sd.reg := 0; sd.am := A.Immediate; sd.ofs := sd.a ELSE setRAO(sd) END; 
+
+    A.PutSO(mcode, op, sd, params)
+  END PutSO;
 
   (* Code generation for Boolean operators *)
 
@@ -456,57 +470,43 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END AddOp;
 
   PROCEDURE PrepCall*(VAR x: Item; VAR r, n: LONGINT);
-  BEGIN (*x.type.form = OM4B.Proc*)
+  BEGIN (*x.type.form = OM4B.Proc*) ASSERT(~AllocUp);
     IF x.mode > B.Par THEN load(x) END; n := 0+x.obj.type.ldr - RH; (*number of overwritten registers currently in use by the caller*)
-    IF n > 0 THEN r := RH; A.SaveRegs(mcode, r+1, n, frame); OfsPTOS(n, TRUE); RH := 0 END;
+    IF n > 0 THEN r := RH + 1; A.SaveRegs(mcode, r, n, frame); OfsPTOS(n, TRUE); RH := 0 END;
     AllocUp := x.obj.type.leaf
   END PrepCall;
 
-  PROCEDURE Call*(VAR x: Item; r, s: LONGINT);
-  BEGIN (*x.type.form = OM4B.Proc*)
-    IF x.mode = OM4B.Const THEN
-      IF x.r >= 0 THEN OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(x.a - (mcode.pc+4)))
-      ELSE (*imported*)
-        IF mcode.pc - fixORGP < OM4A.C21 THEN
-          OM4A.Put0(mcode, (-x.r)*OM4A.C28 + x.a*OM4A.C20 + (mcode.pc - fixORGP) DIV OM4A.C1); fixORGP := mcode.pc-4;
-          (*Branching range is -16777216 to 16777214. If caller is in SDRAM (0xD0000000)
-          * and callee in Flash (0x08000000), the offset will not be in the permissible
-          * range. In this case, the loader will have to generate a "veneer code" near the caller
-          * which will jump to the callee. This code could be LDR PC, [PC] followed by the absolute
-          * callee address.*)
-        ELSE OM4S.Mark("fixup impossible")
-        END
-      END
+  PROCEDURE Call*(VAR x: Item; r, n: LONGINT);
+    VAR rh!, rr!, dr!: Item;
+  BEGIN (*x.type.form = B.Proc*) rh.reg := RH; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL;
+    IF x.mode = B.Const THEN x.reg := 0; x.am := A.Immediate; x.ofs := A.C16; (*address must be computed at link time*)
+      A.PutSO(mcode, A.CALL, x, A.Word)
     ELSE
-      IF x.mode <= OM4B.Par THEN load(x); DEC(RH)
-      ELSE IF RH < 8 THEN (*POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + LSL(1, RH))
-        ELSE (*POP T3*) OM4A.Put0(mcode, OM4A.POPT3 + RH*OM4A.C12) END; OfsPTOS(-1, TRUE);
-        DEC(r); DEC(frame, 4)
+      IF x.mode <= B.Par THEN PutSO(A.CALL, x, A.Word); IF x.mode IN {Reg, RegI} THEN freeR END
+      ELSE PutSO(A.POP, rh, A.Word); OfsPTOS(-1, TRUE); DEC(r); DEC(frame, 2)
       END;
-      (*No NIL check needed because every even address will cause an usage fault exception
-        because only thumb instruction are supported*)
-      OM4A.Put1(mcode, OM4A.BLX + RH*OM4A.C3)
-    END ;
-    IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0; SH := 0;
-    ELSE (*function*)
-      IF r > 0 THEN OM4A.encMOVReg(mcode, r, 0); 
-        OM4A.RestoreRegs(mcode, r, frame); OfsPTOS(-r, TRUE) END ;
-      IF s > 0 THEN (* VMOV Ss, S0*) OM4A.Put0(mcode, OM4A.VMOVSS + s DIV OM4A.C1*OM4A.C12 +
-        s MOD OM4A.C1*OM4A.C22); OM4A.RestoreFPRegs(mcode, s, frame); OfsPTOS(-s, TRUE) END ;
-      IF x.type.base.form = OM4B.Real THEN x.mode := FPReg; x.r := s; SH := s+1; RH := r 
-      ELSE x.mode := Reg; x.r := r; RH := r+1; SH := s END
-    END
+      IF traps[5] # NIL THEN PutDO(A.CMP, c0, rh, A.Word); Trap(A.EQ, 5) END;
+      A.PutSO(mcode, A.CALL, rh, A.Word)
+    END;
+    IF x.type.base.form = B.NoTyp THEN (*procedure*) RH := 15;
+    ELSE (*function*) resultRegister(rr);
+      IF r # rr.reg THEN dr.reg := r; dr.am := A.Register; dr.ofs := 0; A.PutDO(mcode, A.MOV, rr, dr, A.Word);
+        IF n > 0 THEN A.RestoreRegs(mcode, r, n, frame); OfsPTOS(-r, TRUE) END
+      END;
+      x.mode := Reg; x.r := r; RH := r-1
+    END;
+    AllocUp := FALSE
   END Call;
 
   PROCEDURE MulOp*(VAR x, y: Item);   (* x := x * y *)
-    VAR t!: Item;
+    VAR t!, p!: Item; r, n: INTEGER;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a * y.a
     ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MUL, t, x, A.Word, RH)
     ELSIF (x.mode = B.Const) & (x.a >= 2) THEN load(y); t.ofs := x.a; A.eswDO(mcode, A.MUL, t, y, A.Word, RH);
       x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
     ELSE IF arith[0] = NIL THEN S.Mark("import Arith module") 
-      ELSE (* TODO: déplacer Call *) load(x); load(y); ASSERT (x.r = RH+2); A.eswDO(mcode, A.MUL, y, x, A.Word, RH); INC(RH)
+      ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n)
       END
     END
   END MulOp;
@@ -1263,7 +1263,9 @@ BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetGetOfsProc(GetOffset);
   c0.reg := 0; c0.am := A.Immediate; c0.ofs := 0; t.obj := NIL;
   c1.reg := 0; c0.am := A.Immediate; c0.ofs := 1; t.obj := NIL;
   pc.reg := A.PC; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL;
-  sp.reg := A.SP; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL;
+  sp.reg := A.SP; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL;
+  r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL;
+  r15.reg := 15; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL;
   relmap[0] := OM4A.EQ; relmap[1] := OM4A.NE; relmap[2] := OM4A.LT; 
   relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE;
   AllocUp := FALSE; RL := SP

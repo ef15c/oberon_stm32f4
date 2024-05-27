@@ -53,8 +53,11 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   (*|1111|*) AND* = 15;
 
   (*single operand*)
-  (* |000100100| *) PUSH* = 24H;
-  (* |000100101| *) CALL* = 25H;
+  (* |0/0010/0100| *) PUSH* = 24H;
+  (* |0/0010/0101| *) CALL* = 25H;
+
+  (*emulated single operand*)
+  (* |1/0000/0000| *) POP* = 100H;
 
   (*|0000|*) MUL* = 0; (*software implemented operations*)
   (*|0001|*) NEG* = 1;
@@ -143,15 +146,19 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     | opc/ode / WAd/Dreg| *)
 
   PROCEDURE PutSO*(VAR c: ModuleCode; op: INTEGER; VAR ds: Item; params: SET);
-    VAR emitDSOff: BOOLEAN;
-  BEGIN (*emit format II instruction*) ASSERT(params = params*Byte); emitDSOff := FALSE;
+    VAR emitDSOff: BOOLEAN; spi: Item;
+  BEGIN (*emit format II instruction*) ASSERT(params = params*Byte);
     ASSERT(ds.reg < 16); ASSERT ((ds.ofs >= -C15) & (ds.ofs <= C16));
-    encSrc(op, ds.reg, ds.am, ds.ofs, emitDSOff, params);
+    emitDSOff := FALSE; spi.reg := SP; spi.am := IndirectIncr; spi.ofs := 0;
+    IF op = POP THEN PutDO(c, MOV, spi, ds, Word)
+    ELSE ASSERT(op < 100H);
+      encSrc(op, ds.reg, ds.am, ds.ofs, emitDSOff, params);
 
-    c.code[c.pc+1] := LSR(op, 1);
-    c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + ds.reg;
-    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
-    IF emitDSOff THEN Emit(c, getOfs(ds)) END
+      c.code[c.pc+1] := LSR(op, 1);
+      c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + ds.reg;
+      c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+      IF emitDSOff THEN Emit(c, getOfs(ds)) END
+    END
   END PutSO;
 
   PROCEDURE eswSO*(VAR c: ModuleCode; op: BYTE; VAR d: Item; params: SET);
@@ -263,9 +270,9 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   END SaveRegs;
 
   PROCEDURE PopRegs*(VAR c: ModuleCode; rl, rh: BYTE);
-    VAR i: INTEGER; t, spi: Item;
-  BEGIN t.am := Register; t.ofs := 0; spi.reg := SP; spi.am := Indirect; spi.ofs := 0;
-    FOR i := rl TO rh DO t.reg := i; PutDO(c, MOV, spi, t, Word) END
+    VAR i: INTEGER; t: Item;
+  BEGIN t.am := Register; t.ofs := 0;
+    FOR i := rl TO rh DO t.reg := i; PutSO(c, POP, t, Word) END
   END PopRegs;
 
   PROCEDURE RestoreRegs*(VAR c: ModuleCode; r, n: BYTE; VAR frame: LONGINT); (*R[r .. r+n-1]*)
