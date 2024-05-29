@@ -797,8 +797,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       OM4A.encMemImm8PUW(mcode, OM4A.STRIT4, RH, x.r, FALSE, TRUE, TRUE, 4);
       OM4A.encDPImm32(mcode, OM4A.SUB, RH-1, RH-1, RH, 1); DEC(RH);
       OM4A.encBackBranch(mcode, OM4A.NE, pc1); (*BNE L1*)
-      (*L0:*) IF pc0 # -1 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4)
-              END
+      (*L0:*) IF pc0 # -1 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END
     END;
     RH := 0
   END StoreStruct;

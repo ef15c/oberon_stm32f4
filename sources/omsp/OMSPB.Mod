@@ -24,7 +24,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
     ObjDesc*= RECORD
       class*, exno*: BYTE;
-      expo*, unsafe*, rdo*: BOOLEAN;   (*exported / unsafe / read-only *)
+      expo*, unsafe*, rdo*, register*: BOOLEAN;   (*exported / unsafe / read-only / register allocation*)
       lev*, usedat*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
@@ -162,9 +162,9 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   
   PROCEDURE InType(VAR R: Files.Rider; thismod: Object; VAR T: Type);
     VAR key: LONGINT;
-      ref, class, form, np, readonly: INTEGER;
+      ref, class, form, np, tmp: INTEGER;
       fld!, par!, obj!, mod!, last!: Object;
-      t!: Type; leaf: BYTE;
+      t!: Type;
       name, modname: OMSPS.Ident;
   BEGIN Read(R, ref);
     IF ref < 0 THEN T := typtab[-ref]  (*already read*)
@@ -189,10 +189,10 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         END ;
         IF last = NIL THEN t.dsc := obj ELSE last.next := obj END
       ELSIF form = Proc THEN
-        InType(R, thismod, t.base); Files.ReadByte(R, leaf); t.leaf := leaf = 1; Files.ReadByte(R, t.ldr);
+        InType(R, thismod, t.base); Read(R, tmp); t.leaf := tmp = 1; Files.ReadByte(R, t.ldr);
         obj := NIL; np := 0; Read(R, class);
         WHILE class # 0 DO  (*parameters*)
-          NEW(par); par.class := class; Read(R, readonly); par.rdo := readonly = 1; 
+          NEW(par); par.class := class; Read(R, tmp); par.rdo := tmp = 1; Read(R, tmp); par.register := tmp = 1;
           InType(R, thismod, par.type); par.next := obj; obj := par; INC(np); Read(R, class)
         END ;
         t.dsc := obj; t.nofpar := np; t.size := 4
@@ -263,7 +263,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       IF n > 0 THEN
         OutPar(R, par.next, n-1); cl := par.class;
         Write(R, cl);
-        IF par.rdo THEN Write(R, 1) ELSE Write(R, 0) END ;
+        IF par.rdo THEN Write(R, 1) ELSE Write(R, 0) END;
+        IF par.register THEN Write(R, 1) ELSE Write(R, 0) END;
         OutType(R, par.type)
       END
     END OutPar;
