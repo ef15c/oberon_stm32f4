@@ -23,8 +23,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     Type* = POINTER TO TypeDesc;
 
     ObjDesc*= RECORD
-      class*, exno*: BYTE;
-      expo*, unsafe*, rdo*, register*: BOOLEAN;   (*exported / unsafe / read-only / register allocation*)
+      class*, exno*, register*: BYTE; (*register = 0FFH if memory allocation, else contains the register number*)
+      expo*, unsafe*, rdo*: BOOLEAN;   (*exported / unsafe / read-only*)
       lev*, usedat*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
@@ -75,7 +75,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN x := topScope;
     WHILE (x.next # NIL) & (x.next.name # id) DO x := x.next END ;
     IF x.next = NIL THEN
-      NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.usedat := 0; new.dsc := NIL;
+      NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.usedat := 0; new.register := 0FFH; new.dsc := NIL;
       x.next := new; obj := new
     ELSE obj := x.next; OMSPS.Mark("mult def")
     END 
@@ -192,7 +192,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         InType(R, thismod, t.base); Read(R, tmp); t.leaf := tmp = 1; Files.ReadByte(R, t.ldr);
         obj := NIL; np := 0; Read(R, class);
         WHILE class # 0 DO  (*parameters*)
-          NEW(par); par.class := class; Read(R, tmp); par.rdo := tmp = 1; Read(R, tmp); par.register := tmp = 1;
+          NEW(par); par.class := class; Read(R, tmp); par.rdo := tmp = 1; Files.ReadByte(R, par.register);
           InType(R, thismod, par.type); par.next := obj; obj := par; INC(np); Read(R, class)
         END ;
         t.dsc := obj; t.nofpar := np; t.size := 4
@@ -238,7 +238,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
           ELSE
             IF class = Const THEN Files.ReadNum(R, obj.val)
-            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.usedat := 0;
+            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.usedat := 0; obj.register := 0FFH
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
@@ -258,13 +258,12 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     VAR obj!, mod!, fld!, bot!: Object;
 
     PROCEDURE OutPar(VAR R: Files.Rider; par: Object; n: INTEGER);
-      VAR cl: INTEGER;
     BEGIN
       IF n > 0 THEN
-        OutPar(R, par.next, n-1); cl := par.class;
-        Write(R, cl);
+        OutPar(R, par.next, n-1);
+        Write(R, par.class);
         IF par.rdo THEN Write(R, 1) ELSE Write(R, 0) END;
-        IF par.register THEN Write(R, 1) ELSE Write(R, 0) END;
+        Write(R, par.register);
         OutType(R, par.type)
       END
     END OutPar;

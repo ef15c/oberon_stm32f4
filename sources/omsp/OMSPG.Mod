@@ -183,6 +183,35 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END load;
 
+  PROCEDURE push(VAR x: Item);
+    VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
+  BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+    ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
+    IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
+    IF x.mode = B.Const THEN
+      IF x.type.form = B.Proc THEN
+        IF x.r > 0 THEN S.Mark("not allowed")
+        ELSIF x.r = 0 THEN A.PutDO(mcode, A.MOV, pc, rh, A.Word); (*Put address of next statement in RH*)
+          t.ofs := mcode.pc - x.a; A.PutDO(mcode, A.SUB, t, rh, A.Word); (*substract offset to compute absolute address*)
+          A.PutSO(mcode, A.PUSH, rh, A.Word)
+        ELSE sva.am := A.Immediate (*imported*); A.PutSO(mcode, A.PUSH, sva, A.Word)
+        END
+      ELSE t.ofs := x.a; A.PutSO(mcode, A.PUSH, t, A.Word)
+      END
+    ELSIF x.mode = B.Var THEN
+      IF x.r > 0 THEN (*local*) ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutSO(mcode, A.PUSH, ti, bw)
+      ELSE sva.am := A.Absolute; A.PutSO(mcode, A.PUSH, sva, bw)
+      END
+    ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
+      ti.reg := RH; ti.ofs := x.b; A.PutSO(mcode, A.PUSH, ti, bw)
+    ELSIF x.mode = RegI THEN ti.reg := x.r; ti.ofs := x.a; x.reg := x.r; x.am := A.Register; x.ofs := 0; A.PutSO(mcode, A.PUSH, ti, bw)
+    ELSIF x.mode = Cond THEN
+      pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.r), 0);
+      FixLink(x.b); A.PutSO(mcode, A.PUSH, c1, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
+      FixLink(x.a); A.PutSO(mcode, A.MOV, c0, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
+    END
+  END push;
+
   PROCEDURE loadAdr(VAR x: Item);
     VAR t!, ti!, sva!: Item;
   BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
@@ -246,11 +275,22 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.r := -T.mno; loadAdr(x)
   END loadTypTagAdr;
 
+  PROCEDURE pushTypTagAdr(T: B.Type);
+    VAR x!: Item;
+  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.r := -T.mno; pushAdr(x)
+  END pushTypTagAdr;
+
   PROCEDURE loadStringAdr(VAR x: Item);
   BEGIN x.r := 0; x.a := varsize+x.a; x.reg := 0; x.am := A.Immediate; x.ofs := A.C16;
     rh.am := A.Register; A.PutDO(mcode, A.MOV, x, rh, A.Word);
     x.mode := Reg; x.r := RH; x.reg := x.r; x.am := A.Register; x.ofs := 0; allocR
   END loadStringAdr;
+
+  PROCEDURE pushStringAdr(x: Item);
+    VAR x1!: Item;
+  BEGIN x1.r := 0; x1.a := varsize+x.a; x1.reg := 0; x1.am := A.Immediate; x1.ofs := A.C16; x1.obj := x.obj;
+    A.PutSO(mcode, A.PUSH, x1, A.Word)
+  END pushStringAdr;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
@@ -361,10 +401,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE BuildTD*(T: B.Type; VAR dc: LONGINT);
     VAR dcw, k, s: LONGINT;  (*dcw = word address*)
-  BEGIN dcw := dc DIV 4; s := T.size; (*convert size for heap allocation*)
+  BEGIN dcw := dc DIV 4; s := T.size; (*(*convert size for heap allocation*)
     IF s <= 24 THEN s := 32 ELSIF s <= 56 THEN s := 64 ELSIF s <= 120 THEN s := 128
     ELSE s := (s+263) DIV 256 * 256
-    END ;
+    END ;*)
     T.len := dc; data[dcw] := s; INC(dcw);  (*len used as address*)
     k := T.nofpar;   (*extension level!*)
     IF k > 3 THEN S.Mark("ext level too large")
@@ -718,38 +758,56 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!, ti!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len; rh.am := A.Register;
     ti.am := A.Indexed; ti.obj := NIL;
-    IF par.register THEN loadAdr(x); 
+    IF par.register #0FFH THEN loadAdr(x); 
       IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END; allocR
-    ELSE pushAdr(x);
+    ELSE (*in stack*) pushAdr(x);
       IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
       END
     END
   END OpenArrayParam;
 
-  PROCEDURE VarParam*(VAR x: Item; ftype: OM4B.Type);
-    VAR xmd: INTEGER;
-  BEGIN xmd := x.mode; loadAdr(x);
-    IF (ftype.form = OM4B.Array) & (ftype.len < 0) THEN (*open array*)
-      IF x.type.len >= 0 THEN OM4A.encMOVImm32(mcode, RH, x.type.len) 
-      ELSE  incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a+4+frame); DEC(RH)
-      END; incR
-    ELSIF (ftype.form = OM4B.Record) & check THEN
-      IF xmd = OM4B.Par THEN
-        OM4A.encMemImm32(mcode, OM4A.LDR, RH, SP, RH, x.a+4+frame); incR 
-      ELSE loadTypTagAdr(x.type)
+  PROCEDURE VarParam*(VAR x: Item; par: B.Object);
+    VAR xmd: INTEGER; t!, ti!, rh!: Item;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len; rh.am := A.Register;
+    ti.am := A.Indexed; ti.obj := NIL;
+    IF par.register #0FFH THEN
+      xmd := x.mode; loadAdr(x);
+      IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*)
+        IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
+        ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+        END; allocR
+      ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN
+        IF xmd = B.Par THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word); allocR
+        ELSE loadTypTagAdr(x.type)
+        END
+      END
+    ELSE (*in stack*)
+      xmd := x.mode; pushAdr(x);
+      IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*)
+        IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
+        ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
+        END; allocR
+      ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN
+        IF xmd = B.Par THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word); allocR
+        ELSE pushTypTagAdr(x.type)
+        END
       END
     END
   END VarParam;
 
-  PROCEDURE ValueParam*(VAR x: Item);
-  BEGIN load(x) (*Force loading in core registers even for real*)
+  PROCEDURE ValueParam*(VAR x: Item; par: B.Object);
+  BEGIN IF par.register #0FFH THEN load(x) ELSE push(x) END
   END ValueParam;
 
-  PROCEDURE StringParam*(VAR x: Item);
-  BEGIN loadStringAdr(x); OM4A.encMOVImm32(mcode, RH, x.b); incR  (*len*)
+  PROCEDURE StringParam*(VAR x: Item; par: B.Object);
+    VAR t!: Item;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; rh.am := A.Register; t.ofs := x.b;
+    IF par.register # 0FFH THEN loadStringAdr(x); A.PutDO(mcode, A.MOV, t, rh, A.Word); allocR  (*len*)
+    ELSE pushStringAdr(x); A.PutSO(mcode, A.PUSH, t, A.Word); (*len*)
+    END
   END StringParam;
 
   (*For Statements*)
@@ -760,18 +818,17 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: LONGINT);
   BEGIN 
-    load(z); OM4A.encCMPReg(mcode, y.r, z.r); DEC(RH);
-    L := mcode.pc;
-    IF w.a > 0 THEN OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.GT*OM4A.C22);
-    ELSIF w.a < 0 THEN OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.LT*OM4A.C22);
-    ELSE OM4S.Mark("zero increment");
-      OM4A.Put0(mcode, OM4A.BRCSIG*OM4A.C27 + OM4A.MI*OM4A.C22);
+    load(z);
+    IF w.a > 0 THEN PutDO(A.CMP, z, y, A.Word)
+    ELSIF w.a < 0 THEN PutDO(A.CMP, y, z, A.Word)
+    ELSE S.Mark("zero increment")
     END;
-    Store(x, y)
+    freeR; L := mcode.pc; A.PutJ(mcode, A.L, 0); Store(x, y)
   END For1;
 
   PROCEDURE For2*(VAR x, y, w: Item);
-  BEGIN load(x); OM4A.encDPImm32(mcode, OM4A.ADD, x.r, x.r, RH, w.a); DEC(RH)
+    VAR t!: Item;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := w.a; PutDO(A.ADD, t, x, A.Word)
   END For2;
 
   (* Branches, procedure calls, procedure prolog and epilog *)
