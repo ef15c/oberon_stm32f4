@@ -80,12 +80,14 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
     Item* = RECORD reg*, am*: BYTE; ofs*: INTEGER END;
     GetOffsetProc* = PROCEDURE(VAR x: Item): INTEGER;
+    AllocRegisterProc* = PROCEDURE(): INTEGER;
+    FreeRegisterProc* = PROCEDURE;
 
-  VAR getOfs : GetOffsetProc;
+  VAR getOfs : GetOffsetProc; allocR: AllocRegisterProc; freeR: FreeRegisterProc;
 
-  PROCEDURE SetGetOfsProc*(p: GetOffsetProc);
-  BEGIN getOfs := p
-  END SetGetOfsProc;
+  PROCEDURE SetProcs*(ofsp: GetOffsetProc; ar: AllocRegisterProc; fr: FreeRegisterProc);
+  BEGIN getOfs := ofsp; allocR := ar; freeR := fr
+  END SetProcs;
 
   PROCEDURE log2*(m: LONGINT; VAR e: LONGINT): LONGINT;
   BEGIN e := 0;
@@ -175,20 +177,21 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END eswSO;
 
-  PROCEDURE eswDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET; tmp: BYTE);
+  PROCEDURE eswDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET);
     VAR t: Item;
-  BEGIN ASSERT (tmp < C4);
+  BEGIN
     IF op = MUL THEN 
       IF s.am = Immediate THEN
         IF s.ofs = 0 THEN t.reg := 0; t.am := Immediate; t.ofs := 0; PutDO(c, MOV, t, d, params)
         ELSIF s.ofs < 0 THEN (*multiplicator is negative, change sign of multiplicator, do the multiplication, then change the sign of the result*)
-          s.ofs := -s.ofs; eswDO(c, op, s, d, params, tmp); eswSO(c, NEG, d, params)
+          s.ofs := -s.ofs; eswDO(c, op, s, d, params); eswSO(c, NEG, d, params)
         ELSE (*multiplicator is positive*) WHILE ~ODD(s.ofs) DO PutDO(c, ADD, d, d, params); s.ofs := s.ofs DIV 2 END;
-          t.reg := tmp; t.am := Register; t.ofs := 0;
+          t.reg := allocR(); t.am := Register; t.ofs := 0;
           IF s.ofs # 1 THEN PutDO(c, MOV, d, t, params);
             REPEAT PutDO(c, ADD, t, t, params); s.ofs := s.ofs DIV 2;
               IF ODD(s.ofs) THEN PutDO(c, ADD, t, d, params) END
-            UNTIL s.ofs = 1
+            UNTIL s.ofs = 1;
+          freeR
         END
       END
       ELSE (*todo multiplication*) ASSERT(FALSE)
