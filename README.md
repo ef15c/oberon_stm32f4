@@ -1,10 +1,18 @@
 # oberon_stm32f4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 4 released!</b><br>
-* All previous C code is migrated to Oberon. External tools are no more required, except for flashing the bootloader.<br>
-* QWERTY keyboard is now supported. To activate it, middle click on the text "OM4P.Compile InputM4Qwerty.Mod ~" , displayed in yellow in the middle of the System.Tool window<br>
-* The default font has been upgraded to Windows1252 code page, to allow accented characters. AZERTY keyboard driver has been updated to allow entering of circumflex and dieresis characters.<br>
-* Small improvements and corrections have been added to the compiler.<br><br>
+<b>Version 5 released!</b><br>
+
+* Start of wrting of a cross compiler for MSP430 microcontrollers<br>
+* Fix MaX and MaxY values of default font<br>
+* A post trap call stack analysis is available (StackTrace.Calls)<br>
+* The blue push button is now assigned to abort current command (TRAP 10)<br>
+* Reduced heap fragmentation by allocating code generator strucure only once<br>
+* An experimental heap defragmention procedure can be invoked by the command Kernel.Coalesce<br>
+<br>
+QWERTY keyboard can be activated by middle clicking on the text "OM4P.Compile InputM4Qwerty.Mod ~"<br>
+displayed in yellow in the middle of the System.Tool window. Restart the system to load the updated Input module.<br>
+<br>
+
 ![System_Tool](https://github.com/ef15c/oberon_stm32f4/assets/8286839/867c913a-35e0-49ab-a81b-0c658132c971)
 
 ![OberonRunningR3](https://github.com/ef15c/oberon_stm32f4/assets/8286839/32ec5160-54e4-4188-9445-5ce0f7f4f413)
