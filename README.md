@@ -5,7 +5,7 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 * Start of writing a cross compiler for MSP430 microcontrollers<br>
 * Fix MaX and MaxY values of default font<br>
 * A post trap call stack analysis is available (StackTrace.Calls)<br>
-* The blue push button is now assigned to abort current command (TRAP 10)<br>
+* The blue push button now allows to abort current command (TRAP 10)<br>
 * Reduced heap fragmentation by allocating code generator strucure only once<br>
 * An experimental heap defragmention procedure can be invoked by the command Kernel.Coalesce<br>
 <br>
