@@ -111,8 +111,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SetRH;
   
   PROCEDURE CheckRegs*;
-  BEGIN
-    IF RH # 15 THEN S.Mark("Reg Stack"); RH := 0 END ;
+    VAR success: BOOLEAN;
+  BEGIN success := TRUE;
+    IF AllocUp THEN IF RH # 15 THEN success := FALSE; RH := 15 END 
+    ELSE IF RH # 0 THEN success := FALSE; RH := A.CG2 + 1 END
+    END;
+    IF ~success THEN S.Mark("Reg Stack") END;
     IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;
     IF frame # 0 THEN S.Mark("frame error"); frame := 0 END
   END CheckRegs;
@@ -523,8 +527,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE PrepCall*(VAR x: Item; VAR r, n: LONGINT);
   BEGIN (*x.type.form = OM4B.Proc*) ASSERT(~AllocUp);
     IF x.mode > B.Par THEN load(x) END; n := 0+x.obj.type.ldr - RH; (*number of overwritten registers currently in use by the caller*)
-    IF n > 0 THEN r := RH + 1; A.SaveRegs(mcode, r, n, frame); OfsPTOS(n, TRUE); RH := 0 END;
-    AllocUp := x.obj.type.leaf
+    IF n > 0 THEN r := RH + 1; A.SaveRegs(mcode, r, n, frame); OfsPTOS(n, TRUE) END;
+    AllocUp := x.obj.type.leaf; IF AllocUp THEN RH := A.CG2 + 1 ELSE RH := 15 END
   END PrepCall;
 
   PROCEDURE Call*(VAR x: Item; r, n: LONGINT);
@@ -867,59 +871,51 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN A.FixLink(mcode, x.a)
   END Fixup;
 
-  PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN; reglim: INTEGER);
-    VAR r: LONGINT;
-  BEGIN OfsPTOS(0, FALSE); frame := 0;
-    IF locblksize >= OM4A.C16 THEN OM4S.Mark("local variables size exeeded") END;
-    r := (parblksize-4) DIV 4;
-    IF int THEN (*interrupt procedure, lot of registers are already saved in interrupt frame*)
-      (*Store interrupt frame address in R0*)
-      OM4A.encDPImm32(mcode, OM4A.TST, 0, LR, r, 4);
-      OM4A.IfThen(mcode, "E", OM4A.EQ);
-      OM4A.encMRS(mcode, 0, MSP);
-      OM4A.encMRS(mcode, 0, PSP)
-    END;
+  PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN; nofusedregs: INTEGER; leaf: BOOLEAN);
+    VAR t!: Item; rl, rh: BYTE;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+    OfsPTOS(0, FALSE); frame := 0; AllocUp := leaf;
+    IF locblksize >= A.C16 THEN S.Mark("local variables size exeeded") END;
 
     IF locblksize - parblksize # 0 THEN
-      OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, r, locblksize - parblksize); OfsPTOS((locblksize - parblksize) DIV 4, TRUE) END;
-
-    IF r > 0 THEN OM4A.PushRegs(mcode, 0, r-1); OfsPTOS(r, TRUE) END;
-    IF reglim >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
-      RL := reglim+1; IF reglim >= 4 THEN
-       OM4A.PushRegs(mcode, 4, reglim); OfsPTOS(reglim - 3, TRUE) (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*)
-      END
+      t.ofs := locblksize - parblksize; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS((locblksize - parblksize) DIV 2, TRUE)
     END;
-    (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, TRUE)
+
+    IF nofusedregs >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
+      IF AllocUp THEN rl := A.CG2 + 1; RL := nofusedregs + rl; rh := RL - 1 ELSE rh :=  15; RL := 15 - nofusedregs; rl := RL + 1 END;
+      IF rh > rl THEN
+        A.PushRegs(mcode, rl, rh); OfsPTOS(nofusedregs, TRUE) (*save registers before use*)
+      END
+    ELSE IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
+    END
   END Enter;
 
-  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; reglim: INTEGER);
-  BEGIN
-    IF form # OM4B.NoTyp THEN 
-      IF x.type.form = OM4B.Real THEN loadFP(x); ELSE load(x) END
+  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
+    VAR t!: Item; rl, rh: BYTE;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+    IF form # B.NoTyp THEN load(x) END;
+    IF nofusedregs >= 0 THEN
+      IF AllocUp THEN rl := A.CG2 + 1; RL := nofusedregs + rl; rh := RL - 1 ELSE rh :=  15; RL := 15 - nofusedregs; rl := RL + 1 END;
+      IF rh > rl THEN A.PopRegs(mcode, rl, rh); OfsPTOS(-nofusedregs, TRUE) END;
+      IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
     END;
-    (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, TRUE);
-    IF reglim >= 0 THEN IF reglim >= 4 THEN OM4A.PopRegs(mcode, 4, reglim); OfsPTOS(3 - reglim, TRUE) END; RL := SP END;
-    IF size # 4 THEN OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size - 4); OfsPTOS((4 - size) DIV 4, TRUE) END;
-    IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN OM4S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
-    OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3); RH := 0; SH := 0;
+    IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS(size DIV 2, TRUE) END;
+    IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
+    IF int THEN A.PutSO(mcode, A.RETI, pc, A.Word) ELSE A.PopRegs(mcode, A.PC, A.PC) END;
+    IF AllocUp THEN RH := A.CG2 + 1 ELSE RH := 15 END
   END Return;
 
   (* In-line code procedures*)
 
   PROCEDURE Increment*(upordown: LONGINT; VAR x, y: Item);
-    VAR op, zr, vl, vs: LONGINT;
+    VAR op: BYTE; zr: LONGINT; vl: SET;
   BEGIN (*frame = 0*)
-    IF upordown = 0 THEN op := OM4A.ADD ELSE op := OM4A.SUB END ;
-    IF x.type = OM4B.byteType THEN vl := OM4A.LDRB; vs := OM4A.STRB ELSE vl := OM4A.LDR; vs := OM4A.STR END ;
-    IF y.type.form = OM4B.NoTyp THEN y.mode := OM4B.Const; y.a := 1 END ;
-    IF (x.mode = OM4B.Var) & (x.r > 0) THEN
-      zr := RH; incR; OM4A.encMemImm32(mcode, vl, zr, SP, RH, x.a);
-      IF y.mode = OM4B.Const THEN OM4A.encDPImm32(mcode, op, zr, zr, RH, y.a) ELSE load(y); OM4A.encDPReg(mcode, op, zr, zr, y.r, 0); DEC(RH) END ;
-      OM4A.encMemImm32(mcode, vs, zr, SP, RH, x.a); DEC(RH)
-    ELSE loadAdr(x); zr := RH; incR; OM4A.encMemImm32(mcode, vl, zr, x.r, RH, 0);
-      IF y.mode = OM4B.Const THEN OM4A.encDPImm32(mcode, op, zr, zr, RH, y.a) ELSE load(y); OM4A.encDPReg(mcode, op, zr, zr, y.r, 0); DEC(RH) END ;
-      OM4A.encMemImm32(mcode, vs, zr, x.r, RH, 0); DEC(RH, 2)
-    END
+    IF upordown = 0 THEN op := A.ADD ELSE op := A.SUB END;
+    IF x.type = B.byteType THEN vl := A.Byte ELSE vl := A.Word END ;
+    IF y.type.form = B.NoTyp THEN y.mode := B.Const; y.a := 1 END;
+    PutDO(op, y, x, vl);
+    IF x.mode IN {Reg, RegI} THEN freeR END;
+    IF y.mode IN {Reg, RegI} THEN freeR END
   END Increment;
 
   PROCEDURE Include*(inorex: LONGINT; VAR x, y: Item);
@@ -1284,5 +1280,5 @@ BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
   rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL;
   relmap[0] := OM4A.EQ; relmap[1] := OM4A.NE; relmap[2] := OM4A.LT; 
   relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE;
-  AllocUp := FALSE; RL := SP
+  AllocUp := FALSE; RL := A.CG2
 END OM4G.

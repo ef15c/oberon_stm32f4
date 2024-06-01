@@ -965,7 +965,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF r > 0 THEN OM4A.PushRegs(mcode, 0, r-1); OfsPTOS(r, TRUE) END;
     IF reglim >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
       RL := reglim+1; IF reglim >= 4 THEN
-       OM4A.PushRegs(mcode, 4, reglim); OfsPTOS(reglim - 3, TRUE) (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*)
+        OM4A.PushRegs(mcode, 4, reglim); OfsPTOS(reglim - 3, TRUE) (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*)
       END
     END;
     (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, TRUE)
