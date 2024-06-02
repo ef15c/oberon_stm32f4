@@ -47,7 +47,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RL: INTEGER; (*register limit*)
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
     fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by linker*)
-    traps: ARRAY 7 OF B.Object; arith: ARRAY 4 OF B.Object;
+    traps: ARRAY 8 OF B.Object; arith: ARRAY 4 OF B.Object;
     
     relmap: ARRAY 6 OF INTEGER;    (*condition codes for relations*)
     data: ARRAY maxTD OF LONGINT;  (*type descriptors*)
@@ -610,18 +610,32 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END DivOp;
 
+  (* Code generation for shift operations *)
+  PROCEDURE shift(op: BYTE; VAR x, y: Item); (* x := LSL(x, y)*)
+    VAR i, pb, pf: INTEGER;
+  BEGIN
+    IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := LSL(x.a, y.a) 
+    ELSIF (y.mode = B.Const) & (y.a <= 4) THEN load(x); FOR i := 1 TO y.a DO PutDO(A.ADD, x, x, A.Word) END
+    ELSE load(x); load(y); PutDO(A.ADD, c1, y, A.Word);
+      pb := mcode.pc; PutDO(A.SUB, c1, y , A.Word); pf := mcode.pc; A.PutJ(mcode, A.EQ, 0);
+      PutSO(op, x, A.Word); A.PutJ(mcode, A.AL, pb - mcode.pc - 2); A.fix(mcode, pf, mcode.pc - pf - 2);
+      IF y.mode IN {Reg, RegI} THEN freeR END
+    END
+  END shift;
+
+  PROCEDURE Rla*(VAR x, y: Item); (* x := LSL(x, y)*)
+  BEGIN shift(A.RLA, x, y)
+  END Rla;
+
+  PROCEDURE Rra*(VAR x, y: Item); (* x := LSL(x, y)*)
+  BEGIN shift(A.RRA, x, y)
+  END Rra;
 
   (* Code generation for set operators *)
 
   PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
-    VAR pc0, pc1: INTEGER;
-  BEGIN rh.am := A.Register;
-    IF x.mode = B.Const THEN x.a := LSL(1, x.a)
-    ELSE allocR; load(x); PutDO(A.MOV, c1, rh, A.Word); PutDO(A.ADD, c1, x, A.Word);
-      pc0 := mcode.pc; PutDO(A.SUB, c1, x, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.EQ, 0);
-      PutDO(A.ADD, rh, rh, A.Word); A.PutJ(mcode, A.AL, pc0 - mcode.pc -2); A.fix(mcode, pc1, mcode.pc - pc1 - 2);
-      x.r := rh.reg; x.reg := x.r; freeR
-    END
+    VAR y!: Item;
+  BEGIN y := x; x.mode := B.Const; x.a := 1; Rla(x, y)
   END Singleton;
 
   PROCEDURE Set*(VAR x, y: Item); (* x := {x .. y} *)
@@ -918,63 +932,30 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF y.mode IN {Reg, RegI} THEN freeR END
   END Increment;
 
-  PROCEDURE Include*(inorex: LONGINT; VAR x, y: Item);
-    VAR op, zr: LONGINT;
-  BEGIN loadAdr(x); zr := RH; incR; OM4A.encMemImm32(mcode, OM4A.LDR, zr, x.r, RH, 0);
-    IF inorex = 0 THEN op := OM4A.ORR ELSE op := OM4A.BIC END ;
-    IF y.mode = OM4B.Const THEN OM4A.encDPImm32(mcode, op, zr, zr, RH, LSL(1, y.a))
-    ELSE load(y); OM4A.encMOVImm32(mcode, RH, 1); OM4A.encShiftReg(mcode, OM4A.LSl, y.r, RH, y.r); OM4A.encDPReg(mcode, op, zr, zr, y.r, 0); DEC(RH)
-    END ;
-    OM4A.encMemImm32(mcode, OM4A.STR, zr, x.r, RH, 0); DEC(RH, 2)
+  PROCEDURE Include*(inorex: INTEGER; VAR x, y: Item);
+    VAR op: BYTE; zr: INTEGER; t!, z!: Item;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+    IF inorex = 0 THEN op := A.BIS ELSE op := A.BIC END;
+    IF y.mode = B.Const THEN t.ofs := LSL(1, y.a); PutDO(op, t, x, A.Word)
+    ELSE z.mode := B.Const; z.a := 1; Rla(z, y); PutDO(op, z, x, A.Word);
+      IF z.mode IN {Reg, RegI} THEN freeR END; IF y.mode IN {Reg, RegI} THEN freeR END
+    END
   END Include;
 
   PROCEDURE Assert*(VAR x: Item);
     VAR cond, pc0: LONGINT;
   BEGIN
-    pc0 := 0;
-    IF x.mode # Cond THEN loadCond(x) END;
-    IF x.a = 0 THEN cond := OM4A.negated(x.r);
-    ELSE pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + x.r*OM4A.C8);
-      OM4A.FixLink(mcode, x.a); cond := OM4A.AL
-    END ;
-    Trap(cond, 7); OM4A.FixLink(mcode, x.b);
-    IF pc0 # 0 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END
+    IF traps[7] # NIL
+    THEN
+      pc0 := 0;
+      IF x.mode # Cond THEN loadCond(x) END;
+      IF x.a = 0 THEN cond := A.negated(x.r);
+      ELSE pc0 := mcode.pc; A.PutJ(mcode, x.r, 0); A.FixLink(mcode, x.a); cond := A.AL
+      END;
+      Trap(cond, 7); A.FixLink(mcode, x.b);
+      IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END
+    END
   END Assert; 
-
-  PROCEDURE New*(VAR x: Item);
-  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); (*Trap(OM4A.AL, 0)*) OM4A.Put1(mcode, OM4A.SVC); RH := 0; SH := 0
-  END New;
-
-  PROCEDURE Pack*(VAR x, y: Item);
-    VAR z!: Item;
-  BEGIN (*Load x in a core register*)
-    z := x; load(x); load(y);
-    OM4A.encDPReg(mcode, OM4A.ADD, x.r, x.r, y.r, 23); DEC(RH); Store(z, x);
-  END Pack;
-
-  PROCEDURE Unpk*(VAR x, y: Item);
-    VAR z!, e0!: Item;
-  BEGIN (*Load x in a core register*)
-    z := x; load(x); e0.mode := Reg; e0.r := RH; e0.type := OM4B.intType;
-    OM4A.encShiftImm5(mcode, OM4A.ASr, RH, x.r, 23); 
-    incR; OM4A.encDPImm32(mcode, OM4A.SUB, RH-1, RH-1, RH, 127); DEC(RH);
-    Store(y, e0); incR; OM4A.encDPReg(mcode, OM4A.SUB, x.r, x.r, RH, 23); Store(z, x);
-  END Unpk;
-
-(* The SVC mechanism will be used to communicate with undelying firmware,
-   in order to hide board level details, like the LED attachement to ports.*)
-   
-  PROCEDURE Led*(VAR x: Item);
-  (*SVC #1 is assigned to LEDS*)
-  BEGIN load(x); OM4A.Put1(mcode, OM4A.SVC + 1); DEC(RH)
-  END Led;
-
-  (*Call service*)
-  PROCEDURE SVC*(VAR x: Item);
-  BEGIN (*x.mode = Const*)
-    OM4A.Put1(mcode, OM4A.SVC + x.a MOD OM4A.C8); 
-    x.mode := Reg; x.r := 0; RH := 1
-  END SVC;
   
   PROCEDURE Get*(VAR x, y: Item);
   BEGIN load(x); x.type := y.type; x.mode := RegI; x.a := 0; Store(y, x)
@@ -988,112 +969,72 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR pc0, pc1: LONGINT;
   BEGIN load(x); load(y);
     pc0 := 0;
-    IF z.mode = OM4B.Const THEN
-      IF z.a > 0 THEN load(z) ELSE OM4S.Mark("bad count") END
+    IF z.mode = B.Const THEN
+      IF z.a > 0 THEN load(z) ELSE S.Mark("bad count") END
     ELSE load(z);
-      IF check THEN 
-          IF ~mcode.lastInstrSetFlags THEN OM4A.encCMPImm(mcode, z.r, RH, 0) END;
-        Trap(OM4A.LT, 3)
-      END;
-      pc0 := mcode.pc; OM4A.Put1(mcode, OM4A.BCT1 + OM4A.EQ*OM4A.C8); (*BEQ L0*)
-    END ;
+      IF traps[3] # NIL THEN PutDO(A.CMP, c0, z, A.Word); Trap(A.L, 3) END;
+      pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*BEQ L0*)
+    END;
     pc1 := mcode.pc;
-    OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, RH, x.r, FALSE, TRUE, TRUE, 4);
-    OM4A.encMemImm8PUW(mcode, OM4A.STRIT4, RH, y.r, FALSE, TRUE, TRUE, 4);
-    OM4A.encDPImm32(mcode, OM4A.SUB, z.r, z.r, RH, 1); OM4A.encBackBranch(mcode, OM4A.NE, pc1); (*BNE L1*)
-    IF pc0 # 0 THEN OM4A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END; DEC(RH, 3)
+    x.am := A.IndirectIncr; y.am := A.Indexed; y.ofs := 0; PutDO(A.MOV, x, y, A.Word);
+    y.am := A.Register; PutDO(A.ADD, c1, y, A.Word);
+    PutDO(A.SUB, c1, z, A.Word); A.PutJ(mcode, A.NE, pc1 - mcode.pc - 2); (*BNE L1*)
+    IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END; freeR; freeR; freeR
   END Copy;
 
-  PROCEDURE LDREG*(VAR x, y: Item);
-  BEGIN (*x is constant*)
-    load(y);  IF x.a > OM4A.C4 THEN OM4A.encMSR(mcode, y.r, x.a - OM4A.C4) END; RH := 0
+  PROCEDURE LDREG*(VAR y: Item);
+  BEGIN load(y); IF AllocUp THEN RH := A.CG2 + 1 ELSE RH := 15 END
   END LDREG;
 
   (*In-line code functions*)
 
   PROCEDURE Abs*(VAR x: Item);
   BEGIN
-    IF x.mode = OM4B.Const THEN x.a := ABS(x.a)
-    ELSE IF x.type.form = OM4B.Real THEN loadFP(x); ELSE load(x) END;
-      IF x.mode = FPReg THEN OM4A.encFPOpReg(mcode, OM4A.VABS, x.r, 0, x.r)
-      ELSE OM4A.encCMPImm(mcode ,x.r, RH, 0); OM4A.IfThen(mcode, "", OM4A.LT);
-        OM4A.encDPImm32(mcode, OM4A.RSB, x.r, x.r, RH, 0)
-      END
-    END
+    IF x.mode = B.Const THEN x.a := ABS(x.a) ELSE A.eswSO(mcode, A.NEG, x, A.Word) END
   END Abs;
 
-  PROCEDURE Sqrt*(VAR x: Item);
-  BEGIN
-    IF x.mode = OM4B.Const THEN x.a := SYSTEM.VAL(INTEGER, SQRT(SYSTEM.VAL(REAL, x.a)))
-    ELSE loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VSQRT, x.r, 0, x.r)
-    END
-  END Sqrt;
-
   PROCEDURE Odd*(VAR x: Item);
-  BEGIN load(x); OM4A.encShiftImm5(mcode, OM4A.ROr, x.r, x.r, 1); SetCC(x, OM4A.MI); DEC(RH)
+  BEGIN PutDO(A.BIT, c1, x, A.Word); SetCC(x, A.NE); IF x.mode IN {Reg, RegI} THEN freeR END
   END Odd;
 
-  PROCEDURE Floor*(VAR x: Item);
-  BEGIN loadFP(x); OM4A.encFPOpReg(mcode, OM4A.VCVTSF, x.r, 0, x.r);
-    x.type := OM4B.intType;
-  END Floor;
-
-  PROCEDURE Float*(VAR x: Item);
-  BEGIN x.type := OM4B.realType; loadFP(x);
-    OM4A.encFPOpReg(mcode, OM4A.VCVTFS, x.r, 0, x.r)
-  END Float;
-
   PROCEDURE Ord*(VAR x: Item);
-  BEGIN
-    IF x.mode IN {OM4B.Var, OM4B.Par, RegI, Cond} THEN load(x) END
+  BEGIN (*todo : check if load(x) is reakky needed*)
+    IF x.mode IN {B.Var, B.Par, RegI, Cond} THEN load(x) END
   END Ord;
 
   PROCEDURE Len*(VAR x: Item);
-  BEGIN
+    VAR rh1!, ti!: Item;
+  BEGIN ti.am := A.Indexed; ti.obj := NIL;
     IF x.type.len >= 0 THEN
-      IF x.mode = RegI THEN DEC(RH) END ;
-      x.mode := OM4B.Const; x.a := x.type.len
-    ELSE (*open array*) incR; OM4A.encMemImm32(mcode, OM4A.LDR, RH-1, SP, RH, x.a + 4 + frame);
-      x.mode := Reg; x.r := RH-1
+      IF x.mode = RegI THEN freeR END ;
+      x.mode := B.Const; x.a := x.type.len
+    ELSE (*open array*) rh1 := rh; allocR; rh1.am := A.Register; ti.reg := A.SP; ti.ofs := x.a + 2 + frame; A.PutDO(mcode, A.MOV, ti, rh1, A.Word);
+      x.mode := Reg; x.r := rh1.reg
     END 
   END Len;
 
   PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item);
     VAR op: LONGINT;
-  BEGIN IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) THEN
-      IF fct = 0 THEN x.a := LSL(x.a, y.a) ELSIF fct = 1 THEN x.a := ASR(x.a, y.a) ELSIF fct = 2 THEN x.a := ROR(x.a, y.a) ELSE x.a := LSR(x.a, y.a) END 
-    ELSE load(x);
-      IF fct = 0 THEN op := OM4A.LSl ELSIF fct = 1 THEN op := OM4A.ASr ELSIF fct = 2 THEN op := OM4A.ROr ELSE op := OM4A.LSr END ;
-      IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, op, x.r, x.r, y.a MOD 20H)
-      ELSE load(y); OM4A.encShiftReg(mcode, op, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
-      END
+  BEGIN IF (x.mode = B.Const) & (y.mode = B.Const) THEN
+      IF fct = 0 THEN x.a := LSL(x.a, y.a) ELSIF fct = 1 THEN x.a := ASR(x.a, y.a) END 
+    ELSE 
+      IF fct = 0 THEN Rla(x, y) ELSIF fct = 1 THEN Rra(x, y) END;
+      IF y.mode IN {Reg, RegI} THEN freeR END
     END
   END Shift;
 
+  PROCEDURE Rotate*(fct: LONGINT; VAR x: Item);
+    VAR op: LONGINT;
+  BEGIN IF fct = 0 THEN PutSO(A.RLC, x, A.Word) ELSIF fct = 1 THEN PutSO(A.RRC, x, A.Word) END
+  END Rotate;
+
   PROCEDURE ADC*(VAR x, y: Item);
-  BEGIN load(x); load(y); OM4A.encDPReg(mcode, OM4A.ADc, x.r, x.r, y.r, 0); DEC(RH)
+  BEGIN PutDO(A.ADDC, y, x, A.Word); IF y.mode IN {Reg, RegI} THEN freeR END
   END ADC;
 
   PROCEDURE SBC*(VAR x, y: Item);
-  BEGIN load(x); load(y); OM4A.encDPReg(mcode, OM4A.SBc, x.r, x.r, y.r, 0); DEC(RH)
+  BEGIN PutDO(A.SUBC, y, x, A.Word); IF y.mode IN {Reg, RegI} THEN freeR END
   END SBC;
-
-  PROCEDURE UML*(VAR x, y: Item);
-  BEGIN load(x); load(y); OM4A.Put0(mcode, OM4A.UMULL + x.r*OM4A.C16 + x.r*OM4A.C12 + y.r*OM4A.C8 + y.r); DEC(RH)
-  END UML;
-
-  PROCEDURE MBI*(VAR i: INTEGER);
-  BEGIN (*x.mode = OM4B.Const*)
-    IF i = 1 THEN OM4A.Put0(mcode, OM4A.DMB)
-    ELSIF i = 2 THEN OM4A.Put0(mcode, OM4A.DSB)
-    ELSIF i = 3 THEN OM4A.Put0(mcode, OM4A.ISB)
-    ELSE OM4S.Mark("bad MBI")
-    END
-  END MBI;
-
-  PROCEDURE Rbit*(VAR x: Item);
-  BEGIN load(x); OM4A.Put0(mcode, OM4A.RBIT + x.r*OM4A.C16 + x.r*OM4A.C8 + x.r)
-  END Rbit;
 
   PROCEDURE Bit*(VAR x, y: Item);
   BEGIN IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) &

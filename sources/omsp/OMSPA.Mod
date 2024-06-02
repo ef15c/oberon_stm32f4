@@ -63,6 +63,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   (*emulated single operand*)
   (* |1/0000/0000| *) POP* = 100H;
+  (* |1/0000/0001| *) RLA* = 101H;
+  (* |1/0000/0002| *) RLC* = 102H;
 
   (*|0000|*) MUL* = 0; (*software implemented operations*)
   (*|0001|*) NEG* = 1;
@@ -160,6 +162,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     ASSERT(ds.reg < 16); ASSERT ((ds.ofs >= -C15) & (ds.ofs <= C16));
     emitDSOff := FALSE; spi.reg := SP; spi.am := IndirectIncr; spi.ofs := 0;
     IF op = POP THEN PutDO(c, MOV, spi, ds, Word)
+    ELSIF op = RLA THEN PutDO(c, ADD, ds, ds, Word)
+    ELSIF op = RLC THEN PutDO(c, ADDC, ds, ds, Word)
     ELSE ASSERT(op < 100H);
       encSrc(op, ds.reg, ds.am, ds.ofs, emitDSOff, params);
 
