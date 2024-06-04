@@ -410,6 +410,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Q(T: OM4B.Type; VAR dcw: LONGINT);
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
+      ASSERT((T.mno >= 0) & (T.mno < 256));
+      ASSERT((T.len >= 0) & (T.len < 1000H));
+      ASSERT((dcw - fixORGT >= 0) & (dcw - fixORGT < 1000H));
       Q(T.base, dcw); data[dcw] := (T.mno*1000H + T.len) * 1000H + dcw - fixORGT;
       fixORGT := dcw; INC(dcw)
     END
@@ -1213,7 +1216,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Open*(v: INTEGER);
   BEGIN OM4A.Init(mcode); frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
-    tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
+    tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v; RL := SP;
     IF v = 0 THEN mcode.pc := 4; (*Make room for the jump to entry point instruction*) END
   END Open;
 
@@ -1323,9 +1326,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF (obj.class = OM4B.Const) & (obj.type.form = OM4B.Proc) OR (obj.class = OM4B.Var) THEN
           Files.WriteInt(R, obj.val);
         ELSIF obj.class = OM4B.Typ THEN
-          IF obj.type.form = OM4B.Record THEN Files.WriteInt(R,  obj.type.len MOD OM4A.C16)
+          IF obj.type.form = OM4B.Record THEN ASSERT((obj.type.len >= 0) & (obj.type.len < OM4A.C16)); Files.WriteInt(R,  obj.type.len MOD OM4A.C16)
           ELSIF (obj.type.form = OM4B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
-            Files.WriteInt(R,  obj.type.base.len MOD OM4A.C16)
+            ASSERT((obj.type.base.len >= 0) & (obj.type.base.len < OM4A.C16)); Files.WriteInt(R,  obj.type.base.len MOD OM4A.C16)
           END
         END
       END ;
@@ -1353,6 +1356,5 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
 BEGIN NEW(mcode); NEW(frmOfsSegs);
   relmap[0] := OM4A.EQ; relmap[1] := OM4A.NE; relmap[2] := OM4A.LT; 
-  relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE;
-  RL := SP
+  relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE
 END OM4G.

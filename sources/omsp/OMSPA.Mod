@@ -66,6 +66,9 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   (* |1/0000/0001| *) RLA* = 101H;
   (* |1/0000/0002| *) RLC* = 102H;
 
+  (*emulated no operand*)
+  (* |1/1000/0000| *) RET* = 180H;
+
   (*|0000|*) MUL* = 0; (*software implemented operations*)
   (*|0001|*) NEG* = 1;
   (*|0002|*) DIv* = 2;
@@ -132,6 +135,13 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |                 A B              |
     | op /Sreg/dWAs/Dreg| *)
 
+  PROCEDURE Put1(VAR c: ModuleCode; op, src, dst: BYTE; params: SET);
+  BEGIN
+    c.code[c.pc+1] := LSL(op, 4) + src;
+    c.code[c.pc] := ORD(params) + dst;
+    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+  END Put1;
+
   PROCEDURE PutDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET);
     VAR emitSOff, emitDOff: BOOLEAN;
   BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
@@ -145,9 +155,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     ELSE ASSERT(FALSE)
     END;
 
-    c.code[c.pc+1] := LSL(op, 4) + s.reg;
-    c.code[c.pc] := ORD(params) + d.reg;
-    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+    Put1(c, op, s.reg, d.reg, params);
     IF emitSOff THEN Emit(c, getOfs(s)) END;
     IF emitDOff THEN Emit(c, getOfs(d)) END
   END PutDO;
@@ -213,6 +221,13 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     c.code[c.pc]   := offset MOD C8;
     c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
   END PutJ;
+
+  PROCEDURE PutNO*(VAR c: ModuleCode; op: INTEGER);
+  BEGIN
+    IF op = RET THEN Put1(c, MOV, SP, PC, IRAm + Rdm + Word)
+    ELSE ASSERT(FALSE)
+    END
+  END PutNO;
 
   (*handling of forward reference, fixups of branch addresses and constant tables*)
 

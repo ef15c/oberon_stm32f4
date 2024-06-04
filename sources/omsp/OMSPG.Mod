@@ -46,11 +46,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RH: LONGINT;      (*in use registers R[15] ... R[H+1]*)
     RL: INTEGER; (*register limit*)
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
-    fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by linker*)
     traps: ARRAY 8 OF B.Object; arith: ARRAY 4 OF B.Object;
     
     relmap: ARRAY 6 OF INTEGER;    (*condition codes for relations*)
-    data: ARRAY maxTD OF LONGINT;  (*type descriptors*)
+    data: ARRAY maxTD OF INTEGER;  (*type descriptors*)
     str: ARRAY maxStrx OF CHAR;
     mcode: A.ModuleCode;
     frmOfsSegs: FrameOffset;
@@ -81,7 +80,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF AllocUp THEN IF RH < RL-1 THEN INC(RH); success := TRUE END
     ELSE IF RH > RL+1 THEN DEC(RH); success := TRUE END
     END;
-    IF success THEN rh.reg := RH ELSE S.Mark("register stack overflow") END
+    IF success THEN rh.reg := RH; rh.r := rh.reg ELSE S.Mark("register stack overflow") END
   END allocR;
 
   PROCEDURE AllocR(): INTEGER;
@@ -96,7 +95,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF AllocUp THEN IF RH > 0 THEN DEC(RH); success := TRUE END
     ELSE IF RH < 15 THEN INC(RH); success := TRUE END
     END;
-    IF success THEN rh.reg := RH ELSE S.Mark("register stack underflow") END
+    IF success THEN rh.reg := RH; rh.r := rh.reg ELSE S.Mark("register stack underflow") END
   END freeR;
 
   PROCEDURE resultRegister(VAR res: Item);
@@ -390,8 +389,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Q(T: B.Type; VAR dcw: LONGINT);
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
-      Q(T.base, dcw); data[dcw] := (T.mno*1000H + T.len) * 1000H + dcw - fixORGT;
-      fixORGT := dcw; INC(dcw)
+      Q(T.base, dcw); data[dcw] := T.typobj.usedat;
+      T.typobj.usedat := dcw; INC(dcw)
     END
   END Q;
 
@@ -410,17 +409,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE BuildTD*(T: B.Type; VAR dc: LONGINT);
     VAR dcw, k, s: LONGINT;  (*dcw = word address*)
-  BEGIN dcw := dc DIV 4; s := T.size; (*(*convert size for heap allocation*)
-    IF s <= 24 THEN s := 32 ELSIF s <= 56 THEN s := 64 ELSIF s <= 120 THEN s := 128
-    ELSE s := (s+263) DIV 256 * 256
-    END ;*)
-    T.len := dc; data[dcw] := s; INC(dcw);  (*len used as address*)
+  BEGIN dcw := dc DIV 2; s := T.size;
+    T.len := dc; data[dcw] := s; INC(dcw); (*len used as address*)
     k := T.nofpar;   (*extension level!*)
     IF k > 3 THEN S.Mark("ext level too large")
     ELSE Q(T, dcw);
       WHILE k < 3 DO data[dcw] := -1; INC(dcw); INC(k) END
     END ;
-    FindPtrFlds(T, 0, dcw); data[dcw] := -1; INC(dcw); tdx := dcw; dc := dcw*4;
+    FindPtrFlds(T, 0, dcw); data[dcw] := -1; INC(dcw); tdx := dcw; dc := dcw*2;
     IF tdx >= maxTD THEN S.Mark("too many record types"); tdx := 0 END
   END BuildTD;
 
@@ -915,7 +911,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
     IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS(size DIV 2, TRUE) END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
-    IF int THEN A.PutSO(mcode, A.RETI, pc, A.Word) ELSE A.PopRegs(mcode, A.PC, A.PC) END;
+    IF int THEN A.PutSO(mcode, A.RETI, pc, A.Word) ELSE A.PutNO(mcode, A.RET) END;
     IF AllocUp THEN RH := A.CG2 + 1 ELSE RH := 15 END
   END Return;
 
@@ -1037,31 +1033,28 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SBC;
 
   PROCEDURE Bit*(VAR x, y: Item);
-  BEGIN IF (x.mode = OM4B.Const) & (y.mode = OM4B.Const) &
-    ((x.a >= 20000000H) & (x.a < 20100000H) OR (x.a >= 40000000H) & (x.a < 40100000H)) THEN
-      (*Use bit banding*)
-      x.a := x.a DIV OM4A.C28*OM4A.C28 + 2000000H + (x.a MOD OM4A.C28 + y.a DIV 8)*32 + y.a MOD 8*4; load(x);
-      OM4A.encMemImm32(mcode, OM4A.LDR, x.r, x.r, RH, 0); x.type := OM4B.boolType
-    ELSE load(x);
-      OM4A.encMemImm32(mcode, OM4A.LDR, x.r, x.r, RH, 0);
-      IF y.mode = OM4B.Const THEN OM4A.encShiftImm5(mcode, OM4A.ROr, x.r, x.r, y.a+1); DEC(RH)
-      ELSE load(y); OM4A.encDPImm32(mcode, OM4A.ADD, y.r, y.r, RH, 1); OM4A.encShiftReg(mcode, OM4A.ROr, x.r, x.r, y.r); DEC(RH, 2)
-      END ;
-      SetCC(x, OM4A.MI)
-    END
+    VAR t!, t1!: Item;
+  BEGIN t.am := A.Immediate; t.reg := 0; t.obj := NIL;
+    x.mode := RegI; x.a := 0; load(x);
+    IF y.mode = B.Const THEN t.ofs := LSL(1, y.a); A.PutDO(mcode, A.BIT, t, x, A.Word)
+    ELSE t1.mode := B.Const; t1.a := 1; t1.obj := NIL; Rla(t1, y); PutDO(A.BIT, t1, x, A.Word)
+    END;
+    freeR; IF y.mode IN {Reg, RegI} THEN freeR END; IF t1.mode IN {Reg, RegI} THEN freeR END;
+    SetCC(x, A.NE)
   END Bit;
 
   PROCEDURE Register*(VAR x: Item);
+    VAR rh1!: Item;
   BEGIN (*x.mode = Const*)
-    OM4A.encMOVReg(mcode, RH, x.a MOD OM4A.C4); x.mode := Reg; x.r := RH; incR
+    rh1 := rh; allocR; PutDO(A.MOV, x, rh1, A.Word); x.mode := Reg; x.r := rh1.r
   END Register;
 
   PROCEDURE Adr*(VAR x: Item);
   BEGIN 
-    IF x.mode IN {OM4B.Var, OM4B.Par, RegI} THEN loadAdr(x)
-    ELSIF (x.mode = OM4B.Const) & (x.type.form = OM4B.Proc) THEN load(x)
-    ELSIF (x.mode = OM4B.Const) & (x.type.form = OM4B.String) THEN loadStringAdr(x)
-    ELSE OM4S.Mark("not addressable")
+    IF x.mode IN {B.Var, B.Par, RegI} THEN loadAdr(x)
+    ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) THEN load(x)
+    ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN loadStringAdr(x)
+    ELSE S.Mark("not addressable")
     END
   END Adr;
 
@@ -1069,10 +1062,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN (*x.mode = Const*) SetCC(x, x.a)
   END Condition;
 
-  PROCEDURE Open*(v: INTEGER);
-  BEGIN OM4A.Init(mcode); frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
-    tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v;
-    IF v = 0 THEN mcode.pc := 4; (*Make room for the jump to entry point instruction*) END
+  PROCEDURE Open*;
+  BEGIN A.Init(mcode); frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
+    tdx := 0; strx := 0; RH := 15;
+    rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL; rh.mode := Reg; rh.r := rh.reg;
+    AllocUp := FALSE; RL := A.CG2
   END Open;
 
   PROCEDURE SetDataSize*(dc: LONGINT);
@@ -1081,124 +1075,120 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Header*;
   BEGIN entry := mcode.pc; OfsPTOS(0, FALSE);
-    IF version = 0 THEN OM4A.modify(mcode, 0, OM4A.BT4 + OM4A.formatEvenImm25(mcode.pc-4))
-    ELSE (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, TRUE)
-    END
   END Header;
 
-  PROCEDURE NofPtrs(typ: OM4B.Type): LONGINT;
-    VAR fld!: OM4B.Object; n: LONGINT;
+  PROCEDURE NofPtrs(typ: B.Type): LONGINT;
+    VAR fld!: B.Object; n: LONGINT;
   BEGIN
-    IF (typ.form = OM4B.Pointer) OR (typ.form = OM4B.NilTyp) THEN n := 1
-    ELSIF typ.form = OM4B.Record THEN
+    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN n := 1
+    ELSIF typ.form = B.Record THEN
       fld := typ.dsc; n := 0;
       WHILE fld # NIL DO n := NofPtrs(fld.type) + n; fld := fld.next END
-    ELSIF typ.form = OM4B.Array THEN n := NofPtrs(typ.base) * typ.len
+    ELSIF typ.form = B.Array THEN n := NofPtrs(typ.base) * typ.len
     ELSE n := 0
     END ;
     RETURN n
   END NofPtrs;
 
-  PROCEDURE FindPtrs(VAR R: Files.Rider; typ: OM4B.Type; adr: LONGINT);
-    VAR fld!: OM4B.Object; i, s: LONGINT;
+  PROCEDURE WriteWord(VAR R: Files.Rider; w: INTEGER);
+  BEGIN Files.WriteByte(R, w MOD 100H); Files.WriteByte(R, w DIV 100H MOD 100H);
+  END WriteWord;
+
+  PROCEDURE FindPtrs(VAR R: Files.Rider; typ: B.Type; adr: LONGINT);
+    VAR fld!: B.Object; i, s: LONGINT;
   BEGIN
-    IF (typ.form = OM4B.Pointer) OR (typ.form = OM4B.NilTyp) THEN Files.WriteInt(R, adr)
-    ELSIF typ.form = OM4B.Record THEN
+    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN WriteWord(R, adr)
+    ELSIF typ.form = B.Record THEN
       fld := typ.dsc;
       WHILE fld # NIL DO FindPtrs(R, fld.type, fld.val + adr); fld := fld.next END
-    ELSIF typ.form = OM4B.Array THEN
+    ELSIF typ.form = B.Array THEN
       s := typ.base.size;
       FOR i := 0 TO typ.len-1 DO FindPtrs(R, typ.base, i*s + adr) END
     END
   END FindPtrs;
 
-  PROCEDURE Close*(VAR modid: OM4S.Ident; key, nofent: LONGINT);
-    VAR obj!, obj2!: OM4B.Object;
-      i, comsize, nofimps, nofptrs, nofusedextprocs, size: LONGINT;
-      name: OM4S.Ident;
+  PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT);
+    VAR obj!, obj2!: B.Object;
+      i, comsize, nofimps, nofptrs, size: LONGINT;
+      name: S.Ident;
       F!: Files.File; R!: Files.Rider;
-  BEGIN  (*exit code*)
-    IF version = 0 THEN
-      (*OM4A.BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)
-      OM4A.encMOVImm32(mcode, 0, VarORG0+1); (*odd address to thumb mode*) OM4A.Put1(mcode, OM4A.BX)
-    ELSE (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, TRUE);
-      OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3)
-    END ;
-    obj := OM4B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0; nofusedextprocs := 0;
+  BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, TRUE);
+    obj := B.topScope.next; nofimps := 0; comsize := 2; nofptrs := 0;
     (*count user external procedures*)
     WHILE obj # NIL DO
-      IF (obj.class = OM4B.Mod) & (obj.dsc # OM4B.system) THEN INC(nofimps); (*count imports*)
+      IF (obj.class = B.Mod) & (obj.dsc # B.system) THEN INC(nofimps); (*count imports*)
+(*
         obj2 := obj.dsc;
         WHILE (obj2 # NIL) DO
           IF obj2.used & (obj2.lev < 0) & (obj2.class = OM4B.Const) & (obj2.type.form = OM4B.Proc) THEN INC(nofusedextprocs) (*count external procs called*)
           END;
           obj2 := obj2.next
         END
-      ELSIF (obj.exno # 0) & (obj.class = OM4B.Const) & (obj.type.form = OM4B.Proc)
-          & (obj.type.nofpar = 0) & (obj.type.base = OM4B.noType) THEN i := 0; (*count commands*)
+
+      ELS*)IF (obj.exno # 0) & (obj.class = B.Const) & (obj.type.form = B.Proc)
+          & (obj.type.nofpar = 0) & (obj.type.base = B.noType) THEN i := 0; (*count commands*)
         WHILE obj.name[i] # 0X DO INC(i) END ;
-        i := (i+4) DIV 4 * 4; INC(comsize, i+4)
-      ELSIF obj.class = OM4B.Var THEN INC(nofptrs, NofPtrs(obj.type))  (*count pointers*)
+        i := (i+2) DIV 2 * 2; INC(comsize, i+2)
+      ELSIF obj.class = B.Var THEN INC(nofptrs, NofPtrs(obj.type))  (*count pointers*)
       END ;
       obj := obj.next
     END ;
     
     (*varsize includes type descriptors*)
-    size := varsize + strx + comsize + (mcode.pc+3) DIV 4*4 + (nofimps + nofent + nofptrs + 1)*4 + nofusedextprocs*8;
+    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + nofptrs + 1)*2;
     (*size is aligned on 4 bytes boundary*)
     
-    OM4B.MakeFileName(name, modid, ".m4c"); (*write code file*)
-    F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.Write(R, CHR(version));
-    Files.WriteInt(R, size);
-    obj := OM4B.topScope.next;
-    WHILE (obj # NIL) & (obj.class = OM4B.Mod) DO  (*imports*)
-      IF obj.dsc # OM4B.system THEN Files.WriteString(R, obj(OM4B.Module).orgname); Files.WriteInt(R, obj.val) END ;
+    B.MakeFileName(name, modid, ".mpc"); (*write code file*)
+    F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key);
+    WriteWord(R, size);
+    obj := B.topScope.next;
+    WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imports*)
+      IF obj.dsc # B.system THEN Files.WriteString(R, obj(B.Module).orgname); Files.WriteInt(R, obj.val) END ;
       obj := obj.next
     END ;
     Files.Write(R, 0X);
-    Files.WriteInt(R, tdx*4);
+    WriteWord(R, tdx*2);
     i := 0;
-    WHILE i < tdx DO Files.WriteInt(R, data[i]); INC(i) END ; (*type descriptors*)
-    Files.WriteInt(R, varsize - tdx*4);  (*data*)
-    Files.WriteInt(R, strx);
+    WHILE i < tdx DO WriteWord(R, data[i]); INC(i) END ; (*type descriptors*)
+    WriteWord(R, varsize - tdx*2);  (*data*)
+    WriteWord(R, strx);
     FOR i := 0 TO strx-1 DO Files.Write(R, str[i]) END ;  (*strings*)
-    Files.WriteInt(R, mcode.pc);  (*code len*)
+    WriteWord(R, mcode.pc);  (*code len*)
     FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
-    FOR i := 1 TO mcode.pc MOD 4 DO Files.WriteByte(R, 0) END ;  (*align to 4 byte boundary*)
-    obj := OM4B.topScope.next;
+    obj := B.topScope.next;
     WHILE obj # NIL DO  (*commands*)
-      IF (obj.exno # 0) & (obj.class = OM4B.Const) & (obj.type.form = OM4B.Proc) &
-          (obj.type.nofpar = 0) & (obj.type.base = OM4B.noType) THEN
-        Files.WriteString(R, obj.name); Files.WriteInt(R, obj.val)
+      IF (obj.exno # 0) & (obj.class = B.Const) & (obj.type.form = B.Proc) &
+          (obj.type.nofpar = 0) & (obj.type.base = B.noType) THEN
+        Files.WriteString(R, obj.name); WriteWord(R, obj.val)
       END ;
       obj := obj.next
     END ;
     Files.Write(R, 0X);
-    Files.WriteInt(R, nofent); Files.WriteInt(R, entry);
-    obj := OM4B.topScope.next;
+    WriteWord(R, nofent); WriteWord(R, entry);
+    obj := B.topScope.next;
     WHILE obj # NIL DO  (*entries*)
       IF obj.exno # 0 THEN
-        IF (obj.class = OM4B.Const) & (obj.type.form = OM4B.Proc) OR (obj.class = OM4B.Var) THEN
-          Files.WriteInt(R, obj.val);
-        ELSIF obj.class = OM4B.Typ THEN
-          IF obj.type.form = OM4B.Record THEN Files.WriteInt(R,  obj.type.len MOD OM4A.C16)
-          ELSIF (obj.type.form = OM4B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
-            Files.WriteInt(R,  obj.type.base.len MOD OM4A.C16)
+        IF (obj.class = B.Const) & (obj.type.form = B.Proc) OR (obj.class = B.Var) THEN
+          WriteWord(R, obj.val);
+        ELSIF obj.class = B.Typ THEN
+          IF obj.type.form = B.Record THEN WriteWord(R, obj.type.len)
+          ELSIF (obj.type.form = B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
+            WriteWord(R,  obj.type.base.len)
           END
         END
       END ;
       obj := obj.next
     END ;
-    obj := OM4B.topScope.next;
+    obj := B.topScope.next;
     WHILE obj # NIL DO  (*pointer variables*)
-      IF obj.class = OM4B.Var THEN FindPtrs(R, obj.type, obj.val) END ;
+      IF obj.class = B.Var THEN FindPtrs(R, obj.type, obj.val) END ;
       obj := obj.next
-    END ;
-    Files.WriteInt(R, -1);
+    END;
+    WriteWord(R, -1);
     Files.WriteInt(R, fixORGP); Files.WriteInt(R, fixORGD); Files.WriteInt(R, fixORGT); Files.WriteInt(R, entry);
     Files.Write(R, "O"); Files.Register(F);
     (*write object addresses to source position mapping in .osm file*)
-    OM4B.MakeFileName(name, modid, ".osm"); F := Files.New(name); Files.Set(R, F, 0); Files.WriteInt(R, mcode.pc DIV 2); size := 1;
+    OM4B.MakeFileName(name, modid, ".osm"); F := Files.New(name); Files.Set(R, F, 0); WriteWord(R, mcode.pc DIV 2); size := 1;
     FOR i := 1 TO mcode.pc DIV 2 - 1 DO 
       IF (size < 255) & (mcode.pos[i] = mcode.pos[i-1]) THEN INC(size) ELSE Files.WriteByte(R, size); Files.WriteInt(R, mcode.pos[i - 1]); size := 1 END
     END; Files.WriteByte(R, size); Files.WriteInt(R, mcode.pos[mcode.pc DIV 2 - 1]); Files.Register(F);
@@ -1218,8 +1208,6 @@ BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
   sp.reg := A.SP; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL;
   r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL;
   r15.reg := 15; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL;
-  rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL;
   relmap[0] := OM4A.EQ; relmap[1] := OM4A.NE; relmap[2] := OM4A.LT; 
-  relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE;
-  AllocUp := FALSE; RL := A.CG2
+  relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE
 END OM4G.
