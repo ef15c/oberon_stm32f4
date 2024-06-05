@@ -18,7 +18,7 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     (*lexical symbols*)
     null = 0; times* = 1; rdiv* = 2; div* = 3; mod* = 4;
     and* = 5; plus* = 6; minus* = 7; or* = 8; eql* = 9;
-    neq* = 10; lss* = 11; leq* = 12; gtr* = 13; geq* = 14;
+    neq* = 10; lss* = 11; geq* = 12; gtr* = 13; leq* = 14;
     in* = 15; is* = 16; arrow* = 17; period* = 18; emark* = 19;
     char* = 20; int* = 21; real* = 22; false* = 23; true* = 24;
     nil* = 25; string* = 26; not* = 27; lparen* = 28; lbrak* = 29;

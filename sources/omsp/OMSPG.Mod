@@ -48,7 +48,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
     traps: ARRAY 8 OF B.Object; arith: ARRAY 4 OF B.Object;
     
-    relmap: ARRAY 6 OF INTEGER;    (*condition codes for relations*)
+    relmap: ARRAY 4 OF INTEGER;    (*condition codes for relations*)
     data: ARRAY maxTD OF INTEGER;  (*type descriptors*)
     str: ARRAY maxStrx OF CHAR;
     mcode: A.ModuleCode;
@@ -692,8 +692,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN
     IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
-    PutDO(A.CMP, y, x, A.Word); IF x.mode IN {Reg, RegI} THEN freeR END; IF y.mode IN {Reg, RegI} THEN freeR END;
-    SetCC(x, relmap[op - S.eql])
+    IF op < S.leq THEN PutDO(A.CMP, y, x, A.Word); SetCC(x, relmap[op - S.eql])
+    ELSE PutDO(A.CMP, x, y, A.Word); SetCC(x, relmap[op - S.leq + S.lss])
+    END;
+    IF x.mode IN {Reg, RegI} THEN freeR END; IF y.mode IN {Reg, RegI} THEN freeR END
   END IntRelation;
 
   PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
@@ -1107,6 +1109,32 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END FindPtrs;
 
+  PROCEDURE WriteFixup(VAR R: Files.Rider; class: BYTE; form: INTEGER);
+    VAR obj!, obj2!: B.Object;
+  BEGIN
+    obj := B.topScope.next;
+    WHILE obj # NIL DO  (*local objects fixup chains*)
+      IF (obj.class = class) & ((form = 0) OR (obj.type.form = form)) & (obj.usedat # 0) & (obj.lev = 0) THEN
+        WriteWord(R, obj.usedat); Files.WriteByte(R, 0); (*local object*); WriteWord(R, obj.val); (*relative address*)
+      END;
+      obj := obj.next
+    END;
+    obj := B.topScope.next;
+    WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imported objects fixup chains*)
+      IF obj.dsc # B.system THEN
+        obj2 := obj.dsc;
+        WHILE obj2 # NIL DO
+          IF (obj2.class = class) & ((form = 0) OR (obj2.type.form = form)) & (obj2.usedat # 0) & (obj2.lev < 0) THEN
+            WriteWord(R, obj2.usedat); Files.WriteByte(R, -obj2.lev); (*module number*); WriteWord(R, obj2.val); (*object number*)
+          END;
+          obj2 := obj2.next
+        END
+      END;
+      obj := obj.next
+    END;
+    WriteWord(R, 0);
+  END WriteFixup;
+
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT);
     VAR obj!, obj2!: B.Object;
       i, comsize, nofimps, nofptrs, size: LONGINT;
@@ -1114,18 +1142,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, TRUE);
     obj := B.topScope.next; nofimps := 0; comsize := 2; nofptrs := 0;
-    (*count user external procedures*)
     WHILE obj # NIL DO
       IF (obj.class = B.Mod) & (obj.dsc # B.system) THEN INC(nofimps); (*count imports*)
-(*
-        obj2 := obj.dsc;
-        WHILE (obj2 # NIL) DO
-          IF obj2.used & (obj2.lev < 0) & (obj2.class = OM4B.Const) & (obj2.type.form = OM4B.Proc) THEN INC(nofusedextprocs) (*count external procs called*)
-          END;
-          obj2 := obj2.next
-        END
-
-      ELS*)IF (obj.exno # 0) & (obj.class = B.Const) & (obj.type.form = B.Proc)
+      ELSIF (obj.exno # 0) & (obj.class = B.Const) & (obj.type.form = B.Proc)
           & (obj.type.nofpar = 0) & (obj.type.base = B.noType) THEN i := 0; (*count commands*)
         WHILE obj.name[i] # 0X DO INC(i) END ;
         i := (i+2) DIV 2 * 2; INC(comsize, i+2)
@@ -1143,9 +1162,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     WriteWord(R, size);
     obj := B.topScope.next;
     WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imports*)
-      IF obj.dsc # B.system THEN Files.WriteString(R, obj(B.Module).orgname); Files.WriteInt(R, obj.val) END ;
+      IF obj.dsc # B.system THEN Files.WriteString(R, obj(B.Module).orgname); Files.WriteInt(R, obj.val) END;
       obj := obj.next
-    END ;
+    END;
     Files.Write(R, 0X);
     WriteWord(R, tdx*2);
     i := 0;
@@ -1185,29 +1204,53 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       obj := obj.next
     END;
     WriteWord(R, -1);
-    Files.WriteInt(R, fixORGP); Files.WriteInt(R, fixORGD); Files.WriteInt(R, fixORGT); Files.WriteInt(R, entry);
+    WriteFixup(R, B.Const, B.Proc); (*procedures fixup data*)
+    WriteFixup(R, B.Var, 0); (*variable fixup data*)
+    (*record types fixup data*)
+    obj := B.topScope.next;
+    WHILE obj # NIL DO  (*local procedures fixup chains*)
+      IF (obj.class = B.Typ) & (obj.usedat # 0) & (obj.type.mno = 0) THEN
+        WriteWord(R, obj.usedat); Files.WriteByte(R, 0); (*local type*); WriteWord(R, obj.type.len); (*relative address*)
+      END;
+      obj := obj.next
+    END;
+    obj := B.topScope.next;
+    WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imported procedures fixup chains*)
+      IF obj.dsc # B.system THEN
+        obj2 := obj.dsc;
+        WHILE obj2 # NIL DO
+          IF (obj2.class = B.Typ) & (obj2.usedat # 0) & (obj2.type.mno > 0) THEN
+            WriteWord(R, obj2.usedat); Files.WriteByte(R, obj2.type.mno); (*module number*); WriteWord(R, obj2.type.len); (*object address*)
+          END;
+          obj2 := obj2.next
+        END
+      END;
+      obj := obj.next
+    END;
+    WriteWord(R, 0);
+    Files.WriteInt(R, entry);
     Files.Write(R, "O"); Files.Register(F);
-    (*write object addresses to source position mapping in .osm file*)
-    OM4B.MakeFileName(name, modid, ".osm"); F := Files.New(name); Files.Set(R, F, 0); WriteWord(R, mcode.pc DIV 2); size := 1;
+    (*write object addresses to source position mapping in .o43 file*)
+    B.MakeFileName(name, modid, ".o43"); F := Files.New(name); Files.Set(R, F, 0); WriteWord(R, mcode.pc DIV 2); size := 1;
     FOR i := 1 TO mcode.pc DIV 2 - 1 DO 
       IF (size < 255) & (mcode.pos[i] = mcode.pos[i-1]) THEN INC(size) ELSE Files.WriteByte(R, size); Files.WriteInt(R, mcode.pos[i - 1]); size := 1 END
     END; Files.WriteByte(R, size); Files.WriteInt(R, mcode.pos[mcode.pc DIV 2 - 1]); Files.Register(F);
     (*write word offset with caller top of stack*)
-    OfsPTOS(-1, FALSE); (*close last segment*) OM4B.MakeFileName(name, modid, ".rao"); F := Files.New(name); Files.Set(R, F, 0); 
+    OfsPTOS(-1, FALSE); (*close last segment*) B.MakeFileName(name, modid, ".r43"); F := Files.New(name); Files.Set(R, F, 0); 
     Files.WriteInt(R, frmOfsSegs.NofSegs);
     FOR i := 0 TO frmOfsSegs.NofSegs DO Files.WriteInt(R, frmOfsSegs.Segs[i].end); Files.WriteInt(R, frmOfsSegs.Segs[i].ofsptos) END;
     Files.Register(F)
   END Close;
 
 BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
-  cm1.reg := 0; c0.am := A.Immediate; c0.ofs := -1; t.obj := NIL;
-  c0.reg := 0; c0.am := A.Immediate; c0.ofs := 0; t.obj := NIL;
-  c1.reg := 0; c0.am := A.Immediate; c0.ofs := 1; t.obj := NIL;
-  c2.reg := 0; c0.am := A.Immediate; c0.ofs := 2; t.obj := NIL;
+  cm1.reg := 0; c0.am := A.Immediate; c0.ofs := -1; cm1.obj := NIL;
+  c0.reg := 0; c0.am := A.Immediate; c0.ofs := 0; c0.obj := NIL;
+  c1.reg := 0; c0.am := A.Immediate; c0.ofs := 1; c1.obj := NIL;
+  c2.reg := 0; c0.am := A.Immediate; c0.ofs := 2; c2.obj := NIL;
   pc.reg := A.PC; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL;
   sp.reg := A.SP; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL;
   r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL;
   r15.reg := 15; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL;
-  relmap[0] := OM4A.EQ; relmap[1] := OM4A.NE; relmap[2] := OM4A.LT; 
-  relmap[3] := OM4A.LE; relmap[4] := OM4A.GT; relmap[5] := OM4A.GE
-END OM4G.
+  relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; 
+  relmap[3] := A.GE
+END OMSPG.
