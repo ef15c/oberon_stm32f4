@@ -1,99 +1,93 @@
-MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
-  C. Schoffit 19/10/2023 Oberon compiler for Cortex M4 in Oberon-07*)
-  IMPORT Display, Texts, Oberon, OM4S, OM4B, OM4G;
+MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
+  C. Schoffit 05.06.24 Oberon compiler for MSP430 processor in Oberon-07*)
+  IMPORT Display, Texts, Oberon, S := OMSPS, B := OMSPB, G := OMSPG;
   (*Author: Niklaus Wirth, 2014.
-    Parser of Oberon-Cortex M4 compiler. Uses Scanner OM4S to obtain symbols (tokens),
-    OM4B for definition of data structures and for handling import and export, and
-    OM4G to produce binary code. OM4P performs type checking and data allocation.
+    Parser of Oberon-MSP430 compiler. Uses Scanner OMSPS to obtain symbols (tokens),
+    OMSPB for definition of data structures and for handling import and export, and
+    OMSPG to produce binary code. OMSPP performs type checking and data allocation.
     Parser is target-independent, except for part of the handling of allocations.*)
- 
+
   TYPE PtrBase = POINTER TO PtrBaseDesc;
     PtrBaseDesc = RECORD  (*list of names of pointer base types*)
-      name: OM4S.Ident; type: OM4B.Type; next: PtrBase
+      name: S.Ident; type: B.Type; next: PtrBase
     END ;
-  
+
   VAR sym: INTEGER;   (*last symbol read*)
     dc: LONGINT;    (*data counter*)
     level, exno, version: INTEGER;
     newSF: BOOLEAN;  (*option flag*)
-    expression: PROCEDURE (VAR x: OM4G.Item);  (*to avoid forward reference*)
-    Type: PROCEDURE (VAR type: OM4B.Type);
-    FormalType: PROCEDURE (VAR typ: OM4B.Type; dim: INTEGER);
-    modid: OM4S.Ident;
+    expression: PROCEDURE (VAR x: G.Item);  (*to avoid forward reference*)
+    Type: PROCEDURE (VAR type: B.Type);
+    FormalType: PROCEDURE (VAR typ: B.Type; dim: INTEGER);
+    modid: S.Ident;
     pbsList: PtrBase;   (*list of names of pointer base types*)
-    dummy: OM4B.Object;
+    dummy: B.Object;
     W: Texts.Writer;
 
   PROCEDURE Check(s: INTEGER; msg: ARRAY OF CHAR);
   BEGIN
-    IF sym = s THEN OM4S.Get(sym) ELSE OM4S.Mark(msg) END
+    IF sym = s THEN S.Get(sym) ELSE S.Mark(msg) END
   END Check;
 
-  PROCEDURE qualident(VAR obj: OM4B.Object);
-  BEGIN obj := OM4B.thisObj(); OM4S.Get(sym);
-    IF obj = NIL THEN OM4S.Mark("undef"); obj := dummy END ;
-    IF (sym = OM4S.period) & (obj.class = OM4B.Mod) THEN
-      OM4S.Get(sym);
-      IF sym = OM4S.ident THEN obj := OM4B.thisimport(obj); OM4S.Get(sym);
-        IF obj = NIL THEN OM4S.Mark("undef"); obj := dummy END
-      ELSE OM4S.Mark("identifier expected"); obj := dummy
+  PROCEDURE qualident(VAR obj: B.Object);
+  BEGIN obj := B.thisObj(); S.Get(sym);
+    IF obj = NIL THEN S.Mark("undef"); obj := dummy END ;
+    IF (sym = S.period) & (obj.class = B.Mod) THEN
+      S.Get(sym);
+      IF sym = S.ident THEN obj := B.thisimport(obj); S.Get(sym);
+        IF obj = NIL THEN S.Mark("undef"); obj := dummy END
+      ELSE S.Mark("identifier expected"); obj := dummy
       END
     END
   END qualident;
 
-  PROCEDURE CheckBool(VAR x: OM4G.Item);
+  PROCEDURE CheckBool(VAR x: G.Item);
   BEGIN
-    IF x.type.form # OM4B.Bool THEN OM4S.Mark("not Boolean"); x.type := OM4B.boolType END
+    IF x.type.form # B.Bool THEN S.Mark("not Boolean"); x.type := B.boolType END
   END CheckBool;
 
-  PROCEDURE CheckInt(VAR x: OM4G.Item);
+  PROCEDURE CheckInt(VAR x: G.Item);
   BEGIN
-    IF x.type.form # OM4B.Int THEN OM4S.Mark("not Integer"); x.type := OM4B.intType END
+    IF x.type.form # B.Int THEN S.Mark("not Integer"); x.type := B.intType END
   END CheckInt;
 
-  PROCEDURE CheckReal(VAR x: OM4G.Item);
+  PROCEDURE CheckSet(VAR x: G.Item);
   BEGIN
-    IF x.type.form # OM4B.Real THEN OM4S.Mark("not Real"); x.type := OM4B.realType END
-  END CheckReal;
-
-  PROCEDURE CheckSet(VAR x: OM4G.Item);
-  BEGIN
-    IF x.type.form # OM4B.Set THEN OM4S.Mark("not Set"); x.type := OM4B.setType END 
+    IF x.type.form # B.Set THEN S.Mark("not Set"); x.type := B.setType END 
   END CheckSet;
 
-  PROCEDURE CheckSetVal(VAR x: OM4G.Item);
+  PROCEDURE CheckSetVal(VAR x: G.Item);
   BEGIN
-    IF x.type.form # OM4B.Int THEN OM4S.Mark("not Int"); x.type := OM4B.setType
-    ELSIF x.mode = OM4B.Const THEN
-      IF (x.a < 0) OR (x.a >= 32) THEN OM4S.Mark("invalid set") END
+    IF x.type.form # B.Int THEN S.Mark("not Int"); x.type := B.setType
+    ELSIF x.mode = B.Const THEN
+      IF (x.a < 0) OR (x.a >= 16) THEN S.Mark("invalid set") END
     END 
   END CheckSetVal;
 
-  PROCEDURE CheckConst(VAR x: OM4G.Item);
+  PROCEDURE CheckConst(VAR x: G.Item);
   BEGIN
-    IF x.mode # OM4B.Const THEN OM4S.Mark("not a constant"); x.mode := OM4B.Const END
+    IF x.mode # B.Const THEN S.Mark("not a constant"); x.mode := B.Const END
   END CheckConst;
 
-  PROCEDURE CheckReadOnly(VAR x: OM4G.Item);
+  PROCEDURE CheckReadOnly(VAR x: G.Item);
   BEGIN
-    IF x.rdo THEN OM4S.Mark("read-only") END
+    IF x.rdo THEN S.Mark("read-only") END
   END CheckReadOnly;
 
   PROCEDURE CheckExport(VAR expo: BOOLEAN);
   BEGIN
-    IF sym = OM4S.times THEN
-      expo := TRUE; OM4S.Get(sym);
-      IF level # 0 THEN OM4S.Mark("remove asterisk") END
+    IF sym = S.times THEN
+      expo := TRUE; S.Get(sym);
+      IF level # 0 THEN S.Mark("remove asterisk") END
     ELSE expo := FALSE
     END
   END CheckExport;
 
-
   PROCEDURE CheckUnsafeMarking(VAR unsafe: BOOLEAN);
   BEGIN
-    IF sym = OM4S.emark THEN
-      unsafe := TRUE; OM4S.Get(sym);
-      IF level = 0 THEN OM4S.Mark("remove exclamation mark") END
+    IF sym = S.emark THEN
+      unsafe := TRUE; S.Get(sym);
+      IF level = 0 THEN S.Mark("remove exclamation mark") END
     ELSE unsafe := FALSE
     END
   END CheckUnsafeMarking;
