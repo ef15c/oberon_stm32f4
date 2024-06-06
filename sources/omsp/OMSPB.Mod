@@ -390,7 +390,7 @@ BEGIN
   strType := type(String, String, 8);
     
   (*initialize universe with data types and in-line procedures;
-    LED, ADC, SBC; LDPSR, LDREG, REG, COND are not in language definition*)
+    ADC, SBC; LDREG, REG, COND are not in language definition*)
   system := NIL;  (*n = procno*10 + nofpar*)
   enter("SBC", SFunc, intType, 122); (*functions*)
   enter("ADC", SFunc, intType, 112);
@@ -403,8 +403,7 @@ BEGIN
   enter("ORD", SFunc, intType, 41);
   enter("ODD", SFunc, boolType, 11);
   enter("ABS", SFunc, intType, 1);
-  enter("LED", SProc, noType, 81);  (*procedures*)
-  enter("ASSERT", SProc, noType, 41);
+  enter("ASSERT", SProc, noType, 41); (*procedures*)
   enter("EXCL", SProc, noType, 32);
   enter("INCL", SProc, noType, 22);
   enter("DEC", SProc, noType, 11);

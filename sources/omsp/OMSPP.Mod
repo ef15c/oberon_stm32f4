@@ -92,90 +92,89 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END CheckUnsafeMarking;
 
-  PROCEDURE IsExtension(t0, t1: OM4B.Type): BOOLEAN;
+  PROCEDURE IsExtension(t0, t1: B.Type): BOOLEAN;
   BEGIN (*t1 is an extension of t0*)
     RETURN (t0 = t1) OR (t1 # NIL) & IsExtension(t0, t1.base)
   END IsExtension;
 
   (* expressions *)
-
-  PROCEDURE TypeTest(VAR x: OM4G.Item; T: OM4B.Type; guard: BOOLEAN);
-    VAR xt!: OM4B.Type;
+  PROCEDURE TypeTest(VAR x: G.Item; T: B.Type; guard: BOOLEAN);
+    VAR xt!: B.Type;
   BEGIN xt := x.type;
-    IF (T.form = xt.form ) & ((T.form = OM4B.Pointer) OR (T.form = OM4B.Record) & (x.mode = OM4B.Par)) THEN
+    IF (T.form = xt.form ) & ((T.form = B.Pointer) OR (T.form = B.Record) & (x.mode = B.Par)) THEN
       WHILE (xt # T) & (xt # NIL) DO xt := xt.base END ;
       IF xt # T THEN xt := x.type;
-        IF xt.form = OM4B.Pointer THEN
-          IF IsExtension(xt.base, T.base) THEN OM4G.TypeTest(x, T.base, FALSE, guard); x.type := T
-          ELSE OM4S.Mark("not an extension")
+        IF xt.form = B.Pointer THEN
+          IF IsExtension(xt.base, T.base) THEN G.TypeTest(x, T.base, FALSE, guard); x.type := T
+          ELSE S.Mark("not an extension")
           END
-        ELSIF (xt.form = OM4B.Record) & (x.mode = OM4B.Par) THEN
-          IF IsExtension(xt, T) THEN  OM4G.TypeTest(x, T, TRUE, guard); x.type := T
-          ELSE OM4S.Mark("not an extension")
+        ELSIF (xt.form = B.Record) & (x.mode = B.Par) THEN
+          IF IsExtension(xt, T) THEN  G.TypeTest(x, T, TRUE, guard); x.type := T
+          ELSE S.Mark("not an extension")
           END
-        ELSE OM4S.Mark("incompatible types")
+        ELSE S.Mark("incompatible types")
         END
-      ELSIF ~guard THEN OM4G.TypeTest(x, NIL, FALSE, FALSE)
+      ELSIF ~guard THEN G.TypeTest(x, NIL, FALSE, FALSE)
       END
-    ELSE OM4S.Mark("type mismatch")
-    END ;
-    IF ~guard THEN x.type := OM4B.boolType END
+    ELSE S.Mark("type mismatch")
+    END;
+    IF ~guard THEN x.type := B.boolType END
   END TypeTest;
 
-  PROCEDURE selector(VAR x: OM4G.Item);
-    VAR y!: OM4G.Item; obj!: OM4B.Object;
+  PROCEDURE selector(VAR x: G.Item);
+    VAR y!: G.Item; obj!: B.Object;
   BEGIN
-    WHILE (sym = OM4S.lbrak) OR (sym = OM4S.period) OR (sym = OM4S.arrow)
-        OR (sym = OM4S.lparen) & (x.type.form IN {OM4B.Record, OM4B.Pointer}) DO
-      IF sym = OM4S.lbrak THEN
-        REPEAT OM4S.Get(sym); expression(y);
-          IF x.type.form = OM4B.Array THEN
-            CheckInt(y); OM4G.Index(x, y); x.type := x.type.base
-          ELSE OM4S.Mark("not an array")
+    WHILE (sym = S.lbrak) OR (sym = S.period) OR (sym = S.arrow)
+        OR (sym = S.lparen) & (x.type.form IN {B.Record, B.Pointer}) DO
+      IF sym = S.lbrak THEN
+        REPEAT S.Get(sym); expression(y);
+          IF x.type.form = B.Array THEN
+            CheckInt(y); G.Index(x, y); x.type := x.type.base
+          ELSE S.Mark("not an array")
           END
-        UNTIL sym # OM4S.comma;
-        Check(OM4S.rbrak, "no ]")
-      ELSIF sym = OM4S.period THEN OM4S.Get(sym);
-        IF sym = OM4S.ident THEN
-          IF x.type.form = OM4B.Pointer THEN OM4G.DeRef(x); x.type := x.type.base END ;
-          IF x.type.form = OM4B.Record THEN
-            obj := OM4B.thisfield(x.type); OM4S.Get(sym);
-            IF obj # NIL THEN OM4G.Field(x, obj); x.type := obj.type
-            ELSE OM4S.Mark("undef")
+        UNTIL sym # S.comma;
+        Check(S.rbrak, "no ]")
+      ELSIF sym = S.period THEN S.Get(sym);
+        IF sym = S.ident THEN
+          IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base END ;
+          IF x.type.form = B.Record THEN
+            obj := B.thisfield(x.type); S.Get(sym);
+            IF obj # NIL THEN G.Field(x, obj); x.type := obj.type
+            ELSE S.Mark("undef")
             END
-          ELSE OM4S.Mark("not a record")
+          ELSE S.Mark("not a record")
           END
-        ELSE OM4S.Mark("ident?")
+        ELSE S.Mark("ident?")
         END
-      ELSIF sym = OM4S.arrow THEN
-        OM4S.Get(sym);
-        IF x.type.form = OM4B.Pointer THEN OM4G.DeRef(x); x.type := x.type.base
-        ELSE OM4S.Mark("not a pointer")
+      ELSIF sym = S.arrow THEN
+        S.Get(sym);
+        IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base
+        ELSE S.Mark("not a pointer")
         END
-      ELSIF (sym = OM4S.lparen) & (x.type.form IN {OM4B.Record, OM4B.Pointer}) THEN (*type guard*)
-        OM4S.Get(sym);
-        IF sym = OM4S.ident THEN
+      ELSIF (sym = S.lparen) & (x.type.form IN {B.Record, B.Pointer}) THEN (*type guard*)
+        S.Get(sym);
+        IF sym = S.ident THEN
           qualident(obj);
-          IF obj.class = OM4B.Typ THEN TypeTest(x, obj.type, TRUE)
-          ELSE OM4S.Mark("guard type expected")
+          IF obj.class = B.Typ THEN TypeTest(x, obj.type, TRUE)
+          ELSE S.Mark("guard type expected")
           END
-        ELSE OM4S.Mark("not an identifier")
+        ELSE S.Mark("not an identifier")
         END ;
-        Check(OM4S.rparen, " ) missing")
+        Check(S.rparen, " ) missing")
       END
     END
   END selector;
 
-  PROCEDURE EqualSignatures(t0, t1: OM4B.Type): BOOLEAN;
-    VAR p0!, p1!: OM4B.Object; com: BOOLEAN;
+  PROCEDURE EqualSignatures(t0, t1: B.Type): BOOLEAN;
+    VAR p0!, p1!: B.Object; com: BOOLEAN;
   BEGIN com := TRUE;
     IF (t0.base = t1.base) & (t0.nofpar = t1.nofpar) THEN
       p0 := t0.dsc; p1 := t1.dsc;
       WHILE p0 # NIL DO
         IF (p0.class = p1.class) &  (p0.rdo = p1.rdo) &
           ((p0.type = p1.type) OR
-          (p0.type.form = OM4B.Array) & (p1.type.form = OM4B.Array) & (p0.type.len = p1.type.len) & (p0.type.base = p1.type.base) OR
-          (p0.type.form = OM4B.Proc) & (p1.type.form = OM4B.Proc) & EqualSignatures(p0.type, p1.type))
+          (p0.type.form = B.Array) & (p1.type.form = B.Array) & (p0.type.len = p1.type.len) & (p0.type.base = p1.type.base) OR
+          (p0.type.form = B.Proc) & (p1.type.form = B.Proc) & EqualSignatures(p0.type, p1.type))
         THEN p0 := p0.next; p1 := p1.next
         ELSE p0 := NIL; com := FALSE
         END
@@ -185,251 +184,239 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     RETURN com
   END EqualSignatures;
 
-  PROCEDURE CompTypes(t0, t1: OM4B.Type; varpar: BOOLEAN): BOOLEAN;
+  PROCEDURE CompTypes(t0, t1: B.Type; varpar: BOOLEAN): BOOLEAN;
   BEGIN (*check for assignment compatibility*)
-    RETURN (t0 = t1)    (*openarray assignment disallowed in OM4G*)
-      OR (t0.form = OM4B.Array) & (t1.form = OM4B.Array) & (t0.base =  t1.base) & (t0.len = t1.len)
-      OR (t0.form = OM4B.Record) & (t1.form = OM4B.Record)  & IsExtension(t0, t1)
+    RETURN (t0 = t1)    (*openarray assignment disallowed in OMSPG*)
+      OR (t0.form = B.Array) & (t1.form = B.Array) & (t0.base =  t1.base) & (t0.len = t1.len)
+      OR (t0.form = B.Record) & (t1.form = B.Record)  & IsExtension(t0, t1)
       OR ~varpar &
-        ((t0.form = OM4B.Pointer) & (t1.form = OM4B.Pointer)  & IsExtension(t0.base, t1.base)
-        OR (t0.form = OM4B.Proc) & (t1.form = OM4B.Proc) & EqualSignatures(t0, t1)
-        OR (t0.form IN {OM4B.Pointer, OM4B.Proc}) & (t1.form = OM4B.NilTyp))
+        ((t0.form = B.Pointer) & (t1.form = B.Pointer)  & IsExtension(t0.base, t1.base)
+        OR (t0.form = B.Proc) & (t1.form = B.Proc) & EqualSignatures(t0, t1)
+        OR (t0.form IN {B.Pointer, B.Proc}) & (t1.form = B.NilTyp))
   END CompTypes;
 
-  PROCEDURE Parameter(par: OM4B.Object);
-    VAR x!: OM4G.Item; varpar: BOOLEAN;
+  PROCEDURE Parameter(par: B.Object);
+    VAR x!: G.Item; varpar: BOOLEAN;
   BEGIN expression(x);
     IF par # NIL THEN
-      varpar := par.class = OM4B.Par;
+      varpar := par.class = B.Par;
       IF CompTypes(par.type, x.type, varpar) THEN
-        IF ~varpar THEN OM4G.ValueParam(x)
+        IF ~varpar THEN G.ValueParam(x, par)
         ELSE (*par.class = Par*)
           IF ~par.rdo THEN CheckReadOnly(x) END ;
-          OM4G.VarParam(x, par.type)
+          G.VarParam(x, par)
         END
-      ELSIF (x.type.form = OM4B.Array) & (par.type.form = OM4B.Array) &
+      ELSIF (x.type.form = B.Array) & (par.type.form = B.Array) &
           (x.type.base = par.type.base) & (par.type.len < 0) THEN
         IF ~par.rdo THEN CheckReadOnly(x) END ;
-        OM4G.OpenArrayParam(x)
-      ELSIF (x.type.form = OM4B.String) & varpar & par.rdo & (par.type.form = OM4B.Array) & 
-          (par.type.base.form = OM4B.Char) & (par.type.len < 0) THEN OM4G.StringParam(x)
-      ELSIF ~varpar & (par.type.form = OM4B.Int) & (x.type.form = OM4B.Int) THEN OM4G.ValueParam(x)  (*BYTE*)
-      ELSIF (x.type.form = OM4B.String) & (x.b = 2) & (par.class = OM4B.Var) & (par.type.form = OM4B.Char) THEN
-        OM4G.StrToChar(x); OM4G.ValueParam(x)
-      ELSIF (par.type.form = OM4B.Array) & (par.type.base = OM4B.byteType) & 
+        G.OpenArrayParam(x, par)
+      ELSIF (x.type.form = B.String) & varpar & par.rdo & (par.type.form = B.Array) & 
+          (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x, par)
+      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par)  (*BYTE*)
+      ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
+        G.StrToChar(x); G.ValueParam(x, par)
+      ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
           (par.type.len >= 0) & (par.type.size = x.type.size) THEN
-        OM4G.VarParam(x, par.type)
-      ELSE OM4S.Mark("incompatible parameters")
+        G.VarParam(x, par)
+      ELSE S.Mark("incompatible parameters")
       END
     END
   END Parameter;
 
-  PROCEDURE ParamList(x: OM4G.Item);
-    VAR n: INTEGER; par!: OM4B.Object;
+  PROCEDURE ParamList(x: G.Item);
+    VAR n: INTEGER; par!: B.Object;
   BEGIN par := x.type.dsc; n := 0;
-    IF sym # OM4S.rparen THEN
+    IF sym # S.rparen THEN
       Parameter(par); n := 1;
-      WHILE sym <= OM4S.comma DO
-        Check(OM4S.comma, "comma?");
+      WHILE sym <= S.comma DO
+        Check(S.comma, "comma?");
         IF par # NIL THEN par := par.next END ;
         INC(n); Parameter(par)
       END ;
-      Check(OM4S.rparen, ") missing")
-    ELSE OM4S.Get(sym);
-    END ;
-    IF n < x.type.nofpar THEN OM4S.Mark("too few params")
-    ELSIF n > x.type.nofpar THEN OM4S.Mark("too many params")
+      Check(S.rparen, ") missing")
+    ELSE S.Get(sym);
+    END;
+    IF n < x.type.nofpar THEN S.Mark("too few params")
+    ELSIF n > x.type.nofpar THEN S.Mark("too many params")
     END
   END ParamList;
 
-  PROCEDURE StandFunc(VAR x: OM4G.Item; fct: LONGINT; restyp: OM4B.Type);
-    VAR y!, z!: OM4G.Item; n, npar: LONGINT;
-  BEGIN Check(OM4S.lparen, "no (");
+  PROCEDURE StandFunc(VAR x: G.Item; fct: LONGINT; restyp: B.Type);
+    VAR y!, z!: G.Item; n, npar: LONGINT;
+  BEGIN Check(S.lparen, "no (");
     npar := fct MOD 10; fct := fct DIV 10; expression(x); n := 1;
-    IF sym = OM4S.comma THEN OM4S.Get(sym); expression(y); n := 2;
-      WHILE sym = OM4S.comma DO OM4S.Get(sym); expression(z); INC(n) END ;
+    IF sym = S.comma THEN S.Get(sym); expression(y); n := 2;
+      WHILE sym = S.comma DO S.Get(sym); expression(z); INC(n) END ;
     END;
-    Check(OM4S.rparen, "no )");
+    Check(S.rparen, "no )");
     IF n = npar THEN
-      IF fct = 0 THEN (*ABS*)
-        IF x.type.form IN {OM4B.Int, OM4B.Real} THEN OM4G.Abs(x); restyp := x.type ELSE OM4S.Mark("bad type") END
-      ELSIF fct = 1 THEN (*ODD*) CheckInt(x); OM4G.Odd(x)
-      ELSIF fct = 2 THEN (*FLOOR*) CheckReal(x); OM4G.Floor(x)
-      ELSIF fct = 3 THEN (*FLT*) CheckInt(x); OM4G.Float(x)
+      IF fct = 0 THEN (*ABS*) CheckInt(x); G.Abs(x)
+      ELSIF fct = 1 THEN (*ODD*) CheckInt(x); G.Odd(x)
       ELSIF fct = 4 THEN (*ORD*)
-        IF x.type.form <= OM4B.Proc THEN OM4G.Ord(x)
-        ELSIF (x.type.form = OM4B.String) & (x.b = 2) THEN OM4G.StrToChar(x)
-        ELSE OM4S.Mark("bad type")
+        IF x.type.form <= B.Proc THEN G.Ord(x)
+        ELSIF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x)
+        ELSE S.Mark("bad type")
         END
-      ELSIF fct = 5 THEN (*CHR*) CheckInt(x); OM4G.Ord(x)
+      ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
       ELSIF fct = 6 THEN (*LEN*)
-          IF x.type.form = OM4B.Array THEN OM4G.Len(x) ELSE OM4S.Mark("not an array") END
-      ELSIF fct IN {7, 8, 9, 10} THEN (*LSL, ASR, ROR, LSR*) CheckInt(y);
-        IF x.type.form IN {OM4B.Int, OM4B.Set} THEN OM4G.Shift(fct-7, x, y); restyp := x.type ELSE OM4S.Mark("bad type") END
-      ELSIF fct = 11 THEN (*ADC*) OM4G.ADC(x, y)
-      ELSIF fct = 12 THEN (*SBC*) OM4G.SBC(x, y)
-      ELSIF fct = 13 THEN (*UML*) OM4G.UML(x, y)
-      ELSIF fct = 14 THEN (*BIT*) CheckInt(x); CheckInt(y); OM4G.Bit(x, y)
-      ELSIF fct = 15 THEN (*REG*) CheckConst(x); CheckInt(x); OM4G.Register(x)
+          IF x.type.form = B.Array THEN G.Len(x) ELSE S.Mark("not an array") END
+      ELSIF fct IN {7, 8, 9, 10} THEN (*RLS, RLC, RRA, RRC*) CheckInt(y);
+        IF x.type.form IN {B.Int, B.Set} THEN G.Shift(fct-7, x, y); restyp := x.type ELSE S.Mark("bad type") END
+      ELSIF fct = 11 THEN (*ADC*) G.ADC(x, y)
+      ELSIF fct = 12 THEN (*SBC*) G.SBC(x, y)
+      ELSIF fct = 14 THEN (*BIT*) CheckInt(x); CheckInt(y); G.Bit(x, y)
+      ELSIF fct = 15 THEN (*REG*) CheckConst(x); CheckInt(x); G.Register(x)
       ELSIF fct = 16 THEN (*VAL*)
-        IF (x.mode= OM4B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; x := y
-        ELSE OM4S.Mark("casting not allowed")
+        IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; x := y
+        ELSE S.Mark("casting not allowed")
         END
-      ELSIF fct = 17 THEN (*ADR*) OM4G.Adr(x)
+      ELSIF fct = 17 THEN (*ADR*) G.Adr(x)
       ELSIF fct = 18 THEN (*SIZE*)
-        IF x.mode = OM4B.Typ THEN OM4G.MakeConstItem(x, OM4B.intType, x.type.size)
-        ELSE OM4S.Mark("must be a type")
+        IF x.mode = B.Typ THEN G.MakeConstItem(x, B.intType, x.type.size)
+        ELSE S.Mark("must be a type")
         END
-      ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); OM4G.Condition(x)
-      ELSIF fct = 20 THEN (*SQRT*) CheckReal(x); OM4G.Sqrt(x)
-      ELSIF fct = 21 THEN (*SVC*) CheckConst(x); CheckInt(x); OM4G.SVC(x)
+      ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); G.Condition(x)
       ELSIF fct = 22 THEN (*Int Compare*)
-        CheckInt(x); CheckInt(y); CheckConst(z); CheckInt(z); OM4G.IntCompare(x, y, z)
-      ELSIF fct = 23 THEN (*reverse bits*) CheckInt(x); OM4G.Rbit(x)
-      END ;
+        CheckInt(x); CheckInt(y); CheckConst(z); CheckInt(z); G.IntCompare(x, y, z)
+      ELSE ASSERT(FALSE)
+      END;
       x.type := restyp
-    ELSE OM4S.Mark("wrong nof params")
+    ELSE S.Mark("wrong nof params")
     END
   END StandFunc;
 
-  PROCEDURE element(VAR x: OM4G.Item);
-    VAR y!: OM4G.Item;
+  PROCEDURE element(VAR x: G.Item);
+    VAR y!: G.Item;
   BEGIN expression(x); CheckSetVal(x);
-    IF sym = OM4S.upto THEN OM4S.Get(sym); expression(y); CheckSetVal(y); OM4G.Set(x, y)
-    ELSE OM4G.Singleton(x)
+    IF sym = S.upto THEN S.Get(sym); expression(y); CheckSetVal(y); G.Set(x, y)
+    ELSE G.Singleton(x)
     END ;
-    x.type := OM4B.setType
+    x.type := B.setType
   END element;
   
-  PROCEDURE set(VAR x: OM4G.Item);
-    VAR y!: OM4G.Item;
+  PROCEDURE set(VAR x: G.Item);
+    VAR y!: G.Item;
   BEGIN
-    IF sym >= OM4S.if THEN
-      IF sym # OM4S.rbrace THEN OM4S.Mark(" } missing") END ;
-      OM4G.MakeConstItem(x, OM4B.setType, 0) (*empty set*)
+    IF sym >= S.if THEN
+      IF sym # S.rbrace THEN S.Mark(" } missing") END ;
+      G.MakeConstItem(x, B.setType, 0) (*empty set*)
     ELSE element(x);
-      WHILE (sym < OM4S.rparen) OR (sym > OM4S.rbrace) DO
-        IF sym = OM4S.comma THEN OM4S.Get(sym)
-        ELSIF sym # OM4S.rbrace THEN OM4S.Mark("missing comma")
+      WHILE (sym < S.rparen) OR (sym > S.rbrace) DO
+        IF sym = S.comma THEN S.Get(sym)
+        ELSIF sym # S.rbrace THEN S.Mark("missing comma")
         END ;
-        element(y); OM4G.SetOp(OM4S.plus, x, y)
+        element(y); G.SetOp(S.plus, x, y)
       END
     END
   END set; 
 
-  PROCEDURE factor(VAR x: OM4G.Item);
-    VAR obj!: OM4B.Object; rx, sx: LONGINT;
+  PROCEDURE factor(VAR x: G.Item);
+    VAR obj!: B.Object; rx, sx: LONGINT;
   BEGIN (*sync*)
-    IF (sym < OM4S.char) OR (sym > OM4S.ident) THEN OM4S.Mark("expression expected");
-      REPEAT OM4S.Get(sym) UNTIL (sym >= OM4S.char) & (sym <= OM4S.for) OR (sym >= OM4S.then)
-    END ;
-    IF sym = OM4S.ident THEN
+    IF (sym < S.char) OR (sym > S.ident) THEN S.Mark("expression expected");
+      REPEAT S.Get(sym) UNTIL (sym >= S.char) & (sym <= S.for) OR (sym >= S.then)
+    END;
+    IF sym = S.ident THEN
       qualident(obj);  
-      IF obj.class = OM4B.SFunc THEN StandFunc(x, obj.val, obj.type)
-      ELSE OM4G.MakeItem(x, obj, level); selector(x);
-        IF sym = OM4S.lparen THEN
-          OM4S.Get(sym);
-          IF (x.type.form = OM4B.Proc) & (x.type.base.form # OM4B.NoTyp) THEN
-            obj.used := TRUE;
-            OM4G.PrepCall(x, rx, sx); ParamList(x); OM4G.Call(x, rx, sx); x.type := x.type.base
-          ELSE OM4S.Mark("not a function"); ParamList(x)
+      IF obj.class = B.SFunc THEN StandFunc(x, obj.val, obj.type)
+      ELSE G.MakeItem(x, obj, level); selector(x);
+        IF sym = S.lparen THEN
+          S.Get(sym);
+          IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
+            G.PrepCall(x, rx, sx); ParamList(x); G.Call(x, rx, sx); x.type := x.type.base
+          ELSE S.Mark("not a function"); ParamList(x)
           END
         END
       END
-    ELSIF sym = OM4S.int THEN OM4G.MakeConstItem(x, OM4B.intType, OM4S.ival); OM4S.Get(sym)
-    ELSIF sym = OM4S.real THEN OM4G.MakeRealItem(x, OM4S.rval); OM4S.Get(sym)
-    ELSIF sym = OM4S.char THEN OM4G.MakeConstItem(x, OM4B.charType, OM4S.ival); OM4S.Get(sym)
-    ELSIF sym = OM4S.nil THEN OM4S.Get(sym); OM4G.MakeConstItem(x, OM4B.nilType, 0)
-    ELSIF sym = OM4S.string THEN OM4G.MakeStringItem(x, OM4S.slen); OM4S.Get(sym)
-    ELSIF sym = OM4S.lparen THEN OM4S.Get(sym); expression(x); Check(OM4S.rparen, "no )")
-    ELSIF sym = OM4S.lbrace THEN OM4S.Get(sym); set(x); Check(OM4S.rbrace, "no }")
-    ELSIF sym = OM4S.not THEN OM4S.Get(sym); factor(x); CheckBool(x); OM4G.Not(x)
-    ELSIF sym = OM4S.false THEN OM4S.Get(sym); OM4G.MakeConstItem(x, OM4B.boolType, 0)
-    ELSIF sym = OM4S.true THEN OM4S.Get(sym); OM4G.MakeConstItem(x, OM4B.boolType, 1)
-    ELSE OM4S.Mark("not a factor"); OM4G.MakeConstItem(x, OM4B.intType, 0)
+    ELSIF sym = S.int THEN G.MakeConstItem(x, B.intType, S.ival); S.Get(sym)
+    ELSIF sym = S.char THEN G.MakeConstItem(x, B.charType, S.ival); S.Get(sym)
+    ELSIF sym = S.nil THEN S.Get(sym); G.MakeConstItem(x, B.nilType, 0)
+    ELSIF sym = S.string THEN G.MakeStringItem(x, S.slen); S.Get(sym)
+    ELSIF sym = S.lparen THEN S.Get(sym); expression(x); Check(S.rparen, "no )")
+    ELSIF sym = S.lbrace THEN S.Get(sym); set(x); Check(S.rbrace, "no }")
+    ELSIF sym = S.not THEN S.Get(sym); factor(x); CheckBool(x); G.Not(x)
+    ELSIF sym = S.false THEN S.Get(sym); G.MakeConstItem(x, B.boolType, 0)
+    ELSIF sym = S.true THEN S.Get(sym); G.MakeConstItem(x, B.boolType, 1)
+    ELSE S.Mark("not a factor"); G.MakeConstItem(x, B.intType, 0)
     END
   END factor;
 
-  PROCEDURE term(VAR x: OM4G.Item);
-    VAR y!: OM4G.Item; op, f: INTEGER;
+  PROCEDURE term(VAR x: G.Item);
+    VAR y!: G.Item; op, f: INTEGER;
   BEGIN factor(x); f := x.type.form;
-    WHILE (sym >= OM4S.times) & (sym <= OM4S.and) DO
-      op := sym; OM4S.Get(sym);
-      IF op = OM4S.times THEN
-        IF f = OM4B.Int THEN factor(y); CheckInt(y); OM4G.MulOp(x, y)
-        ELSIF f = OM4B.Real THEN factor(y); CheckReal(y); OM4G.RealOp(op, x, y)
-        ELSIF f = OM4B.Set THEN factor(y); CheckSet(y); OM4G.SetOp(op, x, y)
-        ELSE OM4S.Mark("bad type")
+    WHILE (sym >= S.times) & (sym <= S.and) DO
+      op := sym; S.Get(sym);
+      IF op = S.times THEN
+        IF f = B.Int THEN factor(y); CheckInt(y); G.MulOp(x, y)
+         ELSIF f = B.Set THEN factor(y); CheckSet(y); G.SetOp(op, x, y)
+        ELSE S.Mark("bad type")
         END
-      ELSIF (op = OM4S.div) OR (op = OM4S.mod) THEN
-        CheckInt(x); factor(y); CheckInt(y); OM4G.DivOp(op, x, y)
-      ELSIF op = OM4S.rdiv THEN
-        IF f = OM4B.Real THEN factor(y); CheckReal(y); OM4G.RealOp(op, x, y)
-        ELSIF f = OM4B.Set THEN factor(y); CheckSet(y); OM4G.SetOp(op, x, y)
-        ELSE OM4S.Mark("bad type")
+      ELSIF (op = S.div) OR (op = S.mod) THEN
+        CheckInt(x); factor(y); CheckInt(y); G.DivOp(op, x, y)
+      ELSIF op = S.rdiv THEN
+        IF f = B.Set THEN factor(y); CheckSet(y); G.SetOp(op, x, y)
+        ELSE S.Mark("bad type")
         END
-      ELSE (*op = and*) CheckBool(x); OM4G.And1(x); factor(y); CheckBool(y); OM4G.And2(x, y)
+      ELSE (*op = and*) CheckBool(x); G.And1(x); factor(y); CheckBool(y); G.And2(x, y)
       END
     END
   END term;
 
-  PROCEDURE SimpleExpression(VAR x: OM4G.Item);
-    VAR y!: OM4G.Item; op: INTEGER;
+  PROCEDURE SimpleExpression(VAR x: G.Item);
+    VAR y!: G.Item; op: INTEGER;
   BEGIN
-    IF sym = OM4S.minus THEN OM4S.Get(sym); term(x);
-      IF x.type.form IN {OM4B.Int, OM4B.Real, OM4B.Set} THEN OM4G.Neg(x) ELSE CheckInt(x) END
-    ELSIF sym = OM4S.plus THEN OM4S.Get(sym); term(x);
+    IF sym = S.minus THEN S.Get(sym); term(x);
+      IF x.type.form IN {B.Int, B.Set} THEN G.Neg(x) ELSE CheckInt(x) END
+    ELSIF sym = S.plus THEN S.Get(sym); term(x);
     ELSE term(x)
     END ;
-    WHILE (sym >= OM4S.plus) & (sym <= OM4S.or) DO
-      op := sym; OM4S.Get(sym);
-      IF op = OM4S.or THEN OM4G.Or1(x); CheckBool(x); term(y); CheckBool(y); OM4G.Or2(x, y)
-      ELSIF x.type.form = OM4B.Int THEN term(y); CheckInt(y); OM4G.AddOp(op, x, y)
-      ELSIF x.type.form = OM4B.Real THEN term(y); CheckReal(y); OM4G.RealOp(op, x, y)
-      ELSE CheckSet(x); term(y); CheckSet(y); OM4G.SetOp(op, x, y)
+    WHILE (sym >= S.plus) & (sym <= S.or) DO
+      op := sym; S.Get(sym);
+      IF op = S.or THEN G.Or1(x); CheckBool(x); term(y); CheckBool(y); G.Or2(x, y)
+      ELSIF x.type.form = B.Int THEN term(y); CheckInt(y); G.AddOp(op, x, y)
+      ELSE CheckSet(x); term(y); CheckSet(y); G.SetOp(op, x, y)
       END
     END
   END SimpleExpression;
 
-  PROCEDURE expression0(VAR x: OM4G.Item);
-    VAR y!: OM4G.Item; obj!: OM4B.Object; rel, xf, yf: INTEGER;
+  PROCEDURE expression0(VAR x: G.Item);
+    VAR y!: G.Item; obj!: B.Object; rel, xf, yf: INTEGER;
   BEGIN SimpleExpression(x);
-    IF (sym >= OM4S.eql) & (sym <= OM4S.geq) THEN
-      rel := sym; OM4S.Get(sym); SimpleExpression(y); xf := x.type.form; yf := y.type.form;
+    IF (sym >= S.eql) & (sym <= S.geq) THEN
+      rel := sym; S.Get(sym); SimpleExpression(y); xf := x.type.form; yf := y.type.form;
       IF x.type = y.type THEN
-        IF (xf IN {OM4B.Char, OM4B.Int}) THEN OM4G.IntRelation(rel, x, y)
-        ELSIF xf = OM4B.Real THEN OM4G.RealRelation(rel, x, y)
-        ELSIF (xf IN {OM4B.Set, OM4B.Pointer, OM4B.Proc, OM4B.NilTyp, OM4B.Bool}) THEN
-          IF rel <= OM4S.neq THEN OM4G.IntRelation(rel, x, y) ELSE OM4S.Mark("only = or #") END
-        ELSIF (xf = OM4B.Array) & (x.type.base.form = OM4B.Char) OR (xf = OM4B.String) THEN
-          OM4G.StringRelation(rel, x, y)
-        ELSE OM4S.Mark("illegal comparison")
+        IF (xf IN {B.Char, B.Int}) THEN G.IntRelation(rel, x, y)
+        ELSIF (xf IN {B.Set, B.Pointer, B.Proc, B.NilTyp, B.Bool}) THEN
+          IF rel <= S.neq THEN G.IntRelation(rel, x, y) ELSE S.Mark("only = or #") END
+        ELSIF (xf = B.Array) & (x.type.base.form = B.Char) OR (xf = B.String) THEN
+          G.StringRelation(rel, x, y)
+        ELSE S.Mark("illegal comparison")
         END
-      ELSIF (xf IN {OM4B.Pointer, OM4B.Proc}) & (yf = OM4B.NilTyp)
-          OR (yf IN {OM4B.Pointer, OM4B.Proc}) & (xf = OM4B.NilTyp) THEN
-        IF rel <= OM4S.neq THEN OM4G.IntRelation(rel, x,  y) ELSE OM4S.Mark("only = or #") END
-      ELSIF (xf = OM4B.Pointer) & (yf = OM4B.Pointer) &
+      ELSIF (xf IN {B.Pointer, B.Proc}) & (yf = B.NilTyp)
+          OR (yf IN {B.Pointer, B.Proc}) & (xf = B.NilTyp) THEN
+        IF rel <= S.neq THEN G.IntRelation(rel, x,  y) ELSE S.Mark("only = or #") END
+      ELSIF (xf = B.Pointer) & (yf = B.Pointer) &
           (IsExtension(x.type.base, y.type.base) OR IsExtension(y.type.base, x.type.base))
-          OR (xf = OM4B.Proc) & (yf = OM4B.Proc) & EqualSignatures(x.type, y.type) THEN
-        IF rel <= OM4S.neq THEN OM4G.IntRelation(rel,  x, y) ELSE OM4S.Mark("only = or #") END
-      ELSIF (xf = OM4B.Array) & (x.type.base.form = OM4B.Char) &
-            ((yf = OM4B.String) OR (yf = OM4B.Array) & (y.type.base.form = OM4B.Char))
-          OR (yf = OM4B.Array) & (y.type.base.form = OM4B.Char) & (xf = OM4B.String) THEN
-        OM4G.StringRelation(rel, x, y)
-      ELSIF (xf = OM4B.Char) & (yf = OM4B.String) & (y.b = 2) THEN
-        OM4G.StrToChar(y); OM4G.IntRelation(rel, x, y)
-      ELSIF (yf = OM4B.Char) & (xf = OM4B.String) & (x.b = 2) THEN
-        OM4G.StrToChar(x); OM4G.IntRelation(rel, x, y)
-      ELSIF (xf = OM4B.Int) & (yf = OM4B.Int) THEN OM4G.IntRelation(rel,  x, y)  (*BYTE*)
-      ELSE OM4S.Mark("illegal comparison")
-      END ;
-      x.type := OM4B.boolType
-    ELSIF sym = OM4S.in THEN
-      OM4S.Get(sym); CheckInt(x); SimpleExpression(y); CheckSet(y); OM4G.In(x, y) ;
-      x.type := OM4B.boolType
-    ELSIF sym = OM4S.is THEN
-      OM4S.Get(sym); qualident(obj); TypeTest(x, obj.type, FALSE) ;
-      x.type := OM4B.boolType
+          OR (xf = B.Proc) & (yf = B.Proc) & EqualSignatures(x.type, y.type) THEN
+        IF rel <= S.neq THEN G.IntRelation(rel,  x, y) ELSE S.Mark("only = or #") END
+      ELSIF (xf = B.Array) & (x.type.base.form = B.Char) &
+            ((yf = B.String) OR (yf = B.Array) & (y.type.base.form = B.Char))
+          OR (yf = B.Array) & (y.type.base.form = B.Char) & (xf = B.String) THEN
+        G.StringRelation(rel, x, y)
+      ELSIF (xf = B.Char) & (yf = B.String) & (y.b = 2) THEN
+        G.StrToChar(y); G.IntRelation(rel, x, y)
+      ELSIF (yf = B.Char) & (xf = B.String) & (x.b = 2) THEN
+        G.StrToChar(x); G.IntRelation(rel, x, y)
+      ELSIF (xf = B.Int) & (yf = B.Int) THEN G.IntRelation(rel,  x, y)  (*BYTE*)
+      ELSE S.Mark("illegal comparison")
+      END;
+      x.type := B.boolType
+    ELSIF sym = S.in THEN
+      S.Get(sym); CheckInt(x); SimpleExpression(y); CheckSet(y); G.In(x, y) ;
+      x.type := B.boolType
+    ELSIF sym = S.is THEN
+      S.Get(sym); qualident(obj); TypeTest(x, obj.type, FALSE) ;
+      x.type := B.boolType
     END
   END expression0;
 
@@ -437,213 +424,200 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
   PROCEDURE StandProc(pno: LONGINT);
     VAR nap, npar: LONGINT; (*nof actual/formal parameters*)
-      x!, y!, z!: OM4G.Item;
-  BEGIN Check(OM4S.lparen, "no (");
+      x!, y!, z!: G.Item;
+  BEGIN Check(S.lparen, "no (");
     npar := pno MOD 10; pno := pno DIV 10; expression(x); nap := 1;
-    IF sym = OM4S.comma THEN
-      OM4S.Get(sym); IF pno = 14 (*LDREG*) THEN 
-        CheckConst(x); CheckInt(x); IF x.a < 16 THEN OM4G.SetRH(x.a) END 
-      END;
-      expression(y); nap := 2; z.type := OM4B.noType;
-      WHILE sym = OM4S.comma DO OM4S.Get(sym); expression(z); INC(nap) END
-    ELSE y.type := OM4B.noType
-    END ;
-    Check(OM4S.rparen, "no )");
+    IF sym = S.comma THEN S.Get(sym);
+      IF pno = 14 (*LDREG*) THEN CheckConst(x); CheckInt(x); G.SetRH(x.a) END;
+      expression(y); nap := 2; z.type := B.noType;
+      WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
+    ELSE y.type := B.noType
+    END;
+    Check(S.rparen, "no )");
     IF (npar = nap) OR (pno IN {0, 1}) THEN 
       IF pno IN {0, 1} THEN (*INC, DEC*)
         CheckInt(x); CheckReadOnly(x);
-        IF y.type # OM4B.noType THEN CheckInt(y) END ;
-        OM4G.Increment(pno, x, y)
+        IF y.type # B.noType THEN CheckInt(y) END ;
+        G.Increment(pno, x, y)
       ELSIF pno IN {2, 3} THEN (*INCL, EXCL*)
-        CheckSet(x); CheckReadOnly(x); CheckInt(y); OM4G.Include(pno-2, x, y)
-      ELSIF pno = 4 THEN CheckBool(x); OM4G.Assert(x)
-      ELSIF pno = 5 THEN(*NEW*) CheckReadOnly(x);
-         IF (x.type.form = OM4B.Pointer) & (x.type.base.form = OM4B.Record) THEN OM4G.New(x)
-         ELSE OM4S.Mark("not a pointer to record")
-         END
-      ELSIF pno = 6 THEN CheckReal(x); CheckInt(y); CheckReadOnly(x); OM4G.Pack(x, y)
-      ELSIF pno = 7 THEN CheckReal(x); CheckInt(y); CheckReadOnly(x); OM4G.Unpk(x, y)
-      ELSIF pno = 8 THEN
-        IF x.type.form <= OM4B.Set THEN OM4G.Led(x) ELSE OM4S.Mark("bad type") END
-      ELSIF pno = 10 THEN CheckInt(x); OM4G.Get(x, y)
-      ELSIF pno = 11 THEN CheckInt(x); OM4G.Put(x, y)
-      ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); OM4G.Copy(x, y, z)
-      ELSIF pno = 14 THEN OM4G.LDREG(x, y)
-      ELSIF pno = 15 THEN CheckConst(x); CheckInt(x); OM4G.MBI(x.a) (*Memory barrier instructions*)
+        CheckSet(x); CheckReadOnly(x); CheckInt(y); G.Include(pno-2, x, y)
+      ELSIF pno = 4 THEN CheckBool(x); G.Assert(x)
+      ELSIF pno = 10 THEN CheckInt(x); G.Get(x, y)
+      ELSIF pno = 11 THEN CheckInt(x); G.Put(x, y)
+      ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
+      ELSIF pno = 14 THEN G.LDREG(y)
+      ELSE ASSERT(FALSE)
       END
-    ELSE OM4S.Mark("wrong nof parameters")
+    ELSE S.Mark("wrong nof parameters")
     END
   END StandProc;
 
   PROCEDURE StatSequence;
-    VAR obj!: OM4B.Object;
-      orgtype!: OM4B.Type; (*original type of case var*)
-      x!, y!, z!, w!: OM4G.Item;
+    VAR obj!: B.Object;
+      orgtype!: B.Type; (*original type of case var*)
+      x!, y!, z!, w!: G.Item;
       L0, L1, rx, sx: LONGINT;
 
-    PROCEDURE TypeCase(obj: OM4B.Object; VAR x: OM4G.Item);
-      VAR typobj!: OM4B.Object;
-    BEGIN
-      OM4G.MakeItem(x, obj, level);
-      IF sym = OM4S.ident THEN
+    PROCEDURE TypeCase(obj: B.Object; VAR x: G.Item);
+      VAR typobj!: B.Object;
+    BEGIN G.MakeItem(x, obj, level);
+      IF sym = S.ident THEN
         qualident(typobj);
-        IF typobj.class # OM4B.Typ THEN OM4S.Mark("not a type") END ;
+        IF typobj.class # B.Typ THEN S.Mark("not a type") END ;
         TypeTest(x, typobj.type, FALSE); obj.type := typobj.type;
-        OM4G.CFJump(x); Check(OM4S.colon, ": expected"); StatSequence
-      ELSE OM4G.CFJump(x); OM4S.Mark("type id expected")
+        G.CFJump(x); Check(S.colon, ": expected"); StatSequence
+      ELSE G.CFJump(x); S.Mark("type id expected")
       END
      END TypeCase;
 
     PROCEDURE SkipCase;
     BEGIN 
-      WHILE sym # OM4S.colon DO OM4S.Get(sym) END ;
-      OM4S.Get(sym); StatSequence
+      WHILE sym # S.colon DO S.Get(sym) END ;
+      S.Get(sym); StatSequence
     END SkipCase;
 
   BEGIN (* StatSequence *)
     REPEAT (*sync*) obj := NIL;
-      IF ~((sym >= OM4S.ident)  & (sym <= OM4S.for) OR (sym >= OM4S.semicolon)) THEN
-        OM4S.Mark("statement expected");
-        REPEAT OM4S.Get(sym) UNTIL (sym >= OM4S.ident)
+      IF ~((sym >= S.ident)  & (sym <= S.for) OR (sym >= S.semicolon)) THEN
+        S.Mark("statement expected");
+        REPEAT S.Get(sym) UNTIL (sym >= S.ident)
       END ;
-      IF sym = OM4S.ident THEN
-        qualident(obj); OM4G.MakeItem(x, obj, level);
-        IF x.mode = OM4B.SProc THEN StandProc(obj.val)
+      IF sym = S.ident THEN
+        qualident(obj); G.MakeItem(x, obj, level);
+        IF x.mode = B.SProc THEN StandProc(obj.val)
         ELSE selector(x);
-          IF sym = OM4S.becomes THEN (*assignment*)
-            OM4S.Get(sym); CheckReadOnly(x); expression(y);
+          IF sym = S.becomes THEN (*assignment*)
+            S.Get(sym); CheckReadOnly(x); expression(y);
             IF CompTypes(x.type, y.type, FALSE) THEN
-              IF (x.type.form <= OM4B.Pointer) OR (x.type.form = OM4B.Proc) THEN OM4G.Store(x, y)
-              ELSE OM4G.StoreStruct(x, y)
+              IF (x.type.form <= B.Pointer) OR (x.type.form = B.Proc) THEN G.Store(x, y)
+              ELSE G.StoreStruct(x, y)
               END
-            ELSIF (x.type.form = OM4B.Array) & (y.type.form = OM4B.Array) & (x.type.base = y.type.base) & (y.type.len < 0) THEN
-              OM4G.StoreStruct(x, y)
-            ELSIF (x.type.form = OM4B.Array) & (x.type.base.form = OM4B.Char) & (y.type.form = OM4B.String) THEN
-              OM4G.CopyString(x, y)
-            ELSIF (x.type.form = OM4B.Int) & (y.type.form = OM4B.Int) THEN OM4G.Store(x, y)  (*BYTE*)
-            ELSIF (x.type.form = OM4B.Char) & (y.type.form = OM4B.String) & (y.b = 2) THEN
-              OM4G.StrToChar(y); OM4G.Store(x, y)
-            ELSE OM4S.Mark("illegal assignment")
+            ELSIF (x.type.form = B.Array) & (y.type.form = B.Array) & (x.type.base = y.type.base) & (y.type.len < 0) THEN
+              G.StoreStruct(x, y)
+            ELSIF (x.type.form = B.Array) & (x.type.base.form = B.Char) & (y.type.form = B.String) THEN
+              G.CopyString(x, y)
+            ELSIF (x.type.form = B.Int) & (y.type.form = B.Int) THEN G.Store(x, y)  (*BYTE*)
+            ELSIF (x.type.form = B.Char) & (y.type.form = B.String) & (y.b = 2) THEN
+              G.StrToChar(y); G.Store(x, y)
+            ELSE S.Mark("illegal assignment")
             END
-          ELSIF sym = OM4S.eql THEN OM4S.Mark("should be :="); OM4S.Get(sym); expression(y)
-          ELSIF sym = OM4S.lparen THEN (*procedure call*)
-            OM4S.Get(sym);
-            IF (x.type.form = OM4B.Proc) & (x.type.base.form = OM4B.NoTyp) THEN
-              obj.used := TRUE;
-              OM4G.PrepCall(x, rx, sx); ParamList(x); OM4G.Call(x, rx, sx)
-            ELSE OM4S.Mark("not a procedure"); ParamList(x)
+          ELSIF sym = S.eql THEN S.Mark("should be :="); S.Get(sym); expression(y)
+          ELSIF sym = S.lparen THEN (*procedure call*)
+            S.Get(sym);
+            IF (x.type.form = B.Proc) & (x.type.base.form = B.NoTyp) THEN
+              G.PrepCall(x, rx, sx); ParamList(x); G.Call(x, rx, sx)
+            ELSE S.Mark("not a procedure"); ParamList(x)
             END
-          ELSIF x.type.form = OM4B.Proc THEN (*procedure call without parameters*)
-            IF x.type.nofpar > 0 THEN OM4S.Mark("missing parameters") END ;
-            IF x.type.base.form = OM4B.NoTyp THEN 
-              obj.used := TRUE;
-              OM4G.PrepCall(x, rx, sx); OM4G.Call(x, rx, sx)
-            ELSE OM4S.Mark("not a procedure")
+          ELSIF x.type.form = B.Proc THEN (*procedure call without parameters*)
+            IF x.type.nofpar > 0 THEN S.Mark("missing parameters") END ;
+            IF x.type.base.form = B.NoTyp THEN 
+              G.PrepCall(x, rx, sx); G.Call(x, rx, sx)
+            ELSE S.Mark("not a procedure")
             END
-          ELSIF x.mode = OM4B.Typ THEN OM4S.Mark("illegal assignment")
-          ELSE OM4S.Mark("not a procedure")
+          ELSIF x.mode = B.Typ THEN S.Mark("illegal assignment")
+          ELSE S.Mark("not a procedure")
           END
         END
-      ELSIF sym = OM4S.if THEN
-        OM4S.Get(sym); expression(x); CheckBool(x); OM4G.CFJump(x);
-        Check(OM4S.then, "no THEN");
+      ELSIF sym = S.if THEN
+        S.Get(sym); expression(x); CheckBool(x); G.CFJump(x);
+        Check(S.then, "no THEN");
         StatSequence; L0 := 0;
-        WHILE sym = OM4S.elsif DO
-          OM4S.Get(sym); OM4G.FJump(L0); OM4G.Fixup(x); expression(x); CheckBool(x);
-          OM4G.CFJump(x); Check(OM4S.then, "no THEN"); StatSequence
+        WHILE sym = S.elsif DO
+          S.Get(sym); G.FJump(L0); G.Fixup(x); expression(x); CheckBool(x);
+          G.CFJump(x); Check(S.then, "no THEN"); StatSequence
         END ;
-        IF sym = OM4S.else THEN OM4S.Get(sym); OM4G.FJump(L0); OM4G.Fixup(x); StatSequence
-        ELSE OM4G.Fixup(x)
+        IF sym = S.else THEN S.Get(sym); G.FJump(L0); G.Fixup(x); StatSequence
+        ELSE G.Fixup(x)
         END ;
-        OM4G.FixLink(L0); Check(OM4S.end, "no END")
-      ELSIF sym = OM4S.while THEN
-        OM4S.Get(sym); L0 := OM4G.Here(); expression(x); CheckBool(x); OM4G.CFJump(x);
-        Check(OM4S.do, "no DO"); StatSequence; OM4G.BJump(L0);
-        WHILE sym = OM4S.elsif DO
-          OM4S.Get(sym); OM4G.Fixup(x); expression(x); CheckBool(x); OM4G.CFJump(x);
-          Check(OM4S.do, "no DO"); StatSequence; OM4G.BJump(L0)
+        G.FixLink(L0); Check(S.end, "no END")
+      ELSIF sym = S.while THEN
+        S.Get(sym); L0 := G.Here(); expression(x); CheckBool(x); G.CFJump(x);
+        Check(S.do, "no DO"); StatSequence; G.BJump(L0);
+        WHILE sym = S.elsif DO
+          S.Get(sym); G.Fixup(x); expression(x); CheckBool(x); G.CFJump(x);
+          Check(S.do, "no DO"); StatSequence; G.BJump(L0)
         END ;
-        OM4G.Fixup(x); Check(OM4S.end, "no END")
-      ELSIF sym = OM4S.repeat THEN
-        OM4S.Get(sym); L0 := OM4G.Here(); StatSequence;
-        IF sym = OM4S.until THEN
-          OM4S.Get(sym); expression(x); CheckBool(x); OM4G.CBJump(x, L0)
-        ELSE OM4S.Mark("missing UNTIL")
+        G.Fixup(x); Check(S.end, "no END")
+      ELSIF sym = S.repeat THEN
+        S.Get(sym); L0 := G.Here(); StatSequence;
+        IF sym = S.until THEN
+          S.Get(sym); expression(x); CheckBool(x); G.CBJump(x, L0)
+        ELSE S.Mark("missing UNTIL")
         END
-      ELSIF sym = OM4S.for THEN
-        OM4S.Get(sym);
-        IF sym = OM4S.ident THEN
-          qualident(obj); OM4G.MakeItem(x, obj, level); CheckInt(x); CheckReadOnly(x);
-          IF sym = OM4S.becomes THEN
-            OM4S.Get(sym); expression(y); CheckInt(y); OM4G.For0(x, y); L0 := OM4G.Here();
-            Check(OM4S.to, "no TO"); expression(z); CheckInt(z); obj.rdo := TRUE;
-            IF sym = OM4S.by THEN OM4S.Get(sym); expression(w); CheckConst(w); CheckInt(w)
-            ELSE OM4G.MakeConstItem(w, OM4B.intType, 1)
-            END ;
-            Check(OM4S.do, "no DO"); OM4G.For1(x, y, z, w, L1);
-            StatSequence; Check(OM4S.end, "no END");
-            OM4G.For2(x, y, w); OM4G.BJump(L0); OM4G.FixLink(L1); obj.rdo := FALSE
-          ELSE OM4S.Mark(":= expected")
+      ELSIF sym = S.for THEN
+        S.Get(sym);
+        IF sym = S.ident THEN
+          qualident(obj); G.MakeItem(x, obj, level); CheckInt(x); CheckReadOnly(x);
+          IF sym = S.becomes THEN
+            S.Get(sym); expression(y); CheckInt(y); G.For0(x, y); L0 := G.Here();
+            Check(S.to, "no TO"); expression(z); CheckInt(z); obj.rdo := TRUE;
+            IF sym = S.by THEN S.Get(sym); expression(w); CheckConst(w); CheckInt(w)
+            ELSE G.MakeConstItem(w, B.intType, 1)
+            END;
+            Check(S.do, "no DO"); G.For1(x, y, z, w, L1);
+            StatSequence; Check(S.end, "no END");
+            G.For2(x, y, w); G.BJump(L0); G.FixLink(L1); obj.rdo := FALSE
+          ELSE S.Mark(":= expected")
           END
-        ELSE OM4S.Mark("identifier expected")
+        ELSE S.Mark("identifier expected")
         END
-      ELSIF sym = OM4S.case THEN
-        OM4S.Get(sym);
-        IF sym = OM4S.ident THEN
+      ELSIF sym = S.case THEN
+        S.Get(sym);
+        IF sym = S.ident THEN
           qualident(obj); orgtype := obj.type;
-          IF (orgtype.form = OM4B.Pointer) OR (orgtype.form = OM4B.Record) & (obj.class = OM4B.Par) THEN
-            Check(OM4S.of, "OF expected"); TypeCase(obj, x); L0 := 0;
-            WHILE sym = OM4S.bar DO
-              OM4S.Get(sym); OM4G.FJump(L0); OM4G.Fixup(x); obj.type := orgtype; TypeCase(obj, x)
+          IF (orgtype.form = B.Pointer) OR (orgtype.form = B.Record) & (obj.class = B.Par) THEN
+            Check(S.of, "OF expected"); TypeCase(obj, x); L0 := 0;
+            WHILE sym = S.bar DO
+              S.Get(sym); G.FJump(L0); G.Fixup(x); obj.type := orgtype; TypeCase(obj, x)
             END ;
-            OM4G.Fixup(x); OM4G.FixLink(L0); obj.type := orgtype
-          ELSE OM4S.Mark("numeric case not implemented");
-            Check(OM4S.of, "OF expected"); SkipCase;
-            WHILE sym = OM4S.bar DO SkipCase END
+            G.Fixup(x); G.FixLink(L0); obj.type := orgtype
+          ELSE S.Mark("numeric case not implemented");
+            Check(S.of, "OF expected"); SkipCase;
+            WHILE sym = S.bar DO SkipCase END
           END
-        ELSE OM4S.Mark("ident expected")
+        ELSE S.Mark("ident expected")
         END ;
-        Check(OM4S.end, "no END")
+        Check(S.end, "no END")
       END ;
-      OM4G.CheckRegs;
-      IF sym = OM4S.semicolon THEN OM4S.Get(sym)
-      ELSIF sym < OM4S.semicolon THEN OM4S.Mark("missing semicolon?")
+      G.CheckRegs;
+      IF sym = S.semicolon THEN S.Get(sym)
+      ELSIF sym < S.semicolon THEN S.Mark("missing semicolon?")
       END
-    UNTIL sym > OM4S.semicolon
+    UNTIL sym > S.semicolon
   END StatSequence;
 
   (* Types and declarations *)
 
-  PROCEDURE IdentList(class: INTEGER; VAR first: OM4B.Object);
-    VAR obj!: OM4B.Object;
+  PROCEDURE IdentList(class: INTEGER; VAR first: B.Object);
+    VAR obj!: B.Object;
   BEGIN
-    IF sym = OM4S.ident THEN
-      OM4B.NewObj(first, OM4S.id, class); OM4S.Get(sym); CheckExport(first.expo); CheckUnsafeMarking(first.unsafe);
-      WHILE sym = OM4S.comma DO
-        OM4S.Get(sym);
-        IF sym = OM4S.ident THEN OM4B.NewObj(obj, OM4S.id, class); OM4S.Get(sym); CheckExport(obj.expo); CheckUnsafeMarking(obj.unsafe)
-        ELSE OM4S.Mark("ident?")
+    IF sym = S.ident THEN
+      B.NewObj(first, S.id, class); S.Get(sym); CheckExport(first.expo); CheckUnsafeMarking(first.unsafe);
+      WHILE sym = S.comma DO
+        S.Get(sym);
+        IF sym = S.ident THEN B.NewObj(obj, S.id, class); S.Get(sym); CheckExport(obj.expo); CheckUnsafeMarking(obj.unsafe)
+        ELSE S.Mark("ident?")
         END
       END;
-      IF sym = OM4S.colon THEN OM4S.Get(sym) ELSE OM4S.Mark(":?") END
+      IF sym = S.colon THEN S.Get(sym) ELSE S.Mark(":?") END
     ELSE first := NIL
     END
   END IdentList;
   
-  PROCEDURE ArrayType(VAR type: OM4B.Type);
-    VAR x!: OM4G.Item; typ!: OM4B.Type; len: LONGINT;
-  BEGIN NEW(typ); typ.form := OM4B.NoTyp;
+  PROCEDURE ArrayType(VAR type: B.Type);
+    VAR x!: G.Item; typ!: B.Type; len: LONGINT;
+  BEGIN NEW(typ); typ.form := B.NoTyp;
     expression(x);
-    IF (x.mode = OM4B.Const) & (x.type.form = OM4B.Int) & (x.a >= 0) THEN len := x.a
-    ELSE len := 1; OM4S.Mark("not a valid length")
-    END ;
-    IF sym = OM4S.of THEN OM4S.Get(sym); Type(typ.base);
-      IF (typ.base.form = OM4B.Array) & (typ.base.len < 0) THEN OM4S.Mark("dyn array not allowed") END
-    ELSIF sym = OM4S.comma THEN OM4S.Get(sym); ArrayType(typ.base)
-    ELSE OM4S.Mark("missing OF"); typ.base := OM4B.intType
+    IF (x.mode = B.Const) & (x.type.form = B.Int) & (x.a >= 0) THEN len := x.a
+    ELSE len := 1; S.Mark("not a valid length")
+    END;
+    IF sym = S.of THEN S.Get(sym); Type(typ.base);
+      IF (typ.base.form = B.Array) & (typ.base.len < 0) THEN S.Mark("dyn array not allowed") END
+    ELSIF sym = S.comma THEN S.Get(sym); ArrayType(typ.base)
+    ELSE S.Mark("missing OF"); typ.base := B.intType
     END ;
     typ.size := (len * typ.base.size + 3) DIV 4 * 4;
-    typ.form := OM4B.Array; typ.len := len; type := typ
+    typ.form := B.Array; typ.len := len; type := typ
   END ArrayType;
 
   PROCEDURE RecordType(VAR type: OM4B.Type);
