@@ -88,7 +88,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for RISC / AP 6.8.20 / CS 14/12/2023*)
       disp, adr, inst, pno, vno, dest, offset: INTEGER;
       name1, impname: Modules.ModuleName;
       F!: Files.File; R!: Files.Rider;
-      import: ARRAY 16 OF Modules.Module;
+      import!: ARRAY 16 OF Modules.Module;
   BEGIN mod := root; error(noerr, name); nofimps := 0;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
     IF mod = NIL THEN (*link*)

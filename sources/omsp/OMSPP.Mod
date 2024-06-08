@@ -620,260 +620,265 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     typ.form := B.Array; typ.len := len; type := typ
   END ArrayType;
 
-  PROCEDURE RecordType(VAR type: OM4B.Type);
-    VAR obj!, obj0!, new!, bot!, base!: OM4B.Object;
-      typ!, tp!: OM4B.Type;
+  PROCEDURE RecordType(VAR type: B.Type);
+    VAR obj!, obj0!, new!, bot!, base!: B.Object;
+      typ!, tp!: B.Type;
       offset, off, n: LONGINT;
-  BEGIN NEW(typ); typ.form := OM4B.NoTyp; typ.base := NIL; typ.mno := -level; typ.nofpar := 0; offset := 0; bot := NIL;
-    IF sym = OM4S.lparen THEN
-      OM4S.Get(sym); (*record extension*)
-      IF level # 0 THEN OM4S.Mark("extension of local types not implemented") END ;
-      IF sym = OM4S.ident THEN
+  BEGIN NEW(typ); typ.form := B.NoTyp; typ.base := NIL; typ.mno := -level; typ.nofpar := 0; offset := 0; bot := NIL;
+    IF sym = S.lparen THEN
+      S.Get(sym); (*record extension*)
+      IF level # 0 THEN S.Mark("extension of local types not implemented") END ;
+      IF sym = S.ident THEN
         qualident(base);
-        IF base.class = OM4B.Typ THEN
-          IF base.type.form = OM4B.Record THEN typ.base := base.type
-          ELSE typ.base := OM4B.intType; OM4S.Mark("invalid extension")
+        IF base.class = B.Typ THEN
+          IF base.type.form = B.Record THEN typ.base := base.type
+          ELSE typ.base := B.intType; S.Mark("invalid extension")
           END ;
           typ.nofpar := typ.base.nofpar + 1; (*"nofpar" here abused for extension level*)
           bot := typ.base.dsc; offset := typ.base.size
-        ELSE OM4S.Mark("type expected")
+        ELSE S.Mark("type expected")
         END
-      ELSE OM4S.Mark("ident expected")
-      END ;
-      Check(OM4S.rparen, "no )")
-    END ;
-    WHILE sym = OM4S.ident DO  (*fields*)
+      ELSE S.Mark("ident expected")
+      END;
+      Check(S.rparen, "no )")
+    END;
+    WHILE sym = S.ident DO  (*fields*)
       n := 0; obj := bot;
-      WHILE sym = OM4S.ident DO
+      WHILE sym = S.ident DO
         obj0 := obj;
-        WHILE (obj0 # NIL) & (obj0.name # OM4S.id) DO obj0 := obj0.next END ;
-        IF obj0 # NIL THEN OM4S.Mark("mult def") END ;
-        NEW(new); OM4S.CopyId(new.name); new.class := OM4B.Fld; new.next := obj; obj := new; INC(n);
-        OM4S.Get(sym); CheckExport(new.expo);
-        IF (sym # OM4S.comma) & (sym # OM4S.colon) THEN OM4S.Mark("comma expected")
-        ELSIF sym = OM4S.comma THEN OM4S.Get(sym)
+        WHILE (obj0 # NIL) & (obj0.name # S.id) DO obj0 := obj0.next END ;
+        IF obj0 # NIL THEN S.Mark("mult def") END ;
+        NEW(new); S.CopyId(new.name); new.class := B.Fld; new.next := obj; obj := new; INC(n);
+        S.Get(sym); CheckExport(new.expo);
+        IF (sym # S.comma) & (sym # S.colon) THEN S.Mark("comma expected")
+        ELSIF sym = S.comma THEN S.Get(sym)
         END
       END ;
-      Check(OM4S.colon, "colon expected"); Type(tp);
-      IF (tp.form = OM4B.Array) & (tp.len < 0) THEN OM4S.Mark("dyn array not allowed") END ;
+      Check(S.colon, "colon expected"); Type(tp);
+      IF (tp.form = B.Array) & (tp.len < 0) THEN S.Mark("dyn array not allowed") END ;
       IF tp.size > 1 THEN offset := (offset+3) DIV 4 * 4 END ;
       offset := offset + n * tp.size; off := offset; obj0 := obj;
       WHILE obj0 # bot DO obj0.type := tp; obj0.lev := 0; off := off - tp.size; obj0.val := off; obj0 := obj0.next END ;
       bot := obj;
-      IF sym = OM4S.semicolon THEN OM4S.Get(sym) ELSIF sym # OM4S.end THEN OM4S.Mark(" ; or END") END
-    END ;
-    typ.form := OM4B.Record; typ.dsc := bot; typ.size := (offset + 3) DIV 4 * 4; type := typ
+      IF sym = S.semicolon THEN S.Get(sym) ELSIF sym # S.end THEN S.Mark(" ; or END") END
+   END ;
+    typ.form := B.Record; typ.dsc := bot; typ.size := (offset + 3) DIV 4 * 4; type := typ
   END RecordType;
 
-  PROCEDURE FPSection(VAR adr: LONGINT; VAR nofpar: INTEGER);
-    VAR obj!, first!: OM4B.Object; tp!: OM4B.Type;
-      parsize: LONGINT; cl: INTEGER; rdo: BOOLEAN;
-  BEGIN
-    IF sym = OM4S.var THEN OM4S.Get(sym); cl := OM4B.Par ELSE cl := OM4B.Var END ;
+  PROCEDURE FPSection(VAR adr: LONGINT; VAR nofpar: INTEGER; VAR inreg: BOOLEAN);
+    VAR obj!, first!: B.Object; tp!: B.Type;
+      parsize, dummy, nbregs: LONGINT; cl: INTEGER; rdo: BOOLEAN;
+  BEGIN inreg := FALSE;
+    IF sym = S.var THEN S.Get(sym); cl := B.Par ELSE cl := B.Var END ;
     IdentList(cl, first); FormalType(tp, 0); rdo := FALSE;
-    IF (cl = OM4B.Var) & (tp.form >= OM4B.Array) THEN cl := OM4B.Par; rdo := TRUE END ;
-    IF (tp.form = OM4B.Array) & (tp.len < 0) OR (OM4G.check & (tp.form = OM4B.Record)) THEN
-      parsize := 2*OM4G.WordSize  (*open array or record, needs second word for length or type tag*)
-    ELSE parsize := OM4G.WordSize
+    IF sym = S.times THEN inreg := TRUE; G.SetRegisterAllocation; S.Get(sym) END;
+    IF (cl = B.Var) & (tp.form >= B.Array) THEN cl := B.Par; rdo := TRUE END ;
+    IF (tp.form = B.Array) & (tp.len < 0) OR (G.TypeChecked() & (tp.form = B.Record)) THEN
+      parsize := 2*G.WordSize  (*open array or record, needs second word for length or type tag*)
+    ELSE parsize := G.WordSize
     END ;
     obj := first;
     WHILE obj # NIL DO
-      INC(nofpar); obj.class := cl; obj.type := tp; obj.rdo := rdo; obj.lev := level; obj.val := adr;
-      adr := adr + parsize; obj := obj.next
+      INC(nofpar); obj.class := cl; obj.type := tp; obj.rdo := rdo; obj.lev := level; 
+      IF inreg THEN obj.register := G.AllocR(); nbregs := parsize DIV G.WordSize;
+        WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
+      ELSE obj.register := 0FFH; obj.val := adr; adr := adr + parsize END;
+      obj := obj.next
     END ;
-    IF adr >= 52 THEN OM4S.Mark("too many parameters") END
+    IF adr >= 26 THEN S.Mark("too many parameters") END
   END FPSection;
 
-  PROCEDURE ProcedureType(ptype: OM4B.Type; VAR parblksize: LONGINT);
-    VAR obj!: OM4B.Object; size: LONGINT; nofpar: INTEGER;
-  BEGIN ptype.base := OM4B.noType; size := parblksize; nofpar := 0; ptype.dsc := NIL;
-    IF sym = OM4S.lparen THEN
-      OM4S.Get(sym);
-      IF sym = OM4S.rparen THEN OM4S.Get(sym)
-      ELSE FPSection(size, nofpar);
-        WHILE sym = OM4S.semicolon DO OM4S.Get(sym); FPSection(size, nofpar) END ;
-        Check(OM4S.rparen, "no )")
+  PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: LONGINT);
+    VAR obj!: B.Object; size: LONGINT; nofpar: INTEGER; leaf, inreg: BOOLEAN;
+  BEGIN ptype.base := B.noType; size := parblksize; nofpar := 0; ptype.dsc := NIL; leaf := FALSE;
+    IF sym = S.lparen THEN
+      S.Get(sym);
+      IF sym = S.rparen THEN S.Get(sym)
+      ELSE FPSection(size, nofpar, inreg); IF inreg THEN leaf := TRUE END;
+        WHILE sym = S.semicolon DO S.Get(sym); FPSection(size, nofpar, inreg); IF inreg THEN leaf := TRUE END END ;
+        Check(S.rparen, "no )")
       END ;
-      IF sym = OM4S.colon THEN  (*function*)
-        OM4S.Get(sym);
-        IF sym = OM4S.ident THEN
+      IF sym = S.colon THEN  (*function*)
+        S.Get(sym);
+        IF sym = S.ident THEN
           qualident(obj); ptype.base := obj.type;
-          IF ~((obj.class = OM4B.Typ) & (obj.type.form IN {OM4B.Byte .. OM4B.Pointer, OM4B.Proc})) THEN
-            OM4S.Mark("illegal function type")
+          IF ~((obj.class = B.Typ) & (obj.type.form IN {B.Byte .. B.Pointer, B.Proc})) THEN
+            S.Mark("illegal function type")
           END
-        ELSE OM4S.Mark("type identifier expected")
+        ELSE S.Mark("type identifier expected")
         END
       END
     END ;
-    ptype.nofpar := nofpar; parblksize := size
+    ptype.nofpar := nofpar; ptype.leaf := leaf; parblksize := size
   END ProcedureType;
 
-  PROCEDURE FormalType0(VAR typ: OM4B.Type; dim: INTEGER);
-    VAR obj!: OM4B.Object; dmy: LONGINT;
+  PROCEDURE FormalType0(VAR typ: B.Type; dim: INTEGER);
+    VAR obj!: B.Object; dmy: LONGINT;
   BEGIN
-    IF sym = OM4S.ident THEN
+    IF sym = S.ident THEN
       qualident(obj);
-      IF obj.class = OM4B.Typ THEN typ := obj.type ELSE OM4S.Mark("not a type"); typ := OM4B.intType END
-    ELSIF sym = OM4S.array THEN
-      OM4S.Get(sym); Check(OM4S.of, "OF ?");
-      IF dim >= 1 THEN OM4S.Mark("multi-dimensional open arrays not implemented") END ;
-      NEW(typ); typ.form := OM4B.Array; typ.len := -1; typ.size := 2*OM4G.WordSize; 
+      IF obj.class = B.Typ THEN typ := obj.type ELSE S.Mark("not a type"); typ := B.intType END
+    ELSIF sym = S.array THEN
+      S.Get(sym); Check(S.of, "OF ?");
+      IF dim >= 1 THEN S.Mark("multi-dimensional open arrays not implemented") END ;
+      NEW(typ); typ.form := B.Array; typ.len := -1; typ.size := 2*G.WordSize; 
       FormalType(typ.base, dim+1)
-    ELSIF sym = OM4S.procedure THEN
-      OM4S.Get(sym); OM4B.OpenScope;
-      NEW(typ); typ.form := OM4B.Proc; typ.size := OM4G.WordSize; dmy := 0; ProcedureType(typ, dmy);
-      typ.dsc := OM4B.topScope.next; OM4B.CloseScope
-    ELSE OM4S.Mark("identifier expected"); typ := OM4B.noType
+    ELSIF sym = S.procedure THEN
+      S.Get(sym); B.OpenScope;
+      NEW(typ); typ.form := B.Proc; typ.size := G.WordSize; dmy := 0; ProcedureType(typ, dmy);
+      typ.dsc := B.topScope.next; B.CloseScope
+    ELSE S.Mark("identifier expected"); typ := B.noType
     END
   END FormalType0;
 
   PROCEDURE CheckRecLevel(lev: INTEGER);
   BEGIN
-    IF lev # 0 THEN OM4S.Mark("ptr base must be global") END
+    IF lev # 0 THEN S.Mark("ptr base must be global") END
   END CheckRecLevel;
 
-  PROCEDURE Type0(VAR type: OM4B.Type);
-    VAR dmy: LONGINT; obj!: OM4B.Object; ptbase!: PtrBase;
-  BEGIN type := OM4B.intType; (*sync*)
-    IF (sym # OM4S.ident) & (sym < OM4S.array) THEN OM4S.Mark("not a type");
-      REPEAT OM4S.Get(sym) UNTIL (sym = OM4S.ident) OR (sym >= OM4S.array)
+  PROCEDURE Type0(VAR type: B.Type);
+    VAR dmy: LONGINT; obj!: B.Object; ptbase!: PtrBase;
+  BEGIN type := B.intType; (*sync*)
+    IF (sym # S.ident) & (sym < S.array) THEN S.Mark("not a type");
+      REPEAT S.Get(sym) UNTIL (sym = S.ident) OR (sym >= S.array)
     END ;
-    IF sym = OM4S.ident THEN
+    IF sym = S.ident THEN
       qualident(obj);
-      IF obj.class = OM4B.Typ THEN
-        IF (obj.type # NIL) & (obj.type.form # OM4B.NoTyp) THEN type := obj.type END
-      ELSE OM4S.Mark("not a type or undefined")
+      IF obj.class = B.Typ THEN
+        IF (obj.type # NIL) & (obj.type.form # B.NoTyp) THEN type := obj.type END
+      ELSE S.Mark("not a type or undefined")
       END
-    ELSIF sym = OM4S.array THEN OM4S.Get(sym); ArrayType(type)
-    ELSIF sym = OM4S.record THEN
-      OM4S.Get(sym); RecordType(type); Check(OM4S.end, "no END")
-    ELSIF sym = OM4S.pointer THEN
-      OM4S.Get(sym); Check(OM4S.to, "no TO");
-      NEW(type);  type.form := OM4B.Pointer; type.size := OM4G.WordSize; type.base := OM4B.intType;
-      IF sym = OM4S.ident THEN
-        obj := OM4B.thisObj();
+    ELSIF sym = S.array THEN S.Get(sym); ArrayType(type)
+    ELSIF sym = S.record THEN
+      S.Get(sym); RecordType(type); Check(S.end, "no END")
+    ELSIF sym = S.pointer THEN
+      S.Get(sym); Check(S.to, "no TO");
+      NEW(type);  type.form := B.Pointer; type.size := G.WordSize; type.base := B.intType;
+      IF sym = S.ident THEN
+        obj := B.thisObj();
         IF obj # NIL THEN
-          IF (obj.class = OM4B.Typ) & (obj.type.form IN {OM4B.Record, OM4B.NoTyp}) THEN
+          IF (obj.class = B.Typ) & (obj.type.form IN {B.Record, B.NoTyp}) THEN
             CheckRecLevel(obj.lev); type.base := obj.type
-          ELSIF obj.class = OM4B.Mod THEN OM4S.Mark("external base type not implemented")
-          ELSE OM4S.Mark("no valid base type")
+          ELSIF obj.class = B.Mod THEN S.Mark("external base type not implemented")
+          ELSE S.Mark("no valid base type")
           END
         ELSE CheckRecLevel(level); (*enter into list of forward references to be fixed in Declarations*)
-          NEW(ptbase); OM4S.CopyId(ptbase.name); ptbase.type := type; ptbase.next := pbsList; pbsList := ptbase
+          NEW(ptbase); S.CopyId(ptbase.name); ptbase.type := type; ptbase.next := pbsList; pbsList := ptbase
         END ;
-        OM4S.Get(sym)
+        S.Get(sym)
       ELSE Type(type.base);
-        IF (type.base.form # OM4B.Record) OR (type.base.typobj = NIL) THEN OM4S.Mark("must point to named record") END ;
+        IF (type.base.form # B.Record) OR (type.base.typobj = NIL) THEN S.Mark("must point to named record") END ;
         CheckRecLevel(level)
       END
-    ELSIF sym = OM4S.procedure THEN
-      OM4S.Get(sym); OM4B.OpenScope;
-      NEW(type); type.form := OM4B.Proc; type.size := OM4G.WordSize; dmy := 0;
-      ProcedureType(type, dmy); type.dsc := OM4B.topScope.next; OM4B.CloseScope
-    ELSE OM4S.Mark("illegal type")
+    ELSIF sym = S.procedure THEN
+      S.Get(sym); B.OpenScope;
+      NEW(type); type.form := B.Proc; type.size := G.WordSize; dmy := 0;
+      ProcedureType(type, dmy); type.dsc := B.topScope.next; B.CloseScope
+    ELSE S.Mark("illegal type")
     END
   END Type0;
 
-  PROCEDURE containsPointer(type: OM4B.Type): BOOLEAN;
-    VAR obj!: OM4B.Object; res: BOOLEAN;
-  BEGIN
-    (*ASSERT(Type.form = OM4B.Record);*)
-    obj := type.dsc; res := FALSE;
-    WHILE ~res & (obj # NIL) DO 
-      IF obj.type.form = OM4B.Record THEN res := containsPointer(obj.type)
-      ELSIF (obj.type.form = OM4B.Pointer) OR (obj.type.form = OM4B.NilTyp) THEN res := TRUE
-      END;
-      obj := obj.next
-    END;
+  PROCEDURE containsPointer(type: B.Type): BOOLEAN;
+    VAR obj!: B.Object; res: BOOLEAN;
+  BEGIN res := FALSE;
+    IF type.form = B.Pointer THEN res := TRUE
+    ELSIF type.form = B.Record THEN obj := type.dsc;
+      WHILE ~res & (obj # NIL) DO 
+        IF obj.type.form = B.NilTyp (*hidden pointer*) THEN res := TRUE
+        ELSE res := containsPointer(obj.type)
+        END;
+        obj := obj.next
+      END
+    ELSIF type.form = B.Array THEN res := containsPointer(type.base)
+    END
     RETURN res
   END containsPointer;
 
-  PROCEDURE Declarations(VAR varsize: LONGINT);
-    VAR obj!, first!: OM4B.Object;
-      x!: OM4G.Item; tp!: OM4B.Type; ptbase!: PtrBase;
-      expo, unsafe, umm, umf: BOOLEAN; id: OM4S.Ident;
-  BEGIN (*sync*) pbsList := NIL;
-    IF (sym < OM4S.const) & (sym # OM4S.end) & (sym # OM4S.return) THEN OM4S.Mark("declaration?");
-      REPEAT OM4S.Get(sym) UNTIL (sym >= OM4S.const) OR (sym = OM4S.end) OR (sym = OM4S.return)
+  PROCEDURE Declarations(VAR varsize: LONGINT; VAR haveinregs: BOOLEAN);
+    VAR obj!, first!: B.Object;
+      x!: G.Item; tp!: B.Type; ptbase!: PtrBase;
+      expo, unsafe, umm, umf, inreg: BOOLEAN; id: S.Ident;
+      nbregs, dummy: INTEGER;
+  BEGIN (*sync*) pbsList := NIL; haveinregs := FALSE;
+    IF (sym < S.const) & (sym # S.end) & (sym # S.return) THEN S.Mark("declaration?");
+      REPEAT S.Get(sym) UNTIL (sym >= S.const) OR (sym = S.end) OR (sym = S.return)
     END ;
-    IF sym = OM4S.const THEN
-      OM4S.Get(sym);
-      WHILE sym = OM4S.ident DO
-        OM4S.CopyId(id); OM4S.Get(sym); CheckExport(expo);
-        IF sym = OM4S.eql THEN OM4S.Get(sym) ELSE OM4S.Mark("= ?") END;
+    IF sym = S.const THEN
+      S.Get(sym);
+      WHILE sym = S.ident DO
+        S.CopyId(id); S.Get(sym); CheckExport(expo);
+        IF sym = S.eql THEN S.Get(sym) ELSE S.Mark("= ?") END;
         expression(x);
-        IF (x.type.form = OM4B.String) & (x.b = 2) THEN OM4G.StrToChar(x) END ;
-        OM4B.NewObj(obj, id, OM4B.Const); obj.expo := expo;
-        IF x.mode = OM4B.Const THEN obj.val := x.a; obj.lev := x.b; obj.type := x.type
-        ELSE OM4S.Mark("expression not constant"); obj.type := OM4B.intType
+        IF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x) END ;
+        B.NewObj(obj, id, B.Const); obj.expo := expo;
+        IF x.mode = B.Const THEN obj.val := x.a; obj.lev := x.b; obj.type := x.type
+        ELSE S.Mark("expression not constant"); obj.type := B.intType
         END;
-        Check(OM4S.semicolon, "; missing")
+        Check(S.semicolon, "; missing")
       END
     END ;
-    IF sym = OM4S.type THEN
-      OM4S.Get(sym);
-      WHILE sym = OM4S.ident DO
-        OM4S.CopyId(id); OM4S.Get(sym); CheckExport(expo);
-        IF sym = OM4S.eql THEN OM4S.Get(sym) ELSE OM4S.Mark("=?") END ;
+    IF sym = S.type THEN
+      S.Get(sym);
+      WHILE sym = S.ident DO
+        S.CopyId(id); S.Get(sym); CheckExport(expo);
+        IF sym = S.eql THEN S.Get(sym) ELSE S.Mark("=?") END ;
         Type(tp);
-        OM4B.NewObj(obj, id, OM4B.Typ); obj.type := tp; obj.expo := expo; obj.lev := level;
+        B.NewObj(obj, id, B.Typ); obj.type := tp; obj.expo := expo; obj.lev := level;
         IF tp.typobj = NIL THEN tp.typobj := obj END ;
-        IF expo & (obj.type.form = OM4B.Record) THEN obj.exno := exno; INC(exno) ELSE obj.exno := 0 END ;
-        IF tp.form = OM4B.Record THEN
+        IF expo & (obj.type.form = B.Record) THEN obj.exno := exno; INC(exno) ELSE obj.exno := 0 END ;
+        IF tp.form = B.Record THEN
           ptbase := pbsList;  (*check whether this is base of a pointer type; search and fixup*)
           WHILE ptbase # NIL DO
             IF obj.name = ptbase.name THEN ptbase.type.base := obj.type END ;
             ptbase := ptbase.next
           END ;
-          IF level = 0 THEN OM4G.BuildTD(tp, dc) END    (*type descriptor; len used as its address*)
+          IF level = 0 THEN G.BuildTD(tp, dc) END    (*type descriptor; len used as its address*)
         END ;
-        Check(OM4S.semicolon, "; missing")
+        Check(S.semicolon, "; missing")
       END
     END ;
-    IF sym = OM4S.var THEN
-      OM4S.Get(sym);
-      WHILE sym = OM4S.ident DO
-        IdentList(OM4B.Var, first); Type(tp);
-        (*check for unsafe pointers*)
-        unsafe := FALSE;
-        IF level # 0 THEN
-          IF tp.form = OM4B.Pointer THEN unsafe := TRUE
-          ELSIF tp.form = OM4B.Record THEN unsafe := containsPointer(tp)
-          END
-        END;
+    IF sym = S.var THEN
+      S.Get(sym);
+      WHILE sym = S.ident DO inreg := FALSE;
+        IdentList(B.Var, first); Type(tp); IF sym = S.times THEN haveinregs := TRUE; inreg := TRUE; G.SetRegisterAllocation; S.Get(sym) END;
+        IF level = 0 THEN unsafe := FALSE ELSE unsafe := containsPointer(tp) END; (*check for unsafe pointers*)
         obj := first; umm := FALSE; umf := FALSE;
         WHILE obj # NIL DO
           IF unsafe & ~obj.unsafe THEN umm := TRUE END;
           IF ~unsafe & obj.unsafe THEN umf := TRUE END;
           obj.type := tp; obj.lev := level;
-          IF tp.size > 1 THEN varsize := (varsize + 3) DIV 4 * 4 (*align*) END ;
-          obj.val := varsize; varsize := varsize + obj.type.size;
+          IF inreg & (tp.size > 4) THEN S.Mark("reg alloc forbidden"); inreg := FALSE END;
+          IF inreg THEN obj.register := G.AllocR(); nbregs := varsize DIV G.WordSize;
+            WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
+          ELSE IF tp.size > 1 THEN varsize := (varsize + 1) DIV 2 * 2 (*align*) END;
+            obj.register := 0FFH; obj.val := varsize; varsize := varsize + obj.type.size
+          END;
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
           obj := obj.next
         END ;
-        IF umm THEN OM4S.Mark("mark unsafe vars with an exclamation mark") 
-        ELSIF umf THEN OM4S.Mark("remove exclamation mark") END;
-        Check(OM4S.semicolon, "; missing")
+        IF umm THEN S.Mark("mark unsafe vars with an exclamation mark") 
+        ELSIF umf THEN S.Mark("remove exclamation mark") END;
+        Check(S.semicolon, "; missing")
       END
     END ;
-    varsize := (varsize + 3) DIV 4 * 4;
+    varsize := (varsize + 1) DIV 2 * 2;
     ptbase := pbsList;
     WHILE ptbase # NIL DO
-      IF ptbase.type.base.form = OM4B.Int THEN OM4S.Mark("undefined pointer base of") END ;
+      IF ptbase.type.base.form = B.Int THEN S.Mark("undefined pointer base of") END ;
       ptbase := ptbase.next
     END ;
-    IF (sym >= OM4S.const) & (sym <= OM4S.var) THEN OM4S.Mark("declaration in bad order") END
+    IF (sym >= S.const) & (sym <= S.var) THEN S.Mark("declaration in bad order") END
   END Declarations;
 
   PROCEDURE ProcedureDecl;
-    VAR proc!: OM4B.Object;
-      type!: OM4B.Type;
-      procid: OM4S.Ident;
-      x!: OM4G.Item;
+    VAR proc!: B.Object;
+      type!: B.Type;
+      procid: S.Ident;
+      x!: G.Item;
       locblksize, parblksize, L: LONGINT;
       int: BOOLEAN; reglim: INTEGER;
-  BEGIN (* ProcedureDecl *) int := FALSE; OM4S.Get(sym); 
-    IF sym = OM4S.times THEN OM4S.Get(sym); int := TRUE END ;
+  BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym); 
+    IF sym = S.times THEN S.Get(sym); int := TRUE; todo int vector list END ;
     IF sym = OM4S.arrow THEN OM4S.Get(sym); reglim := OM4S.ival; Check(OM4S.int, "missing register limit");
     ELSE reglim := -1
     END;

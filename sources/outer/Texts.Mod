@@ -86,8 +86,9 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
       N, fno: INTEGER; bt: BYTE;
       f!: Files.File;
       FName: ARRAY 32 OF CHAR;
-      Dict: ARRAY 32 OF Fonts.Font;
-  BEGIN f := Files.Base(R); N := 1; Q := Trailer(); p := Q;
+      Dict!: ARRAY 32 OF Fonts.Font;
+  BEGIN FOR N := 0 TO 31 DO Dict[N] := NIL END;
+    f := Files.Base(R); N := 1; Q := Trailer(); p := Q;
     Files.ReadInt(R, off); Files.ReadByte(R, bt); fno := bt;
     WHILE fno # 0 DO
       IF fno = N THEN

@@ -247,7 +247,11 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
   END WMsg;
 
   PROCEDURE InitContext(VAR C: Context);
+    VAR i: INTEGER;
   BEGIN C.nofonts := 0; C.noflibs := 0; C.nofclasses := 4;
+    FOR i := 0 TO LEN(C.font) DO C.font[i] := NIL END;
+    FOR i := 0 TO LEN(C.lib) DO C.lib[i] := NIL END;
+    C.class[0] := NIL; FOR i := 4 TO LEN(C.class) DO C.class[i] := NIL END;
     C.class[1] := LineMethod.new; C.class[2] := CapMethod.new; C.class[3] := MacMethod.new
   END InitContext;
 
@@ -279,7 +283,7 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
   END StoreElems;
 
   PROCEDURE Store*(G: Graph; VAR W: Files.Rider);
-    VAR C: Context;
+    VAR C!: Context;
   BEGIN InitContext(C); StoreElems(W, C, G.first); G.changed := FALSE
   END Store;
 
@@ -289,7 +293,7 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
   END WriteObj;
 
   PROCEDURE WriteFile*(G: Graph; name: ARRAY OF CHAR);
-    VAR F!: Files.File; W!: Files.Rider; C: Context;
+    VAR F!: Files.File; W!: Files.Rider; C!: Context;
   BEGIN F := Files.New(name); Files.Set(W, F, 0); Files.Write(W, GraphFileId);
     InitContext(C); StoreElems(W, C, G.first); Files.Register(F)
   END WriteFile;
@@ -350,13 +354,13 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
   END LoadElems;
 
   PROCEDURE Load*(G: Graph; VAR R: Files.Rider);
-    VAR C: Context;
+    VAR C!: Context;
   BEGIN G.sel := NIL; InitContext(C); LoadElems(R, C, G.first)
   END Load;
 
   PROCEDURE Open*(G: Graph; name: ARRAY OF CHAR);
     VAR tag: CHAR;
-      F!: Files.File; R!: Files.Rider; C: Context;
+      F!: Files.File; R!: Files.Rider; C!: Context;
   BEGIN G.first := NIL; G.sel := NIL; G.time := 0; G.changed := FALSE; F := Files.Old(name);
     IF F # NIL THEN
       Files.Set(R, F, 0); Files.Read(R, tag);
@@ -374,7 +378,7 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
   PROCEDURE GetLib*(name: ARRAY OF CHAR; replace: BOOLEAN; VAR Lib: Library);
     VAR i, wh: INTEGER; ch: CHAR;
       L!: Library; mh!: MacHead; obj!: Object;
-      F!: Files.File; R!: Files.Rider; C: Context;
+      F!: Files.File; R!: Files.Rider; C!: Context;
       Lname, Fname: ARRAY 32 OF CHAR;
   BEGIN L := FirstLib; i := 0;
     WHILE (L # NIL) & (L.name # name) DO L := L.next END ;
@@ -413,7 +417,7 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
     VAR i: INTEGER;
       mh!: MacHead;
       F!: Files.File; W!: Files.Rider;
-      C: Context;
+      C!: Context;
       Gname: ARRAY 32 OF CHAR;
   BEGIN L := FirstLib;
     WHILE (L # NIL) & (L.name # Fname) DO L := L.next END ;

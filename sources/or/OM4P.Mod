@@ -808,15 +808,17 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
 
   PROCEDURE containsPointer(type: OM4B.Type): BOOLEAN;
     VAR obj!: OM4B.Object; res: BOOLEAN;
-  BEGIN
-    (*ASSERT(Type.form = OM4B.Record);*)
-    obj := type.dsc; res := FALSE;
-    WHILE ~res & (obj # NIL) DO 
-      IF obj.type.form = OM4B.Record THEN res := containsPointer(obj.type)
-      ELSIF (obj.type.form = OM4B.Pointer) OR (obj.type.form = OM4B.NilTyp) THEN res := TRUE
-      END;
-      obj := obj.next
-    END;
+  BEGIN res := FALSE;
+    IF type.form = OM4B.Pointer THEN res := TRUE
+    ELSIF type.form = OM4B.Record THEN obj := type.dsc;
+      WHILE ~res & (obj # NIL) DO 
+        IF obj.type.form = OM4B.NilTyp (*hidden pointer*) THEN res := TRUE
+        ELSE res := containsPointer(obj.type)
+        END;
+        obj := obj.next
+      END
+    ELSIF type.form = OM4B.Array THEN res := containsPointer(type.base)
+    END
     RETURN res
   END containsPointer;
 
@@ -866,13 +868,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       OM4S.Get(sym);
       WHILE sym = OM4S.ident DO
         IdentList(OM4B.Var, first); Type(tp);
-        (*check for unsafe pointers*)
-        unsafe := FALSE;
-        IF level # 0 THEN
-          IF tp.form = OM4B.Pointer THEN unsafe := TRUE
-          ELSIF tp.form = OM4B.Record THEN unsafe := containsPointer(tp)
-          END
-        END;
+         IF level = 0 THEN unsafe := FALSE ELSE unsafe := containsPointer(tp) END; (*check for unsafe pointers*)
         obj := first; umm := FALSE; umf := FALSE;
         WHILE obj # NIL DO
           IF unsafe & ~obj.unsafe THEN umm := TRUE END;

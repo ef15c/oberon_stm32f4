@@ -83,7 +83,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF success THEN rh.reg := RH; rh.r := rh.reg ELSE S.Mark("register stack overflow") END
   END allocR;
 
-  PROCEDURE AllocR(): INTEGER;
+  PROCEDURE AllocR*(): INTEGER;
   BEGIN allocR
     RETURN RH
   END AllocR;
@@ -123,6 +123,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE SetCC(VAR x: Item; n: LONGINT);
   BEGIN x.mode := Cond; x.a := 0; x.b := 0; x.r := n
   END SetCC;
+
+  PROCEDURE TypeChecked*(): BOOLEAN;
+  BEGIN RETURN traps[4] # NIL
+  END TypeChecked;
 
   PROCEDURE SetTrap*(num: INTEGER; proc: B.Object);
   BEGIN traps[num] := proc
@@ -883,10 +887,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN A.FixLink(mcode, x.a)
   END Fixup;
 
-  PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN; nofusedregs: INTEGER; leaf: BOOLEAN);
+  PROCEDURE SetRegisterAllocation*;
+  BEGIN AllocUp  := TRUE
+  END SetRegisterAllocation;
+
+  PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
     VAR t!: Item; rl, rh: BYTE;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    OfsPTOS(0, FALSE); frame := 0; AllocUp := leaf;
+    OfsPTOS(0, FALSE); frame := 0;
     IF locblksize >= A.C16 THEN S.Mark("local variables size exeeded") END;
 
     IF locblksize - parblksize # 0 THEN
