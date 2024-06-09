@@ -14,7 +14,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
   VAR sym: INTEGER;   (*last symbol read*)
     dc: LONGINT;    (*data counter*)
-    level, exno, version: INTEGER;
+    level, exno: INTEGER;
     newSF: BOOLEAN;  (*option flag*)
     expression: PROCEDURE (VAR x: G.Item);  (*to avoid forward reference*)
     Type: PROCEDURE (VAR type: B.Type);
@@ -927,63 +927,62 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END ProcedureDecl;
 
   PROCEDURE Import;
-    VAR impid, impid1: OM4S.Ident;
+    VAR impid, impid1: S.Ident;
   BEGIN
-    IF sym = OM4S.ident THEN
-      OM4S.CopyId(impid); OM4S.Get(sym);
-      IF sym = OM4S.becomes THEN
-        OM4S.Get(sym);
-        IF sym = OM4S.ident THEN OM4S.CopyId(impid1); OM4S.Get(sym)
-        ELSE OM4S.Mark("id expected"); impid1 := impid
+    IF sym = S.ident THEN
+      S.CopyId(impid); S.Get(sym);
+      IF sym = S.becomes THEN
+        S.Get(sym);
+        IF sym = S.ident THEN S.CopyId(impid1); S.Get(sym)
+        ELSE S.Mark("id expected"); impid1 := impid
         END
       ELSE impid1 := impid
-      END ;
-      OM4B.Import(impid, impid1)
-    ELSE OM4S.Mark("id expected")
+      END;
+      B.Import(impid, impid1)
+    ELSE S.Mark("id expected")
     END
   END Import;
 
   PROCEDURE Module;
-    VAR key: LONGINT; oldCol: INTEGER;
-  BEGIN Texts.WriteString(W, "  compiling "); OM4S.Get(sym);
-    IF sym = OM4S.module THEN
-      OM4S.Get(sym);
-      IF sym = OM4S.times THEN version := 0; dc := 8; Texts.Write(W, "*"); OM4S.Get(sym) ELSE dc := 0; version := 1 END ;
-      OM4B.Init; OM4B.OpenScope;
-      IF sym = OM4S.ident THEN
-        OM4S.CopyId(modid); OM4S.Get(sym);
+    VAR key: LONGINT; oldCol: INTEGER; dmy: BOOLEAN;
+  BEGIN Texts.WriteString(W, "  compiling "); S.Get(sym);
+    IF sym = S.module THEN S.Get(sym);
+      dc := 0;
+      B.Init; B.OpenScope;
+      IF sym = S.ident THEN
+        S.CopyId(modid); S.Get(sym);
         Texts.WriteString(W, modid); Texts.Append(Oberon.Log, W.buf)
-      ELSE OM4S.Mark("identifier expected")
+      ELSE S.Mark("identifier expected")
+      END;
+      Check(S.semicolon, "no ;"); level := 0; exno := 1; key := 0;
+      IF sym = S.import THEN
+        S.Get(sym); Import;
+        WHILE sym = S.comma DO S.Get(sym); Import END ;
+        Check(S.semicolon, "; missing")
       END ;
-      Check(OM4S.semicolon, "no ;"); level := 0; exno := 1; key := 0;
-      IF sym = OM4S.import THEN
-        OM4S.Get(sym); Import;
-        WHILE sym = OM4S.comma DO OM4S.Get(sym); Import END ;
-        Check(OM4S.semicolon, "; missing")
-      END ;
-      OM4G.Open(version); Declarations(dc); OM4G.SetDataSize((dc + (G.WordSize - 1)) DIV G.WordSize * G.WordSize);
-      WHILE sym = OM4S.procedure DO ProcedureDecl; Check(OM4S.semicolon, "no ;") END ;
-      OM4G.Header;
-      IF sym = OM4S.begin THEN OM4S.Get(sym); StatSequence END ;
-      Check(OM4S.end, "no END");
-      IF sym = OM4S.ident THEN
-        IF OM4S.id # modid THEN OM4S.Mark("no match") END ;
-        OM4S.Get(sym)
-      ELSE OM4S.Mark("identifier missing")
-      END ;
-      IF sym # OM4S.period THEN OM4S.Mark("period missing") END ;
-      IF (OM4S.errcnt = 0) & (version # 0) THEN
-        OM4B.Export(modid, newSF, key);
+      G.Open; Declarations(dc, dmy); G.SetDataSize((dc + (G.WordSize - 1)) DIV G.WordSize * G.WordSize);
+      WHILE sym = S.procedure DO ProcedureDecl; Check(S.semicolon, "no ;") END ;
+      G.Header;
+      IF sym = S.begin THEN S.Get(sym); StatSequence END ;
+      Check(S.end, "no END");
+      IF sym = S.ident THEN
+        IF S.id # modid THEN S.Mark("no match") END ;
+        S.Get(sym)
+      ELSE S.Mark("identifier missing")
+      END;
+      IF sym # S.period THEN S.Mark("period missing") END ;
+      IF S.errcnt = 0 THEN
+        B.Export(modid, newSF, key);
         IF newSF THEN Texts.WriteString(W, " new symbol file") END
-      END ;
-      IF OM4S.errcnt = 0 THEN
-        Texts.WriteInt(W, OM4G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key);
-        OM4G.Close(modid, key, exno)
+      END;
+      IF S.errcnt = 0 THEN
+        Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key);
+        G.Close(modid, key, exno)
       ELSE Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol 
-      END ;
+      END;
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-      OM4B.CloseScope; pbsList := NIL
-    ELSE OM4S.Mark("must start with MODULE")
+      B.CloseScope; pbsList := NIL
+    ELSE S.Mark("must start with MODULE")
     END
   END Module;
 
@@ -1003,25 +1002,25 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF S1.class = Texts.Char THEN
       IF S1.c = "@" THEN
         Option(S1); Oberon.GetSelection(T, beg, end, time);
-        IF time >= 0 THEN OM4S.Init(T, beg); Module END
+        IF time >= 0 THEN S.Init(T, beg); Module END
       ELSIF S1.c = "^" THEN
         Option(S1); Oberon.GetSelection(T, beg, end, time);
         IF time >= 0 THEN
           Texts.OpenScanner(S1, T, beg); Texts.Scan(S1);
           IF S1.class = Texts.Name THEN
             Texts.WriteString(W, S1.s); NEW(T); Texts.Open(T, S1.s);
-            IF T.len > 0 THEN OM4S.Init(T, 0); Module END
+            IF T.len > 0 THEN S.Init(T, 0); Module END
           END
         END
       END
     ELSE 
       WHILE S1.class = Texts.Name DO
         NEW(T); Texts.Open(T, S1.s);
-        IF T.len > 0 THEN Option(S1); OM4S.Init(T, 0); Module
+        IF T.len > 0 THEN Option(S1); S.Init(T, 0); Module
         ELSE Texts.WriteString(W, S1.s); Texts.WriteString(W, " not found");
           Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
         END ;
-        IF (T.len # 0) & (OM4S.errcnt = 0) THEN Texts.Scan(S1) ELSE S1.class := 0 END
+        IF (T.len # 0) & (S.errcnt = 0) THEN Texts.Scan(S1) ELSE S1.class := 0 END
       END
     END;
     Oberon.Collect(0)
@@ -1029,6 +1028,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  19/10/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-  NEW(dummy); dummy.class := OM4B.Const; dummy.type := OM4B.intType;
+  NEW(dummy); dummy.class := B.Const; dummy.type := B.intType;
   expression := expression0; Type := Type0; FormalType := FormalType0
-END OM4P.
+END OMSPP.
