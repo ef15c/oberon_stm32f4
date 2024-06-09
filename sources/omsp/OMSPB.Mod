@@ -1,6 +1,6 @@
 MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   C. Schoffit 19.05.2 for Texas Instruments MSP430 Family*)
-  IMPORT Files, OMSPS;
+  IMPORT Files, S := OMSPS;
   (*Definition of data types Object and Type, which together form the data structure
     called "symbol table". Contains procedures for creation of Objects, and for search:
     NewObj, this, thisimport, thisfield (and OpenScope, CloseScope).
@@ -16,7 +16,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     (* form values*)
       Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; LongInt* = 5; Set* = 6;
       Pointer* = 7; NilTyp* = 8; NoTyp* = 9; Proc* = 10;
-      String* = 11; Array* = 12; Record* = 13;
+      String* = 11; Array* = 12; Record* = 13; Handler* = 14;
       
   TYPE Object* = POINTER TO ObjDesc;
     Module* = POINTER TO ModDesc;
@@ -28,11 +28,11 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       lev*, usedat*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
-      name*: OMSPS.Ident;
+      name*: S.Ident;
       val*: LONGINT
     END ;
 
-    ModDesc* = RECORD (ObjDesc) orgname*: OMSPS.Ident END ;
+    ModDesc* = RECORD (ObjDesc) orgname*: S.Ident END ;
 
     TypeDesc* = RECORD
       form*, ref*, mno*: INTEGER;  (*ref is only used for import/export*)
@@ -70,14 +70,14 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
 
-  PROCEDURE NewObj*(VAR obj: Object; id: OMSPS.Ident; class: INTEGER);  (*insert new Object with name id*)
+  PROCEDURE NewObj*(VAR obj: Object; id: S.Ident; class: INTEGER);  (*insert new Object with name id*)
     VAR new!, x!: Object;
   BEGIN x := topScope;
     WHILE (x.next # NIL) & (x.next.name # id) DO x := x.next END ;
     IF x.next = NIL THEN
       NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.usedat := 0; new.register := 0FFH; new.dsc := NIL;
       x.next := new; obj := new
-    ELSE obj := x.next; OMSPS.Mark("mult def")
+    ELSE obj := x.next; S.Mark("mult def")
     END 
   END NewObj;
 
@@ -85,7 +85,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     VAR s!, x!: Object;
   BEGIN s := topScope;
     REPEAT x := s.next;
-      WHILE (x # NIL) & (x.name # OMSPS.id) DO x := x.next END ;
+      WHILE (x # NIL) & (x.name # S.id) DO x := x.next END ;
       s := s.dsc
     UNTIL (x # NIL) OR (s = NIL);
     RETURN x
@@ -97,7 +97,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     IF mod.rdo THEN
       IF mod.name[0] # 0X THEN
         obj := mod.dsc;
-        WHILE (obj # NIL) & (obj.name # OMSPS.id) DO obj := obj.next END
+        WHILE (obj # NIL) & (obj.name # S.id) DO obj := obj.next END
       ELSE obj := NIL
       END
     ELSE obj := NIL
@@ -108,7 +108,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   PROCEDURE thisfield*(rec: Type): Object;
     VAR fld!: Object;
   BEGIN fld := rec.dsc;
-    WHILE (fld # NIL) & (fld.name # OMSPS.id) DO fld := fld.next END ;
+    WHILE (fld # NIL) & (fld.name # S.id) DO fld := fld.next END ;
     RETURN fld
   END thisfield;
 
@@ -123,15 +123,15 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
   (*------------------------------- Import ---------------------------------*)
 
-  PROCEDURE MakeFileName*(VAR FName: OMSPS.Ident; name, ext: ARRAY OF CHAR);
+  PROCEDURE MakeFileName*(VAR FName: S.Ident; name, ext: ARRAY OF CHAR);
     VAR i, j: INTEGER;
   BEGIN i := 0; j := 0;  (*assume name suffix less than 4 characters*)
-    WHILE (i < OMSPS.IdLen-5) & (name[i] > 0X) DO FName[i] := name[i]; INC(i) END ;
+    WHILE (i < S.IdLen-5) & (name[i] > 0X) DO FName[i] := name[i]; INC(i) END ;
     REPEAT FName[i]:= ext[j]; INC(i); INC(j) UNTIL ext[j] = 0X;
     FName[i] := 0X
   END MakeFileName;
   
-  PROCEDURE ThisModule(name, orgname: OMSPS.Ident; decl: BOOLEAN; key: LONGINT): Object;
+  PROCEDURE ThisModule(name, orgname: S.Ident; decl: BOOLEAN; key: LONGINT): Object;
     VAR mod!: Module; obj!, obj1!: Object;
   BEGIN obj1 := topScope; obj := obj1.next;  (*search for module*)
     WHILE (obj # NIL) & (obj(Module).orgname # orgname) DO obj1 := obj; obj := obj1.next END ;
@@ -145,11 +145,11 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         IF decl THEN mod.type := noType ELSE mod.type := nilType END ;
         obj1.next := mod; obj := mod
       ELSIF decl THEN
-        IF obj.type.form = NoTyp THEN OMSPS.Mark("mult def") ELSE OMSPS.Mark("invalid import order") END
-      ELSE OMSPS.Mark("conflict with alias")
+        IF obj.type.form = NoTyp THEN S.Mark("mult def") ELSE S.Mark("invalid import order") END
+      ELSE S.Mark("conflict with alias")
       END
     ELSIF decl THEN (*module already present, explicit import by declaration*)
-      IF  obj.type.form = NoTyp THEN OMSPS.Mark("mult def") ELSE OMSPS.Mark("invalid import order") END
+      IF  obj.type.form = NoTyp THEN S.Mark("mult def") ELSE S.Mark("invalid import order") END
     END ;
     RETURN obj
   END ThisModule;
@@ -165,7 +165,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       ref, class, form, np, tmp: INTEGER;
       fld!, par!, obj!, mod!, last!: Object;
       t!: Type;
-      name, modname: OMSPS.Ident;
+      name, modname: S.Ident;
   BEGIN Read(R, ref);
     IF ref < 0 THEN T := typtab[-ref]  (*already read*)
     ELSE NEW(t); T := t; typtab[ref] := t; t.mno := thismod.lev;
@@ -213,11 +213,11 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     END
   END InType;
   
-  PROCEDURE Import*(VAR modid, modid1: OMSPS.Ident);
+  PROCEDURE Import*(VAR modid, modid1: S.Ident);
     VAR key: LONGINT; class, k: INTEGER;
       obj!: Object;  t!: Type;
       thismod!: Object;
-      modname, fname: OMSPS.Ident;
+      modname, fname: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN
     IF modid1 = "SYSTEM" THEN
@@ -228,7 +228,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         Files.Set(R, F, 0); Files.ReadInt(R, key); Files.ReadInt(R, key); Files.ReadString(R, modname);
         thismod := ThisModule(modid, modid1, TRUE, key); thismod.rdo := TRUE;
         Read(R, class); (*version key*)
-        IF class # versionkey THEN OMSPS.Mark("wrong version") END ;
+        IF class # versionkey THEN S.Mark("wrong version") END ;
         Read(R, class);
         WHILE class # 0 DO
           NEW(obj); obj.class := class; obj.usedat := 0; Files.ReadString(R, obj.name);
@@ -243,7 +243,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
         END ;
-      ELSE OMSPS.Mark("import not available")
+      ELSE S.Mark("import not available")
       END
     END
   END Import;
@@ -306,17 +306,17 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         mod := topScope.next;
         WHILE (mod # NIL) & (mod.lev # t.mno) DO mod := mod.next END ;
         IF mod # NIL THEN Files.WriteString(R, mod(Module).orgname); Files.WriteInt(R, mod.val); Files.WriteString(R, obj.name)
-        ELSE OMSPS.Mark("re-export not found"); Write(R, 0)
+        ELSE S.Mark("re-export not found"); Write(R, 0)
         END
       ELSE Write(R, 0)
       END
     END
   END OutType;
 
-  PROCEDURE Export*(VAR modid: OMSPS.Ident; VAR newSF: BOOLEAN; VAR key: LONGINT);
+  PROCEDURE Export*(VAR modid: S.Ident; VAR newSF: BOOLEAN; VAR key: LONGINT);
     VAR x, sum, oldkey: LONGINT;
       obj!, obj0!: Object;
-      filename: OMSPS.Ident;
+      filename: S.Ident;
       F!, F1!: Files.File; R!, R1!: Files.Rider;
   BEGIN Ref := Record + 1; MakeFileName(filename, modid, ".sms");
     F := Files.New(filename); Files.Set(R, F, 0);
@@ -355,7 +355,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     IF sum # oldkey THEN
       IF newSF OR (F1 = NIL) THEN
         key := sum; newSF := TRUE; Files.Set(R, F, 4); Files.WriteInt(R, sum); Files.Register(F)  (*insert checksum*)
-      ELSE OMSPS.Mark("new symbol file inhibited")
+      ELSE S.Mark("new symbol file inhibited")
       END
     ELSE newSF := FALSE; key := sum
     END
@@ -373,7 +373,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
   PROCEDURE enter(name: ARRAY OF CHAR; cl: INTEGER; type: Type; n: LONGINT);
     VAR obj!: Object;
-  BEGIN NEW(obj); obj.name := name; obj.class := cl; obj.type := type; obj.val := n; obj.dsc := NIL; obj.usedat := 0;
+  BEGIN NEW(obj); obj.name := name; obj.class := cl; obj.type := type; obj.val := n; obj.dsc := NIL;
     IF cl = Typ THEN type.typobj := obj END ;
     obj.next := system; system := obj
   END enter;
@@ -414,6 +414,7 @@ BEGIN
   enter("CHAR", Typ, charType, 0);
   enter("LONGINT", Typ, longIntType, 0);
   enter("INTEGER", Typ, intType, 0);
+
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
 
   system := NIL;  (* initialize "unsafe" pseudo-module SYSTEM*)

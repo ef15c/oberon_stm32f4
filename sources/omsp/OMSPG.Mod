@@ -47,6 +47,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RL: INTEGER; (*register limit*)
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
     traps: ARRAY 8 OF B.Object; arith: ARRAY 4 OF B.Object;
+    vector: ARRAY 32 OF INTEGER;
     
     relmap: ARRAY 4 OF INTEGER;    (*condition codes for relations*)
     data: ARRAY maxTD OF INTEGER;  (*type descriptors*)
@@ -446,6 +447,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF ~varpar THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END
     END
   END TypeTest;
+
+  PROCEDURE SetVector*(n: BYTE; VAR h: B.Object);
+  BEGIN IF vector[n] # 0FFFFH THEN S.Mark("vect mult def")
+    ELSE vector[n] := h.usedat; h.usedat := n END
+  END SetVector;
 
   PROCEDURE setRAO(VAR i: Item);
   BEGIN
@@ -1073,7 +1079,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Condition;
 
   PROCEDURE Open*;
+    VAR i: INTEGER;
   BEGIN A.Init(mcode); frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
+    FOR i := 0 TO LEN(traps) - 1 DO traps[i] := NIL END;
+    FOR i := 0 TO LEN(arith) - 1 DO arith[i] := NIL END;
+    FOR i := 0 TO LEN(vector) - 1 DO vector[i] := 0FFFFH END;
     tdx := 0; strx := 0; RH := 15;
     rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL; rh.mode := Reg; rh.r := rh.reg;
     AllocUp := FALSE; RL := A.CG2
@@ -1182,6 +1192,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     FOR i := 0 TO strx-1 DO Files.Write(R, str[i]) END ;  (*strings*)
     WriteWord(R, mcode.pc);  (*code len*)
     FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
+    Files.WriteByte(R, LEN(vector));  (*Vectors table*)
+    FOR i := 0 TO LEN(vector) - 1 DO WriteWord(R, vector[i]) END;
     obj := B.topScope.next;
     WHILE obj # NIL DO  (*commands*)
       IF (obj.exno # 0) & (obj.class = B.Const) & (obj.type.form = B.Proc) &
@@ -1213,6 +1225,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
     WriteWord(R, -1);
     WriteFixup(R, B.Const, B.Proc); (*procedures fixup data*)
+    WriteFixup(R, B.Const, B.Handler); (*interrupt handlers fixup data*)
     WriteFixup(R, B.Var, 0); (*variable fixup data*)
     (*record types fixup data*)
     obj := B.topScope.next;

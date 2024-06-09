@@ -616,7 +616,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     ELSIF sym = S.comma THEN S.Get(sym); ArrayType(typ.base)
     ELSE S.Mark("missing OF"); typ.base := B.intType
     END ;
-    typ.size := (len * typ.base.size + 3) DIV 4 * 4;
+    typ.size := (len * typ.base.size + (G.WordSize - 1)) DIV G.WordSize * G.WordSize;
     typ.form := B.Array; typ.len := len; type := typ
   END ArrayType;
 
@@ -656,13 +656,13 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END ;
       Check(S.colon, "colon expected"); Type(tp);
       IF (tp.form = B.Array) & (tp.len < 0) THEN S.Mark("dyn array not allowed") END ;
-      IF tp.size > 1 THEN offset := (offset+3) DIV 4 * 4 END ;
+      IF tp.size > 1 THEN offset := (offset + (G.WordSize-1)) DIV G.WordSize * G.WordSize END ;
       offset := offset + n * tp.size; off := offset; obj0 := obj;
       WHILE obj0 # bot DO obj0.type := tp; obj0.lev := 0; off := off - tp.size; obj0.val := off; obj0 := obj0.next END ;
       bot := obj;
       IF sym = S.semicolon THEN S.Get(sym) ELSIF sym # S.end THEN S.Mark(" ; or END") END
    END ;
-    typ.form := B.Record; typ.dsc := bot; typ.size := (offset + 3) DIV 4 * 4; type := typ
+    typ.form := B.Record; typ.dsc := bot; typ.size := (offset + (G.WordSize - 1)) DIV G.WordSize * G.WordSize; type := typ
   END RecordType;
 
   PROCEDURE FPSection(VAR adr: LONGINT; VAR nofpar: INTEGER; VAR inreg: BOOLEAN);
@@ -850,7 +850,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF inreg & (tp.size > 4) THEN S.Mark("reg alloc forbidden"); inreg := FALSE END;
           IF inreg THEN obj.register := G.AllocR(); nbregs := varsize DIV G.WordSize;
             WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
-          ELSE IF tp.size > 1 THEN varsize := (varsize + 1) DIV 2 * 2 (*align*) END;
+          ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
             obj.register := 0FFH; obj.val := varsize; varsize := varsize + obj.type.size
           END;
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
@@ -861,7 +861,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         Check(S.semicolon, "; missing")
       END
     END ;
-    varsize := (varsize + 1) DIV 2 * 2;
+    varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize;
     ptbase := pbsList;
     WHILE ptbase # NIL DO
       IF ptbase.type.base.form = B.Int THEN S.Mark("undefined pointer base of") END ;
@@ -876,49 +876,53 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       procid: S.Ident;
       x!: G.Item;
       locblksize, parblksize, L: LONGINT;
-      int: BOOLEAN; reglim: INTEGER;
+      int, haveinregs: BOOLEAN; nofusedregs: INTEGER;
+      v: ARRAY 8 OF BYTE;
   BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym); 
-    IF sym = S.times THEN S.Get(sym); int := TRUE; todo int vector list END ;
-    IF sym = OM4S.arrow THEN OM4S.Get(sym); reglim := OM4S.ival; Check(OM4S.int, "missing register limit");
-    ELSE reglim := -1
+    IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt vector routine must be global") END;
+      int := TRUE; L := 0;
+      REPEAT S.Get(sym); v[L] := S.ival; INC(L); Check(S.int, "missing vector number"); S.Get(sym) UNTIL sym # S.comma;
     END;
-    IF sym = OM4S.ident THEN
-      OM4S.CopyId(procid); OM4S.Get(sym);
-      OM4B.NewObj(proc, OM4S.id, OM4B.Const);
-      parblksize := 4;
-      NEW(type); type.form := OM4B.Proc; type.size := OM4G.WordSize;
+    IF sym = S.arrow THEN S.Get(sym); nofusedregs := S.ival; Check(S.int, "missing register limit");
+    ELSE nofusedregs := -1
+    END;
+    IF sym = S.ident THEN
+      S.CopyId(procid); S.Get(sym); B.NewObj(proc, S.id, B.Const);
+      parblksize := 2; NEW(type);
+      IF int THEN type.form := B.Handler; WHILE L > 0 DO DEC(L); G.SetVector(v[L], proc) END
+      ELSE type.form := B.Proc END; type.size := G.WordSize END;
       proc.type := type; proc.val := -1; proc.lev := level; 
-      CheckExport(proc.expo);
+      CheckExport(proc.expo); IF int & ~proc.expo THEN proc.expo := TRUE; S.Mark("add asterisk to export interrupt handler") END;
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
-      OM4B.OpenScope; INC(level); type.base := OM4B.noType;
+      B.OpenScope; INC(level); type.base := B.noType;
       ProcedureType(type, parblksize);  (*formal parameter list*)
-      Check(OM4S.semicolon, "no ;"); locblksize := parblksize; 
-      Declarations(locblksize);
-      proc.val := OM4G.Here(); 
-      proc.type.dsc := OM4B.topScope.next;
-      IF sym = OM4S.procedure THEN
-        L := 0; OM4G.FJump(L);
-        REPEAT ProcedureDecl; Check(OM4S.semicolon, "no ;") UNTIL sym # OM4S.procedure;
-        OM4G.FixOne(L); proc.val := OM4G.Here(); proc.type.dsc := OM4B.topScope.next
-      END ;
-      OM4G.Enter(parblksize, locblksize, int, reglim);
-      IF sym = OM4S.begin THEN OM4S.Get(sym); StatSequence END ;
-      IF sym = OM4S.return THEN
-        OM4S.Get(sym); expression(x);
-        IF type.base = OM4B.noType THEN OM4S.Mark("this is not a function")
-        ELSIF ~CompTypes(type.base, x.type, FALSE) THEN OM4S.Mark("wrong result type")
+      Check(S.semicolon, "no ;"); locblksize := parblksize; 
+      Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE;
+      proc.val := G.Here(); 
+      proc.type.dsc := B.topScope.next;
+      IF sym = S.procedure THEN
+        L := 0; G.FJump(L);
+        REPEAT ProcedureDecl; Check(S.semicolon, "no ;") UNTIL sym # S.procedure;
+        G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next
+      END;
+      G.Enter(parblksize, locblksize, int, nofusedregs);
+      IF sym = S.begin THEN S.Get(sym); StatSequence END ;
+      IF sym = S.return THEN
+        S.Get(sym); expression(x);
+        IF type.base = B.noType THEN S.Mark("this is not a function")
+        ELSIF ~CompTypes(type.base, x.type, FALSE) THEN S.Mark("wrong result type")
         END
-      ELSIF type.base.form # OM4B.NoTyp THEN
-        OM4S.Mark("function without result"); type.base := OM4B.noType
-      END ;
-      OM4G.Return(type.base.form, x, locblksize, reglim);
-      OM4B.CloseScope; DEC(level); Check(OM4S.end, "no END");
-      IF sym = OM4S.ident THEN
-        IF OM4S.id # procid THEN OM4S.Mark("no match") END ;
-        OM4S.Get(sym)
-      ELSE OM4S.Mark("no proc id")
+      ELSIF type.base.form # B.NoTyp THEN
+        S.Mark("function without result"); type.base := B.noType
+      END;
+      G.Return(type.base.form, x, locblksize, int, nofusedregs);
+      B.CloseScope; DEC(level); Check(S.end, "no END");
+      IF sym = S.ident THEN
+        IF S.id # procid THEN S.Mark("no match") END ;
+        S.Get(sym)
+      ELSE S.Mark("no proc id")
       END
-    ELSE OM4S.Mark("proc id expected")
+    ELSE S.Mark("proc id expected")
     END
   END ProcedureDecl;
 
@@ -957,7 +961,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         WHILE sym = OM4S.comma DO OM4S.Get(sym); Import END ;
         Check(OM4S.semicolon, "; missing")
       END ;
-      OM4G.Open(version); Declarations(dc); OM4G.SetDataSize((dc + 3) DIV 4 * 4);
+      OM4G.Open(version); Declarations(dc); OM4G.SetDataSize((dc + (G.WordSize - 1)) DIV G.WordSize * G.WordSize);
       WHILE sym = OM4S.procedure DO ProcedureDecl; Check(OM4S.semicolon, "no ;") END ;
       OM4G.Header;
       IF sym = OM4S.begin THEN OM4S.Get(sym); StatSequence END ;
@@ -983,41 +987,41 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END Module;
 
-  PROCEDURE Option(VAR S: Texts.Scanner);
+  PROCEDURE Option(VAR S1: Texts.Scanner);
   BEGIN newSF := FALSE;
-    IF S.nextCh = "/" THEN
-      Texts.Scan(S); Texts.Scan(S); 
-      IF (S.class = Texts.Name) & (S.s[0] = "s") THEN newSF := TRUE END
+    IF S1.nextCh = "/" THEN
+      Texts.Scan(S1); Texts.Scan(S1); 
+      IF (S1.class = Texts.Name) & (S1.s[0] = "s") THEN newSF := TRUE END
     END
   END Option;
 
   PROCEDURE Compile*;
     VAR beg, end, time: LONGINT;
       T!: Texts.Text;
-      S!: Texts.Scanner;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
-    IF S.class = Texts.Char THEN
-      IF S.c = "@" THEN
-        Option(S); Oberon.GetSelection(T, beg, end, time);
+      S1!: Texts.Scanner;
+  BEGIN Texts.OpenScanner(S1, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S1);
+    IF S1.class = Texts.Char THEN
+      IF S1.c = "@" THEN
+        Option(S1); Oberon.GetSelection(T, beg, end, time);
         IF time >= 0 THEN OM4S.Init(T, beg); Module END
-      ELSIF S.c = "^" THEN
-        Option(S); Oberon.GetSelection(T, beg, end, time);
+      ELSIF S1.c = "^" THEN
+        Option(S1); Oberon.GetSelection(T, beg, end, time);
         IF time >= 0 THEN
-          Texts.OpenScanner(S, T, beg); Texts.Scan(S);
-          IF S.class = Texts.Name THEN
-            Texts.WriteString(W, S.s); NEW(T); Texts.Open(T, S.s);
+          Texts.OpenScanner(S1, T, beg); Texts.Scan(S1);
+          IF S1.class = Texts.Name THEN
+            Texts.WriteString(W, S1.s); NEW(T); Texts.Open(T, S1.s);
             IF T.len > 0 THEN OM4S.Init(T, 0); Module END
           END
         END
       END
     ELSE 
-      WHILE S.class = Texts.Name DO
-        NEW(T); Texts.Open(T, S.s);
-        IF T.len > 0 THEN Option(S); OM4S.Init(T, 0); Module
-        ELSE Texts.WriteString(W, S.s); Texts.WriteString(W, " not found");
+      WHILE S1.class = Texts.Name DO
+        NEW(T); Texts.Open(T, S1.s);
+        IF T.len > 0 THEN Option(S1); OM4S.Init(T, 0); Module
+        ELSE Texts.WriteString(W, S1.s); Texts.WriteString(W, " not found");
           Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
         END ;
-        IF (T.len # 0) & (OM4S.errcnt = 0) THEN Texts.Scan(S) ELSE S.class := 0 END
+        IF (T.len # 0) & (OM4S.errcnt = 0) THEN Texts.Scan(S1) ELSE S1.class := 0 END
       END
     END;
     Oberon.Collect(0)
