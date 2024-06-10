@@ -52,7 +52,8 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     b1 := c[i+1]; b2 := c[i]; INC(i, 2);
     op := SYSTEM.VAL(SET, 0+b2+100H*b1);
     Texts.WriteString(W, "    "); TextsEx.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
-    IF op*SOMSK = SOMSK THEN (*Single-operand (Format II) instructions*)
+    IF SYSTEM.VAL(INTEGER, op) = 4130H THEN Texts.WriteString(W, "RET");
+    ELSIF op*SOMSK = SOMSK THEN (*Single-operand (Format II) instructions*)
       t := LSR(SYSTEM.VAL(INTEGER, op), 7) MOD 8; Texts.WriteString(W, mnemo2[t]);
       IF t IN {0, 3, 5} THEN IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END END;
       Texts.Write(W, " ");

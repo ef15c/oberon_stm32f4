@@ -89,6 +89,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     FreeRegisterProc* = PROCEDURE;
 
   VAR getOfs : GetOffsetProc; allocR: AllocRegisterProc; freeR: FreeRegisterProc;
+     enabled: BOOLEAN;
 
   PROCEDURE SetProcs*(ofsp: GetOffsetProc; ar: AllocRegisterProc; fr: FreeRegisterProc);
   BEGIN getOfs := ofsp; allocR := ar; freeR := fr
@@ -100,13 +101,19 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     RETURN m
   END log2;
  
+  PROCEDURE SetEnabled*(e: BOOLEAN);
+  BEGIN enabled := e
+  END SetEnabled;
+
   (*instruction assemblers*)
 
   PROCEDURE Emit*(VAR c: ModuleCode; val: INTEGER);
   BEGIN
-    c.code[c.pc+1] := LSR(val, 8) MOD C8;
-    c.code[c.pc] := val MOD C8;
-    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+    IF enabled THEN
+      c.code[c.pc+1] := LSR(val, 8) MOD C8;
+      c.code[c.pc] := val MOD C8;
+      c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
+    END
   END Emit;
 
   PROCEDURE encSrc(op: INTEGER; VAR SReg: BYTE; sam: BYTE; SOff: INTEGER; VAR emitSOff: BOOLEAN; VAR params: SET);
@@ -137,9 +144,11 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   PROCEDURE Put1(VAR c: ModuleCode; op, src, dst: BYTE; params: SET);
   BEGIN
-    c.code[c.pc+1] := LSL(op, 4) + src;
-    c.code[c.pc] := ORD(params) + dst;
-    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+    IF enabled THEN
+      c.code[c.pc+1] := LSL(op, 4) + src;
+      c.code[c.pc] := ORD(params) + dst;
+      c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
+    END
   END Put1;
 
   PROCEDURE PutDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET);
@@ -175,10 +184,12 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     ELSE ASSERT(op < 100H);
       encSrc(op, ds.reg, ds.am, ds.ofs, emitDSOff, params);
 
-      c.code[c.pc+1] := LSR(op, 1);
-      c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + ds.reg;
-      c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
-      IF emitDSOff THEN Emit(c, getOfs(ds)) END
+      IF enabled THEN
+        c.code[c.pc+1] := LSR(op, 1);
+        c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + ds.reg;
+        c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+        IF emitDSOff THEN Emit(c, getOfs(ds)) END
+      END
     END
   END PutSO;
 
@@ -217,9 +228,11 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   PROCEDURE PutJ*(VAR c: ModuleCode; cond: BYTE; offset: LONGINT);
   BEGIN (*emit jump instruction*) ASSERT (cond < 8);
-    c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8);
-    c.code[c.pc]   := offset MOD C8;
-    c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
+    IF enabled THEN
+      c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8);
+      c.code[c.pc]   := offset MOD C8;
+      c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
+    END
   END PutJ;
 
   PROCEDURE PutNO*(VAR c: ModuleCode; op: INTEGER);
@@ -243,38 +256,43 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   PROCEDURE fix*(VAR c: ModuleCode; at, with: LONGINT);
   (*The statement must be a jump*)
   BEGIN
-    ASSERT(LSR(c.code[at+1], 5) = LSR(JMPh, 5)); (*Check op code*)
-    ASSERT (~ODD(with)); with := with DIV 2;
-    IF (with < -C10) OR (with >= C10) THEN OMSPS.Mark("jump too far")
-    ELSE with := with MOD C8; 
-      c.code[at+1] := LSL(LSR(c.code[at+1], 2), 2) + LSR(with, 8);
-      c.code[at] := with MOD C8 
+    IF enabled THEN
+      ASSERT(LSR(c.code[at+1], 5) = LSR(JMPh, 5)); (*Check op code*)
+      ASSERT (~ODD(with)); with := with DIV 2;
+      IF (with < -C10) OR (with >= C10) THEN OMSPS.Mark("jump too far")
+      ELSE with := with MOD C8; 
+        c.code[at+1] := LSL(LSR(c.code[at+1], 2), 2) + LSR(with, 8);
+        c.code[at] := with MOD C8 
+      END
     END
   END fix;
 
   PROCEDURE FixOne*(VAR c: ModuleCode; at: LONGINT);
-  BEGIN fix(c, at, c.pc-at-2)
+  BEGIN 
+    IF enabled THEN fix(c, at, c.pc-at-2) END
   END FixOne;
 
   PROCEDURE FixLink*(VAR c: ModuleCode; L: LONGINT);
     VAR L1: LONGINT;
   BEGIN
-    WHILE L # 0 DO L1 := (c.code[L+1] MOD C2*C8 + c.code[L])*2; fix(c, L, c.pc-L-2); L := L1 END
+    IF enabled THEN WHILE L # 0 DO L1 := (c.code[L+1] MOD C2*C8 + c.code[L])*2; fix(c, L, c.pc-L-2); L := L1 END END
   END FixLink;
 
   PROCEDURE FixLinkWith*(VAR c: ModuleCode; L0, dst: LONGINT);
     VAR L1: LONGINT;
   BEGIN
-    WHILE L0 # 0 DO
-      L1 := (c.code[L0+1] MOD C2*C8 + c.code[L0])*2;
-      fix(c, L0, dst-L0-2); L0 := L1
+    IF enabled THEN
+      WHILE L0 # 0 DO
+        L1 := (c.code[L0+1] MOD C2*C8 + c.code[L0])*2;
+        fix(c, L0, dst-L0-2); L0 := L1
+      END
     END
   END FixLinkWith;
 
   PROCEDURE merged*(VAR c: ModuleCode; L0, L1: LONGINT): LONGINT;
     VAR L2, L3: LONGINT;
-  BEGIN 
-    IF L0 # 0 THEN L3 := L0;
+  BEGIN
+    IF enabled & (L0 # 0) THEN L3 := L0;
       REPEAT L2 := L3;
         ASSERT(LSR(c.code[L2+1], 13) = LSR(JMPh, 5)); (*must be a jump instruction*)
         L3 := (c.code[L2+1] MOD C2*C8 + c.code[L2])*2
@@ -282,7 +300,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       c.code[L2+1] := LSL(LSR(c.code[L2+1], 2), 2) + LSR(L1, 8);
       c.code[L2] := L1 MOD C8;
       L1 := L0
-    END ;
+    END
+
     RETURN L1
   END merged;
 
@@ -311,8 +330,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   END RestoreRegs;
 
   PROCEDURE Init*(VAR c: ModuleCode);
-  BEGIN
-    c.pc := 0
+  BEGIN c.pc := 0; enabled := TRUE
   END Init;
 
 END OMSPA.

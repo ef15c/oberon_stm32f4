@@ -426,7 +426,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR nap, npar: LONGINT; (*nof actual/formal parameters*)
       x!, y!, z!: G.Item;
   BEGIN Check(S.lparen, "no (");
-    npar := pno MOD 10; pno := pno DIV 10; expression(x); nap := 1;
+    npar := pno MOD 10; pno := pno DIV 10;
+    IF (pno = 4) (*ASSERT*) & ~G.AssertionChecked() THEN G.EnableCode(FALSE) END;
+    expression(x); nap := 1;
     IF sym = S.comma THEN S.Get(sym);
       IF pno = 14 (*LDREG*) THEN CheckConst(x); CheckInt(x); G.SetRH(x.a) END;
       expression(y); nap := 2; z.type := B.noType;
@@ -449,7 +451,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSE ASSERT(FALSE)
       END
     ELSE S.Mark("wrong nof parameters")
-    END
+    END;
+    G.EnableCode(TRUE)
   END StandProc;
 
   PROCEDURE StatSequence;
@@ -888,7 +891,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END;
     IF sym = S.ident THEN
       S.CopyId(procid); S.Get(sym); B.NewObj(proc, S.id, B.Const);
-      parblksize := 2; NEW(type);
+      parblksize := 0; NEW(type);
       IF int THEN type.form := B.Handler; WHILE L > 0 DO DEC(L); G.SetVector(v[L], proc) END
       ELSE type.form := B.Proc 
       END; 
@@ -1028,7 +1031,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  19/10/2023");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP Compiler  10.06.24");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   NEW(dummy); dummy.class := B.Const; dummy.type := B.intType;
   expression := expression0; Type := Type0; FormalType := FormalType0

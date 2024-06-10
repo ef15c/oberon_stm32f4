@@ -65,6 +65,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END OfsPTOS;
 
+  PROCEDURE EnableCode*(e: BOOLEAN);
+  BEGIN A.SetEnabled(e)
+  END EnableCode;
+
   PROCEDURE FixOne*(at: LONGINT);
   BEGIN A.FixOne(mcode, at)
   END FixOne;
@@ -128,6 +132,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE TypeChecked*(): BOOLEAN;
   BEGIN RETURN traps[4] # NIL
   END TypeChecked;
+
+  PROCEDURE AssertionChecked*(): BOOLEAN;
+  BEGIN RETURN traps[7] # NIL
+  END AssertionChecked;
 
   PROCEDURE SetTrap*(num: INTEGER; proc: B.Object);
   BEGIN traps[num] := proc
@@ -925,7 +933,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF rh > rl THEN A.PopRegs(mcode, rl, rh); OfsPTOS(-nofusedregs, TRUE) END;
       IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
     END;
-    IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS(size DIV 2, TRUE) END;
+    IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); OfsPTOS(size DIV 2, TRUE) END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
     IF int THEN A.PutSO(mcode, A.RETI, pc, A.Word) ELSE A.PutNO(mcode, A.RET) END;
     IF AllocUp THEN RH := A.CG2 + 1 ELSE RH := 15 END
