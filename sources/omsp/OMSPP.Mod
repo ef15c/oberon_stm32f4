@@ -890,14 +890,16 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       S.CopyId(procid); S.Get(sym); B.NewObj(proc, S.id, B.Const);
       parblksize := 2; NEW(type);
       IF int THEN type.form := B.Handler; WHILE L > 0 DO DEC(L); G.SetVector(v[L], proc) END
-      ELSE type.form := B.Proc END; type.size := G.WordSize END;
-      proc.type := type; proc.val := -1; proc.lev := level; 
-      CheckExport(proc.expo); IF int & ~proc.expo THEN proc.expo := TRUE; S.Mark("add asterisk to export interrupt handler") END;
+      ELSE type.form := B.Proc 
+      END; 
+      type.size := G.WordSize; proc.type := type; proc.val := -1; proc.lev := level; 
+      CheckExport(proc.expo);
+      IF int & ~proc.expo THEN proc.expo := TRUE; S.Mark("add asterisk to export interrupt handler") END;
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
       B.OpenScope; INC(level); type.base := B.noType;
       ProcedureType(type, parblksize);  (*formal parameter list*)
       Check(S.semicolon, "no ;"); locblksize := parblksize; 
-      Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE;
+      Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE END;
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
       IF sym = S.procedure THEN

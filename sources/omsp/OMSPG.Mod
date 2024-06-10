@@ -113,8 +113,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE CheckRegs*;
     VAR success: BOOLEAN;
   BEGIN success := TRUE;
-    IF AllocUp THEN IF RH # 15 THEN success := FALSE; RH := 15 END 
-    ELSE IF RH # 0 THEN success := FALSE; RH := A.CG2 + 1 END
+    IF AllocUp THEN IF RH # A.CG2 + 1 THEN success := FALSE; RH := A.CG2 + 1 END 
+    ELSE IF RH # 15 THEN success := FALSE; RH := 15 END
     END;
     IF ~success THEN S.Mark("Reg Stack") END;
     IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;

@@ -22,14 +22,32 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     Texts.WriteString(W, " #"); Texts.WriteInt(W, ofs, 1);
     Texts.WriteString(W, ", goes to "); Texts.WriteHex(W, at+ofs);
   END WritePCOffset;
-  
+
+  PROCEDURE isConstant(op: SET; src: BYTE; VAR c: INTEGER): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN res := FALSE;
+    IF src = A.CG1 THEN
+      IF op*A.IRAm = A.IRm THEN res := TRUE; c := 4
+      ELSIF op*A.IRAm = A.IRAm THEN res := TRUE; c := 8
+      END
+    ELSIF src = A.CG2 THEN res := TRUE;
+      IF op*A.IRAm = A.Rm THEN c := 0
+      ELSIF op*A.IRAm = A.Im THEN c := 1
+      ELSIF op*A.IRAm = A.IRm THEN c := 2
+      ELSIF op*A.IRAm = A.IRAm THEN c := -1
+      END
+    END
+
+    RETURN res
+  END isConstant;
+
   PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; base: LONGINT);
     CONST 
       SOMSK = {10..15}; SO = {12}; (*Single operand*)
       JMPMSK = {13..15}; JMP = {13}; (*jump*)
                   
     VAR b1, b2, t, src, dst: BYTE;
-      op: SET;
+      op: SET; ct: INTEGER;
   BEGIN
     b1 := c[i+1]; b2 := c[i]; INC(i, 2);
     op := SYSTEM.VAL(SET, 0+b2+100H*b1);
@@ -44,9 +62,20 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
       IF t  IN {4..15} THEN (*Double-operand (format I) instructions*)
         DEC(t, 4); Texts.WriteString(W, mnemo3[t]);
         IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END; Texts.Write(W, " ");
-        IF op*A.IRm = A.IRm THEN Texts.WriteString(W, "@") END;
-        WriteReg(W, b1 MOD 10H); IF op*A.IRAm = A.IRAm THEN Texts.WriteString(W, "+") END;
-        Texts.Write(W, ","); WriteReg(W, b2 MOD 10H)
+        IF isConstant(op, b1 MOD 10H, ct) THEN Texts.Write(W, "#"); Texts.WriteInt(W, ct, 1)
+        ELSE
+          IF op*A.IRm = A.IRm THEN (*indirec*) Texts.WriteString(W, "@");
+            WriteReg(W, b1 MOD 10H); IF op*A.IRAm = A.IRAm THEN (*auto increment*) Texts.WriteString(W, "+") END
+          ELSIF op*A.Im = A.Im THEN (*indexed*) t := c[i+1]*100H + c[i]; INC(i, 2);
+            Texts.WriteInt(W, t, 1); Texts.Write(W, "("); WriteReg(W, b1 MOD 10H); Texts.Write(W, ")")
+          ELSE WriteReg(W, b1 MOD 10H)
+          END;
+        END;
+        Texts.Write(W, ",");
+        IF op*A.Idm = A.Idm THEN (*indexed*);  t := c[i+1]*100H + c[i]; INC(i, 2);
+          Texts.WriteInt(W, t, 1); Texts.Write(W, "("); WriteReg(W, b2 MOD 10H); Texts.Write(W, ")")
+        ELSE WriteReg(W, b2 MOD 10H)
+        END
       ELSE Texts.WriteString(W, "TODO other format")
       END
     END
