@@ -141,9 +141,9 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     IF Oberon.Par.frame # V.dsc THEN V := Oberon.FocusViewer END;
     IF (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
       Text := V.dsc.next(TextFrames.Frame);
-      beg := 0; Oberon.GetSelection(T, beg, end, time);
-      IF time >= 0 THEN
-ASSERT(beg >= 0);        Texts.OpenReader(R, T, beg);
+      Oberon.GetSelection(T, beg, end, time);
+      IF (time >= 0) & (beg >= 0) THEN
+        Texts.OpenReader(R, T, beg);
         i := 0; pos := beg;
         REPEAT Texts.Read(R, pat[i]); INC(i); INC(pos)
         UNTIL (i = maxlen) OR (pos = end);
@@ -154,7 +154,8 @@ ASSERT(beg >= 0);        Texts.OpenReader(R, T, beg);
       END;
       IF Text.hasCar THEN pos := Text.carloc.pos ELSE pos := 0 END;
       len := Text.text.len;
-ASSERT(pos >= 0);      Texts.OpenReader(R, Text.text, pos);
+ASSERT(pos >= 0);
+      Texts.OpenReader(R, Text.text, pos);
       Forward(M, R, buf); pos := pos + M;
       j := M;
       REPEAT DEC(j) UNTIL (j < 0) OR (buf[j] # pat[j]);

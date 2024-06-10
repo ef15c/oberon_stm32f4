@@ -236,7 +236,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Files.Read(R, ch);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
       (* Sync(R); *)
-        (* TODO Locate external references *)
         i := 0;
         WHILE i < mcode.pc DO
           Texts.WriteHex(W, i); Texts.Write(W, 9X); 

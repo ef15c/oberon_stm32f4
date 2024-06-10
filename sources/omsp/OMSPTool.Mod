@@ -159,6 +159,17 @@ MODULE OMSPTool;  (*NW 18.2.2013
   BEGIN Files.WriteByte(R, x)  (* -128 <= x < 128 *)
   END Write;
 
+  PROCEDURE fixup(msg: ARRAY OF CHAR; VAR R: Files.Rider);
+    VAR data: INTEGER; mno: BYTE;
+  BEGIN
+    Texts.WriteString(W, "fixup "); Texts.WriteString(W, msg); Texts.WriteString(W, " chains"); Texts.WriteLn(W);
+    ReadWord(R, data);
+    WHILE data # 0 DO TextsEx.WriteHexVLen(W, data, 4, FALSE);
+      Files.ReadByte(R, mno); Texts.WriteInt(W, mno, 6); Texts.Write(W, 9X);
+      ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
+    END
+  END fixup;
+
   PROCEDURE DecObj*;   (*decode object file*)
     VAR class, i, n, key, size, fix, adr, data: INTEGER;
       bl: BYTE;
@@ -187,37 +198,47 @@ MODULE OMSPTool;  (*NW 18.2.2013
       (* Sync(R); *)
         Texts.WriteString(W, "type descriptors"); Texts.WriteLn(W);
         ReadWord(R, n); n := n DIV 2; i := 0;
-        WHILE i < n DO ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 2, FALSE); INC(i) END ;
+        WHILE i < n DO ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); INC(i) END;
         Texts.WriteLn(W);
         Texts.WriteString(W, "data"); ReadWord(R, data); Texts.WriteInt(W, data, 6); Texts.WriteLn(W);
         Texts.WriteString(W, "strings"); Texts.WriteLn(W);
         ReadWord(R, n); i := 0;
         WHILE i < n DO Files.Read(R, ch); IF ch=0X THEN ch := "|" END; Texts.Write(W, ch); INC(i) END ;
         Texts.WriteLn(W);
-        Texts.WriteString(W, "code"); Texts.WriteLn(W);
+        (*code*)
         ReadWord(R, mcode.pc); i := 0;
         WHILE i < mcode.pc DO Files.ReadByte(R, mcode.code[i]); eref.ext[i] := 0; INC(i) END;
-      (* Sync(R); *)
+       (* Sync(R); *)
+        Texts.WriteString(W, "vector table"); Texts.WriteLn(W);
+        Files.ReadByte(R, bl); i := 0;
+        WHILE i < bl DO ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); INC(i);
+          IF i MOD 16 = 0 THEN Texts.WriteLn(W) END
+        END;
+        Texts.WriteLn(W);
         Texts.WriteString(W, "commands:"); Texts.WriteLn(W);
         Files.ReadString(R, name);
         WHILE name[0] # 0X DO
           Texts.Write(W, 9X); Texts.WriteString(W, name);
-          Files.ReadInt(R, adr); Texts.WriteInt(W, adr, 5); Texts.WriteLn(W);
+          ReadWord(R, adr); TextsEx.WriteHexVLen(W, adr, 4, FALSE); Texts.WriteLn(W);
           Files.ReadString(R, name)
-        END ;
+        END;
       (* Sync(R); *)
         Texts.WriteString(W, "entries"); Texts.WriteLn(W);
-        Files.ReadInt(R, n); i := 0;
+        ReadWord(R, n); i := 0;
         WHILE i < n DO
-          Files.ReadInt(R, adr); Texts.WriteInt(W, adr, 6); INC(i)
+          ReadWord(R, adr); TextsEx.WriteHexVLen(W, adr, 4, FALSE); INC(i)
         END ;
         Texts.WriteLn(W);
       (* Sync(R); *)
-        Texts.WriteString(W, "pointer refs"); Texts.WriteLn(W); Files.ReadInt(R, adr);
-        WHILE adr # -1 DO Texts.WriteInt(W, adr, 6); Files.ReadInt(R, adr) END ;
+        Texts.WriteString(W, "pointer refs"); Texts.WriteLn(W); ReadWord(R, adr);
+        WHILE adr # 0FFFFH DO TextsEx.WriteHexVLen(W, adr, 4, FALSE); ReadWord(R, adr); Texts.Append(Oberon.Log, W.buf) END ;
         Texts.WriteLn(W);
       (* Sync(R); *)
-        Files.ReadInt(R, data); Texts.WriteString(W, "fixP = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
+      fixup("procedures", R);
+      fixup("handlers", R);
+      fixup("data", R);
+      fixup("type", R);
+(* on verra ça plus tard
         WHILE data # 0 DO eref.ext[data] := 3;
           next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*(mcode.code[data] MOD OM4A.C4)))*OM4A.C1;
           data := next
@@ -228,11 +249,12 @@ MODULE OMSPTool;  (*NW 18.2.2013
           data := next
         END;
         Files.ReadInt(R, data); Texts.WriteString(W, "fixT = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
-        Files.ReadInt(R, data); Texts.WriteString(W, "entry = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
+*)
+        ReadWord(R, data); Texts.WriteString(W, "entry = "); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
         Files.Read(R, ch);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
       (* Sync(R); *)
-        (* TODO Locate external references *)
+        Texts.WriteString(W, "code"); Texts.WriteLn(W);
         i := 0;
         WHILE i < mcode.pc DO
           Texts.WriteHex(W, i); Texts.Write(W, 9X); 
@@ -261,7 +283,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
     Texts.WriteString(W, "H; "); Texts.WriteString(W, msg);
     Texts.WriteLn(W); INC(p, 4);
   END EmitWord;
-  
+ 
   PROCEDURE EmitString(VAR W:Texts.Writer; s: ARRAY OF CHAR; l: INTEGER; VAR p: INTEGER;
      base: INTEGER; msg: ARRAY OF CHAR);
     VAR i: INTEGER;
@@ -273,7 +295,8 @@ MODULE OMSPTool;  (*NW 18.2.2013
     Texts.WriteString(W, "; "); Texts.WriteString(W, msg);
     Texts.WriteLn(W); INC(p, l)
   END EmitString;
-  
+
+(*On verra ça plus tard  
   PROCEDURE DecBin*;   (*decode binary boot file*)
     VAR i, n, modLoc, root, ramOrg, data: INTEGER;
       F!: Files.File; R!: Files.Rider;
@@ -429,7 +452,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
       Texts.Append(Oberon.Log, W.buf)
     END
   END DecBin;
-
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 12.11.2023");
+*)
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSPTool 10.06.24");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
-END OM4Tool.
+END OMSPTool.

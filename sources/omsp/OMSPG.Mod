@@ -1229,14 +1229,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     WriteFixup(R, B.Var, 0); (*variable fixup data*)
     (*record types fixup data*)
     obj := B.topScope.next;
-    WHILE obj # NIL DO  (*local procedures fixup chains*)
+    WHILE obj # NIL DO  (*local types fixup chains*)
       IF (obj.class = B.Typ) & (obj.usedat # 0) & (obj.type.mno = 0) THEN
         WriteWord(R, obj.usedat); Files.WriteByte(R, 0); (*local type*); WriteWord(R, obj.type.len); (*relative address*)
       END;
       obj := obj.next
     END;
     obj := B.topScope.next;
-    WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imported procedures fixup chains*)
+    WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imported types fixup chains*)
       IF obj.dsc # B.system THEN
         obj2 := obj.dsc;
         WHILE obj2 # NIL DO
@@ -1249,7 +1249,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       obj := obj.next
     END;
     WriteWord(R, 0);
-    Files.WriteInt(R, entry);
+    WriteWord(R, entry);
     Files.Write(R, "O"); Files.Register(F);
     (*write object addresses to source position mapping in .o43 file*)
     B.MakeFileName(name, modid, ".o43"); F := Files.New(name); Files.Set(R, F, 0); WriteWord(R, mcode.pc DIV 2); size := 1;
