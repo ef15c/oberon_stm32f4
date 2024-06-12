@@ -9,6 +9,7 @@ System.Directory ^
   *.Mod  *.Bak  *.Tool  *.Text  *.Scn.Fnt  *.sm4  *.m4c
 
 OM4P.Compile @  OM4P.Compile @/s  OM4P.Compile ^/s
+OMSPP.Compile ^/s
 
 System.Free ~ System.Open Draw.Tool System.CopyFiles ~ System.RenameFiles ~
 System.DeleteFiles ~
@@ -18,18 +19,21 @@ System.ShowModules  System.ShowCommands ^
 PCLink1.Run
 Hilbert.Draw  Sierpinski.Draw  Blink.Run  Stars.Open
 
-Tools.Inspect 0D0201000H Tools.Inspect 0E000ED00H Tools.Inspect 20000000H
+Tools.Inspect 0D0201000H Tools.Inspect 0E0042000H Tools.Inspect 20000600H
 
-Tools.Sector 0 Tools.ShowFile 
+Tools.Sector 0 Tools.ShowFile Empty.mpc
 Tools.Recall  Tools.Clear
 
 Edit.Open BuildM4.Tool
+Edit.Open BuildMSP.Tool
 OM4P.Compile InputM4Qwerty.Mod ~
 
-Net.SendFiles CS BootLoadM4.Mod BootLoadM4.s ~
-Net.ReceiveFiles CS Oberon10.Scn.cp1252.bdf ~
+Net.SendFiles CS OMSPG.Mod ~
+Net.ReceiveFiles CS msp430g2553.Mod ~
 
-testForever.Mod testForever.loop testForever.ovfl System.Free testForever
-RS232.Mod System.Free RS232 ~
-System.Free Net SCC ~
-testRS232.Mod testRS232.hello System.Free testRS232 ~
+testRS232.Mod testRS232.hello
+StackTrace.ShowDump StackTrace.Calls
+System.CopyFiles OM4D.Mod => OMSPD.Mod ~
+HeapTool.Mod HeapTool.ShowFree System.Free HeapTool
+System.Free OMSPTool OMSPD OMSPP OMSPG OMSPA ~
+testAssert.Mod Traps.Mod msp430g2553.Mod

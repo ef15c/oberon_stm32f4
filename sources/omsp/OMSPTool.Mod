@@ -257,8 +257,13 @@ MODULE OMSPTool;  (*NW 18.2.2013
         Texts.WriteString(W, "code"); Texts.WriteLn(W);
         i := 0;
         WHILE i < mcode.pc DO
-          Texts.WriteHex(W, i); Texts.Write(W, 9X); 
-          opcode(mcode.code, eref, i, 0); Texts.WriteLn(W)
+          Texts.WriteHex(W, i); Texts.Write(W, 9X); adr := i + 2;
+          opcode(mcode.code, eref, i, 0); Texts.WriteLn(W);
+          FOR n := adr TO i - 2 BY 2 DO (*print operation data*)
+            Texts.WriteHex(W, n); Texts.Write(W, 9X); Texts.WriteString(W, "    ");
+            data := mcode.code[n+1]*100H + mcode.code[n];
+            TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
+          END
         END
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
       END ;

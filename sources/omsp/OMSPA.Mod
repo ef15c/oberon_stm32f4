@@ -112,7 +112,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     IF enabled THEN
       c.code[c.pc+1] := LSR(val, 8) MOD C8;
       c.code[c.pc] := val MOD C8;
-      c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
+      c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
     END
   END Emit;
 
@@ -120,7 +120,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   BEGIN
     IF sam = Register THEN ASSERT(SReg # CG2); params := params + Rm
     ELSIF sam = Indexed THEN ASSERT(~(SReg IN {PC, SR, CG2}));
-      IF SOff # 0 THEN params := params + Im; emitSOff := TRUE ELSE params := params + IRAm END
+      IF SOff # 0 THEN params := params + Im; emitSOff := TRUE ELSE params := params + IRm END
     ELSIF sam = Symbolic THEN SReg := PC; params := params + Im; emitSOff := TRUE
     ELSIF sam = Absolute THEN SReg := SR; params := params + Im; emitSOff := TRUE
     ELSIF sam = Indirect THEN ASSERT(~(SReg IN {SR, CG2})); params := params + IRm
@@ -147,7 +147,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     IF enabled THEN
       c.code[c.pc+1] := LSL(op, 4) + src;
       c.code[c.pc] := ORD(params) + dst;
-      c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
+      c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
     END
   END Put1;
 
@@ -187,7 +187,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       IF enabled THEN
         c.code[c.pc+1] := LSR(op, 1);
         c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + ds.reg;
-        c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2);
+        c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2);
         IF emitDSOff THEN Emit(c, getOfs(ds)) END
       END
     END
@@ -227,11 +227,11 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |opcC/nd  /   o/ffse/t   | *)
 
   PROCEDURE PutJ*(VAR c: ModuleCode; cond: BYTE; offset: LONGINT);
-  BEGIN (*emit jump instruction*) ASSERT (cond < 8);
-    IF enabled THEN
-      c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8);
+  BEGIN (*emit jump instruction*) ASSERT (cond < 8); ASSERT(~ODD(offset));
+    IF enabled THEN offset := LSR(offset, 1);
+      c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8) MOD 4;
       c.code[c.pc]   := offset MOD C8;
-      c.pos[c.pc DIV 2] := OMSPS.Pos(); INC(c.pc, 2)
+      c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
     END
   END PutJ;
 
@@ -259,7 +259,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     IF enabled THEN
       ASSERT(LSR(c.code[at+1], 5) = LSR(JMPh, 5)); (*Check op code*)
       ASSERT (~ODD(with)); with := with DIV 2;
-      IF (with < -C10) OR (with >= C10) THEN OMSPS.Mark("jump too far")
+      IF (with < -C10) OR (with >= C10) THEN S.Mark("jump too far")
       ELSE with := with MOD C8; 
         c.code[at+1] := LSL(LSR(c.code[at+1], 2), 2) + LSR(with, 8);
         c.code[at] := with MOD C8 

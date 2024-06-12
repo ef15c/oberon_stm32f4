@@ -22,6 +22,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     modid: S.Ident;
     pbsList: PtrBase;   (*list of names of pointer base types*)
     dummy: B.Object;
+    isLeaf: BOOLEAN;
     W: Texts.Writer;
 
   PROCEDURE Check(s: INTEGER; msg: ARRAY OF CHAR);
@@ -323,7 +324,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF sym = S.lparen THEN
           S.Get(sym);
           IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
-            G.PrepCall(x, rx, sx); ParamList(x); G.Call(x, rx, sx); x.type := x.type.base
+            IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x)
+            ELSE G.PrepCall(x, rx, sx); ParamList(x); G.Call(x, rx, sx); x.type := x.type.base
+            END;
           ELSE S.Mark("not a function"); ParamList(x)
           END
         END
@@ -508,13 +511,17 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           ELSIF sym = S.lparen THEN (*procedure call*)
             S.Get(sym);
             IF (x.type.form = B.Proc) & (x.type.base.form = B.NoTyp) THEN
-              G.PrepCall(x, rx, sx); ParamList(x); G.Call(x, rx, sx)
+              IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x)
+              ELSE G.PrepCall(x, rx, sx); ParamList(x); G.Call(x, rx, sx)
+              END;
             ELSE S.Mark("not a procedure"); ParamList(x)
             END
           ELSIF x.type.form = B.Proc THEN (*procedure call without parameters*)
             IF x.type.nofpar > 0 THEN S.Mark("missing parameters") END ;
-            IF x.type.base.form = B.NoTyp THEN 
-              G.PrepCall(x, rx, sx); G.Call(x, rx, sx)
+            IF x.type.base.form = B.NoTyp THEN
+              IF isLeaf THEN S.Mark("call not allowed in leaf proc")
+              ELSE G.PrepCall(x, rx, sx); G.Call(x, rx, sx)
+              END;
             ELSE S.Mark("not a procedure")
             END
           ELSIF x.mode = B.Typ THEN S.Mark("illegal assignment")
@@ -902,7 +909,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       B.OpenScope; INC(level); type.base := B.noType;
       ProcedureType(type, parblksize);  (*formal parameter list*)
       Check(S.semicolon, "no ;"); locblksize := parblksize; 
-      Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE END;
+      Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
       IF sym = S.procedure THEN
@@ -922,6 +929,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END;
       G.Return(type.base.form, x, locblksize, int, nofusedregs);
       B.CloseScope; DEC(level); Check(S.end, "no END");
+      isLeaf := FALSE;
       IF sym = S.ident THEN
         IF S.id # procid THEN S.Mark("no match") END ;
         S.Get(sym)
@@ -950,7 +958,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
   PROCEDURE Module;
     VAR key: LONGINT; oldCol: INTEGER; dmy: BOOLEAN;
-  BEGIN Texts.WriteString(W, "  compiling "); S.Get(sym);
+  BEGIN Texts.WriteString(W, "  compiling "); isLeaf := FALSE; S.Get(sym);
     IF sym = S.module THEN S.Get(sym);
       dc := 0;
       B.Init; B.OpenScope;
