@@ -447,6 +447,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {2, 3} THEN (*INCL, EXCL*)
         CheckSet(x); CheckReadOnly(x); CheckInt(y); G.Include(pno-2, x, y)
       ELSIF pno = 4 THEN CheckBool(x); G.Assert(x)
+      ELSIF pno IN {5, 6, 7, 8} THEN G.Logical(pno-5, x, y)
       ELSIF pno = 10 THEN CheckInt(x); G.Get(x, y)
       ELSIF pno = 11 THEN CheckInt(x); G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)

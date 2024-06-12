@@ -429,4 +429,8 @@ BEGIN
   enter("COPY", SProc, noType, 123);
   enter("PUT", SProc, noType, 112);
   enter("GET", SProc, noType, 102);
+  enter("BIC", SProc, noType, 52);
+  enter("BIS", SProc, noType, 62);
+  enter("XOR", SProc, noType, 72);
+  enter("AND", SProc, noType, 82);
 END OMSPB.

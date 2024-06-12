@@ -81,6 +81,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE allocR;
     VAR success: BOOLEAN;
   BEGIN (*register are allocated beginning in order according to AllocUp value*)
+(*S.DebugHex("allocR", RH);*)
     success := FALSE;
     IF AllocUp THEN IF RH < RL-1 THEN INC(RH); success := TRUE END
     ELSE IF RH > RL+1 THEN DEC(RH); success := TRUE END
@@ -102,10 +103,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE IF RH < 15 THEN INC(RH); success := TRUE END
     END;
     IF success THEN rh.reg := RH; rh.r := rh.reg ELSE S.Mark("register stack underflow") END
+(*;S.DebugHex("freeR", RH)*)
   END freeR;
 
   PROCEDURE free(VAR x: Item);
-  BEGIN IF ((x.obj = NIL) OR (x.obj.register = 0FFH)) & (x.mode IN {Reg, RegI}) THEN
+  BEGIN
+(*S.DebugHex("x.obj", SYSTEM.VAL(INTEGER, x.obj)); S.DebugHex("x.obj.register", x.obj.register); S.DebugHex("x.mode", x.mode);*)
+    IF ((x.obj = NIL) OR ~(x.obj.class IN {B.Var, B.Par}) OR (x.obj.register = 0FFH)) & (x.mode IN {Reg, RegI}) THEN
       freeR; ASSERT(x.r = RH)
     END
   END free;
@@ -1061,6 +1065,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR op: LONGINT;
   BEGIN IF fct = 0 THEN PutSO(A.RLC, x, A.Word) ELSIF fct = 1 THEN PutSO(A.RRC, x, A.Word) END
   END Rotate;
+
+  PROCEDURE Logical*(fct: INTEGER; VAR x, y: Item);
+    VAR op: BYTE; bw: SET;
+  BEGIN IF y.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
+    IF fct = 0 THEN op := A.BIC ELSIF fct = 1 THEN op := A.BIS ELSIF fct = 2 THEN op := A.XOR ELSE op := A.AND END;
+    IF x.mode = B.Const THEN x.mode := Address; 
+    ELSIF ~(x.mode IN {B.Var, B.Par, Reg, RegI}) THEN S.Mark("Bad mode in Logical")
+    END; 
+    PutDO(op, y, x, bw); free(y); free(x)
+  END Logical;
 
   PROCEDURE ADC*(VAR x, y: Item);
   BEGIN PutDO(A.ADDC, y, x, A.Word); free(y)

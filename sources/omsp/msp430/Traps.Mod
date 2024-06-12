@@ -1,11 +1,15 @@
 MODULE Traps; (*runtime module implementing the trap handlers*)
   IMPORT SYSTEM, M := msp430g2553;
 
-PROCEDURE Assert*;
-  VAR p0: SET*;
-BEGIN SYSTEM.GET(M.P1OUT, SYSTEM.VAL(BYTE, p0)); SYSTEM.PUT(M.P1OUT, SYSTEM.VAL(BYTE, p0 + {0}));
-  REPEAT UNTIL FALSE
-END Assert;
+  CONST BIT0 = SYSTEM.VAL(BYTE, {0});
+
+  PROCEDURE Assert*;
+    VAR p0: SET*;
+  BEGIN
+    (*SYSTEM.GET(M.P1OUT, SYSTEM.VAL(BYTE, p0)); SYSTEM.PUT(M.P1OUT, SYSTEM.VAL(BYTE, p0 + {0}));*)
+    SYSTEM.BIS(M.P1OUT, BIT0);
+    REPEAT UNTIL FALSE
+  END Assert;
 
 END Traps.
 
@@ -85,3 +89,35 @@ code
  0000000A	     3FFF	JMP #-1, goes to  0000000A
  0000000C	     4130	RET
  0000000E	     4130	RET
+
+SYSTEM.BIS:
+decode Traps.mpc
+Traps D6D95184    30
+imports:
+	msp430g2553 3E53F538
+type descriptors
+
+data     0
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+commands:
+	Assert 0000
+entries
+ 0008 0000
+pointer refs
+
+fixup procedures chains
+fixup handlers chains
+fixup data chains
+fixup type chains
+entry =  0008
+code
+ 00000000	     D3D2	BIS.B #1,&33
+ 00000002	     0021
+ 00000004	     3FFF	JMP #-1, goes to  00000004
+ 00000006	     4130	RET
+ 00000008	     4130	RET
