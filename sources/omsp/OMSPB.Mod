@@ -16,7 +16,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     (* form values*)
       Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; LongInt* = 5; Set* = 6;
       Pointer* = 7; NilTyp* = 8; NoTyp* = 9; Proc* = 10;
-      String* = 11; Array* = 12; Record* = 13; Handler* = 14;
+      String* = 11; Array* = 12; Record* = 13; PointerToByte* = 14; Handler* = 15;
       
   TYPE Object* = POINTER TO ObjDesc;
     Module* = POINTER TO ModDesc;
@@ -66,7 +66,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
   VAR topScope*, universe, system*: Object;
     byteType*, boolType*, charType*: Type;
-    intType*, longIntType*, setType*, nilType*, noType*, strType*: Type;
+    intType*, longIntType*, setType*, nilType*, noType*, strType*, ptrByteType*, ptrIntType*: Type;
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
 
@@ -169,16 +169,15 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN Read(R, ref);
     IF ref < 0 THEN T := typtab[-ref]  (*already read*)
     ELSE NEW(t); T := t; typtab[ref] := t; t.mno := thismod.lev;
-      Read(R, form); t.form := form;
-      IF form = Pointer THEN InType(R, thismod, t.base); t.size := 4
+      Read(R, form); t.form := form; Files.ReadNum(R, t.size);
+      IF form = Pointer THEN InType(R, thismod, t.base);
       ELSIF form = Array THEN
-        InType(R, thismod, t.base); Files.ReadNum(R, t.len); Files.ReadNum(R, t.size)
+        InType(R, thismod, t.base); Files.ReadNum(R, t.len)
       ELSIF form = Record THEN
         InType(R, thismod, t.base);
         IF t.base.form = NoTyp THEN t.base := NIL; obj := NIL ELSE obj := t.base.dsc END ;
         Files.ReadNum(R, t.len); (*TD adr/exno*)
         Files.ReadNum(R, t.nofpar);  (*ext level*)
-        Files.ReadNum(R, t.size);
         Read(R, class); last := NIL;
         WHILE class # 0 DO  (*fields*)
           NEW(fld); fld.class := class; Files.ReadString(R, fld.name);
@@ -195,7 +194,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           NEW(par); par.class := class; Read(R, tmp); par.rdo := tmp = 1; Files.ReadByte(R, par.register);
           InType(R, thismod, par.type); par.next := obj; obj := par; INC(np); Read(R, class)
         END ;
-        t.dsc := obj; t.nofpar := np; t.size := 4
+        t.dsc := obj; t.nofpar := np
       END ;
       Files.ReadString(R, modname);
       IF modname[0] #  0X THEN  (*re-import ========*)
@@ -283,13 +282,13 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     IF t.ref > 0 THEN (*type was already output*) Write(R, -t.ref)
     ELSE obj := t.typobj;
       IF obj # NIL THEN Write(R, Ref); t.ref := Ref; INC(Ref) ELSE (*anonymous*) Write(R, 0) END ;
-      Write(R, t.form);
+      Write(R, t.form); Files.WriteNum(R, t.size);
       IF t.form = Pointer THEN OutType(R, t.base)
-      ELSIF t.form = Array THEN OutType(R, t.base); Files.WriteNum(R, t.len); Files.WriteNum(R, t.size)
+      ELSIF t.form = Array THEN OutType(R, t.base); Files.WriteNum(R, t.len)
       ELSIF t.form = Record THEN
         IF t.base # NIL THEN OutType(R, t.base); bot := t.base.dsc ELSE OutType(R, noType); bot := NIL END ;
         IF obj # NIL THEN Files.WriteNum(R, obj.exno) ELSE Write(R, 0) END ;
-        Files.WriteNum(R, t.nofpar); Files.WriteNum(R, t.size);
+        Files.WriteNum(R, t.nofpar);
         fld := t.dsc;
         WHILE fld # bot DO  (*fields*)
           IF fld.expo THEN
@@ -318,7 +317,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       obj!, obj0!: Object;
       filename: S.Ident;
       F!, F1!: Files.File; R!, R1!: Files.Rider;
-  BEGIN Ref := Record + 1; MakeFileName(filename, modid, ".sms");
+  BEGIN Ref := Handler + 1; MakeFileName(filename, modid, ".sms");
     F := Files.New(filename); Files.Set(R, F, 0);
     Files.WriteInt(R, 0); (*placeholder*)
     Files.WriteInt(R, 0); (*placeholder for key to be inserted at the end*)
@@ -347,7 +346,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       obj := obj.next
     END ;
     REPEAT Write(R, 0) UNTIL Files.Length(F) MOD 4 = 0;
-    FOR Ref := Record+1 TO maxTypTab-1 DO typtab[Ref] := NIL END ;
+    FOR Ref := Handler + 1 TO maxTypTab-1 DO typtab[Ref] := NIL END ;
     Files.Set(R, F, 0); sum := 0; Files.ReadInt(R, x);  (* compute key (checksum) *)
     WHILE ~R.eof DO sum := sum + x; Files.ReadInt(R, x) END ;
     F1 := Files.Old(filename); (*sum is new key*)
@@ -365,10 +364,14 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN topScope := universe; nofmod := 1
   END Init;
   
-  PROCEDURE type(ref, form: INTEGER; size: LONGINT): Type;
+  PROCEDURE type2(ref, form, size: INTEGER; base: Type): Type;
     VAR tp!: Type;
-  BEGIN NEW(tp); tp.form := form; tp.size := size; tp.ref := ref; tp.base := NIL;
-    typtab[ref] := tp; RETURN tp
+  BEGIN NEW(tp); tp.form := form; tp.size := size; tp.ref := ref; tp.base := base;
+    IF ref >= 0 THEN typtab[ref] := tp END; RETURN tp
+  END type2;
+
+  PROCEDURE type(ref, form, size: INTEGER): Type;
+  BEGIN RETURN  type2(ref, form, size, NIL)
   END type;
 
   PROCEDURE enter(name: ARRAY OF CHAR; cl: INTEGER; type: Type; n: LONGINT);
@@ -385,9 +388,11 @@ BEGIN
   intType := type(Int, Int, 2);
   longIntType := type(LongInt, Int, 4);
   setType := type(Set, Set, 2);
-  nilType := type(NilTyp, NilTyp, 4);
-  noType := type(NoTyp, NoTyp, 4);
-  strType := type(String, String, 8);
+  nilType := type(NilTyp, NilTyp, 2);
+  noType := type(NoTyp, NoTyp, 2);
+  strType := type(String, String, 4);
+  ptrByteType := type2(PointerToByte, Pointer, 2, byteType);
+  ptrIntType := type2(Pointer, Pointer, 2, intType);
     
   (*initialize universe with data types and in-line procedures;
     ADC, SBC; LDREG, REG, COND are not in language definition*)
@@ -414,6 +419,8 @@ BEGIN
   enter("CHAR", Typ, charType, 0);
   enter("LONGINT", Typ, longIntType, 0);
   enter("INTEGER", Typ, intType, 0);
+  enter("PBYTE", Typ, ptrByteType, 0);
+  enter("PINTEGER", Typ, ptrIntType, 0);
 
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
 

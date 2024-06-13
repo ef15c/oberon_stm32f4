@@ -52,6 +52,11 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF x.type.form # B.Int THEN S.Mark("not Integer"); x.type := B.intType END
   END CheckInt;
 
+  PROCEDURE CheckPointerToInt(VAR x: G.Item);
+  BEGIN
+    IF (x.type.form # B.Pointer) OR ~(x.type.base.form IN {B.Byte, B.Int}) THEN S.Mark("not pointer to int"); x.type := B.ptrIntType END
+  END CheckPointerToInt;
+
   PROCEDURE CheckSet(VAR x: G.Item);
   BEGIN
     IF x.type.form # B.Set THEN S.Mark("not Set"); x.type := B.setType END 
@@ -318,7 +323,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       REPEAT S.Get(sym) UNTIL (sym >= S.char) & (sym <= S.for) OR (sym >= S.then)
     END;
     IF sym = S.ident THEN
-      qualident(obj);  
+      qualident(obj);
       IF obj.class = B.SFunc THEN StandFunc(x, obj.val, obj.type)
       ELSE G.MakeItem(x, obj, level); selector(x);
         IF sym = S.lparen THEN
@@ -447,9 +452,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {2, 3} THEN (*INCL, EXCL*)
         CheckSet(x); CheckReadOnly(x); CheckInt(y); G.Include(pno-2, x, y)
       ELSIF pno = 4 THEN CheckBool(x); G.Assert(x)
-      ELSIF pno IN {5, 6, 7, 8} THEN G.Logical(pno-5, x, y)
-      ELSIF pno = 10 THEN CheckInt(x); G.Get(x, y)
-      ELSIF pno = 11 THEN CheckInt(x); G.Put(x, y)
+      ELSIF pno IN {5, 6, 7, 8} THEN CheckPointerToInt(x); G.Logical(pno-5, x, y)
+      ELSIF pno = 10 THEN CheckPointerToInt(x); G.Get(x, y)
+      ELSIF pno = 11 THEN CheckPointerToInt(x); G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 14 THEN G.LDREG(y)
       ELSE ASSERT(FALSE)
@@ -989,9 +994,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         B.Export(modid, newSF, key);
         IF newSF THEN Texts.WriteString(W, " new symbol file") END
       END;
-      IF S.errcnt = 0 THEN
-        Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key);
-        G.Close(modid, key, exno)
+      IF S.errcnt = 0 THEN G.Close(modid, key, exno);
+        Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key)
       ELSE Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol 
       END;
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
