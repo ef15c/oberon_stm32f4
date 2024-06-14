@@ -83,7 +83,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END RegisterRTproc;
 
   PROCEDURE OfsPTOS(offset: INTEGER; increment: BOOLEAN);
-  BEGIN IF increment THEN INC(offset, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
+  BEGIN
+    IF increment THEN INC(offset, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
       IF offset # frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos THEN
       frmOfsSegs.Segs[frmOfsSegs.NofSegs].end := mcode.pc;
       INC(frmOfsSegs.NofSegs); frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos := offset
@@ -160,11 +161,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SetCC;
 
   PROCEDURE TypeChecked*(): BOOLEAN;
-  BEGIN RETURN traps[2] # NIL
+  RETURN traps[2] # NIL
   END TypeChecked;
 
   PROCEDURE AssertionChecked*(): BOOLEAN;
-  BEGIN RETURN traps[7] # NIL
+  RETURN traps[7] # NIL
   END AssertionChecked;
 
   PROCEDURE GetOffset(VAR x: A.Item): INTEGER;
@@ -178,7 +179,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      If the procedure Trap.Handle<num> procedure exists and is exported,
      the trap checking code is generated.*)
   VAR l: INTEGER; t!: Item;
-  BEGIN A.PutJ(mcode, A.negated(cond), 4); t.reg := 0; t.am := A.Immediate; t.ofs := A.C16; t.obj := traps[num];
+  BEGIN IF cond # A.AL THEN A.PutJ(mcode, A.negated(cond), 4) END; 
+    t.reg := 0; t.am := A.Immediate; t.ofs := A.C16; t.obj := traps[num];
     A.PutSO(mcode, A.CALL, t, A.Word)
   END Trap;
 
@@ -199,7 +201,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
     IF x.mode # Reg THEN
       IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
-      IF x.mode = B.Const THEN
+      IF x.mode = B.Const THEN allocR;
         IF x.type.form = B.Proc THEN
           IF x.r > 0 THEN S.Mark("not allowed")
           ELSIF x.r = 0 THEN A.PutDO(mcode, A.MOV, pc, rh, A.Word); (*Put address of next statement in RH*)
@@ -208,7 +210,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           END
         ELSE t.ofs := x.a; A.PutDO(mcode, A.MOV, t, rh, A.Word)
         END;
-        x.r := RH; allocR
+        x.r := rh.reg
       ELSIF x.mode = B.Var THEN allocR;
         IF x.r > 0 THEN (*local*) ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, bw)
         ELSE sva.am := A.Absolute; A.PutDO(mcode, A.MOV, sva, rh, bw)
@@ -218,8 +220,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF x.mode = RegI THEN ti.reg := x.r; ti.ofs := x.a; x.reg := x.r; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.MOV, ti, x, bw)
       ELSIF x.mode = Cond THEN allocR;
         pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.r), 0);
-        FixLink(x.b); A.PutDO(mcode, A.MOV, c1, rh, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
-        FixLink(x.a); A.PutDO(mcode, A.MOV, c0, rh, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2);
+        FixLink(x.b); A.PutDO(mcode, A.MOV, c1, rh, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
+        A.fix(mcode, pc0, mcode.pc - pc0 - 2); FixLink(x.a); A.PutDO(mcode, A.MOV, c0, rh, A.Word);
+        A.fix(mcode, pc1, mcode.pc - pc1 - 2);
         x.r := rh.reg
       END;
       x.mode := Reg; x.reg := x.r; x.am := A.Register; x.ofs := 0
@@ -739,8 +742,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN
     IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
-    IF op < S.leq THEN PutDO(A.CMP, y, x); SetCC(x, relmap[op - S.eql])
-    ELSE PutDO(A.CMP, x, y); SetCC(x, relmap[op - S.leq + S.lss])
+    IF op < S.gtr THEN PutDO(A.CMP, y, x); SetCC(x, relmap[op - S.eql])
+    ELSE PutDO(A.CMP, x, y); SetCC(x, relmap[op - S.gtr + 2])
     END;
     free(y); free(x)
   END IntRelation;
@@ -896,7 +899,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Branches, procedure calls, procedure prolog and epilog *)
 
   PROCEDURE Here*(): LONGINT;
-  BEGIN RETURN mcode.pc
+  RETURN mcode.pc
   END Here;
 
   PROCEDURE FJump*(VAR L: LONGINT);
@@ -928,14 +931,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN IF ~AllocUp THEN AllocUp  := TRUE; RH := A.CG2 + 1; RL := 16;  RB := A.CG2 + 1 END
   END SetRegisterAllocation;
 
-  PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
+  PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
     VAR t!: Item; rl, rh: BYTE;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     OfsPTOS(0, FALSE); frame := 0;
-    IF locblksize >= A.C16 THEN S.Mark("local variables size exeeded") END;
+    IF size >= A.C16 THEN S.Mark("local variables size exeeded") END;
 
-    IF locblksize - parblksize # 0 THEN
-      t.ofs := locblksize - parblksize; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS((locblksize - parblksize) DIV 2, TRUE)
+    IF size # 0 THEN
+      t.ofs := size; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS(size DIV 2, TRUE)
     END;
 
     IF nofusedregs >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
@@ -1144,7 +1147,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       WHILE fld # NIL DO n := NofPtrs(fld.type) + n; fld := fld.next END
     ELSIF typ.form = B.Array THEN n := NofPtrs(typ.base) * typ.len
     ELSE n := 0
-    END ;
+    END
     RETURN n
   END NofPtrs;
 
@@ -1302,10 +1305,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Close;
 
 BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
-  cm1.reg := 0; c0.am := A.Immediate; c0.ofs := -1; cm1.obj := NIL; cm1.type := B.intType;
+  cm1.reg := 0; cm1.am := A.Immediate; cm1.ofs := -1; cm1.obj := NIL; cm1.type := B.intType;
   c0.reg := 0; c0.am := A.Immediate; c0.ofs := 0; c0.obj := NIL; c0.type := B.intType;
-  c1.reg := 0; c0.am := A.Immediate; c0.ofs := 1; c1.obj := NIL; c1.type := B.intType;
-  c2.reg := 0; c0.am := A.Immediate; c0.ofs := 2; c2.obj := NIL; c2.type := B.intType;
+  c1.reg := 0; c1.am := A.Immediate; c1.ofs := 1; c1.obj := NIL; c1.type := B.intType;
+  c2.reg := 0; c2.am := A.Immediate; c2.ofs := 2; c2.obj := NIL; c2.type := B.intType;
   pc.reg := A.PC; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL; pc.type := B.intType;
   sp.reg := A.SP; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL; sp.type := B.intType;
   r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL; r4.type := B.intType;

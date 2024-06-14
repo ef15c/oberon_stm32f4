@@ -390,7 +390,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE expression0(VAR x: G.Item);
     VAR y!: G.Item; obj!: B.Object; rel, xf, yf: INTEGER;
   BEGIN SimpleExpression(x);
-    IF (sym >= S.eql) & (sym <= S.geq) THEN
+    IF (sym >= S.eql) & (sym <= S.leq) THEN
       rel := sym; S.Get(sym); SimpleExpression(y); xf := x.type.form; yf := y.type.form;
       IF x.type = y.type THEN
         IF (xf IN {B.Char, B.Int}) THEN G.IntRelation(rel, x, y)
@@ -914,8 +914,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
       B.OpenScope; INC(level); type.base := B.noType;
       ProcedureType(type, parblksize);  (*formal parameter list*)
-      Check(S.semicolon, "no ;"); locblksize := parblksize; 
+      Check(S.semicolon, "no ;"); locblksize := parblksize + 2; (*return address is between parameters and local variables*)
       Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
+(*TODO: fix .val offsets with 0 for last local variable*)
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
       IF sym = S.procedure THEN
@@ -923,7 +924,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         REPEAT ProcedureDecl; Check(S.semicolon, "no ;") UNTIL sym # S.procedure;
         G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next
       END;
-      G.Enter(parblksize, locblksize, int, nofusedregs);
+      G.Enter(locblksize - parblksize, int, nofusedregs);
       IF sym = S.begin THEN S.Get(sym); StatSequence END ;
       IF sym = S.return THEN
         S.Get(sym); expression(x);
@@ -933,7 +934,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF type.base.form # B.NoTyp THEN
         S.Mark("function without result"); type.base := B.noType
       END;
-      G.Return(type.base.form, x, locblksize, int, nofusedregs);
+      G.Return(type.base.form, x, locblksize - parblksize, int, nofusedregs);
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE;
       IF sym = S.ident THEN
