@@ -258,10 +258,10 @@ MODULE OMSPTool;  (*NW 18.2.2013
         Texts.WriteString(W, "code");  Texts.WriteInt(W, mcode.pc, 6); Texts.WriteLn(W); 
         i := 0;
         WHILE i < mcode.pc DO
-          Texts.WriteHex(W, i); Texts.Write(W, 9X); adr := i + 2;
+          TextsEx.WriteHexVLen(W, i, 4, FALSE); Texts.Write(W, 9X); adr := i + 2;
           opcode(mcode.code, eref, i, 0); Texts.WriteLn(W);
           FOR n := adr TO i - 2 BY 2 DO (*print operation data*)
-            Texts.WriteHex(W, n); Texts.Write(W, 9X); Texts.WriteString(W, "    ");
+            TextsEx.WriteHexVLen(W, n, 4, FALSE); Texts.Write(W, 9X); Texts.WriteString(W, "    ");
             data := mcode.code[n+1]*100H + mcode.code[n];
             TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
           END

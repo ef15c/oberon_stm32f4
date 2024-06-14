@@ -20,7 +20,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
   PROCEDURE WritePCOffset(VAR W: Texts.Writer; at: LONGINT; ofs: LONGINT);
   BEGIN IF ofs > 200H THEN DEC(ofs, 400H) END;
     Texts.WriteString(W, " #"); Texts.WriteInt(W, ofs, 1);
-    Texts.WriteString(W, ", goes to "); Texts.WriteHex(W, at + 2*ofs);
+    Texts.WriteString(W, ", goes to "); TextsEx.WriteHexVLen(W, at + 2*ofs, 4, FALSE);
   END WritePCOffset;
 
   PROCEDURE isConstant(op: SET; src: BYTE; VAR c: INTEGER): BOOLEAN;
