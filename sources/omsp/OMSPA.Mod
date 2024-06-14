@@ -12,7 +12,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     
     maxCode* = 16000*2;
 
-  PC* = 0; SP* = 1; SR* = 2; CG1* = 2; CG2* = 3; (*special registers*)
+    PC* = 0; SP* = 1; SR* = 2; CG1* = 2; CG2* = 3; (*special registers*)
 
   (* Cond definition 
     EQ equal (zero)        Z        NE not equal (#zero)   ~Z
@@ -227,8 +227,9 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |opcC/nd  /   o/ffse/t   | *)
 
   PROCEDURE PutJ*(VAR c: ModuleCode; cond: BYTE; offset: LONGINT);
-  BEGIN (*emit jump instruction*) ASSERT (cond < 8); ASSERT(~ODD(offset));
-    IF enabled THEN offset := LSR(offset, 1);
+  BEGIN (*emit jump instruction*) ASSERT (cond <=  NV); ASSERT(~ODD(offset));
+    IF enabled THEN IF cond = NV THEN (*NOP*) cond := AL; offset := 0 END;
+      offset := LSR(offset, 1);
       c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8) MOD 4;
       c.code[c.pc]   := offset MOD C8;
       c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)

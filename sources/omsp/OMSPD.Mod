@@ -41,6 +41,24 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     RETURN res
   END isConstant;
 
+  PROCEDURE WriteSD(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; op: SET; reg: BYTE);
+    VAR ct: INTEGER;
+  BEGIN
+    IF isConstant(op, reg, ct) THEN Texts.Write(W, "#"); Texts.WriteInt(W, ct, 1)
+    ELSIF (op*A.IRAm = A.IRAm) & (reg = A.PC) THEN (*immediate*)
+      ct := c[i+1]*100H + c[i]; INC(i, 2); Texts.Write(W, "#"); Texts.WriteInt(W, ct, 1)
+    ELSIF (op*A.IRAm = A.Im) & (reg = A.SR) THEN (*absolute*)
+      ct := c[i+1]*100H + c[i]; INC(i, 2); Texts.Write(W, "&"); Texts.WriteInt(W, ct, 1)
+    ELSE
+      IF op*A.IRm = A.IRm THEN (*indirect*) Texts.WriteString(W, "@");
+        WriteReg(W, reg); IF op*A.IRAm = A.IRAm THEN (*auto increment*) Texts.WriteString(W, "+") END
+      ELSIF op*A.Im = A.Im THEN (*indexed*) ct := c[i+1]*100H + c[i]; INC(i, 2);
+        Texts.WriteInt(W, ct, 1); Texts.Write(W, "("); WriteReg(W, reg); Texts.Write(W, ")")
+      ELSE WriteReg(W, reg)
+      END
+    END
+  END WriteSD;
+
   PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; base: LONGINT);
     CONST 
       SOMSK = {10..15}; SO = {12}; (*Single operand*)
@@ -52,29 +70,17 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     op := SYSTEM.VAL(SET, 0+b2+100H*b1);
     Texts.WriteString(W, "    "); TextsEx.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
     IF SYSTEM.VAL(INTEGER, op) = 4130H THEN Texts.WriteString(W, "RET");
-    ELSIF op*SOMSK = SOMSK THEN (*Single-operand (Format II) instructions*)
+    ELSIF op*SOMSK = SO THEN (*Single-operand (Format II) instructions*)
       t := LSR(SYSTEM.VAL(INTEGER, op), 7) MOD 8; Texts.WriteString(W, mnemo2[t]);
       IF t IN {0, 3, 5} THEN IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END END;
+      Texts.Write(W, " "); WriteSD(W, c, i, op, b2 MOD 10H)
     ELSIF op*JMPMSK = JMP THEN Texts.WriteString(W, "J"); Texts.WriteString(W, mnemo1[LSR(b1, 2) MOD 8]);
       WritePCOffset(W, i + base, b1 MOD 4*100H + b2);
     ELSE t := b1 DIV 10H;
       IF t  IN {4..15} THEN (*Double-operand (format I) instructions*)
         DEC(t, 4); Texts.WriteString(W, mnemo3[t]);
         IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END; Texts.Write(W, " ");
-        IF isConstant(op, b1 MOD 10H, ct) THEN Texts.Write(W, "#"); Texts.WriteInt(W, ct, 1)
-        ELSIF (op*A.IRAm = A.IRAm) & (b1 MOD 10H = A.PC) THEN (*immediate*)
-          ct := c[i+1]*100H + c[i]; INC(i, 2); Texts.Write(W, "#"); Texts.WriteInt(W, ct, 1)
-        ELSIF (op*A.IRAm = A.Im) & (b1 MOD 10H = A.SR) THEN (*absolute*)
-          ct := c[i+1]*100H + c[i]; INC(i, 2); Texts.Write(W, "&"); Texts.WriteInt(W, ct, 1)
-        ELSE
-          IF op*A.IRm = A.IRm THEN (*indirect*) Texts.WriteString(W, "@");
-            WriteReg(W, b1 MOD 10H); IF op*A.IRAm = A.IRAm THEN (*auto increment*) Texts.WriteString(W, "+") END
-          ELSIF op*A.Im = A.Im THEN (*indexed*) ct := c[i+1]*100H + c[i]; INC(i, 2);
-            Texts.WriteInt(W, ct, 1); Texts.Write(W, "("); WriteReg(W, b1 MOD 10H); Texts.Write(W, ")")
-          ELSE WriteReg(W, b1 MOD 10H)
-          END;
-        END;
-        Texts.Write(W, ",");
+        WriteSD(W, c, i, op, b1 MOD 10H); Texts.Write(W, ",");
         IF op*A.Idm = A.Idm THEN (*indexed*) ct := c[i+1]*100H + c[i]; INC(i, 2);
           IF b2 MOD 10H = A.SR THEN (*absolute*) Texts.Write(W, "&"); Texts.WriteInt(W, ct, 1)
           ELSE Texts.WriteInt(W, ct, 1); Texts.Write(W, "("); WriteReg(W, b2 MOD 10H); Texts.Write(W, ")")

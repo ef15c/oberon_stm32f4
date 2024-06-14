@@ -166,7 +166,8 @@ MODULE OMSPTool;  (*NW 18.2.2013
     ReadWord(R, data);
     WHILE data # 0 DO TextsEx.WriteHexVLen(W, data, 4, FALSE);
       Files.ReadByte(R, mno); Texts.WriteInt(W, mno, 6); Texts.Write(W, 9X);
-      ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
+      ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
+      ReadWord(R, data)
     END
   END fixup;
 
@@ -254,7 +255,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
         Files.Read(R, ch);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
       (* Sync(R); *)
-        Texts.WriteString(W, "code"); Texts.WriteLn(W);
+        Texts.WriteString(W, "code");  Texts.WriteInt(W, mcode.pc, 6); Texts.WriteLn(W); 
         i := 0;
         WHILE i < mcode.pc DO
           Texts.WriteHex(W, i); Texts.Write(W, 9X); adr := i + 2;

@@ -64,11 +64,18 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     Array    -        type of elements
     Record   fields   extension *)
 
+    RegRTProcCallback* = PROCEDURE(p: Object);
+
   VAR topScope*, universe, system*: Object;
     byteType*, boolType*, charType*: Type;
     intType*, longIntType*, setType*, nilType*, noType*, strType*, ptrByteType*, ptrIntType*: Type;
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
+    regRTProc: RegRTProcCallback;
+
+  PROCEDURE SetRegRTProcCallback*(p: RegRTProcCallback);
+  BEGIN regRTProc := p
+  END SetRegRTProcCallback;
 
   PROCEDURE NewObj*(VAR obj: Object; id: S.Ident; class: INTEGER);  (*insert new Object with name id*)
     VAR new!, x!: Object;
@@ -236,7 +243,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             t := obj.type; t.typobj := obj; Read(R, k);  (*fixup bases of previously declared pointer types*)
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
           ELSE
-            IF class = Const THEN Files.ReadNum(R, obj.val)
+            IF class = Const THEN Files.ReadNum(R, obj.val);
+              IF obj.type.form = Proc THEN regRTProc(obj) END
             ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.usedat := 0; obj.register := 0FFH
             END
           END ;

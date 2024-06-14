@@ -56,6 +56,31 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     frmOfsSegs: FrameOffset;
 
     cm1, c0, c1, c2, pc, sp, r4, r15, rh: Item;
+    curImport: INTEGER;
+
+  PROCEDURE CheckRTImport*(impid: S.Ident);
+  BEGIN
+    IF impid = "Traps" THEN curImport := 1
+    ELSIF impid = "Arith" THEN curImport := 2
+    ELSE curImport := 0
+    END
+  END CheckRTImport;
+
+  PROCEDURE RegisterRTproc*(p: B.Object);
+  BEGIN IF curImport = 1 THEN
+      IF p.name = "ArrayOutOfRange" THEN traps[1] := p
+      ELSIF p.name = "TypeGuardFailure" THEN traps[2] := p
+      ELSIF p.name = "CopyOverflow" THEN traps[3] := p
+      ELSIF p.name = "AccessViaNILPointer" THEN traps[4] := p
+      ELSIF p.name = "IllegalProcedureCall" THEN traps[5] := p
+      ELSIF p.name = "DivisionByZero" THEN traps[6] := p
+      ELSIF p.name = "AssertionViolated" THEN traps[7] := p
+      END
+    ELSIF curImport = 2 THEN
+      IF p.name = "mul16" THEN arith[0] := p
+      END
+    END
+  END RegisterRTproc;
 
   PROCEDURE OfsPTOS(offset: INTEGER; increment: BOOLEAN);
   BEGIN IF increment THEN INC(offset, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
@@ -135,21 +160,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SetCC;
 
   PROCEDURE TypeChecked*(): BOOLEAN;
-  BEGIN RETURN traps[4] # NIL
+  BEGIN RETURN traps[2] # NIL
   END TypeChecked;
 
   PROCEDURE AssertionChecked*(): BOOLEAN;
   BEGIN RETURN traps[7] # NIL
   END AssertionChecked;
 
-  PROCEDURE SetTrap*(num: INTEGER; proc: B.Object);
-  BEGIN traps[num] := proc
-  END SetTrap;
- 
-  PROCEDURE SetArith*(num: INTEGER; proc: B.Object);
-  BEGIN arith[num] := proc
-  END SetArith;
- 
   PROCEDURE GetOffset(VAR x: A.Item): INTEGER;
     VAR res: INTEGER;
   BEGIN IF x.ofs = A.C16 THEN (*Imported object*) res := x(Item).obj.usedat; x(Item).obj.usedat := mcode.pc ELSE res := x.ofs END
@@ -1101,7 +1118,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Open*;
     VAR i: INTEGER;
-  BEGIN A.Init(mcode); frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
+  BEGIN A.Init(mcode); curImport := 0; frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
     FOR i := 0 TO LEN(traps) - 1 DO traps[i] := NIL END;
     FOR i := 0 TO LEN(arith) - 1 DO arith[i] := NIL END;
     FOR i := 0 TO LEN(vector) - 1 DO vector[i] := 0FFFFH END;
@@ -1294,5 +1311,6 @@ BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
   r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL; r4.type := B.intType;
   r15.reg := 15; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL; r15.type := B.intType;
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; 
-  relmap[3] := A.GE
+  relmap[3] := A.GE;
+  B.SetRegRTProcCallback(RegisterRTproc)
 END OMSPG.

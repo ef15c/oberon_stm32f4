@@ -956,7 +956,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         ELSE S.Mark("id expected"); impid1 := impid
         END
       ELSE impid1 := impid
-      END;
+      END; G.CheckRTImport(impid1);
       B.Import(impid, impid1)
     ELSE S.Mark("id expected")
     END
@@ -966,7 +966,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR key: LONGINT; oldCol: INTEGER; dmy: BOOLEAN;
   BEGIN Texts.WriteString(W, "  compiling "); isLeaf := FALSE; S.Get(sym);
     IF sym = S.module THEN S.Get(sym);
-      dc := 0;
+      G.Open; dc := 0;
       B.Init; B.OpenScope;
       IF sym = S.ident THEN
         S.CopyId(modid); S.Get(sym);
@@ -979,7 +979,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         WHILE sym = S.comma DO S.Get(sym); Import END ;
         Check(S.semicolon, "; missing")
       END ;
-      G.Open; Declarations(dc, dmy); G.SetDataSize((dc + (G.WordSize - 1)) DIV G.WordSize * G.WordSize);
+      Declarations(dc, dmy); G.SetDataSize((dc + (G.WordSize - 1)) DIV G.WordSize * G.WordSize);
       WHILE sym = S.procedure DO ProcedureDecl; Check(S.semicolon, "no ;") END ;
       G.Header;
       IF sym = S.begin THEN S.Get(sym); StatSequence END ;

@@ -120,11 +120,12 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END Mark;
 
   PROCEDURE Scan*;
-    VAR p, q, mark, tag, size: LONGINT;
-  BEGIN p := heapOrg;
+    VAR p, q, mark, tag, size: LONGINT; done: BOOLEAN;
+  BEGIN p := heapOrg; done := FALSE;
     REPEAT SYSTEM.GET(p+4, mark); q := p;
-      WHILE mark = 0 DO
-        SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); INC(p, size); SYSTEM.GET(p+4, mark)
+      WHILE ~done & (mark = 0) DO
+        SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); INC(p, size); 
+        IF SYSTEM.CMP(p, heapLim, CS) THEN done := TRUE ELSE SYSTEM.GET(p+4, mark) END
       END ;
       size := p - q; DEC(allocated, size);  (*size of free block*)
       IF size > 0 THEN
@@ -141,9 +142,12 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
           SYSTEM.PUT(q, size); SYSTEM.PUT(q+4, -1); SYSTEM.PUT(q+8, list0); list0 := q; INC(q, size)
         END
       END ;
-      IF (*mark > 0*) (mark # 0) & (mark # -1) THEN SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); SYSTEM.PUT(p+4, 0); INC(p, size)
-      ELSE (*free*) SYSTEM.GET(p, size); INC(p, size)
-      END;
+      IF mark = -1 THEN (*already free*) SYSTEM.GET(p, size); INC(p, size)
+      ELSIF mark # 0 THEN (*in use*) SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); SYSTEM.PUT(p+4, 0); INC(p, size)
+      END
+(*      IF (*mark > 0*) (mark # 0) & (mark # -1) THEN SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); SYSTEM.PUT(p+4, 0); INC(p, size)
+      ELSE (*already free*) SYSTEM.GET(p, size); INC(p, size)
+      END;*)
     UNTIL (*p >= heapLim*) SYSTEM.CMP(p, heapLim, CS)
   END Scan;
 
@@ -169,13 +173,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
           SYSTEM.PUT(q, size); SYSTEM.PUT(q+8, list0); list0 := q; INC(q, size)
         END
       END ;
-      IF ~done THEN
-        IF mark # -1 THEN SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); INC(p, size)
-        ELSE (*free*) SYSTEM.GET(p, size); INC(p, size)
-        END;
-        done := SYSTEM.CMP(p, heapLim, CS)
-      END
-    UNTIL done
+      IF ~done & (mark # -1) THEN (*in use*) SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); INC(p, size) END
+    UNTIL SYSTEM.CMP(p, heapLim, CS)
   END Coalesce;
 
 (* ---------- Disk storage management ----------*)
