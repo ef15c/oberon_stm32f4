@@ -187,3 +187,30 @@ TLV_ADC10_1_LEN*    = SYSTEM.VAL(PINTEGER, 10DBH);
 ************************************************************)
 
 END msp430g2553.
+
+OMSPTool.DecObj msp430g2553.mpc
+
+decode msp430g2553.mpc
+msp430g2553 60723399     8
+imports:
+type descriptors
+
+data     0
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+commands:
+entries
+ 0000
+pointer refs
+
+fixup procedures chains
+fixup handlers chains
+fixup data chains
+fixup type chains
+entry =  0000
+code     2
+ 0000	     4130	RET

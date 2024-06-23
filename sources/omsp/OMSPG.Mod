@@ -577,8 +577,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     AllocUp := x.obj.type.leaf; IF AllocUp THEN RH := A.CG2 + 1 ELSE RH := 15 END
   END PrepCall;
 
-  PROCEDURE Call*(VAR x: Item; r, n: LONGINT);
-    VAR rr!, dr!: Item;
+  PROCEDURE Call*(VAR x: Item; r, n, s: LONGINT);
+    VAR rr!, dr!, t!: Item;
   BEGIN (*x.type.form = B.Proc*)
     IF x.mode = B.Const THEN x.reg := 0; x.am := A.Immediate; x.ofs := A.C16; (*address must be computed at link time*)
       A.PutSO(mcode, A.CALL, x, A.Word)
@@ -590,6 +590,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR
       END;
     END;
+    IF s # 0 THEN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := s; A.PutDO(mcode, A.ADD, t, sp, A.Word) END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RH := 15;
     ELSE (*function*) resultRegister(rr);
       IF r # rr.reg THEN dr.reg := r; dr.am := A.Register; dr.ofs := 0; A.PutDO(mcode, A.MOV, rr, dr, A.Word);
@@ -619,20 +620,20 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END AddOp;
 
   PROCEDURE MulOp*(VAR x, y: Item);   (* x := x * y *)
-    VAR t!, p!: Item; r, n: INTEGER;
+    VAR t!, p!: Item; r, n, s: INTEGER;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a * y.a
     ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MUL, t, x, A.Word)
     ELSIF (x.mode = B.Const) & (x.a >= 2) THEN load(y); t.ofs := x.a; A.eswDO(mcode, A.MUL, t, y, A.Word);
       x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
     ELSE IF arith[0] = NIL THEN S.Mark("import Arith.mul function") 
-      ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n)
+      ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n, s); ASSERT(s = 0)
       END
     END
   END MulOp;
 
   PROCEDURE DivOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
-    VAR t!, p!: Item; r, n: INTEGER;
+    VAR t!, p!: Item; r, n, s: INTEGER;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; rh.am := A.Register;
     IF op = S.div THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
@@ -641,7 +642,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.div procedure")
         ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0); Trap(A.GE, 6); free(y) END;
-          MakeItem(p, arith[1], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n); PutDO(A.MOV, x, rh); x.r := RH; x.mode := Reg; allocR
+          MakeItem(p, arith[1], 0); PrepCall(p, r, n); ASSERT(s = 0);
+          load(x); load(y); Call(p, r, n, s); ASSERT(s = 0); PutDO(A.MOV, x, rh); x.r := RH; x.mode := Reg; allocR
         END
       END
     ELSE (*op = OM4S.mod*)
@@ -651,7 +653,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.div procedure")
         ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0); Trap(A.GE, 6); free(y) END;
-          MakeItem(p, arith[1], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n); PutDO(A.MOV, y, rh); x.r := RH; x.mode := Reg; allocR
+          MakeItem(p, arith[1], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n, s); ASSERT(s = 0); PutDO(A.MOV, y, rh); x.r := RH; x.mode := Reg; allocR
         END
       END
     END
@@ -686,12 +688,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Singleton;
 
   PROCEDURE Set*(VAR x, y: Item); (* x := {x .. y} *)
-    VAR p!: Item; r, n: INTEGER;
+    VAR p!: Item; r, n, s: INTEGER;
   BEGIN
     IF (x.mode = B.Const) & ( y.mode = B.Const) THEN
       IF x.a <= y.a THEN x.a := ORD({x.a .. y.a}) ELSE x.a := 0 END
     ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set procedure")
-      ELSE MakeItem(p, arith[2], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n)
+      ELSE MakeItem(p, arith[2], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n, s); ASSERT(s = 0)
       END
     END
   END Set;

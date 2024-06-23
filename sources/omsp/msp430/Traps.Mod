@@ -36,8 +36,8 @@ fixup data chains
 fixup type chains
 entry =  0008
 code    10
- 00000000	     D3D2	BIS.B #1,&33
- 00000002	     0021
- 00000004	     3FFF	JMP #-1, goes to  00000004
- 00000006	     4130	RET
- 00000008	     4130	RET
+ 0000	     D3D2	BIS.B #1,&33
+ 0002	     0021
+ 0004	     3FFF	JMP #-1, goes to  0004
+ 0006	     4130	RET
+ 0008	     4130	RET
