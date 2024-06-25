@@ -233,7 +233,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR n: INTEGER; par!: B.Object;
   BEGIN par := x.type.dsc; n := 0; s := 0;
     IF sym # S.rparen THEN
-      Parameter(par); n := 1; INC(s, par.type.size);
+      Parameter(par); n := 1; IF par.register = 0FFH THEN INC(s, par.type.size) END;
       WHILE sym <= S.comma DO
         Check(S.comma, "comma?");
         IF par # NIL THEN par := par.next END ;

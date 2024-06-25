@@ -1,63 +1,115 @@
 MODULE testCond;
 
-  PROCEDURE p(v: INTEGER);
-    VAR b: BOOLEAN;
+  PROCEDURE p(v: INTEGER*);
+    VAR b: BOOLEAN*;
   BEGIN b := (v>-1) & (v<1) OR (v>9) & (v<11)
   END p;
 
 BEGIN p(40)
 END testCond.
 
+OMSPTool.DecObj testCond.mpc
 
-OM4Tool.DecObj testCond.m4c ~
-
-decode testCond.m4c
-testCond D8E1D5B7   1    86
+leaf, param and local variable in registers:
+decode testCond.mpc
+testCond D8E1D5B7    50
 imports:
 type descriptors
 
 data     0
 strings
 
-code
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
 commands:
 entries
-    60
+ 0022
 pointer refs
 
-fixP =        0
-fixD =        0
-fixT =        0
-entry =       60
-   0	 F1BD0D04	SUBS SP SP #4
-   4	     B401	PUSH R0
-   6	     B500	PUSH LR
-   8	     9801	LDR R0 [SP + 4]
-  10	 F1B03FFF	CMP R0 #-1
-  14	 F3408004	BLE #8
-  18	     9801	LDR R0 [SP + 4]
-  20	     2801	CMP R0 #1
-  22	 F2C08007	BLT #14
-  26	     9801	LDR R0 [SP + 4]
-  28	     2809	CMP R0 #9
-  30	 F3408005	BLE #10
-  34	     9801	LDR R0 [SP + 4]
-  36	     280B	CMP R0 #11
-  38	     DA01	BGE #2
-  40	     2001	MOVS R0 #1
-  42	     E000	B #0
-  44	     2000	MOVS R0 #0
-  46	 F88D0008	STRB R0 [ SP + 8 ]
-  50	 F85DEB04	LDR LR [ SP ] + 4
-  54	 F11D0D08	ADDS SP SP #8
-  58	     4770	BX LR
-  60	     B500	PUSH LR
-  62	     2028	MOVS R0 #40
-  64	 F7FFFFDE	BL #-68
-  68	 F85DEB04	LDR LR [ SP ] + 4
-  72	     4770	BX LR
+fixup procedures chains
+ 0028     0	 0000
+fixup handlers chains
+fixup data chains
+fixup type chains
+entry =  0022
+code    44
+ 0000	     4336	MOV #-1,R6
+ 0002	     9406	CMP R4,R6
+ 0004	     3402	JGE #2, goes to  000A
+ 0006	     9314	CMP #1,R4
+ 0008	     3807	JL #7, goes to  0018
+ 000A	     4036	MOV #9,R6
+ 000C	     0009
+ 000E	     9406	CMP R4,R6
+ 0010	     3405	JGE #5, goes to  001C
+ 0012	     9034	CMP #11,R4
+ 0014	     000B
+ 0016	     3402	JGE #2, goes to  001C
+ 0018	     4316	MOV #1,R6
+ 001A	     3C01	JMP #1, goes to  001E
+ 001C	     4306	MOV #0,R6
+ 001E	     4645	MOV.B R6,R5
+ 0020	     4130	RET
+ 0022	     4034	MOV #40,R4
+ 0024	     0028
+ 0026	     12B0	CALL #0
+ 0028	     0000
+ 002A	     4130	RET
 
-OMSPTool.DecObj testCond.mpc
+leaf, param in register:
+decode testCond.mpc
+testCond D8E1D5B7    56
+imports:
+type descriptors
+
+data     0
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+commands:
+entries
+ 0028
+pointer refs
+
+fixup procedures chains
+ 002E     0	 0000
+fixup handlers chains
+fixup data chains
+fixup type chains
+entry =  0028
+code    50
+ 0000	     8321	SUB #2,SP
+ 0002	     4335	MOV #-1,R5
+ 0004	     9405	CMP R4,R5
+ 0006	     3402	JGE #2, goes to  000C
+ 0008	     9314	CMP #1,R4
+ 000A	     3807	JL #7, goes to  001A
+ 000C	     4035	MOV #9,R5
+ 000E	     0009
+ 0010	     9405	CMP R4,R5
+ 0012	     3405	JGE #5, goes to  001E
+ 0014	     9034	CMP #11,R4
+ 0016	     000B
+ 0018	     3402	JGE #2, goes to  001E
+ 001A	     4315	MOV #1,R5
+ 001C	     3C01	JMP #1, goes to  0020
+ 001E	     4305	MOV #0,R5
+ 0020	     45C1	MOV.B R5,0(SP)
+ 0022	     0000
+ 0024	     5321	ADD #2,SP
+ 0026	     4130	RET
+ 0028	     4034	MOV #40,R4
+ 002A	     0028
+ 002C	     12B0	CALL #0
+ 002E	     0000
+ 0030	     4130	RET
+
+not leaf:
 decode testCond.mpc
 testCond D8E1D5B7    66
 imports:
