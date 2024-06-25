@@ -1,6 +1,6 @@
 MODULE testCond;
 
-  PROCEDURE p(v: INTEGER*);
+  PROCEDURE p(v: INTEGER);
     VAR b: BOOLEAN*;
   BEGIN b := (v>-1) & (v<1) OR (v>9) & (v<11)
   END p;
@@ -9,6 +9,59 @@ BEGIN p(40)
 END testCond.
 
 OMSPTool.DecObj testCond.mpc
+
+leaf, local variable in register:
+decode testCond.mpc
+testCond D8E1D5B7    60
+imports:
+type descriptors
+
+data     0
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+commands:
+entries
+ 002A
+pointer refs
+
+fixup procedures chains
+ 0030     0	 0000
+fixup handlers chains
+fixup data chains
+fixup type chains
+entry =  002A
+code    54
+ 0000	     4335	MOV #-1,R5
+ 0002	     9115	CMP 2(SP),R5
+ 0004	     0002
+ 0006	     3403	JGE #3, goes to  000E
+ 0008	     9391	CMP #1,2(SP)
+ 000A	     0002
+ 000C	     3809	JL #9, goes to  0020
+ 000E	     4035	MOV #9,R5
+ 0010	     0009
+ 0012	     9115	CMP 2(SP),R5
+ 0014	     0002
+ 0016	     3406	JGE #6, goes to  0024
+ 0018	     90B1	CMP #11,2(SP)
+ 001A	     000B
+ 001C	     0002
+ 001E	     3402	JGE #2, goes to  0024
+ 0020	     4315	MOV #1,R5
+ 0022	     3C01	JMP #1, goes to  0026
+ 0024	     4305	MOV #0,R5
+ 0026	     4544	MOV.B R5,R4
+ 0028	     4130	RET
+ 002A	     1230	PUSH #40
+ 002C	     0028
+ 002E	     12B0	CALL #0
+ 0030	     0000
+ 0032	     5321	ADD #2,SP
+ 0034	     4130	RET
 
 leaf, param and local variable in registers:
 decode testCond.mpc

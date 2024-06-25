@@ -864,7 +864,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF ~unsafe & obj.unsafe THEN umf := TRUE END;
           obj.type := tp; obj.lev := level;
           IF inreg & (tp.size > 4) THEN S.Mark("reg alloc forbidden"); inreg := FALSE END;
-          IF inreg THEN obj.register := G.AllocR(); nbregs := varsize DIV G.WordSize;
+          IF inreg THEN obj.register := G.AllocR(); nbregs := tp.size DIV G.WordSize;
             WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
           ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
             obj.register := 0FFH; obj.val := varsize; varsize := varsize + obj.type.size
