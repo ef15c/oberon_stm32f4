@@ -218,12 +218,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           END
         ELSE t.ofs := x.a; A.PutDO(mcode, A.MOV, t, rh, A.Word)
         END;
-      ELSIF x.mode = B.Var THEN alloc(x);
-        IF x.r > 0 THEN (*local*) ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, bw)
-        ELSE sva.am := A.Absolute; A.PutDO(mcode, A.MOV, sva, rh, bw)
+      ELSIF x.mode = B.Var THEN
+        IF x.r > 0 THEN (*local*) alloc(x); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, bw)
+        ELSE alloc(x); sva.am := A.Absolute; A.PutDO(mcode, A.MOV, sva, rh, bw)
         END; x.r := rh.reg
-      ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
-        ti.reg := RH; ti.ofs := x.b; A.PutDO(mcode, A.MOV, ti, rh, bw); alloc(x)
+      ELSIF x.mode = B.Par THEN alloc(x); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
+        ti.reg := RH; ti.ofs := x.b; A.PutDO(mcode, A.MOV, ti, rh, bw)
       ELSIF x.mode = RegI THEN ti.reg := x.r; ti.ofs := x.a; x.reg := x.r; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.MOV, ti, x, bw)
       ELSIF x.mode = Cond THEN
         pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.r), 0);
@@ -269,14 +269,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.obj := x.obj; sva.ofs := A.C16;
     IF x.mode = B.Var THEN
-      IF x.r > 0 THEN (*local*) A.PutDO(mcode, A.MOV, sp, rh, A.Word);
+      IF x.r > 0 THEN (*local*) alloc(x); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
         IF x.a + frame # 0 THEN t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
-      ELSE sva.am := A.Immediate; A.PutDO(mcode, A.MOV, sva, rh, A.Word)
-      END; alloc(x)
-    ELSIF x.mode = B.Par THEN
+      ELSE alloc(x); sva.am := A.Immediate; A.PutDO(mcode, A.MOV, sva, rh, A.Word)
+      END
+    ELSIF x.mode = B.Par THEN alloc(x);
       ti.reg := A.SP; ti.ofs := x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
-      IF x.b # 0 THEN t.ofs := x.b; A.PutDO(mcode, A.ADD, t, rh, A.Word) END;
-      alloc(x)
+      IF x.b # 0 THEN t.ofs := x.b; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
     ELSIF x.mode = RegI THEN
       IF x.a # 0 THEN t.ofs := x.a; x.reg := x.r; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.ADD, t, x, A.Word) END
     ELSE S.Mark("address error")
@@ -774,7 +773,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
-  BEGIN PutDO(A.MOV, y, x); free(y)
+  BEGIN PutDO(A.MOV, y, x); free(y); free(x)
   END Store;
 
   PROCEDURE StoreStruct*(VAR x, y: Item); (* x := y, frame = 0 *)
