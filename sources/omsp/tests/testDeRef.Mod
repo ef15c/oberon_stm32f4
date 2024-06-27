@@ -50,14 +50,13 @@ code    24
  0016	     4130	RET
 
 
-OM4Tool.DecObj testDeRef.m4c ~
-
+OM4Tool.DecObj testDeRef.m4c
 decode testDeRef.m4c
-testDeRef D9C6CB1E   1   102
+testDeRef D9C6CB1E   1   120
 imports:
 type descriptors
  00000020 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF
-data     4
+data    16
 strings
 
 code
@@ -67,26 +66,28 @@ entries
 pointer refs
     20
 fixP =        0
-fixD =       32
+fixD =       38
 fixT =        0
 entry =        0
-   0	     B500	PUSH LR
-   2	 00000001	LDR R0 [ MT + Base(0) ]
-   6	     3014	ADDS R0 #20
-   8	 10000003	LDR R1 [ MT + Base(0) ]
-  12	 EC001040	Trap 0 at pos 132
-  16	 00000004	LDR R0 [ MT + Base(0) ]
-  20	 F8D00014	LDR R0 [ R0 + 20 ]
-  24	     2800	CMP R0 #0
-  26	     BF08	IT EQ
-  28	 EC0010B4	TrapEQ 4 at pos 139
-  32	 10000008	LDR R1 [ MT + Base(0) ]
-  36	 F8D11014	LDR R1 [ R1 + 20 ]
-  40	     2900	CMP R1 #0
-  42	     BF08	IT EQ
-  44	 EC001124	TrapEQ 4 at pos 146
-  48	 F8D11004	LDR R1 [ R1 + 4 ]
-  52	 F8C01000	STR R1 [ R0 + 0 ]
-  56	 F85DEB04	LDR LR [ SP ] + 4
-  60	     4770	BX LR
-
+ 00000000	     B500	PUSH LR
+ 00000002	 00000001	MOV R0 lower 16-bits base(0)
+ 00000006	 00000018	MOVT R0 higher 16-bits base + 24
+ 0000000A	 10000004	MOV R1 lower 16-bits base(0)
+ 0000000E	 00000014	MOVT R1 higher 16-bits base + 20
+ 00000012	     6008	STR R0 [ R1 + 0]
+ 00000014	 00000005	MOV R0 lower 16-bits base(0)
+ 00000018	 00000014	MOVT R0 higher 16-bits base + 20
+ 0000001C	     6800	LDR R0 [ R0 + 0]
+ 0000001E	     2800	CMP R0 #0
+ 00000020	     BF08	IT EQ
+ 00000022	 EC001434	TrapEQ 4 at pos 195
+ 00000026	 10000009	MOV R1 lower 16-bits base(0)
+ 0000002A	 00000014	MOVT R1 higher 16-bits base + 20
+ 0000002E	     6809	LDR R1 [ R1 + 0]
+ 00000030	     2900	CMP R1 #0
+ 00000032	     BF08	IT EQ
+ 00000034	 EC0014A4	TrapEQ 4 at pos 202
+ 00000038	     6849	LDR R1 [ R1 + 4]
+ 0000003A	     6001	STR R1 [ R0 + 0]
+ 0000003C	 F85DEB04	LDR LR [ SP ] + 4
+ 00000040	     4770	BX LR

@@ -856,7 +856,12 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = S.var THEN
       S.Get(sym);
       WHILE sym = S.ident DO inreg := FALSE;
-        IdentList(B.Var, first); Type(tp); IF sym = S.times THEN haveinregs := TRUE; inreg := TRUE; G.SetRegisterAllocation; S.Get(sym) END;
+        IdentList(B.Var, first); Type(tp);
+        IF sym = S.times THEN
+          IF level # 0 THEN haveinregs := TRUE; inreg := TRUE; G.SetRegisterAllocation
+          ELSE S.Mark("remove asterisk")
+          END; S.Get(sym) 
+        END;
         IF level = 0 THEN unsafe := FALSE ELSE unsafe := containsPointer(tp) END; (*check for unsafe pointers*)
         obj := first; umm := FALSE; umf := FALSE;
         WHILE obj # NIL DO

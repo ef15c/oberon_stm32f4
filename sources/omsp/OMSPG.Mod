@@ -221,7 +221,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF x.mode = B.Var THEN
         IF x.r > 0 THEN (*local*) alloc(x); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, bw)
         ELSE alloc(x); sva.am := A.Absolute; A.PutDO(mcode, A.MOV, sva, rh, bw)
-        END; x.r := rh.reg
+        END
       ELSIF x.mode = B.Par THEN alloc(x); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
         ti.reg := RH; ti.ofs := x.b; A.PutDO(mcode, A.MOV, ti, rh, bw)
       ELSIF x.mode = RegI THEN ti.reg := x.r; ti.ofs := x.a; x.reg := x.r; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.MOV, ti, x, bw)
@@ -620,7 +620,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF y.a # 0 THEN load(x); t.ofs := y.a; PutDO(A.SUB, t, x) END
       ELSE load(x); PutDO(A.SUB, y, x); free(y)
       END
-    END
+    END;
+    x.obj := NIL
   END AddOp;
 
   PROCEDURE MulOp*(VAR x, y: Item);   (* x := x * y *)
@@ -630,10 +631,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MUL, t, x, A.Word)
     ELSIF (x.mode = B.Const) & (x.a >= 2) THEN load(y); t.ofs := x.a; A.eswDO(mcode, A.MUL, t, y, A.Word);
       x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
-    ELSE IF arith[0] = NIL THEN S.Mark("import Arith.mul function") 
+    ELSE
+      IF arith[0] = NIL THEN S.Mark("import Arith.mul function") 
       ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n, s); ASSERT(s = 0)
       END
-    END
+    END;
+    x.obj := NIL
   END MulOp;
 
   PROCEDURE DivOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
@@ -660,7 +663,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           MakeItem(p, arith[1], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n, s); ASSERT(s = 0); PutDO(A.MOV, y, x); free(y)
         END
       END
-    END
+    END;
+    x.obj := NIL
   END DivOp;
 
   (* Code generation for shift operations *)
@@ -673,7 +677,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       pb := mcode.pc; PutDO(A.SUB, c1, y); pf := mcode.pc; A.PutJ(mcode, A.EQ, 0);
       PutSO(op, x); A.PutJ(mcode, A.AL, pb - mcode.pc - 2); A.fix(mcode, pf, mcode.pc - pf - 2);
       free(y)
-    END
+    END;
+    x.obj := NIL
   END shift;
 
   PROCEDURE Rla*(VAR x, y: Item); (* x := LSL(x, y)*)
@@ -699,7 +704,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set procedure")
       ELSE MakeItem(p, arith[2], 0); PrepCall(p, r, n); load(x); load(y); Call(p, r, n, s); ASSERT(s = 0)
       END
-    END
+    END;
+    x.obj := NIL
   END Set;
 
   PROCEDURE In*(VAR x, y: Item);  (* x := x IN y *)
@@ -712,7 +718,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       PutSO(A.RRC, y); A.PutJ(mcode, A.AL, pc0 - mcode.pc -2); A.fix(mcode, pc1, mcode.pc - pc1 - 2);
       PutDO(A.BIT, c1, y); free(y); free(x)
     END;
-    SetCC(x, A.NE)
+    SetCC(x, A.NE);
+    x.obj := NIL
   END In;
 
   PROCEDURE SetOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
@@ -733,7 +740,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF op = S.rdiv THEN PutDO(A.XOR, y, x)
       END;
       free(y)
-    END 
+    END;
+    x.obj := NIL
   END SetOp;
 
   (* Code generation for relations *)
@@ -742,7 +750,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
     PutDO(A.CMP, y, x); free(y); free(x);
-    SetCC(x, z.a)
+    SetCC(x, z.a);
+    x.obj := NIL
   END IntCompare;
 
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
@@ -751,7 +760,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF op < S.gtr THEN PutDO(A.CMP, y, x); SetCC(x, relmap[op - S.eql])
     ELSE PutDO(A.CMP, x, y); SetCC(x, relmap[op - S.gtr + 2])
     END;
-    free(y); free(x)
+    free(y); free(x);
+    x.obj := NIL
   END IntRelation;
 
   PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
@@ -763,13 +773,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*Compare:*) pc0 := mcode.pc; A.PutDO(mcode, A.CMP, y, x, A.Byte); tbf0 := mcode.pc; A.PutJ(mcode, A.NE, 0) (*JNE Fin*);
     A.PutDO(mcode, A.BIT, x1, x, A.Byte) (*increment x and test if x^ is 0*); A.PutJ(mcode, A.NE, pc0 - mcode.pc - 2) (*JNE Compare*);
     (* Fin: *) A.fix(mcode, tbf0, mcode.pc - tbf0 - 2); free(y); free(x);
-    SetCC(x, relmap[op - S.eql])
+    SetCC(x, relmap[op - S.eql]);
+    x.obj := NIL
   END StringRelation;
 
   (* Code generation of Assignments *)
 
   PROCEDURE StrToChar*(VAR x: Item);
-  BEGIN x.type := B.charType; DEC(strx, 2); x.a := ORD(str[x.a])
+  BEGIN x.type := B.charType; DEC(strx, 2); x.a := ORD(str[x.a]);
+    x.obj := NIL
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
@@ -895,8 +907,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END For1;
 
   PROCEDURE For2*(VAR x, y, w: Item);
-    VAR t!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := w.a; PutDO(A.ADD, t, x)
+  BEGIN load(x); PutDO(A.ADD, w, x); free(x)
   END For2;
 
   (* Branches, procedure calls, procedure prolog and epilog *)

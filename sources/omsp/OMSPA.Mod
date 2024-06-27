@@ -116,7 +116,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END Emit;
 
-  PROCEDURE encSrc(op: INTEGER; VAR SReg: BYTE; sam: BYTE; SOff: INTEGER; VAR emitSOff: BOOLEAN; VAR params: SET);
+  PROCEDURE encSrc(VAR op: INTEGER; VAR SReg: BYTE; sam: BYTE; VAR SOff: INTEGER; VAR emitSOff: BOOLEAN; VAR params: SET);
   BEGIN
     IF sam = Register THEN ASSERT(SReg # CG2); params := params + Rm
     ELSIF sam = Indexed THEN ASSERT(~(SReg IN {PC, SR, CG2}));
@@ -132,6 +132,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ELSIF SOff = 1 THEN SReg := CG2; params := params + Im
       ELSIF SOff = 2 THEN SReg := CG2; params := params + IRm
       ELSIF SOff = -1 THEN SReg := CG2; params := params + IRAm
+      ELSIF (op = ADD) & (SOff < -1) THEN op := SUB; SOff := -SOff; encSrc(op, SReg, sam, SOff, emitSOff, params)
+      ELSIF (op = SUB) & (SOff < -1) THEN op := ADD; SOff := -SOff; encSrc(op, SReg, sam, SOff, emitSOff, params)
       ELSE SReg := PC; params := params + IRAm; emitSOff := TRUE
     END
     ELSE ASSERT(FALSE)
@@ -151,7 +153,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END Put1;
 
-  PROCEDURE PutDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET);
+  PROCEDURE PutDO*(VAR c: ModuleCode; op: INTEGER; VAR s, d: Item; params: SET);
     VAR emitSOff, emitDOff: BOOLEAN;
   BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
     ASSERT(s.reg < 16); ASSERT(d.reg < 16); ASSERT ((s.ofs >= -C15) & (s.ofs <= C16)); ASSERT ((d.ofs >= -C15) & (d.ofs <= C16));
@@ -209,14 +211,14 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
         ELSIF s.ofs < 0 THEN (*multiplicator is negative, change sign of multiplicator, do the multiplication, then change the sign of the result*)
           s.ofs := -s.ofs; eswDO(c, op, s, d, params); eswSO(c, NEG, d, params)
         ELSE (*multiplicator is positive*) WHILE ~ODD(s.ofs) DO PutDO(c, ADD, d, d, params); s.ofs := s.ofs DIV 2 END;
-          t.reg := allocR(); t.am := Register; t.ofs := 0;
-          IF s.ofs # 1 THEN PutDO(c, MOV, d, t, params);
+          t.am := Register; t.ofs := 0;
+          IF s.ofs # 1 THEN t.reg := allocR(); PutDO(c, MOV, d, t, params);
             REPEAT PutDO(c, ADD, t, t, params); s.ofs := s.ofs DIV 2;
               IF ODD(s.ofs) THEN PutDO(c, ADD, t, d, params) END
             UNTIL s.ofs = 1;
-          freeR
+            freeR
+          END
         END
-      END
       ELSE (*todo multiplication*) ASSERT(FALSE)
       END
     ELSE (*TODO other ops*) ASSERT(FALSE)
@@ -247,7 +249,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   PROCEDURE negated*(cond: INTEGER): INTEGER;
   BEGIN ASSERT(cond  # N); (*negated of negative condition does not exist*)
-    IF cond < N THEN cond := SYSTEM.VAL(BYTE, SYSTEM.VAL(SET, cond) / {1})
+    IF cond < N THEN cond := SYSTEM.VAL(BYTE, SYSTEM.VAL(SET, cond) / {0})
     ELSIF cond <= L THEN cond := (L+GE) - cond
     ELSE cond := (NV+AL) - cond
     END

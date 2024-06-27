@@ -72,6 +72,13 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     Texts.WriteHex(W, v); Texts.Append(Oberon.Log, W.buf)
   END DebugHex;
 
+  PROCEDURE DebugString*(msg, v: ARRAY OF CHAR);
+    VAR p: LONGINT;
+  BEGIN p := Pos();
+    Texts.WriteLn(W); Texts.WriteString(W, msg); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
+    Texts.WriteString(W, v); Texts.Append(Oberon.Log, W.buf)
+  END DebugString;
+
   PROCEDURE Identifier(VAR sym: INTEGER);
     VAR i, k: INTEGER;
   BEGIN i := 0;
