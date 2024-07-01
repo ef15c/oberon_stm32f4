@@ -1,7 +1,7 @@
 MODULE testFor;
 
   PROCEDURE p;
-    VAR i,j: INTEGER;
+    VAR i,j: INTEGER*;
   BEGIN
     FOR i := 1 TO 10 DO j := 2*i END;
     FOR i := 10 TO 1 BY -2 DO END
@@ -11,6 +11,7 @@ END testFor.
 
 OMSPTool.DecObj testFor.mpc
 
+not leaf:
 decode testFor.mpc
 testFor 74E5D4BB    68
 imports:
@@ -35,13 +36,13 @@ fixup type chains
 entry =  003C
 code    62
  0000	     8221	SUB #4,SP
- 0002	     431F	MOV #1,R15
- 0004	     403E	MOV #10,R14
- 0006	     000A
- 0008	     9E0F	CMP R14,R15
- 000A	     380B	JL #11, goes to  0022
- 000C	     4F81	MOV R15,2(SP)
- 000E	     0002
+ 0002	     4391	MOV #1,2(SP)
+ 0004	     0002
+ 0006	     403F	MOV #10,R15
+ 0008	     000A
+ 000A	     911F	CMP 2(SP),R15
+ 000C	     0002
+ 000E	     3809	JL #9, goes to  0022
  0010	     411F	MOV 2(SP),R15
  0012	     0002
  0014	     5F0F	ADD R15,R15
@@ -50,21 +51,65 @@ code    62
  001A	     411F	MOV 2(SP),R15
  001C	     0002
  001E	     531F	ADD #1,R15
- 0020	     3FF1	JMP #-15, goes to  0004
- 0022	     403F	MOV #10,R15
+ 0020	     3FF2	JMP #-14, goes to  0006
+ 0022	     40B1	MOV #10,2(SP)
  0024	     000A
- 0026	     431E	MOV #1,R14
- 0028	     9F0E	CMP R15,R14
- 002A	     3806	JL #6, goes to  0038
- 002C	     4F81	MOV R15,2(SP)
- 002E	     0002
+ 0026	     0002
+ 0028	     431F	MOV #1,R15
+ 002A	     9F81	CMP R15,2(SP)
+ 002C	     0002
+ 002E	     3804	JL #4, goes to  0038
  0030	     411F	MOV 2(SP),R15
  0032	     0002
  0034	     832F	SUB #2,R15
- 0036	     3FF7	JMP #-9, goes to  0026
+ 0036	     3FF8	JMP #-8, goes to  0028
  0038	     5221	ADD #4,SP
  003A	     4130	RET
  003C	     4130	RET
+
+leaf:
+decode testFor.mpc
+testFor 74E5D4BB    44
+imports:
+type descriptors
+
+data     0
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+commands:
+entries
+ 0024
+pointer refs
+
+fixup procedures chains
+fixup handlers chains
+fixup data chains
+fixup type chains
+entry =  0024
+code    38
+ 0000	     4314	MOV #1,R4
+ 0002	     4036	MOV #10,R6
+ 0004	     000A
+ 0006	     9406	CMP R4,R6
+ 0008	     3805	JL #5, goes to  0014
+ 000A	     4406	MOV R4,R6
+ 000C	     5606	ADD R6,R6
+ 000E	     4605	MOV R6,R5
+ 0010	     5314	ADD #1,R4
+ 0012	     3FF7	JMP #-9, goes to  0002
+ 0014	     4034	MOV #10,R4
+ 0016	     000A
+ 0018	     4316	MOV #1,R6
+ 001A	     9604	CMP R6,R4
+ 001C	     3802	JL #2, goes to  0022
+ 001E	     8324	SUB #2,R4
+ 0020	     3FFB	JMP #-5, goes to  0018
+ 0022	     4130	RET
+ 0024	     4130	RET
 
 OM4Tool.DecObj testFor.m4c
 

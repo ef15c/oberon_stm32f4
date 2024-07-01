@@ -136,7 +136,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ELSIF (op = SUB) & (SOff < -1) THEN op := ADD; SOff := -SOff; encSrc(op, SReg, sam, SOff, emitSOff, params)
       ELSE SReg := PC; params := params + IRAm; emitSOff := TRUE
     END
-    ELSE ASSERT(FALSE)
+    ELSE S.DebugHex("encSrc sam", sam); ASSERT(FALSE)
     END;
   END encSrc;
 

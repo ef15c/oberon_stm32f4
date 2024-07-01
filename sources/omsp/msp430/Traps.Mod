@@ -12,7 +12,7 @@ END Traps.
 OMSPTool.DecObj Traps.mpc
 
 decode Traps.mpc
-Traps D8CD5C84    30
+Traps 251F09BA    40
 imports:
 	msp430g2553 60723399
 type descriptors
@@ -25,7 +25,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 commands:
-	Assert 0000
+	AssertionViolated 0000
 entries
  0008 0000
 pointer refs
