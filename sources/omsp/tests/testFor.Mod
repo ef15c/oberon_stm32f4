@@ -1,7 +1,7 @@
 MODULE testFor;
 
   PROCEDURE p;
-    VAR i,j: INTEGER*;
+    VAR i,j: INTEGER;
   BEGIN
     FOR i := 1 TO 10 DO j := 2*i END;
     FOR i := 10 TO 1 BY -2 DO END
@@ -13,7 +13,7 @@ OMSPTool.DecObj testFor.mpc
 
 not leaf:
 decode testFor.mpc
-testFor 74E5D4BB    68
+testFor 74E5D4BB    62
 imports:
 type descriptors
 
@@ -26,15 +26,15 @@ vector table
 
 commands:
 entries
- 003C
+ 0036
 pointer refs
 
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup type chains
-entry =  003C
-code    62
+entry =  0036
+code    56
  0000	     8221	SUB #4,SP
  0002	     4391	MOV #1,2(SP)
  0004	     0002
@@ -42,34 +42,31 @@ code    62
  0008	     000A
  000A	     911F	CMP 2(SP),R15
  000C	     0002
- 000E	     3809	JL #9, goes to  0022
+ 000E	     3808	JL #8, goes to  0020
  0010	     411F	MOV 2(SP),R15
  0012	     0002
  0014	     5F0F	ADD R15,R15
  0016	     4F81	MOV R15,0(SP)
  0018	     0000
- 001A	     411F	MOV 2(SP),R15
+ 001A	     5391	ADD #1,2(SP)
  001C	     0002
- 001E	     531F	ADD #1,R15
- 0020	     3FF2	JMP #-14, goes to  0006
- 0022	     40B1	MOV #10,2(SP)
- 0024	     000A
- 0026	     0002
- 0028	     431F	MOV #1,R15
- 002A	     9F81	CMP R15,2(SP)
- 002C	     0002
- 002E	     3804	JL #4, goes to  0038
- 0030	     411F	MOV 2(SP),R15
- 0032	     0002
- 0034	     832F	SUB #2,R15
- 0036	     3FF8	JMP #-8, goes to  0028
- 0038	     5221	ADD #4,SP
- 003A	     4130	RET
- 003C	     4130	RET
+ 001E	     3FF3	JMP #-13, goes to  0006
+ 0020	     40B1	MOV #10,2(SP)
+ 0022	     000A
+ 0024	     0002
+ 0026	     9391	CMP #1,2(SP)
+ 0028	     0002
+ 002A	     3803	JL #3, goes to  0032
+ 002C	     83A1	SUB #2,2(SP)
+ 002E	     0002
+ 0030	     3FFA	JMP #-6, goes to  0026
+ 0032	     5221	ADD #4,SP
+ 0034	     4130	RET
+ 0036	     4130	RET
 
 leaf:
 decode testFor.mpc
-testFor 74E5D4BB    44
+testFor 74E5D4BB    42
 imports:
 type descriptors
 
@@ -82,15 +79,15 @@ vector table
 
 commands:
 entries
- 0024
+ 0022
 pointer refs
 
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup type chains
-entry =  0024
-code    38
+entry =  0022
+code    36
  0000	     4314	MOV #1,R4
  0002	     4036	MOV #10,R6
  0004	     000A
@@ -103,13 +100,12 @@ code    38
  0012	     3FF7	JMP #-9, goes to  0002
  0014	     4034	MOV #10,R4
  0016	     000A
- 0018	     4316	MOV #1,R6
- 001A	     9604	CMP R6,R4
- 001C	     3802	JL #2, goes to  0022
- 001E	     8324	SUB #2,R4
- 0020	     3FFB	JMP #-5, goes to  0018
+ 0018	     9314	CMP #1,R4
+ 001A	     3802	JL #2, goes to  0020
+ 001C	     8324	SUB #2,R4
+ 001E	     3FFC	JMP #-4, goes to  0018
+ 0020	     4130	RET
  0022	     4130	RET
- 0024	     4130	RET
 
 OM4Tool.DecObj testFor.m4c
 

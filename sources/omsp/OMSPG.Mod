@@ -897,17 +897,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END For0;
 
   PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: LONGINT);
-  BEGIN 
-    load(z);
+  BEGIN
     IF w.a > 0 THEN PutDO(A.CMP, x, z)
     ELSIF w.a < 0 THEN PutDO(A.CMP, z, x)
     ELSE S.Mark("zero increment")
     END;
-    free(z); L := mcode.pc; A.PutJ(mcode, A.L, 0)(*; Store(x, y)*)
+    L := mcode.pc; A.PutJ(mcode, A.L, 0); free(z)
   END For1;
 
   PROCEDURE For2*(VAR x, y, w: Item);
-  BEGIN (*x.tmp := TRUE;*) load(x); PutDO(A.ADD, w, x); free(x)
+  BEGIN x.rdo := FALSE; PutDO(A.ADD, w, x);
   END For2;
 
   (* Branches, procedure calls, procedure prolog and epilog *)
