@@ -237,7 +237,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       WHILE sym <= S.comma DO
         Check(S.comma, "comma?");
         IF par # NIL THEN par := par.next END ;
-        INC(n); Parameter(par)
+        INC(n); Parameter(par); IF par.register = 0FFH THEN INC(s, par.type.size) END;
       END ;
       Check(S.rparen, ") missing")
     ELSE S.Get(sym);
@@ -931,7 +931,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next
       END;
       G.Enter(locblksize - parblksize - 2, int, nofusedregs);
-      IF sym = S.begin THEN S.Get(sym); StatSequence END ;
+      IF sym = S.begin THEN S.Get(sym); StatSequence END;
       IF sym = S.return THEN
         S.Get(sym); expression(x);
         IF type.base = B.noType THEN S.Mark("this is not a function")
@@ -940,6 +940,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF type.base.form # B.NoTyp THEN
         S.Mark("function without result"); type.base := B.noType
       END;
+      proc.type.hur := G.HWM;
       G.Return(type.base.form, x, locblksize - parblksize - 2, int, nofusedregs);
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE;

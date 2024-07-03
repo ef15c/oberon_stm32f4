@@ -45,6 +45,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     AllocUp: BOOLEAN; (*if true, registers are in allocated in ascending or from R4 to R15, if false in descending order from R15 to R4*)
     RH: LONGINT;      (*in use registers R[15] ... R[H+1]*)
     RB, RL: INTEGER; (*register base and limit*)
+    HWM*: INTEGER; (*highest register user in procedure*)
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
     traps: ARRAY 8 OF B.Object; arith: ARRAY 4 OF B.Object;
     vector: ARRAY 32 OF INTEGER;
@@ -107,7 +108,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE allocR;
     VAR overflow: BOOLEAN;
   BEGIN (*register are allocated beginning in order according to AllocUp value*)
-(*S.DebugHex("allocR", RH);*)
+S.DebugHex("allocR", RH); S.DebugHex("    HWM", HWM);
+    IF RH > HWM THEN HWM := RH END;
+S.DebugHex("    new HWM", HWM);
     rh.reg := RH; rh.r := rh.reg; overflow := TRUE;
     IF AllocUp THEN IF RH < RL-1 THEN INC(RH); overflow := FALSE END
     ELSE IF RH > RL+1 THEN DEC(RH); overflow := FALSE END
@@ -162,7 +165,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE CheckRegs*;
   BEGIN
- IF RH # RB THEN S.Mark("Reg Stack") END;
+ IF RH # RB THEN S.Mark("Reg Stack")
+;S.DebugHex("    RH", RH); S.DebugHex("    RB", RB); ASSERT(FALSE);
+ END;
     RH := RB;
     IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;
     IF frame # 0 THEN S.Mark("frame error"); frame := 0 END
@@ -246,7 +251,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE push(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
-  BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN
+S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RH", RH);
+ rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
     IF x.mode = B.Const THEN
@@ -585,13 +592,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE PrepCall*(VAR x: Item; VAR r, n: LONGINT);
   BEGIN (*x.type.form = OM4B.Proc*) ASSERT(~AllocUp);
-    IF x.mode > B.Par THEN load(x) END; n := 0+x.obj.type.ldr - RH; (*number of overwritten registers currently in use by the caller*)
-    IF n > 0 THEN r := RH + 1; A.SaveRegs(mcode, r, n, frame); OfsPTOS(n, TRUE) END;
+    IF x.mode > B.Par THEN load(x) END; n := 0+x.obj.type.hur - (RH + 1); (*number of overwritten registers currently in use by the caller*)
+    r := RH + 1; IF n > 0 THEN A.SaveRegs(mcode, r, n, frame); OfsPTOS(n, TRUE) END;
     AllocUp := x.obj.type.leaf; IF AllocUp THEN RH := A.CG2 + 1 ELSE RH := 15 END
   END PrepCall;
 
   PROCEDURE Call*(VAR x: Item; r, n, s: LONGINT);
-    VAR rr!, dr!, t!: Item;
+    VAR rr!, t!: Item;
   BEGIN (*x.type.form = B.Proc*)
     IF x.mode = B.Const THEN x.reg := 0; x.am := A.Immediate; x.ofs := A.C16; (*address must be computed at link time*)
       A.PutSO(mcode, A.CALL, x, A.Word)
@@ -604,14 +611,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END;
     END;
     IF s # 0 THEN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := s; A.PutDO(mcode, A.ADD, t, sp, A.Word) END;
+    AllocUp := FALSE; RH := r-1;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RH := 15;
-    ELSE (*function*) resultRegister(rr);
-      IF r # rr.reg THEN dr.reg := r; dr.am := A.Register; dr.ofs := 0; A.PutDO(mcode, A.MOV, rr, dr, A.Word);
+    ELSE (*function*) resultRegister(rr); x.tmp := TRUE; x.mode := Reg; alloc(x);
+S.DebugHex("Call r", r); S.DebugHex("    n", n); S.DebugHex("    s", s);
+      IF x.r # rr.r THEN PutDO(A.MOV, rr, x);
         IF n > 0 THEN A.RestoreRegs(mcode, r, n, frame); OfsPTOS(-r, TRUE) END
-      END;
-      x.mode := Reg; x.r := r; RH := r-1
-    END;
-    AllocUp := FALSE
+      END
+;S.DebugHex("Call x.mode", x.mode); S.DebugHex("    x.r", x.r);
+    END
   END Call;
 
   PROCEDURE AddOp*(op: LONGINT; VAR x, y: Item);   (* x := x +- y *)
@@ -947,6 +955,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
     VAR t!: Item; rl, rh: BYTE;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+    IF AllocUp THEN HWM := RH - 1 ELSE HWM := 0 END;
     OfsPTOS(0, FALSE); frame := 0;
     IF size >= A.C16 THEN S.Mark("local variables size exeeded") END;
 
@@ -1320,10 +1329,10 @@ BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
   c0.reg := 0; c0.am := A.Immediate; c0.ofs := 0; c0.obj := NIL; c0.type := B.intType;
   c1.reg := 0; c1.am := A.Immediate; c1.ofs := 1; c1.obj := NIL; c1.type := B.intType;
   c2.reg := 0; c2.am := A.Immediate; c2.ofs := 2; c2.obj := NIL; c2.type := B.intType;
-  pc.reg := A.PC; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL; pc.type := B.intType;
-  sp.reg := A.SP; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL; sp.type := B.intType;
-  r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL; r4.type := B.intType;
-  r15.reg := 15; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL; r15.type := B.intType;
+  pc.reg := A.PC; pc.r := pc.reg; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL; pc.type := B.intType;
+  sp.reg := A.SP; sp.r := sp.reg; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL; sp.type := B.intType;
+  r4.reg := 4; r4.r := r4.reg; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL; r4.type := B.intType;
+  r15.reg := 15; r15.r := r15.reg; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL; r15.type := B.intType;
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; 
   relmap[3] := A.GE;
   B.SetRegRTProcCallback(RegisterRTproc)
