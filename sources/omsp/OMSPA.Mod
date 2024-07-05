@@ -86,7 +86,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     Item* = RECORD reg*, am*: BYTE; ofs*: INTEGER END;
     GetOffsetProc* = PROCEDURE(VAR x: Item): INTEGER;
     AllocRegisterProc* = PROCEDURE(): INTEGER;
-    FreeRegisterProc* = PROCEDURE;
+    FreeRegisterProc* = PROCEDURE(r: INTEGER);
 
   VAR getOfs : GetOffsetProc; allocR: AllocRegisterProc; freeR: FreeRegisterProc;
      enabled: BOOLEAN;
@@ -216,7 +216,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
             REPEAT PutDO(c, ADD, t, t, params); s.ofs := s.ofs DIV 2;
               IF ODD(s.ofs) THEN PutDO(c, ADD, t, d, params) END
             UNTIL s.ofs = 1;
-            freeR
+            freeR(t.reg)
           END
         END
       ELSE (*todo multiplication*) ASSERT(FALSE)
@@ -308,29 +308,19 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     RETURN L1
   END merged;
 
-  PROCEDURE PushRegs*(VAR c: ModuleCode; rl, rh: BYTE);
-    VAR i: INTEGER; t: Item;
-  BEGIN t.am := Register; t.ofs := 0;
-    FOR i := rh TO rl BY -1 DO t.reg := i; PutSO(c, PUSH, t, Word) END
+  PROCEDURE PushRegs*(VAR c: ModuleCode; regs: SET): INTEGER;
+    VAR n, i: INTEGER; t: Item;
+  BEGIN t.am := Register; t.ofs := 0; n := 0;
+    FOR i := 15 TO 0 BY -1 DO IF regs*{i} # {} THEN INC(n); t.reg := i; PutSO(c, PUSH, t, Word) END END
+    RETURN n
   END PushRegs;
 
-  PROCEDURE SaveRegs*(VAR c: ModuleCode; r, n: BYTE; VAR frame: LONGINT);  (* R[r .. r+n-1]*)
-  BEGIN (*n > 0*)
-    PushRegs(c, r, r+n-1);
-    INC(frame, 2*r)
-  END SaveRegs;
-
-  PROCEDURE PopRegs*(VAR c: ModuleCode; rl, rh: BYTE);
-    VAR i: INTEGER; t: Item;
-  BEGIN t.am := Register; t.ofs := 0;
-    FOR i := rl TO rh DO t.reg := i; PutSO(c, POP, t, Word) END
+  PROCEDURE PopRegs*(VAR c: ModuleCode; regs: SET): INTEGER;
+    VAR i, n: INTEGER; t: Item;
+  BEGIN t.am := Register; t.ofs := 0; n := 0;
+    FOR i := 0 TO 15 DO IF regs*{i} # {} THEN INC(n); t.reg := i; PutSO(c, POP, t, Word) END END
+    RETURN n
   END PopRegs;
-
-  PROCEDURE RestoreRegs*(VAR c: ModuleCode; r, n: BYTE; VAR frame: LONGINT); (*R[r .. r+n-1]*)
-  BEGIN (*n > 0*)
-    PopRegs(c, r, r+n-1);
-    DEC(frame, 2*r)
-  END RestoreRegs;
 
   PROCEDURE Init*(VAR c: ModuleCode);
   BEGIN c.pc := 0; enabled := TRUE

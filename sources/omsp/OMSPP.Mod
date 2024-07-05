@@ -317,7 +317,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END set; 
 
   PROCEDURE factor(VAR x: G.Item);
-    VAR obj!: B.Object; rx, sx, s: LONGINT;
+    VAR obj!: B.Object; rx, orx: SET; s: LONGINT;
   BEGIN (*sync*)
     IF (sym < S.char) OR (sym > S.ident) THEN S.Mark("expression expected");
       REPEAT S.Get(sym) UNTIL (sym >= S.char) & (sym <= S.for) OR (sym >= S.then)
@@ -325,12 +325,12 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = S.ident THEN
       qualident(obj);
       IF obj.class = B.SFunc THEN StandFunc(x, obj.val, obj.type)
-      ELSE G.MakeItem(x, obj, level); selector(x);
+      ELSE G.MakeItem(x, obj, level); selector(x); x.rdo := TRUE;
         IF sym = S.lparen THEN
           S.Get(sym);
           IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
             IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x, s)
-            ELSE G.PrepCall(x, rx, sx); ParamList(x, s); G.Call(x, rx, sx, s); x.type := x.type.base
+            ELSE G.PrepCall(x, rx, orx); ParamList(x, s); G.Call(x, rx, orx, s); x.type := x.type.base
             END;
           ELSE S.Mark("not a function"); ParamList(x, s)
           END
@@ -468,7 +468,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR obj!: B.Object;
       orgtype!: B.Type; (*original type of case var*)
       x!, y!, z!, w!: G.Item;
-      L0, L1, rx, sx, s: LONGINT;
+      L0, L1, s: LONGINT; rx, orx: SET;
 
     PROCEDURE TypeCase(obj: B.Object; VAR x: G.Item);
       VAR typobj!: B.Object;
@@ -518,7 +518,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
             S.Get(sym);
             IF (x.type.form = B.Proc) & (x.type.base.form = B.NoTyp) THEN
               IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x, s)
-              ELSE G.PrepCall(x, rx, sx); ParamList(x, s); G.Call(x, rx, sx, s)
+              ELSE G.PrepCall(x, rx, orx); ParamList(x, s); G.Call(x, rx, orx, s)
               END;
             ELSE S.Mark("not a procedure"); ParamList(x, s)
             END
@@ -526,7 +526,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
             IF x.type.nofpar > 0 THEN S.Mark("missing parameters") END ;
             IF x.type.base.form = B.NoTyp THEN
               IF isLeaf THEN S.Mark("call not allowed in leaf proc")
-              ELSE G.PrepCall(x, rx, sx); G.Call(x, rx, sx, 0)
+              ELSE G.PrepCall(x, rx, orx); G.Call(x, rx, orx, 0)
               END;
             ELSE S.Mark("not a procedure")
             END
@@ -912,8 +912,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       parblksize := 0; NEW(type);
       IF int THEN type.form := B.Handler; WHILE L > 0 DO DEC(L); G.SetVector(v[L], proc) END
       ELSE type.form := B.Proc 
-      END; 
-      type.size := G.WordSize; proc.type := type; proc.val := -1; proc.lev := level; 
+      END;
+      G.ClearPRU; type.size := G.WordSize; proc.type := type; proc.val := -1; proc.lev := level; 
       CheckExport(proc.expo);
       IF int & ~proc.expo THEN proc.expo := TRUE; S.Mark("add asterisk to export interrupt handler") END;
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
@@ -940,7 +940,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF type.base.form # B.NoTyp THEN
         S.Mark("function without result"); type.base := B.noType
       END;
-      proc.type.hur := G.HWM;
+      proc.type.ur := G.PRU;
       G.Return(type.base.form, x, locblksize - parblksize - 2, int, nofusedregs);
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE;
