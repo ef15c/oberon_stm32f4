@@ -13,20 +13,23 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   TYPE Item* = RECORD(A.Item)
     mode*: INTEGER;
     type*: B.Type;
-    obj: B.Object; (*for update of usedAt*)
-    a*, b*, r: LONGINT;
+    obj: B.Object; (*symbol object, for register variables and update of "used at" chain*)
+    a*, b*, c: LONGINT;
     rdo*, tmp: BOOLEAN  (*read only*)
   END ;
 
   (* Item forms and meaning of fields:
-    mode    r           a           b                      obj
-    ----------------------------------------------------------
-    Const   -        value   (proc adr)               -                    (immediate value)
-    Var     base      off           -            ext ref (base <= 0)    (direct adr)
-    Par      -          off0        off1                     -                     (indirect adr)
-    Reg     regno    -            -                        -
-    RegI    regno   off           -                        -
-    Cond    cond   Fchain  Tchain                   - *)
+    mode    c           a           b                      
+    ----------------------------
+    Const   -        value   (proc adr)        (immediate value)
+    Var     base      off           -                 (direct adr)
+    Par      -          off0        off1              (indirect adr)
+    Reg     -           -            -
+    RegI    -          off           -
+    Cond   cond   Fchain  Tchain
+ 
+    regno is now always in reg field
+ *)
 
     FrameOffsetSegment = RECORD
       end, ofsptos (*offset with previous top of stack*): INTEGER
@@ -43,7 +46,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     tdx, strx: LONGINT;
     entry: LONGINT;   (*main entry point*)
     AllocUp: BOOLEAN; (*if true, registers are in allocated in ascending or from R4 to R15, if false in descending order from R15 to R4*)
-    RIU: SET;      (*in use registers*)
+    RIU, VRS: SET;      (*in use and variable+parameter register sets*)
     RB, RL: INTEGER; (*register base and limit*)
     PRU*: SET; (*set of registers used in procedure*)
     frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
@@ -112,11 +115,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE allocR;
     VAR RH: INTEGER;
   BEGIN (*register are allocated beginning in order according to AllocUp value*)
+(*S.DebugHex("allocR AllocUp", ORD(AllocUp)); S.DebugHex("    RIU", ORD(RIU));*)
     RH := RB; WHILE (RIU*{RH} # {}) & (RH # RL) DO nextR(RH) END;
     IF RH = RL THEN S.Mark("register stack overflow")
     ELSE INCL(RIU, RH); INCL(PRU, RH);
+(*S.DebugHex("    RIU", ORD(RIU)); S.DebugHex("    RB", ORD(RB));
+S.DebugHex("    RH", RH);*)
 (*S.DebugHex("    PRU", ORD(PRU);*)
-      rh.reg := RH; rh.r := rh.reg;
+      rh.reg := RH
     END
   END allocR;
 
@@ -127,24 +133,26 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE alloc(VAR x: Item);
   BEGIN
-S.DebugHex("alloc", SYSTEM.ADR(x)); S.DebugHex("    x.obj", ORD(x.obj)); S.DebugHex("    x.mode", ORD(x.mode)); S.DebugHex("    x.tmp", ORD(x.tmp));
-IF x.obj # NIL THEN S.DebugString("    name", x.obj.name) END;
+(*S.DebugHex("alloc", SYSTEM.ADR(x)); S.DebugHex("    x.obj", ORD(x.obj)); S.DebugHex("    x.mode", ORD(x.mode)); S.DebugHex("    x.a", ORD(x.a));
+S.DebugHex("    x.tmp", ORD(x.tmp));*)
+(*IF x.obj # NIL THEN S.DebugString("    name", x.obj.name) END;*)
     IF x.tmp OR ((x.obj = NIL) OR (x.obj.register = 0FFH)) OR ~(x.mode IN {Reg, RegI}) THEN
-      x.r := AllocR(); x.reg := x.r; x.am := A.Register; x.tmp := TRUE
+      x.reg := AllocR(); x.am := A.Register; x.tmp := TRUE
     END
   END alloc;
 
   PROCEDURE freeR(r: INTEGER);
   BEGIN
-(*;S.DebugHex("freeR", r)*)
+(*S.DebugHex("freeR", r); S.DebugHex("    RIU", ORD(RIU));*)
     IF RIU*{r} # {} THEN EXCL(RIU, r)
     ELSE S.Mark("register wild free") END
   END freeR;
 
   PROCEDURE free(VAR x: Item);
   BEGIN
-S.DebugHex("free", SYSTEM.ADR(x)); S.DebugHex("    x.obj", ORD(x.obj)); S.DebugHex("    x.mode", ORD(x.mode)); S.DebugHex("    x.tmp", ORD(x.tmp));
-    IF x.tmp THEN
+(*S.DebugHex("free", SYSTEM.ADR(x)); S.DebugHex("    x.obj", ORD(x.obj)); S.DebugHex("    x.mode", ORD(x.mode)); S.DebugHex("    x.tmp", ORD(x.tmp));*)
+(*IF x.obj # NIL THEN S.DebugString("    name", x.obj.name) END;*)
+     IF x.tmp THEN
       freeR(x.reg)
     END
   END free;
@@ -161,18 +169,15 @@ S.DebugHex("free", SYSTEM.ADR(x)); S.DebugHex("    x.obj", ORD(x.obj)); S.DebugH
   END SetRH;
   
   PROCEDURE CheckRegs*;
-    VAR mask: SET;
-  BEGIN IF AllocUp THEN mask := {RB .. 15} ELSE mask := {A.CG2 + 1 .. RB} END;
-    IF RIU*mask # {} THEN S.Mark("Reg Stack")
-;S.DebugHex("    RIU", ORD(RIU)); S.DebugHex("    RB", RB); ASSERT(FALSE);
- END;
-    RIU := RIU - mask;
+  BEGIN IF RIU # VRS THEN S.Mark("Reg Stack");
+(*S.DebugHex("    RIU", ORD(RIU)); S.DebugHex("    VRS", ORD(VRS)); ASSERT(FALSE);*)
+ RIU := VRS END;
     IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;
     IF frame # 0 THEN S.Mark("frame error"); frame := 0 END
   END CheckRegs;
 
   PROCEDURE SetCC(VAR x: Item; n: LONGINT);
-  BEGIN x.mode := Cond; x.a := 0; x.b := 0; x.r := n
+  BEGIN x.mode := Cond; x.a := 0; x.b := 0; x.c := n
   END SetCC;
 
   PROCEDURE TypeChecked*(): BOOLEAN;
@@ -219,45 +224,45 @@ S.DebugHex("free", SYSTEM.ADR(x)); S.DebugHex("    x.obj", ORD(x.obj)); S.DebugH
       IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
       IF x.mode = B.Const THEN alloc(x);
         IF x.type.form = B.Proc THEN
-          IF x.r > 0 THEN S.Mark("not allowed")
-          ELSIF x.r = 0 THEN A.PutDO(mcode, A.MOV, pc, rh, A.Word); (*Put address of next statement in RH*)
-            t.ofs := mcode.pc - x.a; A.PutDO(mcode, A.SUB, t, rh, A.Word) (*substract offset to compute absolute address*)
-          ELSE sva.am := A.Immediate (*imported*); A.PutDO(mcode, A.MOV, sva, rh, A.Word)
+          IF x.c > 0 THEN S.Mark("not allowed")
+          ELSIF x.c = 0 THEN A.PutDO(mcode, A.MOV, pc, x, A.Word); (*Put address of next statement in RH*)
+            t.ofs := mcode.pc - x.a; A.PutDO(mcode, A.SUB, t, x, A.Word) (*substract offset to compute absolute address*)
+          ELSE sva.am := A.Immediate (*imported*); A.PutDO(mcode, A.MOV, sva, x, A.Word)
           END
-        ELSE t.ofs := x.a; A.PutDO(mcode, A.MOV, t, rh, A.Word)
+        ELSE t.ofs := x.a; A.PutDO(mcode, A.MOV, t, x, A.Word)
         END;
       ELSIF x.mode = B.Var THEN
-        IF x.r > 0 THEN (*local*) alloc(x); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, bw)
+        IF x.c > 0 THEN (*local*) alloc(x); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, bw)
         ELSE alloc(x); sva.am := A.Absolute; A.PutDO(mcode, A.MOV, sva, rh, bw)
         END
       ELSIF x.mode = B.Par THEN alloc(x); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
         ti.reg := rh.reg; ti.ofs := x.b; A.PutDO(mcode, A.MOV, ti, rh, bw)
-      ELSIF x.mode = RegI THEN ti.reg := x.r; ti.ofs := x.a; x.reg := x.r; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.MOV, ti, x, bw)
+      ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.MOV, ti, x, bw)
       ELSIF x.mode = Cond THEN
-        pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.r), 0);
+        pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
         FixLink(x.b); A.PutDO(mcode, A.MOV, c1, rh, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
         A.fix(mcode, pc0, mcode.pc - pc0 - 2); FixLink(x.a); A.PutDO(mcode, A.MOV, c0, rh, A.Word);
         A.fix(mcode, pc1, mcode.pc - pc1 - 2); alloc(x)
       END;
       x.mode := Reg; x.tmp := TRUE
-    ELSIF (*mode = REG*) x.tmp & (x.obj # NIL) & (x.r = x.obj.register) THEN (*temporary copy needed*)
+    ELSIF (*mode = REG*) x.tmp & (x.obj # NIL) & (x.reg = x.obj.register) THEN (*temporary copy needed*)
       x.am := A.Register; t := x;  alloc(x); A.PutDO(mcode, A.MOV, t, x, A.Word)
     END;
 (*S.DebugHex("    x.tmp", ORD(x.tmp));*)
-    x.reg := x.r; x.am := A.Register; x.ofs := 0
+    x.am := A.Register; x.ofs := 0
   END load;
 
   PROCEDURE push(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
   BEGIN
-S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
+(*S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));*)
  rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
     IF x.mode = B.Const THEN
       IF x.type.form = B.Proc THEN
-        IF x.r > 0 THEN S.Mark("not allowed")
-        ELSIF x.r = 0 THEN A.PutDO(mcode, A.MOV, pc, rh, A.Word); (*Put address of next statement in RH*)
+        IF x.c > 0 THEN S.Mark("not allowed")
+        ELSIF x.c = 0 THEN A.PutDO(mcode, A.MOV, pc, rh, A.Word); (*Put address of next statement in RH*)
           t.ofs := mcode.pc - x.a; A.PutDO(mcode, A.SUB, t, rh, A.Word); (*substract offset to compute absolute address*)
           A.PutSO(mcode, A.PUSH, rh, A.Word)
         ELSE sva.am := A.Immediate (*imported*); A.PutSO(mcode, A.PUSH, sva, A.Word)
@@ -265,14 +270,14 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
       ELSE t.ofs := x.a; A.PutSO(mcode, A.PUSH, t, A.Word)
       END
     ELSIF x.mode = B.Var THEN
-      IF x.r > 0 THEN (*local*) ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutSO(mcode, A.PUSH, ti, bw)
+      IF x.c > 0 THEN (*local*) ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutSO(mcode, A.PUSH, ti, bw)
       ELSE sva.am := A.Absolute; A.PutSO(mcode, A.PUSH, sva, bw)
       END
     ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
       ti.reg := rh.reg; ti.ofs := x.b; A.PutSO(mcode, A.PUSH, ti, bw)
-    ELSIF x.mode = RegI THEN ti.reg := x.r; ti.ofs := x.a; x.reg := x.r; x.am := A.Register; x.ofs := 0; A.PutSO(mcode, A.PUSH, ti, bw)
+    ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutSO(mcode, A.PUSH, ti, bw)
     ELSIF x.mode = Cond THEN
-      pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.r), 0);
+      pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
       FixLink(x.b); A.PutSO(mcode, A.PUSH, c1, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
       FixLink(x.a); A.PutSO(mcode, A.MOV, c0, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
     END
@@ -283,7 +288,7 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
   BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.obj := x.obj; sva.ofs := A.C16;
     IF x.mode = B.Var THEN
-      IF x.r > 0 THEN (*local*) alloc(x); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
+      IF x.c > 0 THEN (*local*) alloc(x); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
         IF x.a + frame # 0 THEN t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
       ELSE alloc(x); sva.am := A.Immediate; A.PutDO(mcode, A.MOV, sva, rh, A.Word)
       END
@@ -291,10 +296,10 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
       ti.reg := A.SP; ti.ofs := x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
       IF x.b # 0 THEN t.ofs := x.b; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
     ELSIF x.mode = RegI THEN
-      IF x.a # 0 THEN t.ofs := x.a; x.reg := x.r; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.ADD, t, x, A.Word) END
+      IF x.a # 0 THEN t.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.ADD, t, x, A.Word) END
     ELSE S.Mark("address error")
     END;
-    x.mode := Reg; x.reg := x.r; x.am := A.Register; x.ofs := 0
+    x.mode := Reg; x.am := A.Register; x.ofs := 0
   END loadAdr;
 
   PROCEDURE pushAdr(VAR x: Item);
@@ -302,7 +307,7 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
   BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.obj := x.obj; sva.ofs := A.C16;
     IF x.mode = B.Var THEN
-      IF x.r > 0 THEN (*local*)
+      IF x.c > 0 THEN (*local*)
         IF x.a + frame # 0 THEN A.PutDO(mcode, A.MOV, sp, rh, A.Word);
           t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word); A.PutSO(mcode, A.PUSH, rh, A.Word)
         ELSE A.PutSO(mcode, A.PUSH, sp, A.Word)
@@ -316,7 +321,7 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
       ELSE A.PutSO(mcode, A.PUSH, t, A.Word)
       END
     ELSIF x.mode = RegI THEN
-      x.reg := x.r; x.am := A.Register; x.ofs := 0;
+      x.am := A.Register; x.ofs := 0;
       IF x.a # 0 THEN t.ofs := x.a; x.a := 0; A.PutDO(mcode, A.ADD, t, x, A.Word) END;
       A.PutSO(mcode, A.PUSH, x, A.Word)
     ELSE S.Mark("address error")
@@ -326,8 +331,8 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
   PROCEDURE loadCond(VAR x: Item);
   BEGIN
     IF x.type.form = B.Bool THEN
-      IF x.mode = B.Const THEN IF x.a = 0 THEN x.r := A.NV ELSE x.r := A.AL END
-      ELSE load(x); A.PutDO(mcode, A.CMP, c0, x, A.Word); x.r := A.NE; free(x)
+      IF x.mode = B.Const THEN IF x.a = 0 THEN x.c := A.NV ELSE x.c := A.AL END
+      ELSE load(x); A.PutDO(mcode, A.CMP, c0, x, A.Word); x.c := A.NE; free(x)
       END;
       x.mode := Cond; x.a := 0; x.b := 0
     ELSE S.Mark("not Boolean?")
@@ -336,35 +341,35 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
 
   PROCEDURE loadTypTagAdr(T: B.Type);
     VAR x!: Item;
-  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.r := -T.mno; loadAdr(x)
+  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := NIL; loadAdr(x)
   END loadTypTagAdr;
 
   PROCEDURE pushTypTagAdr(T: B.Type);
     VAR x!: Item;
-  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.r := -T.mno; pushAdr(x)
+  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; pushAdr(x)
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
-  BEGIN x.r := 0; x.a := varsize+x.a; x.reg := 0; x.am := A.Immediate; x.ofs := A.C16;
+  BEGIN x.c := 0; x.a := varsize+x.a; x.reg := 0; x.am := A.Immediate; x.ofs := A.C16;
     rh.am := A.Register; A.PutDO(mcode, A.MOV, x, rh, A.Word); alloc(x);
     x.mode := Reg; x.am := A.Register; x.ofs := 0
   END loadStringAdr;
 
   PROCEDURE pushStringAdr(x: Item);
     VAR x1!: Item;
-  BEGIN x1.r := 0; x1.a := varsize+x.a; x1.reg := 0; x1.am := A.Immediate; x1.ofs := A.C16; x1.obj := x.obj;
+  BEGIN x1.c := 0; x1.a := varsize+x.a; x1.reg := 0; x1.am := A.Immediate; x1.ofs := A.C16; x1.obj := x.obj;
     A.PutSO(mcode, A.PUSH, x1, A.Word)
   END pushStringAdr;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
   PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: LONGINT);
-  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.obj := NIL; x.tmp := FALSE
+  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
   END MakeConstItem;
 
   PROCEDURE MakeStringItem*(VAR x: Item; len: LONGINT); (*copies string from OMSPS-buffer to OMSPG-string array*)
     VAR i: LONGINT;
-  BEGIN x.mode := B.Const; x.type := B.strType; x.a := strx; x.b := len; i := 0; x.obj := NIL; x.tmp := FALSE;
+  BEGIN x.mode := B.Const; x.type := B.strType; x.a := strx; x.b := len; i := 0; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF strx + len + 2 < maxStrx THEN
       WHILE len > 0 DO str[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END ;
       WHILE strx MOD 2 # 0 DO str[strx] := 0X; INC(strx) END
@@ -375,10 +380,10 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: LONGINT);
   BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF (y.class IN {B.Var, B.Par}) & (y.register # 0FFH) THEN
-      x.r := y.register; x.reg := x.r; 
+      x.reg := y.register;
       IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI; x.b := 0 (*TODO: check this*) END
     ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN x.b := y.lev  (*len*) ;
-    ELSE x.r := y.lev
+    ELSE x.c := y.lev
     END ;
     IF (y.lev > 0) & (y.lev # curlev) & (y.class # B.Const) THEN S.Mark("not accessible ") END
   END MakeItem;
@@ -388,7 +393,7 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
   PROCEDURE Field*(VAR x: Item; y: B.Object);   (* x := x.y *)
   BEGIN;
     IF x.mode = B.Var THEN
-      IF x.r >= 0 THEN x.a := x.a + y.val
+      IF x.c >= 0 THEN x.a := x.a + y.val
       ELSE loadAdr(x); x.mode := RegI; x.a := y.val
       END
     ELSIF x.mode = RegI THEN x.a := x.a + y.val
@@ -405,7 +410,7 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
       lim := x.type.len;
       IF (y.mode = B.Const) & (lim >= 0) THEN
         IF (y.a < 0) OR (y.a >= lim) THEN S.Mark("bad index") END ;
-        IF (x.mode # B.Var) OR (x.r >= 0) OR (y.a = 0) THEN
+        IF (x.mode # B.Var) OR (x.c >= 0) OR (y.a = 0) THEN
           IF x.mode IN {B.Var, RegI} THEN INC(x.a, y.a * s)
           ELSIF x.mode = B.Par THEN x.b := y.a * s + x.b
           END
@@ -424,13 +429,13 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
         END;
         t.ofs := s; A.eswDO(mcode, A.MUL, t, y, A.Word);
         IF x.mode = B.Var THEN
-          IF x.r > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
+          IF x.c > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
           ELSE sva.am := A.Immediate; A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
             A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0
           END;
-          x.r := y.r; x.mode := RegI; x.reg := x.r; x.am := A.Register; x.ofs := 0
+          x.reg := y.reg; x.mode := RegI; x.am := A.Register; x.ofs := 0
         ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs := x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
-          A.PutDO(mcode, A.ADD, rh, y, A.Word); x.mode := RegI; x.r := y.r; x.a := x.b; x.reg := x.r; x.am := A.Register; x.ofs := 0
+          A.PutDO(mcode, A.ADD, rh, y, A.Word); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.am := A.Register; x.ofs := 0
         ELSIF x.mode = RegI THEN A.PutDO(mcode, A.ADD, y, x, A.Word); free(y)
         END
       END
@@ -439,7 +444,7 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.r)
+    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.reg)
     ELSIF x.mode # Reg THEN S.Mark("bad mode in DeRef") END;
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
@@ -486,7 +491,7 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
       IF varpar THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       ELSE load(x); A.PutDO(mcode, A.CMP, c0, x, A.Word);
         pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*NIL belongs to every pointer type*)
-        ti.reg := x.r; ti.ofs := -8; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+        ti.reg := x.reg; ti.ofs := -8; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END;
       ti.reg := rh.reg; ti.ofs := T.nofpar*2; pt.reg := rh.reg; A.PutDO(mcode, A.MOV, ti, pt, A.Word); allocR; 
       tt := rh; loadTypTagAdr(T) (*tag of T*); A.PutDO(mcode, A.CMP, pt, tt, A.Word); freeR(rh.reg); free(x);
@@ -504,36 +509,40 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
     ELSE vector[n] := h.usedat; h.usedat := n END
   END SetVector;
 
-  PROCEDURE setRAO(VAR i: Item; dst: BOOLEAN; VAR nba: INTEGER; VAR bw: SET);
+  PROCEDURE writable(i: Item): BOOLEAN;
+    RETURN (i.mode # B.Const) OR (i.type.form = B.Pointer)
+  END writable;
+
+  PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba: INTEGER; VAR bw: SET);
     VAR ti!: Item;
   BEGIN
     IF i.type.size = 1 THEN bw := A.Byte END;
-    IF dst & i.rdo THEN i.tmp := TRUE; load(i)
+    IF dst & i.rdo & (~writable(i) OR (op # A.PUSH) & (op # A.CALL) & (op # A.CMP) & (op # A.BIT)) THEN i.tmp := TRUE; load(i)
     ELSIF i.mode = B.Var THEN
-      IF i.r > 0 THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame ELSE i.reg := 0; i.am := A.Absolute; i.ofs := A.C16 (*use static var address*) END
-    ELSIF i.mode = Reg THEN i.reg := i.r; i.am := A.Register; i.ofs := 0
-    ELSIF i.mode = RegI THEN i.reg := i.r; i.am := A.Indexed; i.ofs := i.a
+      IF i.c > 0 THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame ELSE i.reg := 0; i.am := A.Absolute; i.ofs := A.C16 (*use static var address*) END
+    ELSIF i.mode = Reg THEN i.am := A.Register; i.ofs := 0
+    ELSIF i.mode = RegI THEN i.am := A.Indexed; i.ofs := i.a
     ELSIF i.mode = B.Const THEN  i.ofs := i.a; i.reg := 0;
       IF i.type.form = B.Pointer THEN i.am := A.Absolute;
         IF i.type.base.size = 1 THEN bw := A.Byte END;
       ELSE i.am := A.Immediate; IF dst THEN S.Mark("not writable") END
       END
     ELSIF i.mode = B.Par THEN rh.am := A.Register; ASSERT(nba = -1); allocR; nba := rh.reg; ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
-      A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.r := rh.reg; i.a := i.b; i.b := 0; setRAO(i, dst, nba, bw)
+      A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
     ELSE load(i)
     END
   END setRAO;
 
   PROCEDURE PutDO(op: BYTE; VAR src, dst: Item);
     VAR bw: SET; nba: INTEGER;
-  BEGIN nba := -1; bw := A.Word; setRAO(dst, TRUE, nba, bw); setRAO(src, FALSE, nba, bw);
+  BEGIN nba := -1; bw := A.Word; setRAO(op, dst, TRUE, nba, bw); setRAO(op, src, FALSE, nba, bw);
     A.PutDO(mcode, op, src, dst, bw);
     IF nba >= 0 THEN freeR(nba) END
   END PutDO;
 
   PROCEDURE PutSO(op: INTEGER; VAR sd: Item);
     VAR bw: SET; nba: INTEGER;
-  BEGIN nba := -1; bw := A.Word; setRAO(sd, TRUE, nba, bw);
+  BEGIN nba := -1; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
     A.PutSO(mcode, op, sd, bw);
     IF nba >= 0 THEN freeR(nba) END
   END PutSO;
@@ -544,33 +553,33 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
     VAR t: LONGINT;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
-    x.r := A.negated(x.r); t := x.a; x.a := x.b; x.b := t
+    x.c := A.negated(x.c); t := x.a; x.a := x.b; x.b := t
   END Not;
 
   PROCEDURE And1*(VAR x: Item);   (* x := x & *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.PutJ(mcode, A.negated(x.r), x.a);
+    A.PutJ(mcode, A.negated(x.c), x.a);
     x.a := mcode.pc-2; A.FixLink(mcode, x.b); x.b := 0
   END And1;
 
   PROCEDURE And2*(VAR x, y: Item);
   BEGIN
     IF y.mode # Cond THEN loadCond(y) END ;
-    x.a := A.merged(mcode, y.a, x.a); x.b := y.b; x.r := y.r
+    x.a := A.merged(mcode, y.a, x.a); x.b := y.b; x.c := y.c
   END And2;
 
   PROCEDURE Or1*(VAR x: Item);   (* x := x OR *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.PutJ(mcode, x.r, x.b);
+    A.PutJ(mcode, x.c, x.b);
     x.b := mcode.pc-2; A.FixLink(mcode, x.a); x.a := 0
   END Or1;
 
   PROCEDURE Or2*(VAR x, y: Item);
   BEGIN
     IF y.mode # Cond THEN loadCond(y) END ;
-    x.a := y.a; x.b := A.merged(mcode, y.b, x.b); x.r := y.r
+    x.a := y.a; x.b := A.merged(mcode, y.b, x.b); x.c := y.c
   END Or2;
 
   (* Code generation for arithmetic operators *)
@@ -614,11 +623,11 @@ S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));
     AllocUp := FALSE;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := {};
     ELSE (*function*)  RIU := r; resultRegister(rr); x.tmp := TRUE; x.mode := Reg; alloc(x);
-S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s", s);
-      IF x.r # rr.r THEN PutDO(A.MOV, rr, x);
+(*S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s", s);*)
+      IF x.reg # rr.reg THEN PutDO(A.MOV, rr, x);
         IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, TRUE) END
       END
-;S.DebugHex("Call x.mode", x.mode); S.DebugHex("    x.r", x.r);
+(*;S.DebugHex("Call x.mode", x.mode); S.DebugHex("    x.reg", x.reg);*)
     END
   END Call;
 
@@ -648,7 +657,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
     ELSIF (x.mode = B.Const) & (x.a >= 2) THEN
 (*;S.DebugHex("MulOp y.mode", y.mode);*)
  y.tmp := TRUE; load(y); t.ofs := x.a; A.eswDO(mcode, A.MUL, t, y, A.Word);
-      x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
+      x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
     ELSE
       IF arith[0] = NIL THEN S.Mark("import Arith.mul function") 
       ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, s); ASSERT(s = 0); free(y)
@@ -663,7 +672,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
         IF y.a > 0 THEN x.a := x.a DIV y.a ELSE S.Mark("bad divisor") END
       ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.DIv, t, x, A.Word);
-        x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
+        x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.div procedure")
         ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0); Trap(A.GE, 6); free(y) END;
           MakeItem(p, arith[1], 0); PrepCall(p, r, or);
@@ -674,7 +683,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
         IF y.a > 0 THEN x.a := x.a MOD y.a ELSE S.Mark("bad modulus") END
       ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MOd, t, x, A.Word);
-        x.mode := Reg; x.r := y.r; x.reg := x.r; x.am := A.Register; x.ofs := 0
+        x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.div procedure")
         ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0); Trap(A.GE, 6); free(y) END;
           MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, s); ASSERT(s = 0); PutDO(A.MOV, y, x); free(y)
@@ -930,7 +939,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
   PROCEDURE CFJump*(VAR x: Item);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.PutJ(mcode, A.negated(x.r), x.a);
+    A.PutJ(mcode, A.negated(x.c), x.a);
     A.FixLink(mcode, x.b); x.a := mcode.pc - 2
   END CFJump;
 
@@ -941,7 +950,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
   PROCEDURE CBJump*(VAR x: Item; L: LONGINT);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.PutJ(mcode, A.negated(x.r), L - mcode.pc - 2); A.FixLink(mcode, x.b); A.FixLinkWith(mcode, x.a, L)
+    A.PutJ(mcode, A.negated(x.c), L - mcode.pc - 2); A.FixLink(mcode, x.b); A.FixLinkWith(mcode, x.a, L)
   END CBJump;
 
   PROCEDURE Fixup*(VAR x: Item);
@@ -973,7 +982,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
       END
     ELSE IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
     END;
-    RB := rh.reg
+    RB := rh.reg; VRS := RIU;
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
@@ -988,7 +997,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
     IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); OfsPTOS(-size DIV 2, TRUE) END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
     IF int THEN A.PutSO(mcode, A.RETI, pc, A.Word) ELSE A.PutNO(mcode, A.RET) END;
-    AllocUp := FALSE; RIU := {}; RB := 15
+    AllocUp := FALSE; RIU := {}; RB := 15; VRS := RIU
   END Return;
 
   (* In-line code procedures*)
@@ -1019,8 +1028,8 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
     THEN
       pc0 := 0;
       IF x.mode # Cond THEN loadCond(x) END;
-      IF x.a = 0 THEN cond := A.negated(x.r);
-      ELSE pc0 := mcode.pc; A.PutJ(mcode, x.r, 0); A.FixLink(mcode, x.a); cond := A.AL
+      IF x.a = 0 THEN cond := A.negated(x.c);
+      ELSE pc0 := mcode.pc; A.PutJ(mcode, x.c, 0); A.FixLink(mcode, x.a); cond := A.AL
       END;
       Trap(cond, 7); A.FixLink(mcode, x.b);
       IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END
@@ -1100,7 +1109,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
 
   PROCEDURE Logical*(fct: INTEGER; VAR x, y: Item);
     VAR op: BYTE;
-  BEGIN (*x is pointer to BYTE or INTEGER*)
+  BEGIN
     IF fct = 0 THEN op := A.BIC ELSIF fct = 1 THEN op := A.BIS ELSIF fct = 2 THEN op := A.XOR ELSE op := A.AND END;
     PutDO(op, y, x); free(y); free(x)
   END Logical;
@@ -1126,7 +1135,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
 
   PROCEDURE Register*(VAR x: Item);
   BEGIN (*x.mode = Const*)
-    x.r := x.a; x.mode := Reg; rh.am := A.Register; PutDO(A.MOV, x, rh); alloc(x)
+    x.reg := x.a; x.mode := Reg; rh.am := A.Register; PutDO(A.MOV, x, rh); alloc(x)
   END Register;
 
   PROCEDURE Adr*(VAR x: Item);
@@ -1149,7 +1158,7 @@ S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s",
     FOR i := 0 TO LEN(arith) - 1 DO arith[i] := NIL END;
     FOR i := 0 TO LEN(vector) - 1 DO vector[i] := 0FFFFH END;
     tdx := 0; strx := 0; RIU := {};
-    rh.reg := 16; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL; rh.mode := Reg; rh.r := rh.reg; rh.type := B.intType;
+    rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL; rh.mode := Reg; rh.type := B.intType;
     AllocUp := FALSE; RL := A.CG2; RB := 15;
   END Open;
 
@@ -1332,10 +1341,10 @@ BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
   c0.reg := 0; c0.am := A.Immediate; c0.ofs := 0; c0.obj := NIL; c0.type := B.intType;
   c1.reg := 0; c1.am := A.Immediate; c1.ofs := 1; c1.obj := NIL; c1.type := B.intType;
   c2.reg := 0; c2.am := A.Immediate; c2.ofs := 2; c2.obj := NIL; c2.type := B.intType;
-  pc.reg := A.PC; pc.r := pc.reg; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL; pc.type := B.intType;
-  sp.reg := A.SP; sp.r := sp.reg; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL; sp.type := B.intType;
-  r4.reg := 4; r4.r := r4.reg; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL; r4.type := B.intType;
-  r15.reg := 15; r15.r := r15.reg; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL; r15.type := B.intType;
+  pc.reg := A.PC; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL; pc.type := B.intType;
+  sp.reg := A.SP; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL; sp.type := B.intType;
+  r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL; r4.type := B.intType;
+  r15.reg := 15; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL; r15.type := B.intType;
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; 
   relmap[3] := A.GE;
   B.SetRegRTProcCallback(RegisterRTproc)
