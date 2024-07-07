@@ -4,7 +4,7 @@ MODULE testDeRef;
     rec = RECORD
       x, y: INTEGER
     END;
-  VAR r: prec; a: rec; i: INTEGER;
+  VAR r: prec; a: rec;
 BEGIN r := SYSTEM.VAL(prec, SYSTEM.ADR(a));
   r.x := r.y
 END testDeRef.
@@ -12,11 +12,11 @@ END testDeRef.
 OMSPTool.DecObj testDeRef.mpc
 
 decode testDeRef.mpc
-testDeRef D9C6CB1E    50
+testDeRef D9C6CB1E    48
 imports:
 type descriptors
  0004 FFFF FFFF FFFF FFFF
-data     8
+data     6
 strings
 
 vector table
@@ -31,7 +31,7 @@ pointer refs
 fixup procedures chains
 fixup handlers chains
 fixup data chains
- 0006     0	 000A
+ 000E     0	 000A
  0002     0	 000C
 fixup type chains
 entry =  0000

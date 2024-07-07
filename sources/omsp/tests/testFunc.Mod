@@ -1,0 +1,99 @@
+MODULE testFunc;
+
+  VAR i: INTEGER;
+
+  PROCEDURE SumI(a, b: INTEGER*): INTEGER;
+  BEGIN
+    RETURN a + b
+  END SumI;
+
+BEGIN
+  i := i + SumI(1, 2)
+END testFunc.
+
+OMSPTool.DecObj testFunc.mpc
+
+decode testFunc.mpc
+
+not leaf:
+testFunc D7E1DBBA    40
+imports:
+type descriptors
+
+data     2
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+commands:
+entries
+ 000A
+pointer refs
+
+fixup procedures chains
+ 0010     0	 0000
+fixup handlers chains
+fixup data chains
+ 001C     0	 0000
+fixup type chains
+entry =  000A
+code    32
+ 0000	     411F	MOV 4(SP),R15
+ 0002	     0004
+ 0004	     511F	ADD 2(SP),R15
+ 0006	     0002
+ 0008	     4130	RET
+ 000A	     1213	PUSH #1
+ 000C	     1223	PUSH #2
+ 000E	     12B0	CALL #0
+ 0010	     0000
+ 0012	     5221	ADD #4,SP
+ 0014	     421E	MOV &0,R14
+ 0016	     0000
+ 0018	     5F0E	ADD R15,R14
+ 001A	     4E82	MOV R14,&22
+ 001C	     0016
+ 001E	     4130	RET
+
+leaf:
+decode testFunc.mpc
+testFunc D7E1DBBA    36
+imports:
+type descriptors
+
+data     2
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+commands:
+entries
+ 0006
+pointer refs
+
+fixup procedures chains
+ 000C     0	 0000
+fixup handlers chains
+fixup data chains
+ 0018     0	 0000
+fixup type chains
+entry =  0006
+code    28
+ 0000	     4504	MOV R5,R4
+ 0002	     5604	ADD R6,R4
+ 0004	     4130	RET
+ 0006	     4315	MOV #1,R5
+ 0008	     4326	MOV #2,R6
+ 000A	     12B0	CALL #0
+ 000C	     0000
+ 000E	     440F	MOV R4,R15
+ 0010	     421E	MOV &0,R14
+ 0012	     0000
+ 0014	     5F0E	ADD R15,R14
+ 0016	     4E82	MOV R14,&18
+ 0018	     0012
+ 001A	     4130	RET

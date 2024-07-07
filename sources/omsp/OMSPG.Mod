@@ -108,6 +108,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.FixLink(mcode, L)
   END FixLink;
 
+  PROCEDURE SetRegisterAllocation*;
+  BEGIN IF ~AllocUp THEN AllocUp  := TRUE; RIU := {}; RL := 16;  RB := A.CG2 + 1 END
+  END SetRegisterAllocation;
+
+  PROCEDURE ClearPRU*;
+  BEGIN PRU := {}
+  END ClearPRU;
+
   PROCEDURE nextR(VAR r: INTEGER);
   BEGIN IF AllocUp THEN INC(r) ELSE DEC(r) END
   END nextR;
@@ -115,7 +123,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE allocR;
     VAR RH: INTEGER;
   BEGIN (*register are allocated beginning in order according to AllocUp value*)
-(*S.DebugHex("allocR AllocUp", ORD(AllocUp)); S.DebugHex("    RIU", ORD(RIU));*)
+(*S.DebugHex("allocR AllocUp", ORD(AllocUp));*)
+(*S.DebugHex("    RIU", ORD(RIU));*)
     RH := RB; WHILE (RIU*{RH} # {}) & (RH # RL) DO nextR(RH) END;
     IF RH = RL THEN S.Mark("register stack overflow")
     ELSE INCL(RIU, RH); INCL(PRU, RH);
@@ -141,7 +150,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     END
   END alloc;
 
-  PROCEDURE freeR(r: INTEGER);
+  PROCEDURE freeR*(r: INTEGER);
   BEGIN
 (*S.DebugHex("freeR", r); S.DebugHex("    RIU", ORD(RIU));*)
     IF RIU*{r} # {} THEN EXCL(RIU, r)
@@ -157,7 +166,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     END
   END free;
 
-  PROCEDURE resultRegister(VAR res: Item);
+  PROCEDURE resultRegister*(VAR res: Item);
   BEGIN
     IF AllocUp THEN res := r4 ELSE res := r15 END
   END resultRegister;
@@ -603,7 +612,9 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     IF x.mode > B.Par THEN load(x) END;
     r := RIU; or := x.obj.type.ur*RIU; (*overwritten registers currently in use by the caller*)
     IF or # {} THEN n := A.PushRegs(mcode, or); INC(frame, WordSize*n); OfsPTOS(n, TRUE) END;
-    AllocUp := x.obj.type.leaf; RIU := {}
+    IF x.obj.type.leaf THEN SetRegisterAllocation;
+      IF x.type.base.form # B.NoTyp THEN allocR END (*allocate result register*)
+    END
   END PrepCall;
 
   PROCEDURE Call*(VAR x: Item; r, or: SET; s: LONGINT);
@@ -620,9 +631,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       END;
     END;
     IF s # 0 THEN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := s; A.PutDO(mcode, A.ADD, t, sp, A.Word) END;
-    AllocUp := FALSE;
-    IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := {};
-    ELSE (*function*)  RIU := r; resultRegister(rr); x.tmp := TRUE; x.mode := Reg; alloc(x);
+    IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := {}; AllocUp := FALSE; RB := 15
+    ELSE (*function*)  RIU := r; resultRegister(rr); AllocUp := FALSE; RB := 15; x.tmp := TRUE; x.mode := Reg; alloc(x);
 (*S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s", s);*)
       IF x.reg # rr.reg THEN PutDO(A.MOV, rr, x);
         IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, TRUE) END
@@ -957,14 +967,6 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   BEGIN A.FixLink(mcode, x.a)
   END Fixup;
 
-  PROCEDURE SetRegisterAllocation*;
-  BEGIN IF ~AllocUp THEN AllocUp  := TRUE; RIU := {}; RL := 16;  RB := A.CG2 + 1 END
-  END SetRegisterAllocation;
-
-  PROCEDURE ClearPRU*;
-  BEGIN PRU := {}
-  END ClearPRU;
-
   PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
     VAR t!: Item; regl, regh: BYTE; n: INTEGER;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
@@ -981,8 +983,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         n := A.PushRegs(mcode, {regl .. regh}); OfsPTOS(nofusedregs, TRUE) (*save registers before use*)
       END
     ELSE IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
-    END;
-    RB := rh.reg; VRS := RIU;
+    END; VRS := RIU;
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
@@ -1167,7 +1168,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END SetDataSize;
 
   PROCEDURE Header*;
-  BEGIN entry := mcode.pc; OfsPTOS(0, FALSE); RB := rh.reg
+  BEGIN entry := mcode.pc; OfsPTOS(0, FALSE); RB := 15
   END Header;
 
   PROCEDURE NofPtrs(typ: B.Type): LONGINT;

@@ -725,7 +725,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       END
     END ;
-    ptype.nofpar := nofpar; ptype.leaf := leaf; parblksize := size
+    ptype.nofpar := nofpar; ptype.leaf := leaf; isLeaf := TRUE; parblksize := size
   END ProcedureType;
 
   PROCEDURE FormalType0(VAR typ: B.Type; dim: INTEGER);
@@ -921,8 +921,22 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ProcedureType(type, parblksize);  (*formal parameter list*)
       Check(S.semicolon, "no ;"); locblksize := parblksize + 2; (*return address is between parameters and local variables*)
       Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
-      loc := B.topScope.next;
-      WHILE loc # NIL DO IF loc.class IN {B.Var, B.Par} THEN loc.val := (locblksize - 2) - loc.val END; loc := loc.next END; (*fix .val offsets with 0 for last local variable*)
+      loc := B.topScope.next; (*fix .val offsets with 0 for last local variable*)
+      WHILE loc # NIL DO
+        IF loc.class IN {B.Var, B.Par} THEN
+          IF loc.register = 0FFH THEN loc.val := (locblksize - 2) - loc.val END
+        END;
+        loc := loc.next
+      END;
+      IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
+        G.resultRegister(x); G.SetRH(0); L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
+        loc := B.topScope.next;
+        WHILE loc # NIL DO
+          IF loc.class IN {B.Var, B.Par} THEN
+            IF loc.register # 0FFH THEN loc.register := G.AllocR() END (*allocate next free register to param or variable*)
+          END; loc := loc.next
+        END; G.freeR(x.reg) (*free sesult register*)
+      END;
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
       IF sym = S.procedure THEN
