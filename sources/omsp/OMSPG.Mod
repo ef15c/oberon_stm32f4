@@ -112,6 +112,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN IF ~AllocUp THEN AllocUp  := TRUE; RIU := {}; RL := 16;  RB := A.CG2 + 1 END
   END SetRegisterAllocation;
 
+  PROCEDURE ClearRIU*;
+  BEGIN RIU := {}
+  END ClearRIU;
+
   PROCEDURE ClearPRU*;
   BEGIN PRU := {}
   END ClearPRU;
@@ -120,24 +124,19 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN IF AllocUp THEN INC(r) ELSE DEC(r) END
   END nextR;
 
-  PROCEDURE allocR;
-    VAR RH: INTEGER;
-  BEGIN (*register are allocated beginning in order according to AllocUp value*)
-(*S.DebugHex("allocR AllocUp", ORD(AllocUp));*)
-(*S.DebugHex("    RIU", ORD(RIU));*)
-    RH := RB; WHILE (RIU*{RH} # {}) & (RH # RL) DO nextR(RH) END;
-    IF RH = RL THEN S.Mark("register stack overflow")
-    ELSE INCL(RIU, RH); INCL(PRU, RH);
-(*S.DebugHex("    RIU", ORD(RIU)); S.DebugHex("    RB", ORD(RB));
-S.DebugHex("    RH", RH);*)
-(*S.DebugHex("    PRU", ORD(PRU);*)
-      rh.reg := RH
-    END
+  PROCEDURE allocR*(r: INTEGER);
+  BEGIN
+    IF RIU*{r} = {} THEN INCL(RIU, r); INCL(PRU, r) ELSE S.Mark("reg already allocated") END
   END allocR;
 
   PROCEDURE AllocR*(): INTEGER;
-  BEGIN allocR
-    RETURN 0+rh.reg
+    VAR RH: INTEGER;
+  BEGIN (*register are allocated beginning in order according to AllocUp value*)
+(*S.DebugHex("AllocR AllocUp", ORD(AllocUp)); S.DebugHex("    RIU", ORD(RIU)); S.DebugHex("    RB", RB);*)
+    RH := RB; WHILE (RIU*{RH} # {}) & (RH # RL) DO nextR(RH) END;
+    IF RH = RL THEN S.Mark("register stack overflow"); rh.reg := RB ELSE allocR(RH); rh.reg := RH END
+
+    RETURN RH
   END AllocR;
 
   PROCEDURE alloc(VAR x: Item);
@@ -154,7 +153,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   BEGIN
 (*S.DebugHex("freeR", r); S.DebugHex("    RIU", ORD(RIU));*)
     IF RIU*{r} # {} THEN EXCL(RIU, r)
-    ELSE S.Mark("register wild free") END
+    ELSE S.Mark("reg wild free") END
   END freeR;
 
   PROCEDURE free(VAR x: Item);
@@ -170,17 +169,9 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   BEGIN
     IF AllocUp THEN res := r4 ELSE res := r15 END
   END resultRegister;
-
-  PROCEDURE SetRH*(r: BYTE);
-  BEGIN
-    ASSERT(r < A.C4);
-    IF AllocUp THEN RIU := {RB  .. r} ELSE RIU := {r .. RB} END
-  END SetRH;
-  
+ 
   PROCEDURE CheckRegs*;
-  BEGIN IF RIU # VRS THEN S.Mark("Reg Stack");
-(*S.DebugHex("    RIU", ORD(RIU)); S.DebugHex("    VRS", ORD(VRS)); ASSERT(FALSE);*)
- RIU := VRS END;
+  BEGIN IF RIU # VRS THEN S.Mark("Reg Stack"); RIU := VRS END;
     IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;
     IF frame # 0 THEN S.Mark("frame error"); frame := 0 END
   END CheckRegs;
@@ -226,7 +217,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE load(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
-  BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
 (*S.DebugHex("load x.mode", x.mode);*)
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
     IF x.mode # Reg THEN
@@ -265,7 +256,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
   BEGIN
 (*S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));*)
- rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+ t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
     IF x.mode = B.Const THEN
@@ -294,7 +285,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE loadAdr(VAR x: Item);
     VAR t!, ti!, sva!: Item;
-  BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.obj := x.obj; sva.ofs := A.C16;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*) alloc(x); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
@@ -313,7 +304,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE pushAdr(VAR x: Item);
     VAR t!, ti!, sva!: Item;
-  BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.obj := x.obj; sva.ofs := A.C16;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*)
@@ -360,7 +351,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE loadStringAdr(VAR x: Item);
   BEGIN x.c := 0; x.a := varsize+x.a; x.reg := 0; x.am := A.Immediate; x.ofs := A.C16;
-    rh.am := A.Register; A.PutDO(mcode, A.MOV, x, rh, A.Word); alloc(x);
+    A.PutDO(mcode, A.MOV, x, rh, A.Word); alloc(x);
     x.mode := Reg; x.am := A.Register; x.ofs := 0
   END loadStringAdr;
 
@@ -412,7 +403,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
     VAR s, lim: LONGINT; t!, ti!, sva!: Item;
-  BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.obj := x.obj; sva.reg := 0; sva.ofs := A.C16; s := x.type.base.size; 
     IF s=0 THEN S.Mark("Invalid array item size")
     ELSE
@@ -494,7 +485,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE TypeTest*(VAR x: Item; T: B.Type; varpar, isguard: BOOLEAN); (*TODO fix this proceedure*)
     VAR pc0: LONGINT; ti!, pt!, tt!: Item;
-  BEGIN ti.am := A.Indexed; ti.obj := NIL; rh.am := A.Register; pt.am := A.Register; pt.ofs := 0; pt.obj := NIL; tt.am := A.Register; tt.ofs := 0; tt.obj := NIL;
+  BEGIN ti.am := A.Indexed; ti.obj := NIL; pt.am := A.Register; pt.ofs := 0; pt.obj := NIL; tt.am := A.Register; tt.ofs := 0; tt.obj := NIL;
     IF (traps[2] = NIL) OR (T = NIL) THEN IF x.mode > Reg THEN freeR(rh.reg) END; SetCC(x, A.AL)
     ELSE (*fetch tag into RH*)
       IF varpar THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
@@ -502,7 +493,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*NIL belongs to every pointer type*)
         ti.reg := x.reg; ti.ofs := -8; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END;
-      ti.reg := rh.reg; ti.ofs := T.nofpar*2; pt.reg := rh.reg; A.PutDO(mcode, A.MOV, ti, pt, A.Word); allocR; 
+      ti.reg := rh.reg; ti.ofs := T.nofpar*2; pt.reg := rh.reg; A.PutDO(mcode, A.MOV, ti, pt, A.Word); rh.reg := AllocR(); 
       tt := rh; loadTypTagAdr(T) (*tag of T*); A.PutDO(mcode, A.CMP, pt, tt, A.Word); freeR(rh.reg); free(x);
       IF isguard THEN
         IF traps[2] # NIL THEN Trap(A.NE, 2) END
@@ -536,7 +527,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         IF i.type.base.size = 1 THEN bw := A.Byte END;
       ELSE i.am := A.Immediate; IF dst THEN S.Mark("not writable") END
       END
-    ELSIF i.mode = B.Par THEN rh.am := A.Register; ASSERT(nba = -1); allocR; nba := rh.reg; ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
+    ELSIF i.mode = B.Par THEN ASSERT(nba = -1); rh.reg := AllocR(); nba := rh.reg;
+      ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
       A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
     ELSE load(i)
     END
@@ -613,7 +605,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     r := RIU; or := x.obj.type.ur*RIU; (*overwritten registers currently in use by the caller*)
     IF or # {} THEN n := A.PushRegs(mcode, or); INC(frame, WordSize*n); OfsPTOS(n, TRUE) END;
     IF x.obj.type.leaf THEN SetRegisterAllocation;
-      IF x.type.base.form # B.NoTyp THEN allocR END (*allocate result register*)
+      IF x.type.base.form # B.NoTyp THEN rh.reg := AllocR() END (*allocate result register*)
     END
   END PrepCall;
 
@@ -625,19 +617,17 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     ELSE
       IF x.mode <= B.Par THEN IF traps[5] # NIL THEN PutDO(A.CMP, c0, x); Trap(A.EQ, 5) END;
         PutSO(A.CALL, x); free(x)
-      ELSE allocR;  rh.am := A.Register; PutSO(A.POP, rh); OfsPTOS(-1, TRUE); EXCL(r, rh.reg); DEC(frame, WordSize);
+      ELSE rh.reg := AllocR(); PutSO(A.POP, rh); OfsPTOS(-1, TRUE); EXCL(r, rh.reg); DEC(frame, WordSize);
         IF traps[5] # NIL THEN PutDO(A.CMP, c0, rh); Trap(A.EQ, 5) END;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
       END;
     END;
     IF s # 0 THEN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := s; A.PutDO(mcode, A.ADD, t, sp, A.Word) END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := {}; AllocUp := FALSE; RB := 15
-    ELSE (*function*)  RIU := r; resultRegister(rr); AllocUp := FALSE; RB := 15; x.tmp := TRUE; x.mode := Reg; alloc(x);
-(*S.DebugHex("Call r", ORD(r)); S.DebugHex("    or", ORD(or)); S.DebugHex("    s", s);*)
-      IF x.reg # rr.reg THEN PutDO(A.MOV, rr, x);
-        IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, TRUE) END
-      END
-(*;S.DebugHex("Call x.mode", x.mode); S.DebugHex("    x.reg", x.reg);*)
+    ELSE (*function*) 
+      x.tmp := TRUE; x.mode := Reg; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
+      RIU := r; AllocUp := FALSE; RB := 15; INCL(RIU, rr.reg);
+      IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, TRUE) END
     END
   END Call;
 
@@ -677,7 +667,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE DivOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
     VAR t!, p!: Item; r, or: SET; s: INTEGER;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; rh.am := A.Register;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF op = S.div THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
         IF y.a > 0 THEN x.a := x.a DIV y.a ELSE S.Mark("bad divisor") END
@@ -819,7 +809,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     VAR s, pc0, pc1: LONGINT; t!, ti!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti.am := A.Indexed; ti.obj := NIL;
     pc0 := -1;
-    IF y.type.size # 0 THEN allocR; loadAdr(x); loadAdr(y);
+    IF y.type.size # 0 THEN rh.reg := AllocR(); loadAdr(x); loadAdr(y);
       IF (x.type.form = B.Array) &  (x.type.len > 0) THEN
         IF y.type.len >= 0 THEN 
           IF x.type.size = y.type.size THEN t.ofs := (y.type.size+1) DIV 2; PutDO(A.MOV, t, rh)
@@ -845,7 +835,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE CopyString*(VAR x, y: Item);  (* x := y *) 
      VAR len, pc0: LONGINT; t!,ti!, x1!: Item;
-   BEGIN rh.am := A.Register; t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti.am := A.Indexed; ti.obj := NIL;
+   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti.am := A.Indexed; ti.obj := NIL;
     loadAdr(x); len := x.type.len;
     IF len >= 0 THEN
       IF len < y.b THEN S.Mark("string too long") END
@@ -863,9 +853,9 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   
   PROCEDURE OpenArrayParam*(VAR x: Item; par: B.Object);
     VAR t!, ti!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len; rh.am := A.Register;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
     ti.am := A.Indexed; ti.obj := NIL;
-    IF par.register # 0FFH THEN loadAdr(x); allocR;
+    IF par.register # 0FFH THEN loadAdr(x); rh.reg := AllocR();
       IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END
@@ -878,27 +868,27 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE VarParam*(VAR x: Item; par: B.Object);
     VAR xmd: INTEGER; t!, ti!, rh!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len; rh.am := A.Register;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
     ti.am := A.Indexed; ti.obj := NIL;
     IF par.register #0FFH THEN
       xmd := x.mode; loadAdr(x);
-      IF (par.type.form = B.Array) & (par.type.len < 0) THEN allocR; (*open array*)
+      IF (par.type.form = B.Array) & (par.type.len < 0) THEN rh.reg := AllocR(); (*open array*)
         IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         END
-      ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN allocR;
+      ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN rh.reg := AllocR();
         IF xmd = B.Par THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         ELSE loadTypTagAdr(x.type)
         END
       END
     ELSE (*in stack*)
       xmd := x.mode; pushAdr(x);
-      IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*) allocR;
+      IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*) rh.reg := AllocR();
         IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         END
       ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN
-        IF xmd = B.Par THEN allocR; ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
+        IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
         END
       END
@@ -911,8 +901,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE StringParam*(VAR x: Item; par: B.Object);
     VAR t!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; rh.am := A.Register; t.ofs := x.b;
-    IF par.register # 0FFH THEN loadStringAdr(x); allocR; A.PutDO(mcode, A.MOV, t, rh, A.Word) (*len*)
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := x.b;
+    IF par.register # 0FFH THEN loadStringAdr(x); rh.reg := AllocR(); A.PutDO(mcode, A.MOV, t, rh, A.Word) (*len*)
     ELSE pushStringAdr(x); A.PutSO(mcode, A.PUSH, t, A.Word); (*len*)
     END
   END StringParam;
@@ -1136,7 +1126,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE Register*(VAR x: Item);
   BEGIN (*x.mode = Const*)
-    x.reg := x.a; x.mode := Reg; rh.am := A.Register; PutDO(A.MOV, x, rh); alloc(x)
+    x.reg := x.a; x.mode := Reg; PutDO(A.MOV, x, rh); alloc(x)
   END Register;
 
   PROCEDURE Adr*(VAR x: Item);

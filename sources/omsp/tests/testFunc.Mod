@@ -59,7 +59,7 @@ code    32
 
 leaf:
 decode testFunc.mpc
-testFunc D7E1DBBA    36
+testFunc D7E1DBBA    34
 imports:
 type descriptors
 
@@ -79,10 +79,10 @@ fixup procedures chains
  000C     0	 0000
 fixup handlers chains
 fixup data chains
- 0018     0	 0000
+ 0016     0	 0000
 fixup type chains
 entry =  0006
-code    28
+code    26
  0000	     4504	MOV R5,R4
  0002	     5604	ADD R6,R4
  0004	     4130	RET
@@ -90,10 +90,9 @@ code    28
  0008	     4326	MOV #2,R6
  000A	     12B0	CALL #0
  000C	     0000
- 000E	     440F	MOV R4,R15
- 0010	     421E	MOV &0,R14
- 0012	     0000
- 0014	     5F0E	ADD R15,R14
- 0016	     4E82	MOV R14,&18
- 0018	     0012
- 001A	     4130	RET
+ 000E	     421F	MOV &0,R15
+ 0010	     0000
+ 0012	     540F	ADD R4,R15
+ 0014	     4F82	MOV R15,&16
+ 0016	     0010
+ 0018	     4130	RET

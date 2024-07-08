@@ -438,7 +438,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF (pno = 4) (*ASSERT*) & ~G.AssertionChecked() THEN G.EnableCode(FALSE) END;
     expression(x); nap := 1;
     IF sym = S.comma THEN S.Get(sym);
-      IF pno = 14 (*LDREG*) THEN CheckConst(x); CheckInt(x); G.SetRH(x.a) END;
+      IF pno = 14 (*LDREG*) THEN CheckConst(x); CheckInt(x); G.allocR(x.a) (*TODO: fix me*) END;
       expression(y); nap := 2; z.type := B.noType;
       WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
     ELSE y.type := B.noType
@@ -725,7 +725,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       END
     END ;
-    ptype.nofpar := nofpar; ptype.leaf := leaf; isLeaf := TRUE; parblksize := size
+    ptype.nofpar := nofpar; ptype.leaf := leaf; isLeaf := leaf; parblksize := size
   END ProcedureType;
 
   PROCEDURE FormalType0(VAR typ: B.Type; dim: INTEGER);
@@ -899,7 +899,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       locblksize, parblksize, L: LONGINT;
       int, haveinregs: BOOLEAN; nofusedregs: INTEGER;
       v: ARRAY 8 OF BYTE;
-  BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym); 
+  BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym);
     IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt vector routine must be global") END;
       int := TRUE; L := 0;
       REPEAT S.Get(sym); v[L] := S.ival; INC(L); Check(S.int, "missing vector number"); S.Get(sym) UNTIL sym # S.comma;
@@ -929,7 +929,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         loc := loc.next
       END;
       IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
-        G.resultRegister(x); G.SetRH(0); L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
+        G.resultRegister(x); G.ClearRIU; L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
         loc := B.topScope.next;
         WHILE loc # NIL DO
           IF loc.class IN {B.Var, B.Par} THEN
