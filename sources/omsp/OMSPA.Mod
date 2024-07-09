@@ -1,5 +1,5 @@
 MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*) 
-  IMPORT SYSTEM, OMSPS;
+  IMPORT SYSTEM, S := OMSPS;
 
   CONST
     (*Powers of two*)
@@ -64,7 +64,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   (*emulated single operand*)
   (* |1/0000/0000| *) POP* = 100H;
   (* |1/0000/0001| *) RLA* = 101H;
-  (* |1/0000/0002| *) RLC* = 102H;
+  (* |1/0000/0010| *) RLC* = 102H;
+  (* |1/0000/0011| *) NOP0* = 103H;
 
   (*emulated no operand*)
   (* |1/1000/0000| *) RET* = 180H;
@@ -183,6 +184,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     IF op = POP THEN PutDO(c, MOV, spi, ds, Word)
     ELSIF op = RLA THEN PutDO(c, ADD, ds, ds, Word)
     ELSIF op = RLC THEN PutDO(c, ADDC, ds, ds, Word)
+    ELSIF op = NOP0 THEN (*do nothing*)
     ELSE ASSERT(op < 100H);
       encSrc(op, ds.reg, ds.am, ds.ofs, emitDSOff, params);
 

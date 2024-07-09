@@ -153,7 +153,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   BEGIN
 (*S.DebugHex("freeR", r); S.DebugHex("    RIU", ORD(RIU));*)
     IF RIU*{r} # {} THEN EXCL(RIU, r)
-    ELSE S.Mark("reg wild free") END
+    ELSE S.Mark("reg wild free"); ASSERT(FALSE) END
   END freeR;
 
   PROCEDURE free(VAR x: Item);
@@ -693,12 +693,12 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END DivOp;
 
   (* Code generation for shift operations *)
-  PROCEDURE shift(op: BYTE; VAR x, y: Item); (* x := LSL(x, y)*)
+  PROCEDURE shift(op: INTEGER; VAR x, y: Item); (* x := LSL(x, y)*)
     VAR i, pb, pf: INTEGER;
   BEGIN
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := LSL(x.a, y.a) 
-    ELSIF (y.mode = B.Const) & (y.a <= 4) THEN load(x); FOR i := 1 TO y.a DO PutDO(A.ADD, x, x) END
-    ELSE load(x); load(y); PutDO(A.ADD, c1, y);
+    ELSIF (y.mode = B.Const) & (y.a <= 4) THEN PutSO(A.NOP0, x); FOR i := 1 TO y.a DO PutDO(A.ADD, x, x) END
+    ELSE PutSO(A.NOP0, x); PutDO(A.ADD, c1, y);
       pb := mcode.pc; PutDO(A.SUB, c1, y); pf := mcode.pc; A.PutJ(mcode, A.EQ, 0);
       PutSO(op, x); A.PutJ(mcode, A.AL, pb - mcode.pc - 2); A.fix(mcode, pf, mcode.pc - pf - 2);
       free(y)
@@ -1003,12 +1003,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END Increment;
 
   PROCEDURE Include*(inorex: INTEGER; VAR x, y: Item);
-    VAR op: BYTE; zr: INTEGER; t!, z!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    IF inorex = 0 THEN op := A.BIS ELSE op := A.BIC END;
-    IF y.mode = B.Const THEN t.ofs := LSL(1, y.a); PutDO(op, t, x)
-    ELSE z.mode := B.Const; z.a := 1; Rla(z, y); PutDO(op, z, x);
-      free(z); free(y)
+    VAR op: BYTE; z!, t!: Item;
+  BEGIN     IF inorex = 0 THEN op := A.BIS ELSE op := A.BIC END;
+    IF y.mode = B.Const THEN t.mode := B.Const; t.tmp := FALSE; t.obj := NIL; t.ofs := 0; t.a := LSL(1, y.a); PutDO(op, t, x)
+    ELSE z.mode := B.Const; z.a := 1; z.tmp := FALSE; z.ofs := 0; Rla(z, y); PutDO(op, z, x);
+      free(z)
     END
   END Include;
 
@@ -1327,16 +1326,17 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     Files.Register(F)
   END Close;
 
+  PROCEDURE initConst(VAR c: Item; v: INTEGER);
+  BEGIN c.reg := 0; c.am := A.Immediate; c.ofs := v; c.obj := NIL; c.type := B.intType;
+    c.mode := B.Const; c.tmp := FALSE; c.a := v
+  END initConst;
+
 BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
-  cm1.reg := 0; cm1.am := A.Immediate; cm1.ofs := -1; cm1.obj := NIL; cm1.type := B.intType;
-  c0.reg := 0; c0.am := A.Immediate; c0.ofs := 0; c0.obj := NIL; c0.type := B.intType;
-  c1.reg := 0; c1.am := A.Immediate; c1.ofs := 1; c1.obj := NIL; c1.type := B.intType;
-  c2.reg := 0; c2.am := A.Immediate; c2.ofs := 2; c2.obj := NIL; c2.type := B.intType;
+  initConst(cm1, -1); initConst(c0, 0); initConst(c1, 1); initConst(c2, 2);
   pc.reg := A.PC; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL; pc.type := B.intType;
   sp.reg := A.SP; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL; sp.type := B.intType;
   r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL; r4.type := B.intType;
   r15.reg := 15; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL; r15.type := B.intType;
-  relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; 
-  relmap[3] := A.GE;
+  relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; relmap[3] := A.GE;
   B.SetRegRTProcCallback(RegisterRTproc)
 END OMSPG.
