@@ -436,7 +436,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   BEGIN Check(S.lparen, "no (");
     npar := pno MOD 10; pno := pno DIV 10;
     IF (pno = 4) (*ASSERT*) & ~G.AssertionChecked() THEN G.EnableCode(FALSE) END;
-    expression(x); nap := 1;
+    expression(x); nap := 1; x.rdo := x.obj.rdo;
     IF sym = S.comma THEN S.Get(sym);
       IF pno = 14 (*LDREG*) THEN CheckConst(x); CheckInt(x); G.allocR(x.a) (*TODO: fix me*) END;
       expression(y); nap := 2; z.type := B.noType;
@@ -452,10 +452,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {2, 3} THEN (*INCL, EXCL*)
         CheckSet(x); CheckReadOnly(x); CheckInt(y); G.Include(pno-2, x, y)
       ELSIF pno = 4 THEN CheckBool(x); G.Assert(x)
-      ELSIF pno IN {5, 6, 7, 8} THEN CheckPointerToInt(x); x.rdo := FALSE; G.Logical(pno-5, x, y)
+      ELSIF pno IN {5, 6, 7, 8} THEN CheckPointerToInt(x); G.Logical(pno-5, x, y)
       ELSIF pno = 10 THEN CheckPointerToInt(x); G.Get(x, y)
-      ELSIF pno = 11 THEN CheckPointerToInt(x); x.rdo := FALSE; G.Put(x, y)
-      ELSIF pno = 12 THEN CheckInt(x); x.rdo := FALSE; CheckInt(y); CheckInt(z); G.Copy(x, y, z)
+      ELSIF pno = 11 THEN CheckPointerToInt(x); G.Put(x, y)
+      ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 14 THEN G.LDREG(y)
       ELSE ASSERT(FALSE)
       END
@@ -924,7 +924,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       loc := B.topScope.next; (*fix .val offsets with 0 for last local variable*)
       WHILE loc # NIL DO
         IF loc.class IN {B.Var, B.Par} THEN
-          IF loc.register = 0FFH THEN loc.val := (locblksize - 2) - loc.val END
+          IF loc.register = 0FFH THEN loc.val := (locblksize - loc.type.size) - loc.val END
         END;
         loc := loc.next
       END;

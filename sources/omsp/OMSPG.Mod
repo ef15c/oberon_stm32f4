@@ -13,7 +13,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   TYPE Item* = RECORD(A.Item)
     mode*: INTEGER;
     type*: B.Type;
-    obj: B.Object; (*symbol object, for register variables and update of "used at" chain*)
+    obj*: B.Object; (*symbol object, for register variables and update of "used at" chain*)
     a*, b*, c: LONGINT;
     rdo*, tmp: BOOLEAN  (*read only*)
   END ;
@@ -997,7 +997,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     VAR op: BYTE; zr: LONGINT;
   BEGIN (*frame = 0*)
     IF upordown = 0 THEN op := A.ADD ELSE op := A.SUB END;
-    IF y.type.form = B.NoTyp THEN y.mode := B.Const; y.a := 1 END;
+    IF y.type.form = B.NoTyp THEN y.mode := B.Const; y.a := 1; y.tmp := FALSE END;
     PutDO(op, y, x);
     free(y); free(x)
   END Increment;

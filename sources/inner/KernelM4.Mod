@@ -161,16 +161,16 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       size := p - q;
       IF size > 0 THEN
         IF size MOD 64 # 0 THEN
-          SYSTEM.PUT(q, 32); SYSTEM.PUT(q+8, list3); list3 := q; INC(q, 32); DEC(size, 32)
+          SYSTEM.PUT(q, 32); SYSTEM.PUT(q+4, -1); SYSTEM.PUT(q+8, list3); list3 := q; INC(q, 32); DEC(size, 32)
         END ;
         IF size MOD 128 # 0 THEN
-          SYSTEM.PUT(q, 64); SYSTEM.PUT(q+8, list2); list2 := q; INC(q, 64); DEC(size, 64)
+          SYSTEM.PUT(q, 64); SYSTEM.PUT(q+4, -1); SYSTEM.PUT(q+8, list2); list2 := q; INC(q, 64); DEC(size, 64)
         END ;
         IF size MOD 256 # 0 THEN
-          SYSTEM.PUT(q, 128); SYSTEM.PUT(q+8,  list1); list1 := q; INC(q, 128); DEC(size, 128)
+          SYSTEM.PUT(q, 128); SYSTEM.PUT(q+4, -1); SYSTEM.PUT(q+8,  list1); list1 := q; INC(q, 128); DEC(size, 128)
         END ;
         IF size > 0 THEN
-          SYSTEM.PUT(q, size); SYSTEM.PUT(q+8, list0); list0 := q; INC(q, size)
+          SYSTEM.PUT(q, size); SYSTEM.PUT(q+4, -1); SYSTEM.PUT(q+8, list0); list0 := q; INC(q, size)
         END
       END ;
       IF ~done & (mark # -1) THEN (*in use*) SYSTEM.GET(p, tag); SYSTEM.GET(tag, size); INC(p, size) END
