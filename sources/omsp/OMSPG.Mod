@@ -457,19 +457,6 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     END
   END Q;
 
-  PROCEDURE FindPtrFlds(typ: B.Type; off: LONGINT; VAR dcw: LONGINT);
-    VAR fld!: B.Object; i, s: LONGINT;
-  BEGIN
-    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN data[dcw] := off; INC(dcw)
-    ELSIF typ.form = B.Record THEN
-      fld := typ.dsc;
-      WHILE fld # NIL DO FindPtrFlds(fld.type, fld.val + off, dcw); fld := fld.next END
-    ELSIF typ.form = B.Array THEN
-      s := typ.base.size;
-      FOR i := 0 TO typ.len-1 DO FindPtrFlds(typ.base, i*s + off, dcw) END
-    END
-  END FindPtrFlds;
-
   PROCEDURE BuildTD*(T: B.Type; VAR dc: LONGINT);
     VAR dcw, k, s: LONGINT;  (*dcw = word address*)
   BEGIN dcw := dc DIV 2; s := T.size;
@@ -479,7 +466,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     ELSE Q(T, dcw);
       WHILE k < 3 DO data[dcw] := -1; INC(dcw); INC(k) END
     END ;
-    FindPtrFlds(T, 0, dcw); data[dcw] := -1; INC(dcw); tdx := dcw; dc := dcw*2;
+    tdx := dcw; dc := dcw*2;
     IF tdx >= maxTD THEN S.Mark("too many record types"); tdx := 0 END
   END BuildTD;
 
@@ -1160,19 +1147,6 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   BEGIN entry := mcode.pc; OfsPTOS(0, FALSE); RB := 15
   END Header;
 
-  PROCEDURE NofPtrs(typ: B.Type): LONGINT;
-    VAR fld!: B.Object; n: LONGINT;
-  BEGIN
-    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN n := 1
-    ELSIF typ.form = B.Record THEN
-      fld := typ.dsc; n := 0;
-      WHILE fld # NIL DO n := NofPtrs(fld.type) + n; fld := fld.next END
-    ELSIF typ.form = B.Array THEN n := NofPtrs(typ.base) * typ.len
-    ELSE n := 0
-    END
-    RETURN n
-  END NofPtrs;
-
   PROCEDURE WriteWord(VAR R: Files.Rider; w: INTEGER);
   BEGIN Files.WriteByte(R, w MOD 100H); Files.WriteByte(R, w DIV 100H MOD 100H);
   END WriteWord;
@@ -1218,25 +1192,23 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT);
     VAR obj!, obj2!: B.Object;
-      i, comsize, nofimps, nofptrs, size: LONGINT;
+      i, comsize, nofimps, size: LONGINT;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, TRUE);
-    obj := B.topScope.next; nofimps := 0; comsize := 2; nofptrs := 0;
+    obj := B.topScope.next; nofimps := 0; comsize := 2;
     WHILE obj # NIL DO
       IF (obj.class = B.Mod) & (obj.dsc # B.system) THEN INC(nofimps); (*count imports*)
       ELSIF (obj.exno # 0) & (obj.class = B.Const) & (obj.type.form = B.Proc)
           & (obj.type.nofpar = 0) & (obj.type.base = B.noType) THEN i := 0; (*count commands*)
         WHILE obj.name[i] # 0X DO INC(i) END ;
         i := (i+2) DIV 2 * 2; INC(comsize, i+2)
-      ELSIF obj.class = B.Var THEN INC(nofptrs, NofPtrs(obj.type))  (*count pointers*)
       END ;
       obj := obj.next
     END ;
     
     (*varsize includes type descriptors*)
-    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + nofptrs + 1)*2;
-    (*size is aligned on 4 bytes boundary*)
+    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + 1)*2; (*size is aligned on 2 bytes boundary*)
     
     B.MakeFileName(name, modid, ".mpc"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key);
@@ -1281,12 +1253,6 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       END ;
       obj := obj.next
     END ;
-    obj := B.topScope.next;
-    WHILE obj # NIL DO  (*pointer variables*)
-      IF obj.class = B.Var THEN FindPtrs(R, obj.type, obj.val) END ;
-      obj := obj.next
-    END;
-    WriteWord(R, -1);
     WriteFixup(R, B.Const, B.Proc); (*procedures fixup data*)
     WriteFixup(R, B.Const, B.Handler); (*interrupt handlers fixup data*)
     WriteFixup(R, B.Var, 0); (*variable fixup data*)
