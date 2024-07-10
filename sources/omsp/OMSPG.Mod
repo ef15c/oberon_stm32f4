@@ -81,7 +81,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF p.name = "AssertionViolated" THEN traps[7] := p
       END
     ELSIF curImport = 2 THEN
-      IF p.name = "mul16" THEN arith[0] := p
+      IF p.name = "mul16" THEN arith[0] := p; IF ~p.type.leaf THEN S.Mark("Arith.mul16 must be a leaf") END
       END
     END
   END RegisterRTproc;
@@ -637,33 +637,31 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END AddOp;
 
   PROCEDURE MulOp*(VAR x, y: Item);   (* x := x * y *)
-    VAR t!, p!: Item; r, or: SET; s: INTEGER;
+    VAR t!, p!: Item; r, or: SET;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a * y.a
     ELSIF (y.mode = B.Const)  & (y.a >= 2) THEN x.tmp := TRUE; load(x); t.ofs := y.a; A.eswDO(mcode, A.MUL, t, x, A.Word)
-    ELSIF (x.mode = B.Const) & (x.a >= 2) THEN
-(*;S.DebugHex("MulOp y.mode", y.mode);*)
- y.tmp := TRUE; load(y); t.ofs := x.a; A.eswDO(mcode, A.MUL, t, y, A.Word);
+    ELSIF (x.mode = B.Const) & (x.a >= 2) THEN y.tmp := TRUE; load(y); t.ofs := x.a; A.eswDO(mcode, A.MUL, t, y, A.Word);
       x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
     ELSE
-      IF arith[0] = NIL THEN S.Mark("import Arith.mul function") 
-      ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, s); ASSERT(s = 0); free(y)
+      IF arith[0] = NIL THEN S.Mark("import Arith.mul16 function") 
+      ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, 0); x.reg := p.reg
       END
     END
   END MulOp;
 
   PROCEDURE DivOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
-    VAR t!, p!: Item; r, or: SET; s: INTEGER;
+    VAR t!, p!: Item; r, or: SET;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF op = S.div THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
         IF y.a > 0 THEN x.a := x.a DIV y.a ELSE S.Mark("bad divisor") END
       ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.DIv, t, x, A.Word);
         x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0
-      ELSE IF arith[1] = NIL THEN S.Mark("import Arith.div procedure")
+      ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod16 procedure")
         ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0); Trap(A.GE, 6); free(y) END;
           MakeItem(p, arith[1], 0); PrepCall(p, r, or);
-          load(x); load(y); Call(p, r, or, s); ASSERT(s = 0); free(y)
+          load(x); load(y); Call(p, r, or, 0); free(y)
         END
       END
     ELSE (*op = OM4S.mod*)
@@ -671,9 +669,9 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         IF y.a > 0 THEN x.a := x.a MOD y.a ELSE S.Mark("bad modulus") END
       ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MOd, t, x, A.Word);
         x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0
-      ELSE IF arith[1] = NIL THEN S.Mark("import Arith.div procedure")
+      ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod procedure")
         ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0); Trap(A.GE, 6); free(y) END;
-          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, s); ASSERT(s = 0); PutDO(A.MOV, y, x); free(y)
+          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, 0); PutDO(A.MOV, y, x); free(y)
         END
       END
     END
@@ -684,7 +682,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     VAR i, pb, pf: INTEGER;
   BEGIN
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := LSL(x.a, y.a) 
-    ELSIF (y.mode = B.Const) & (y.a <= 4) THEN PutSO(A.NOP0, x); FOR i := 1 TO y.a DO PutDO(A.ADD, x, x) END
+    ELSIF (y.mode = B.Const) & (y.a <= 4) THEN PutSO(A.NOP0, x); FOR i := 1 TO y.a DO PutSO(op, x) END
     ELSE PutSO(A.NOP0, x); PutDO(A.ADD, c1, y);
       pb := mcode.pc; PutDO(A.SUB, c1, y); pf := mcode.pc; A.PutJ(mcode, A.EQ, 0);
       PutSO(op, x); A.PutJ(mcode, A.AL, pb - mcode.pc - 2); A.fix(mcode, pf, mcode.pc - pf - 2);
@@ -966,7 +964,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
     VAR t!: Item; regl, regh: BYTE; n: INTEGER;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    IF form # B.NoTyp THEN load(x) END;
+    IF form # B.NoTyp THEN x.tmp := TRUE; load(x) END;
     IF nofusedregs >= 0 THEN
       IF AllocUp THEN regl := A.CG2 + 1; RL := nofusedregs + regl; regh := RL - 1 ELSE regh :=  15; RL := 15 - nofusedregs; regl := RL + 1 END;
       IF regh > regl THEN n := A.PopRegs(mcode, {regl .. regh}); OfsPTOS(-nofusedregs, TRUE) END;
@@ -1069,19 +1067,23 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     END 
   END Len;
 
+  PROCEDURE ClrC*;
+  BEGIN
+    A.PutNO(mcode, A.CLRC)
+  END ClrC;
+
   PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item);
     VAR op: LONGINT;
   BEGIN IF (x.mode = B.Const) & (y.mode = B.Const) THEN
-      IF fct = 0 THEN x.a := LSL(x.a, y.a) ELSIF fct = 1 THEN x.a := ASR(x.a, y.a) END 
-    ELSE 
-      IF fct = 0 THEN Rla(x, y) ELSIF fct = 1 THEN Rra(x, y) END;
+      IF fct = 0 THEN x.a := LSL(x.a, y.a) ELSIF fct = 2 THEN x.a := ASR(x.a, y.a) END 
+    ELSE IF fct = 0 THEN Rla(x, y) ELSIF fct = 2 THEN Rra(x, y) END;
       free(y)
     END
   END Shift;
 
   PROCEDURE Rotate*(fct: LONGINT; VAR x: Item);
     VAR op: LONGINT;
-  BEGIN IF fct = 0 THEN PutSO(A.RLC, x) ELSIF fct = 1 THEN PutSO(A.RRC, x) END
+  BEGIN IF fct = 0 THEN PutSO(A.RLC, x) ELSIF fct = 2 THEN PutSO(A.RRC, x) END
   END Rotate;
 
   PROCEDURE Logical*(fct: INTEGER; VAR x, y: Item);

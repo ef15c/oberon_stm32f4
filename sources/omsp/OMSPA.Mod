@@ -69,6 +69,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   (*emulated no operand*)
   (* |1/1000/0000| *) RET* = 180H;
+  (* |1/1000/0001| *) CLRC* = 181H;
 
   (*|0000|*) MUL* = 0; (*software implemented operations*)
   (*|0001|*) NEG* = 1;
@@ -243,6 +244,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   PROCEDURE PutNO*(VAR c: ModuleCode; op: INTEGER);
   BEGIN
     IF op = RET THEN Put1(c, MOV, SP, PC, IRAm + Rdm + Word)
+    ELSIF op = CLRC THEN Put1(c, BIC, CG2, SR, Im + Rdm + Word)
     ELSE ASSERT(FALSE)
     END
   END PutNO;

@@ -407,10 +407,6 @@ BEGIN
   system := NIL;  (*n = procno*10 + nofpar*)
   enter("SBC", SFunc, intType, 122); (*functions*)
   enter("ADC", SFunc, intType, 112);
-  enter("RLA", SFunc, intType, 71);
-  enter("RLC", SFunc, intType, 81);
-  enter("RRA", SFunc, intType, 91);
-  enter("RRC", SFunc, intType, 101);
   enter("LEN", SFunc, intType, 61);
   enter("CHR", SFunc, charType, 51);
   enter("ORD", SFunc, intType, 41);
@@ -421,6 +417,15 @@ BEGIN
   enter("INCL", SProc, noType, 22);
   enter("DEC", SProc, noType, 11);
   enter("INC", SProc, noType, 1);
+  enter("BIC", SProc, noType, 52);
+  enter("BIS", SProc, noType, 62);
+  enter("XOR", SProc, noType, 72);
+  enter("AND", SProc, noType, 82);
+  enter("CLRC", SProc, noType, 130);
+  enter("RLA", SProc, intType, 172);
+  enter("RLC", SProc, intType, 181);
+  enter("RRA", SProc, intType, 192);
+  enter("RRC", SProc, intType, 201);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);
@@ -444,8 +449,4 @@ BEGIN
   enter("COPY", SProc, noType, 123);
   enter("PUT", SProc, noType, 112);
   enter("GET", SProc, noType, 102);
-  enter("BIC", SProc, noType, 52);
-  enter("BIS", SProc, noType, 62);
-  enter("XOR", SProc, noType, 72);
-  enter("AND", SProc, noType, 82);
 END OMSPB.

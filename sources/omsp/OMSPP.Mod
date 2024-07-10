@@ -266,8 +266,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
       ELSIF fct = 6 THEN (*LEN*)
           IF x.type.form = B.Array THEN G.Len(x) ELSE S.Mark("not an array") END
-      ELSIF fct IN {7, 8, 9, 10} THEN (*RLS, RLC, RRA, RRC*) CheckInt(y);
-        IF x.type.form IN {B.Int, B.Set} THEN G.Shift(fct-7, x, y); restyp := x.type ELSE S.Mark("bad type") END
       ELSIF fct = 11 THEN (*ADC*) G.ADC(x, y)
       ELSIF fct = 12 THEN (*SBC*) G.SBC(x, y)
       ELSIF fct = 14 THEN (*BIT*) CheckInt(x); CheckInt(y); G.Bit(x, y)
@@ -433,17 +431,20 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE StandProc(pno: LONGINT);
     VAR nap, npar: LONGINT; (*nof actual/formal parameters*)
       x!, y!, z!: G.Item;
-  BEGIN Check(S.lparen, "no (");
-    npar := pno MOD 10; pno := pno DIV 10;
-    IF (pno = 4) (*ASSERT*) & ~G.AssertionChecked() THEN G.EnableCode(FALSE) END;
-    expression(x); nap := 1; x.rdo := x.obj.rdo;
-    IF sym = S.comma THEN S.Get(sym);
-      IF pno = 14 (*LDREG*) THEN CheckConst(x); CheckInt(x); G.allocR(x.a) (*TODO: fix me*) END;
-      expression(y); nap := 2; z.type := B.noType;
-      WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
-    ELSE y.type := B.noType
+  BEGIN npar := pno MOD 10; pno := pno DIV 10;
+    IF npar # 0 THEN
+      Check(S.lparen, "no (");
+      IF (pno = 4) (*ASSERT*) & ~G.AssertionChecked() THEN G.EnableCode(FALSE) END;
+      expression(x); nap := 1; x.rdo := x.obj.rdo;
+      IF sym = S.comma THEN S.Get(sym);
+        IF pno = 14 (*LDREG*) THEN CheckConst(x); CheckInt(x); G.allocR(x.a) (*TODO: fix me*) END;
+        expression(y); nap := 2; z.type := B.noType;
+        WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
+      ELSE y.type := B.noType
+      END;
+      Check(S.rparen, "no )")
+    ELSE nap := 0
     END;
-    Check(S.rparen, "no )");
     IF (npar = nap) OR (pno IN {0, 1}) THEN 
       IF pno IN {0, 1} THEN (*INC, DEC*)
         CheckInt(x); CheckReadOnly(x);
@@ -452,11 +453,16 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {2, 3} THEN (*INCL, EXCL*)
         CheckSet(x); CheckReadOnly(x); CheckInt(y); G.Include(pno-2, x, y)
       ELSIF pno = 4 THEN CheckBool(x); G.Assert(x)
-      ELSIF pno IN {5, 6, 7, 8} THEN CheckPointerToInt(x); G.Logical(pno-5, x, y)
+      ELSIF pno IN {5, 6, 7, 8} THEN G.Logical(pno-5, x, y)
       ELSIF pno = 10 THEN CheckPointerToInt(x); G.Get(x, y)
       ELSIF pno = 11 THEN CheckPointerToInt(x); G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
+      ELSIF pno = 13 THEN G.ClrC
       ELSIF pno = 14 THEN G.LDREG(y)
+      ELSIF pno IN {17, 19} THEN (*RLA, RRA*) CheckInt(y);
+        IF x.type.form IN {B.Int, B.Set} THEN G.Shift(pno-17, x, y) ELSE S.Mark("bad type") END
+      ELSIF pno IN {18, 20} THEN (*RLC, RRC*)
+        IF x.type.form IN {B.Int, B.Set} THEN G.Rotate(pno-18, x) ELSE S.Mark("bad type") END
       ELSE ASSERT(FALSE)
       END
     ELSE S.Mark("wrong nof parameters")

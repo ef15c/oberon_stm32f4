@@ -1,9 +1,9 @@
 MODULE Traps; (*runtime module implementing the trap handlers*)
-  IMPORT SYSTEM, M := msp430g2553;
+  IMPORT M := msp430g2553;
 
   PROCEDURE AssertionViolated*;
    BEGIN
-    SYSTEM.BIS(M.P1OUT, {0}); (*turn LED on*)
+    BIS(M.P1OUT, {0}); (*turn LED on*)
     REPEAT UNTIL FALSE
   END AssertionViolated;
 
