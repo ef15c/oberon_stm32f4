@@ -576,11 +576,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   BEGIN
     IF x.type.form = B.Int THEN
       IF x.mode = B.Const THEN x.a := -x.a
-      ELSE load(x); A.eswSO(mcode, A.NEG, x, A.Word)
+      ELSE PutSO(A.NEG, x)
       END
     ELSE (*form = Set*)
       IF x.mode = B.Const THEN x.a := -x.a-1 
-      ELSE load(x); PutDO(A.XOR, cm1, x)
+      ELSE PutDO(A.XOR, cm1, x)
       END
     END
   END Neg;
@@ -962,9 +962,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
-    VAR t!: Item; regl, regh: BYTE; n: INTEGER;
+    VAR t!, rr!: Item; regl, regh: BYTE; n: INTEGER;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    IF form # B.NoTyp THEN x.tmp := TRUE; load(x) END;
+    IF form # B.NoTyp THEN resultRegister(rr);
+      IF x.reg # rr.reg THEN PutDO(A.MOV, x, rr) END
+    END;
     IF nofusedregs >= 0 THEN
       IF AllocUp THEN regl := A.CG2 + 1; RL := nofusedregs + regl; regh := RL - 1 ELSE regh :=  15; RL := 15 - nofusedregs; regl := RL + 1 END;
       IF regh > regl THEN n := A.PopRegs(mcode, {regl .. regh}); OfsPTOS(-nofusedregs, TRUE) END;
@@ -1044,8 +1046,12 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   (*In-line code functions*)
 
   PROCEDURE Abs*(VAR x: Item);
+    VAR pc: INTEGER;
   BEGIN
-    IF x.mode = B.Const THEN x.a := ABS(x.a) ELSE A.eswSO(mcode, A.NEG, x, A.Word) END
+    IF x.mode = B.Const THEN x.a := ABS(x.a) 
+    ELSE PutDO(A.CMP, c0, x); pc := mcode.pc; A.PutJ(mcode, A.GE, 0);
+      PutSO(A.NEG, x); A.fix(mcode, pc, mcode.pc - pc - 2)
+    END
   END Abs;
 
   PROCEDURE Odd*(VAR x: Item);

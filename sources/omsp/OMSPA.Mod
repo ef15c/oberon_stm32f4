@@ -178,14 +178,16 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     | opc/ode / WAd/Dreg| *)
 
   PROCEDURE PutSO*(VAR c: ModuleCode; op: INTEGER; VAR ds: Item; params: SET);
-    VAR emitDSOff: BOOLEAN; spi: Item;
+    VAR emitDSOff: BOOLEAN; spi, t: Item;
   BEGIN (*emit format II instruction*) ASSERT(params = params*Byte);
     ASSERT(ds.reg < 16); ASSERT ((ds.ofs >= -C15) & (ds.ofs <= C16));
     emitDSOff := FALSE; spi.reg := SP; spi.am := IndirectIncr; spi.ofs := 0;
-    IF op = POP THEN PutDO(c, MOV, spi, ds, Word)
-    ELSIF op = RLA THEN PutDO(c, ADD, ds, ds, Word)
-    ELSIF op = RLC THEN PutDO(c, ADDC, ds, ds, Word)
+    IF op = POP THEN PutDO(c, MOV, spi, ds, Word) (*emulation*)
+    ELSIF op = RLA THEN PutDO(c, ADD, ds, ds, params)
+    ELSIF op = RLC THEN PutDO(c, ADDC, ds, ds, params)
     ELSIF op = NOP0 THEN (*do nothing*)
+    ELSIF op = NEG THEN t.reg := 0; t.am := Immediate; t.ofs := -1; (*emulated by software*)
+      PutDO(c, XOR, t, ds, params); t.ofs := 1; PutDO(c, ADD, t, ds, params)
     ELSE ASSERT(op < 100H);
       encSrc(op, ds.reg, ds.am, ds.ofs, emitDSOff, params);
 
@@ -198,13 +200,6 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END PutSO;
 
-  PROCEDURE eswSO*(VAR c: ModuleCode; op: BYTE; VAR d: Item; params: SET);
-    VAR t: Item;
-  BEGIN IF op = NEG THEN t.reg := 0; t.am := Immediate; t.ofs := -1; PutDO(c, XOR, t, d, params); t.ofs := 1; PutDO(c, ADD, t, d, params)
-    ELSE (*TODO*) ASSERT(FALSE)
-    END
-  END eswSO;
-
   PROCEDURE eswDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET);
     VAR t: Item;
   BEGIN
@@ -212,7 +207,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       IF s.am = Immediate THEN
         IF s.ofs = 0 THEN t.reg := 0; t.am := Immediate; t.ofs := 0; PutDO(c, MOV, t, d, params)
         ELSIF s.ofs < 0 THEN (*multiplicator is negative, change sign of multiplicator, do the multiplication, then change the sign of the result*)
-          s.ofs := -s.ofs; eswDO(c, op, s, d, params); eswSO(c, NEG, d, params)
+          s.ofs := -s.ofs; eswDO(c, op, s, d, params); PutSO(c, NEG, d, params)
         ELSE (*multiplicator is positive*) WHILE ~ODD(s.ofs) DO PutDO(c, ADD, d, d, params); s.ofs := s.ofs DIV 2 END;
           t.am := Register; t.ofs := 0;
           IF s.ofs # 1 THEN t.reg := allocR(); PutDO(c, MOV, d, t, params);

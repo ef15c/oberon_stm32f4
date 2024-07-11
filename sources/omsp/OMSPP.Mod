@@ -936,12 +936,17 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END;
       IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
         G.resultRegister(x); G.ClearRIU; L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
-        loc := B.topScope.next;
-        WHILE loc # NIL DO
+        loc := B.topScope.next; L := 0;
+        WHILE (loc # NIL) & (L < type.nofpar) DO (*allocate registers to parameters, avoiding the result register*)
+          IF loc.class IN {B.Var, B.Par} THEN
+            IF loc.register # 0FFH THEN loc.register := G.AllocR() END (*allocate next free register to param or variable*)
+          END; loc := loc.next; INC(L)
+        END; G.freeR(x.reg); (*free sesult register*)
+        WHILE loc # NIL DO (*allocate registers to local variables, including the result register*)
           IF loc.class IN {B.Var, B.Par} THEN
             IF loc.register # 0FFH THEN loc.register := G.AllocR() END (*allocate next free register to param or variable*)
           END; loc := loc.next
-        END; G.freeR(x.reg) (*free sesult register*)
+        END
       END;
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
