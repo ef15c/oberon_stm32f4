@@ -426,6 +426,7 @@ BEGIN
   enter("RLC", SProc, intType, 181);
   enter("RRA", SProc, intType, 192);
   enter("RRC", SProc, intType, 201);
+  enter("BIT", SFunc, boolType, 142);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);
@@ -444,7 +445,6 @@ BEGIN
   enter("ADR", SFunc, intType, 171);
   enter("VAL", SFunc, intType, 162);
   enter("REG", SFunc, intType, 151);
-  enter("BIT", SFunc, boolType, 142);
   enter("LDREG", SProc, noType, 142);  (*procedures*)
   enter("COPY", SProc, noType, 123);
   enter("PUT", SProc, noType, 112);

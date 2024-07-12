@@ -81,8 +81,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF p.name = "AssertionViolated" THEN traps[7] := p
       END
     ELSIF curImport = 2 THEN
-      IF p.name = "mul16" THEN arith[0] := p; IF ~p.type.leaf THEN S.Mark("Arith.mul16 must be a leaf") END
-      END
+      IF p.name = "mul16" THEN arith[0] := p
+      ELSIF p.name = "divmod16" THEN arith[1] := p
+      END;      
     END
   END RegisterRTproc;
 
@@ -251,6 +252,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 (*S.DebugHex("    x.tmp", ORD(x.tmp));*)
     x.am := A.Register; x.ofs := 0
   END load;
+
+  PROCEDURE forceload(VAR x: Item);
+    VAR t: BOOLEAN;
+  BEGIN t := x.tmp; x.tmp := TRUE; load(x); x.tmp := t
+  END forceload;
 
   PROCEDURE push(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
@@ -659,9 +665,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.DIv, t, x, A.Word);
         x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod16 procedure")
-        ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0); Trap(A.GE, 6); free(y) END;
-          MakeItem(p, arith[1], 0); PrepCall(p, r, or);
-          load(x); load(y); Call(p, r, or, 0); free(y)
+        ELSE IF traps[6] # NIL THEN PutDO(A.CMP, c0, y); Trap(A.NE, 6); free(y) END;
+          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); forceload(c0); Call(p, r, or, 0); x.reg := p.reg
         END
       END
     ELSE (*op = OM4S.mod*)
@@ -670,8 +675,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MOd, t, x, A.Word);
         x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod procedure")
-        ELSE IF traps[6] # NIL THEN PutDO(A.CMP, y, c0); Trap(A.GE, 6); free(y) END;
-          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, 0); PutDO(A.MOV, y, x); free(y)
+        ELSE IF traps[6] # NIL THEN PutDO(A.CMP, c0, y); Trap(A.NE, 6); free(y) END;
+          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); forceload(c1); Call(p, r, or, 0); x.reg := p.reg;
         END
       END
     END
@@ -855,11 +860,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     VAR xmd: INTEGER; t!, ti!, rh!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
     ti.am := A.Indexed; ti.obj := NIL;
-    IF par.register #0FFH THEN
+    IF par.register # 0FFH THEN
       xmd := x.mode; loadAdr(x);
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN rh.reg := AllocR(); (*open array*)
         IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
-        ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+        ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame (*fix me*); A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         END
       ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN rh.reg := AllocR();
         IF xmd = B.Par THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
@@ -881,7 +886,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END VarParam;
 
   PROCEDURE ValueParam*(VAR x: Item; par: B.Object);
-  BEGIN IF par.register #0FFH THEN load(x) ELSE push(x) END
+  BEGIN IF par.register #0FFH THEN forceload(x) ELSE push(x) END
   END ValueParam;
 
   PROCEDURE StringParam*(VAR x: Item; par: B.Object);
@@ -1108,11 +1113,10 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END SBC;
 
   PROCEDURE Bit*(VAR x, y: Item);
-    VAR t!, t1!: Item;
-  BEGIN t.am := A.Immediate; t.reg := 0; t.obj := NIL;
-    x.mode := RegI; x.a := 0; load(x);
-    IF y.mode = B.Const THEN t.ofs := LSL(1, y.a); A.PutDO(mcode, A.BIT, t, x, A.Word)
-    ELSE t1.mode := B.Const; t1.a := 1; t1.obj := NIL; Rla(t1, y); PutDO(A.BIT, t1, x)
+    VAR t!: Item;
+  BEGIN t.obj := NIL; t.mode := B.Const; t.tmp := FALSE;
+    IF y.mode = B.Const THEN t.a:= LSL(1, y.a); PutDO(A.BIT, t, x)
+    ELSE Rla(c1, y); PutDO(A.BIT, y, x)
     END;
     free(x); free(y);
     SetCC(x, A.NE)

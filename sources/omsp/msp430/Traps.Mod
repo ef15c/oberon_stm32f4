@@ -1,4 +1,10 @@
 MODULE Traps; (*runtime module implementing the trap handlers*)
+
+(*----------------------------------------------------------------*)
+(*--- W A R N I N G : never change interfaces of the functions in this module ---*)
+(*however, you can comment an unused function here to free some program space*)
+(*----------------------------------------------------------------*)
+
   IMPORT M := msp430g2553;
 
   PROCEDURE AssertionViolated*;

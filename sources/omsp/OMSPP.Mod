@@ -268,7 +268,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF x.type.form = B.Array THEN G.Len(x) ELSE S.Mark("not an array") END
       ELSIF fct = 11 THEN (*ADC*) G.ADC(x, y)
       ELSIF fct = 12 THEN (*SBC*) G.SBC(x, y)
-      ELSIF fct = 14 THEN (*BIT*) CheckInt(x); CheckInt(y); G.Bit(x, y)
+      ELSIF fct = 14 THEN (*BIT*) IF x.type.form IN {B.Int, B.Set} THEN CheckInt(y); G.Bit(x, y) ELSE S.Mark("bad type") END
       ELSIF fct = 15 THEN (*REG*) CheckConst(x); CheckInt(x); G.Register(x)
       ELSIF fct = 16 THEN (*VAL*)
         IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; x := y

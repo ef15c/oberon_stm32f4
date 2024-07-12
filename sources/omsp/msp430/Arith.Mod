@@ -1,4 +1,10 @@
 MODULE Arith; (*runtime module implementing arithmetic operations*)
+
+(*----------------------------------------------------------------*)
+(*--- W A R N I N G : never change interfaces of the functions in this module ---*)
+(*however, you can comment an unused function here to free some program space*)
+(*----------------------------------------------------------------*)
+
   IMPORT SYSTEM;
 
   CONST C = 3; (*carry*)
@@ -10,8 +16,8 @@ MODULE Arith; (*runtime module implementing arithmetic operations*)
       RETURN r
     END mul16;
 
-  (*borrowed from TI's  MSP430 c runtime library*)
   PROCEDURE divmod16*(x, y: INTEGER*; op: BYTE*): INTEGER; (*do not change this function interface*)
+    (*borrowed from TI's  MSP430 C runtime library*)
     VAR q, r: INTEGER*; neg: SET*;
     BEGIN neg := {}; IF y < 0 THEN XOR(y, -1); INC(y, 1); (*y := -y*) neg := {0} END;
       IF x < 0 THEN XOR(x, -1); INC(x, 1); (*x := -x*) XOR(neg, -1) END;
@@ -21,7 +27,9 @@ MODULE Arith; (*runtime module implementing arithmetic operations*)
         IF SYSTEM.CMP(r, y, C) THEN DEC(r, y) END; (*if current remainder > divisor, subtract*)
         RLC(q) (*set quotient bit (from carry) and advance loop bit*)
       UNTIL SYSTEM.COND(C);
-(*todo update sign*)
+      IF BIT(neg, 0) THEN XOR(q, -1); INC(q, 1) (*negate quotient*) END;
+      IF BIT(neg, 1) THEN XOR(r, -1); INC(r, 1) (*negate remainder*) END;
+      IF op = 1 THEN q := r (*return remainder instead of quotien*) END
 
       RETURN q
   END divmod16;
@@ -31,7 +39,7 @@ END Arith.
 OMSPTool.DecObj Arith.mpc
 
 decode Arith.mpc
-Arith 0A7B9B13    76
+Arith 0A7B9B13    98
 imports:
 type descriptors
 
@@ -44,13 +52,13 @@ vector table
 
 commands:
 entries
- 0040 0000 0016
+ 0056 0000 0016
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup type chains
-entry =  0040
-code    66
+entry =  0056
+code    88
  0000	     4304	MOV #0,R4
  0002	     9305	CMP #0,R5
  0004	     2407	JEQ #7, goes to  0014
@@ -82,5 +90,16 @@ code    66
  0038	     8608	SUB R6,R8
  003A	     6404	ADDC R4,R4
  003C	     2BF9	JNC #-7, goes to  0030
- 003E	     4130	RET
- 0040	     4130	RET
+ 003E	     B319	BIT #1,R9
+ 0040	     2402	JEQ #2, goes to  0046
+ 0042	     E334	XOR #-1,R4
+ 0044	     5314	ADD #1,R4
+ 0046	     B329	BIT #2,R9
+ 0048	     2402	JEQ #2, goes to  004E
+ 004A	     E338	XOR #-1,R8
+ 004C	     5318	ADD #1,R8
+ 004E	     9357	CMP.B #1,R7
+ 0050	     2001	JNE #1, goes to  0054
+ 0052	     4804	MOV R8,R4
+ 0054	     4130	RET
+ 0056	     4130	RET
