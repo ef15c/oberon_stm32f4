@@ -83,7 +83,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF curImport = 2 THEN
       IF p.name = "mul16" THEN arith[0] := p
       ELSIF p.name = "divmod16" THEN arith[1] := p
-      END;      
+      END
     END
   END RegisterRTproc;
 
@@ -146,7 +146,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 S.DebugHex("    x.tmp", ORD(x.tmp));*)
 (*IF x.obj # NIL THEN S.DebugString("    name", x.obj.name) END;*)
     IF x.tmp OR ((x.obj = NIL) OR (x.obj.register = 0FFH)) OR ~(x.mode IN {Reg, RegI}) THEN
-      x.reg := AllocR(); x.am := A.Register; x.tmp := TRUE
+      x.reg := AllocR(); x.am := A.Register; x.ofs := 0; x.tmp := TRUE
     END
   END alloc;
 
@@ -206,10 +206,10 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END Trap;
 
   PROCEDURE NilCheck(a: BYTE);
-    VAR t!: Item;
+    VAR t!, c!: Item;
   BEGIN t.reg := a; t.am := A.Register; t.ofs := 0; t.obj := NIL;
     IF traps[4] # NIL THEN
-      A.PutDO(mcode, A.CMP, c0, t, A.Word);
+      c := c0; A.PutDO(mcode, A.CMP, c, t, A.Word);
       Trap(A.EQ, 4) 
     END
   END NilCheck;
@@ -241,8 +241,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.MOV, ti, x, bw)
       ELSIF x.mode = Cond THEN
         pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
-        FixLink(x.b); A.PutDO(mcode, A.MOV, c1, rh, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
-        A.fix(mcode, pc0, mcode.pc - pc0 - 2); FixLink(x.a); A.PutDO(mcode, A.MOV, c0, rh, A.Word);
+        FixLink(x.b); t := c1; A.PutDO(mcode, A.MOV, t, rh, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
+        A.fix(mcode, pc0, mcode.pc - pc0 - 2); FixLink(x.a); t := c0; A.PutDO(mcode, A.MOV, t, rh, A.Word);
         A.fix(mcode, pc1, mcode.pc - pc1 - 2); alloc(x)
       END;
       x.mode := Reg; x.tmp := TRUE
@@ -284,8 +284,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutSO(mcode, A.PUSH, ti, bw)
     ELSIF x.mode = Cond THEN
       pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
-      FixLink(x.b); A.PutSO(mcode, A.PUSH, c1, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
-      FixLink(x.a); A.PutSO(mcode, A.MOV, c0, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
+      FixLink(x.b); t := c1; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
+      FixLink(x.a); t := c0; A.PutSO(mcode, A.MOV, t, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
     END
   END push;
 
@@ -335,10 +335,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END pushAdr;
 
   PROCEDURE loadCond(VAR x: Item);
+    VAR t!: Item;
   BEGIN
     IF x.type.form = B.Bool THEN
       IF x.mode = B.Const THEN IF x.a = 0 THEN x.c := A.NV ELSE x.c := A.AL END
-      ELSE load(x); A.PutDO(mcode, A.CMP, c0, x, A.Word); x.c := A.NE; free(x)
+      ELSE load(x); t := c0; A.PutDO(mcode, A.CMP, t, x, A.Word); x.c := A.NE; free(x)
       END;
       x.mode := Cond; x.a := 0; x.b := 0
     ELSE S.Mark("not Boolean?")
@@ -477,12 +478,12 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END BuildTD;
 
   PROCEDURE TypeTest*(VAR x: Item; T: B.Type; varpar, isguard: BOOLEAN); (*TODO fix this proceedure*)
-    VAR pc0: LONGINT; ti!, pt!, tt!: Item;
+    VAR pc0: LONGINT; t!, ti!, pt!, tt!: Item;
   BEGIN ti.am := A.Indexed; ti.obj := NIL; pt.am := A.Register; pt.ofs := 0; pt.obj := NIL; tt.am := A.Register; tt.ofs := 0; tt.obj := NIL;
     IF (traps[2] = NIL) OR (T = NIL) THEN IF x.mode > Reg THEN freeR(rh.reg) END; SetCC(x, A.AL)
     ELSE (*fetch tag into RH*)
       IF varpar THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
-      ELSE load(x); A.PutDO(mcode, A.CMP, c0, x, A.Word);
+      ELSE load(x); t := c0; A.PutDO(mcode, A.CMP, t, x, A.Word);
         pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*NIL belongs to every pointer type*)
         ti.reg := x.reg; ti.ofs := -8; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END;
@@ -579,6 +580,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   (* Code generation for arithmetic operators *)
 
   PROCEDURE Neg*(VAR x: Item);   (* x := -x *)
+    VAR t!: Item;
   BEGIN
     IF x.type.form = B.Int THEN
       IF x.mode = B.Const THEN x.a := -x.a
@@ -586,14 +588,15 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       END
     ELSE (*form = Set*)
       IF x.mode = B.Const THEN x.a := -x.a-1 
-      ELSE PutDO(A.XOR, cm1, x)
+      ELSE t := cm1; PutDO(A.XOR, t, x)
       END
     END
   END Neg;
 
   PROCEDURE PrepCall*(VAR x: Item; VAR r, or: SET);
     VAR n: INTEGER;
-  BEGIN (*x.type.form = OM4B.Proc*) ASSERT(~AllocUp);
+  BEGIN (*x.type.form = OM4B.Proc*)
+    IF AllocUp THEN S.Mark("call not allowed in leaf proc") END;
     IF x.mode > B.Par THEN load(x) END;
     r := RIU; or := x.obj.type.ur*RIU; (*overwritten registers currently in use by the caller*)
     IF or # {} THEN n := A.PushRegs(mcode, or); INC(frame, WordSize*n); OfsPTOS(n, TRUE) END;
@@ -608,10 +611,10 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     IF x.mode = B.Const THEN x.reg := 0; x.am := A.Immediate; x.ofs := A.C16; (*address must be computed at link time*)
       A.PutSO(mcode, A.CALL, x, A.Word)
     ELSE
-      IF x.mode <= B.Par THEN IF traps[5] # NIL THEN PutDO(A.CMP, c0, x); Trap(A.EQ, 5) END;
+      IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
         PutSO(A.CALL, x); free(x)
       ELSE rh.reg := AllocR(); PutSO(A.POP, rh); OfsPTOS(-1, TRUE); EXCL(r, rh.reg); DEC(frame, WordSize);
-        IF traps[5] # NIL THEN PutDO(A.CMP, c0, rh); Trap(A.EQ, 5) END;
+        IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, rh); Trap(A.EQ, 5) END;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
       END;
     END;
@@ -643,7 +646,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END AddOp;
 
   PROCEDURE MulOp*(VAR x, y: Item);   (* x := x * y *)
-    VAR t!, p!: Item; r, or: SET;
+    VAR t!, p!: Item; r, or: SET; pau: BOOLEAN;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a * y.a
     ELSIF (y.mode = B.Const)  & (y.a >= 2) THEN x.tmp := TRUE; load(x); t.ofs := y.a; A.eswDO(mcode, A.MUL, t, x, A.Word)
@@ -651,13 +654,15 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
     ELSE
       IF arith[0] = NIL THEN S.Mark("import Arith.mul16 function") 
-      ELSE  MakeItem(p, arith[0], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, 0); x.reg := p.reg
+      ELSE  pau := AllocUp;
+        MakeItem(p, arith[0], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, 0); x.reg := p.reg;
+        IF pau THEN SetRegisterAllocation END
       END
     END
   END MulOp;
 
   PROCEDURE DivOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
-    VAR t!, p!: Item; r, or: SET;
+    VAR t!, p!: Item; r, or: SET; pau: BOOLEAN;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF op = S.div THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
@@ -665,8 +670,10 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.DIv, t, x, A.Word);
         x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod16 procedure")
-        ELSE IF traps[6] # NIL THEN PutDO(A.CMP, c0, y); Trap(A.NE, 6); free(y) END;
-          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); forceload(c0); Call(p, r, or, 0); x.reg := p.reg
+        ELSE IF traps[6] # NIL THEN t := c0; PutDO(A.CMP, t, y); Trap(A.NE, 6); free(y) END;
+          pau := AllocUp;
+          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); t := c0; forceload(t); Call(p, r, or, 0); x.reg := p.reg;
+          IF pau THEN SetRegisterAllocation END
         END
       END
     ELSE (*op = OM4S.mod*)
@@ -675,8 +682,10 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       ELSIF (y.mode = B.Const) & (y.a >= 2) THEN load(x); t.ofs := y.a; A.eswDO(mcode, A.MOd, t, x, A.Word);
         x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod procedure")
-        ELSE IF traps[6] # NIL THEN PutDO(A.CMP, c0, y); Trap(A.NE, 6); free(y) END;
-          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); forceload(c1); Call(p, r, or, 0); x.reg := p.reg;
+        ELSE IF traps[6] # NIL THEN t := c0; PutDO(A.CMP, t, y); Trap(A.NE, 6); free(y) END;
+          pau := AllocUp;
+          MakeItem(p, arith[1], 0); PrepCall(p, r, or); load(x); load(y); t := c1; forceload(t); Call(p, r, or, 0); x.reg := p.reg;
+          IF pau THEN SetRegisterAllocation END
         END
       END
     END
@@ -684,12 +693,12 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   (* Code generation for shift operations *)
   PROCEDURE shift(op: INTEGER; VAR x, y: Item); (* x := LSL(x, y)*)
-    VAR i, pb, pf: INTEGER;
+    VAR i, pb, pf: INTEGER; t! : Item;
   BEGIN
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := LSL(x.a, y.a) 
     ELSIF (y.mode = B.Const) & (y.a <= 4) THEN PutSO(A.NOP0, x); FOR i := 1 TO y.a DO PutSO(op, x) END
-    ELSE PutSO(A.NOP0, x); PutDO(A.ADD, c1, y);
-      pb := mcode.pc; PutDO(A.SUB, c1, y); pf := mcode.pc; A.PutJ(mcode, A.EQ, 0);
+    ELSE PutSO(A.NOP0, x); t := c1; PutDO(A.ADD, t, y);
+      pb := mcode.pc; PutDO(A.SUB, t, y); pf := mcode.pc; A.PutJ(mcode, A.EQ, 0);
       PutSO(op, x); A.PutJ(mcode, A.AL, pb - mcode.pc - 2); A.fix(mcode, pf, mcode.pc - pf - 2);
       free(y)
     END
@@ -722,14 +731,14 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END Set;
 
   PROCEDURE In*(VAR x, y: Item);  (* x := x IN y *)
-    VAR c!: Item; pc0, pc1: INTEGER;
+    VAR c!: Item; pc0, pc1: INTEGER; t!: Item;
   BEGIN 
     IF x.mode = B.Const THEN  c.reg := 0; c.am := A.Immediate; c.ofs := LSL(1, x.a); c.obj := NIL; PutDO(A.BIT, c, y);
       free(x)
-    ELSE load(x); load(y); PutDO(A.ADD, c1, x); 
-      pc0 := mcode.pc; PutDO(A.SUB, c1, x); pc1 := mcode.pc; A.PutJ(mcode, A.EQ, 0);
+    ELSE load(x); load(y); t := c1; PutDO(A.ADD, t, x); 
+      pc0 := mcode.pc; PutDO(A.SUB, t, x); pc1 := mcode.pc; A.PutJ(mcode, A.EQ, 0);
       PutSO(A.RRC, y); A.PutJ(mcode, A.AL, pc0 - mcode.pc -2); A.fix(mcode, pc1, mcode.pc - pc1 - 2);
-      PutDO(A.BIT, c1, y); free(y); free(x)
+      PutDO(A.BIT, t, y); free(y); free(x)
     END;
     SetCC(x, A.NE)
   END In;
@@ -806,8 +815,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
           ELSE S.Mark("different length/size, not implemented")
           END
         ELSE (*y  open array*) ti.reg := A.SP; ti.ofs := y.a+2; PutDO(A.MOV, ti, rh); s := y.type.base.size;  (*element size*)
-          A.PutDO(mcode, A.CMP, c0, rh, A.Word); pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*BEQ L0*)
-          IF s = 1 THEN A.PutDO(mcode, A.ADD, c1, rh, A.Word); A.PutSO(mcode, A.RRA, rh, A.Word)
+          t := c0; A.PutDO(mcode, A.CMP, t, rh, A.Word); pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*BEQ L0*)
+          IF s = 1 THEN t := c1; A.PutDO(mcode, A.ADD, t, rh, A.Word); A.PutSO(mcode, A.RRA, rh, A.Word)
           ELSIF s # 2 THEN ASSERT(~ODD(s)); t.ofs := s DIV 2; A.eswDO(mcode, A.MUL, t, rh, A.Word)
           END;
           IF traps[3] # NIL THEN t.ofs := (x.type.size+1) DIV 2+1; A.PutDO(mcode, A.CMP, t, rh, A.Word); Trap(A.GE, 3) END
@@ -816,8 +825,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       ELSE S.Mark("inadmissible assignment")
       END;
       (*L1*) pc1 := mcode.pc; x.am := A.Indexed; x.ofs := 0; y.am := A.IndirectIncr;
-      A.PutDO(mcode, A.MOV, y, x, A.Word); x.am := A.Register; A.PutDO(mcode, A.ADD, c2, x, A.Word);
-      A.PutDO(mcode, A.SUB, c1, rh, A.Word); A.PutJ(mcode, A.NE, pc1 - mcode.pc -2); (*BNE L1*)
+      A.PutDO(mcode, A.MOV, y, x, A.Word); x.am := A.Register; t := c2; A.PutDO(mcode, A.ADD, t, x, A.Word);
+      t := c1; A.PutDO(mcode, A.SUB, t, rh, A.Word); A.PutJ(mcode, A.NE, pc1 - mcode.pc -2); (*BNE L1*)
       (*L0:*) IF pc0 # -1 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END;
       free(y); free(x); freeR(rh.reg)
     END
@@ -834,7 +843,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     END ;
     loadStringAdr(y);
     (*L0:*) pc0 := mcode.pc; x.am := A.Indexed; x.ofs := 0; y.am := A.IndirectIncr; x1 := x;
-    A.PutDO(mcode, A.MOV, y, x, A.Word); x.am := A.Register; A.PutDO(mcode, A.ADD, c1, x, A.Word); (*x points to high byte of current word*)
+    A.PutDO(mcode, A.MOV, y, x, A.Word); x.am := A.Register; t := c1; A.PutDO(mcode, A.ADD, t, x, A.Word); (*x points to high byte of current word*)
     x.am := A.IndirectIncr; A.PutDO(mcode, A.BIT, x, x1, A.Byte) (*test 0 and increment x register*); A.PutJ(mcode, A.NE, pc0 - mcode.pc -2); (*BNE L0*)
     free(y); free(x)
    END CopyString;
@@ -1028,19 +1037,19 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END Put;
 
   PROCEDURE Copy*(VAR x, y, z: Item);
-    VAR pc0, pc1: LONGINT;
+    VAR pc0, pc1: LONGINT; t!: Item;
   BEGIN load(x); load(y);
     pc0 := 0;
     IF z.mode = B.Const THEN
       IF z.a > 0 THEN load(z) ELSE S.Mark("bad count") END
     ELSE load(z);
-      IF traps[3] # NIL THEN PutDO(A.CMP, c0, z); Trap(A.L, 3) END;
+      IF traps[3] # NIL THEN t := c0; PutDO(A.CMP, t, z); Trap(A.L, 3) END;
       pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*BEQ L0*)
     END;
     pc1 := mcode.pc;
     x.am := A.IndirectIncr; y.am := A.Indexed; y.ofs := 0; PutDO(A.MOV, x, y);
-    y.am := A.Register; PutDO(A.ADD, c1, y);
-    PutDO(A.SUB, c1, z); A.PutJ(mcode, A.NE, pc1 - mcode.pc - 2); (*BNE L1*)
+    y.am := A.Register; t := c1; PutDO(A.ADD, t, y);
+    PutDO(A.SUB, t, z); A.PutJ(mcode, A.NE, pc1 - mcode.pc - 2); (*BNE L1*)
     IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END; free(z); free(y); free(x)
   END Copy;
 
@@ -1051,16 +1060,17 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   (*In-line code functions*)
 
   PROCEDURE Abs*(VAR x: Item);
-    VAR pc: INTEGER;
+    VAR pc: INTEGER; t!: Item;
   BEGIN
     IF x.mode = B.Const THEN x.a := ABS(x.a) 
-    ELSE PutDO(A.CMP, c0, x); pc := mcode.pc; A.PutJ(mcode, A.GE, 0);
+    ELSE t := c0; PutDO(A.CMP, t, x); pc := mcode.pc; A.PutJ(mcode, A.GE, 0);
       PutSO(A.NEG, x); A.fix(mcode, pc, mcode.pc - pc - 2)
     END
   END Abs;
 
   PROCEDURE Odd*(VAR x: Item);
-  BEGIN PutDO(A.BIT, c1, x); SetCC(x, A.NE); free(x)
+    VAR t!: Item;
+  BEGIN t := c1; PutDO(A.BIT, t, x); SetCC(x, A.NE); free(x)
   END Odd;
 
   PROCEDURE Ord*(VAR x: Item);
@@ -1116,7 +1126,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     VAR t!: Item;
   BEGIN t.obj := NIL; t.mode := B.Const; t.tmp := FALSE;
     IF y.mode = B.Const THEN t.a:= LSL(1, y.a); PutDO(A.BIT, t, x)
-    ELSE Rla(c1, y); PutDO(A.BIT, y, x)
+    ELSE t := c1; Rla(t, y); PutDO(A.BIT, y, x)
     END;
     free(x); free(y);
     SetCC(x, A.NE)
