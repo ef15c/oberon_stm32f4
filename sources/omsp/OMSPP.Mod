@@ -15,7 +15,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   VAR sym: INTEGER;   (*last symbol read*)
     dc: LONGINT;    (*data counter*)
     level, exno: INTEGER;
-    newSF: BOOLEAN;  (*option flag*)
+    newSF, initmode: BOOLEAN;  (*option flag*)
     expression: PROCEDURE (VAR x: G.Item);  (*to avoid forward reference*)
     Type: PROCEDURE (VAR type: B.Type);
     FormalType: PROCEDURE (VAR typ: B.Type; dim: INTEGER);
@@ -321,7 +321,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       REPEAT S.Get(sym) UNTIL (sym >= S.char) & (sym <= S.for) OR (sym >= S.then)
     END;
     IF sym = S.ident THEN
-      qualident(obj);
+      qualident(obj); IF initmode & (obj.lev = 0) THEN obj.rdo := FALSE END;
       IF obj.class = B.SFunc THEN StandFunc(x, obj.val, obj.type)
       ELSE G.MakeItem(x, obj, level); selector(x); x.rdo := TRUE;
         IF sym = S.lparen THEN
@@ -819,7 +819,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE Declarations(VAR varsize: LONGINT; VAR haveinregs: BOOLEAN);
     VAR obj!, first!: B.Object;
       x!: G.Item; tp!: B.Type; ptbase!: PtrBase;
-      expo, unsafe, umm, umf, inreg: BOOLEAN; id: S.Ident;
+      expo, unsafe, umm, umf, inreg, onetimeinit: BOOLEAN; id: S.Ident;
       nbregs, dummy: INTEGER;
   BEGIN (*sync*) pbsList := NIL; haveinregs := FALSE;
     IF (sym < S.const) & (sym # S.end) & (sym # S.return) THEN S.Mark("declaration?");
@@ -861,11 +861,16 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END ;
     IF sym = S.var THEN
       S.Get(sym);
-      WHILE sym = S.ident DO inreg := FALSE;
+      WHILE sym = S.ident DO inreg := FALSE; onetimeinit := FALSE;
         IdentList(B.Var, first); Type(tp);
         IF sym = S.times THEN
           IF level # 0 THEN haveinregs := TRUE; inreg := TRUE; G.SetRegisterAllocation
           ELSE S.Mark("remove asterisk")
+          END; S.Get(sym) 
+        END;
+        IF sym = S.minus THEN
+          IF level = 0 THEN onetimeinit := TRUE
+          ELSE S.Mark("remove hyphen")
           END; S.Get(sym) 
         END;
         IF level = 0 THEN unsafe := FALSE ELSE unsafe := containsPointer(tp) END; (*check for unsafe pointers*)
@@ -880,6 +885,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
             obj.register := 0FFH; obj.val := varsize; varsize := varsize + obj.type.size
           END;
+          IF onetimeinit THEN obj.rdo := TRUE END;
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
           obj := obj.next
         END ;
@@ -1000,6 +1006,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   BEGIN Texts.WriteString(W, "  compiling "); isLeaf := FALSE; S.Get(sym);
     IF sym = S.module THEN S.Get(sym);
       G.Open; dc := 0;
+      initmode := FALSE;
       B.Init; B.OpenScope;
       IF sym = S.ident THEN
         S.CopyId(modid); S.Get(sym);
@@ -1014,6 +1021,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END ;
       Declarations(dc, dmy); G.SetDataSize((dc + (G.WordSize - 1)) DIV G.WordSize * G.WordSize);
       WHILE sym = S.procedure DO ProcedureDecl; Check(S.semicolon, "no ;") END ;
+      initmode := TRUE;
       G.Header;
       IF sym = S.begin THEN S.Get(sym); StatSequence END ;
       Check(S.end, "no END");

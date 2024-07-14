@@ -15,7 +15,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   VAR sym: INTEGER;   (*last symbol read*)
     dc: LONGINT;    (*data counter*)
     level, exno, version: INTEGER;
-    newSF: BOOLEAN;  (*option flag*)
+    newSF, initmode: BOOLEAN;  (*option flag*)
     expression: PROCEDURE (VAR x: OM4G.Item);  (*to avoid forward reference*)
     Type: PROCEDURE (VAR type: OM4B.Type);
     FormalType: PROCEDURE (VAR typ: OM4B.Type; dim: INTEGER);
@@ -330,7 +330,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       REPEAT OM4S.Get(sym) UNTIL (sym >= OM4S.char) & (sym <= OM4S.for) OR (sym >= OM4S.then)
     END ;
     IF sym = OM4S.ident THEN
-      qualident(obj);  
+      qualident(obj); IF initmode & (obj.lev = 0) THEN obj.rdo := FALSE END;
       IF obj.class = OM4B.SFunc THEN StandFunc(x, obj.val, obj.type)
       ELSE OM4G.MakeItem(x, obj, level); selector(x);
         IF sym = OM4S.lparen THEN
@@ -825,7 +825,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE Declarations(VAR varsize: LONGINT);
     VAR obj!, first!: OM4B.Object;
       x!: OM4G.Item; tp!: OM4B.Type; ptbase!: PtrBase;
-      expo, unsafe, umm, umf: BOOLEAN; id: OM4S.Ident;
+      expo, unsafe, umm, umf, onetimeinit: BOOLEAN; id: OM4S.Ident;
   BEGIN (*sync*) pbsList := NIL;
     IF (sym < OM4S.const) & (sym # OM4S.end) & (sym # OM4S.return) THEN OM4S.Mark("declaration?");
       REPEAT OM4S.Get(sym) UNTIL (sym >= OM4S.const) OR (sym = OM4S.end) OR (sym = OM4S.return)
@@ -866,9 +866,14 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     END ;
     IF sym = OM4S.var THEN
       OM4S.Get(sym);
-      WHILE sym = OM4S.ident DO
+      WHILE sym = OM4S.ident DO onetimeinit := FALSE;
         IdentList(OM4B.Var, first); Type(tp);
-         IF level = 0 THEN unsafe := FALSE ELSE unsafe := containsPointer(tp) END; (*check for unsafe pointers*)
+        IF sym = OM4S.minus THEN
+          IF level = 0 THEN onetimeinit := TRUE
+          ELSE OM4S.Mark("remove hyphen")
+          END; OM4S.Get(sym) 
+        END;
+        IF level = 0 THEN unsafe := FALSE ELSE unsafe := containsPointer(tp) END; (*check for unsafe pointers*)
         obj := first; umm := FALSE; umf := FALSE;
         WHILE obj # NIL DO
           IF unsafe & ~obj.unsafe THEN umm := TRUE END;
@@ -877,6 +882,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
           IF tp.size > 1 THEN varsize := (varsize + 3) DIV 4 * 4 (*align*) END ;
           obj.val := varsize; varsize := varsize + obj.type.size;
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
+          IF onetimeinit THEN obj.rdo := TRUE END;
           obj := obj.next
         END ;
         IF umm THEN OM4S.Mark("mark unsafe vars with an exclamation mark") 
@@ -968,6 +974,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = OM4S.module THEN
       OM4S.Get(sym);
       IF sym = OM4S.times THEN version := 0; dc := 8; Texts.Write(W, "*"); OM4S.Get(sym) ELSE dc := 0; version := 1 END ;
+      initmode := FALSE;
       OM4B.Init; OM4B.OpenScope;
       IF sym = OM4S.ident THEN
         OM4S.CopyId(modid); OM4S.Get(sym);
@@ -982,6 +989,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       END ;
       OM4G.Open(version); Declarations(dc); OM4G.SetDataSize((dc + 3) DIV 4 * 4);
       WHILE sym = OM4S.procedure DO ProcedureDecl; Check(OM4S.semicolon, "no ;") END ;
+      initmode := TRUE;
       OM4G.Header;
       IF sym = OM4S.begin THEN OM4S.Get(sym); StatSequence END ;
       Check(OM4S.end, "no END");

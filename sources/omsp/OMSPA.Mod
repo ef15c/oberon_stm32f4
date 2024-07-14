@@ -86,7 +86,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END;
 
     Item* = RECORD reg*, am*: BYTE; ofs*: INTEGER END;
-    GetOffsetProc* = PROCEDURE(VAR x: Item): INTEGER;
+    GetOffsetProc* = PROCEDURE(x: Item): INTEGER;
     AllocRegisterProc* = PROCEDURE(): INTEGER;
     FreeRegisterProc* = PROCEDURE(r: INTEGER);
 
@@ -155,20 +155,21 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END Put1;
 
-  PROCEDURE PutDO*(VAR c: ModuleCode; op: INTEGER; VAR s, d: Item; params: SET);
-    VAR emitSOff, emitDOff: BOOLEAN;
+  PROCEDURE PutDO*(VAR c: ModuleCode; op: INTEGER; s, d: Item; params: SET);
+    VAR emitSOff, emitDOff: BOOLEAN; ts, td: Item;
   BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
     ASSERT(s.reg < 16); ASSERT(d.reg < 16); ASSERT ((s.ofs >= -C15) & (s.ofs <= C16)); ASSERT ((d.ofs >= -C15) & (d.ofs <= C16));
-    encSrc(op, s.reg, s.am, s.ofs, emitSOff, params);
+    ts := s; td := d;
+    encSrc(op, ts.reg, ts.am, ts.ofs, emitSOff, params);
 
     IF d.am = Register THEN ASSERT(d.reg # CG2); params := params + Rdm
-    ELSIF d.am = Indexed THEN ASSERT(~(d.reg IN {PC, SR, CG2})); params := params + Idm; emitDOff := TRUE
-    ELSIF d.am = Symbolic THEN d.reg := PC; params := params + Idm; emitDOff := TRUE
-    ELSIF d.am = Absolute THEN d.reg := SR; params := params + Idm; emitDOff := TRUE
+    ELSIF td.am = Indexed THEN ASSERT(~(td.reg IN {PC, SR, CG2})); params := params + Idm; emitDOff := TRUE
+    ELSIF td.am = Symbolic THEN td.reg := PC; params := params + Idm; emitDOff := TRUE
+    ELSIF td.am = Absolute THEN td.reg := SR; params := params + Idm; emitDOff := TRUE
     ELSE ASSERT(FALSE)
     END;
 
-    Put1(c, op, s.reg, d.reg, params);
+    Put1(c, op, ts.reg, td.reg, params);
     IF emitSOff THEN Emit(c, getOfs(s)) END;
     IF emitDOff THEN Emit(c, getOfs(d)) END
   END PutDO;
@@ -177,23 +178,24 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |                   B               |
     | opc/ode / WAd/Dreg| *)
 
-  PROCEDURE PutSO*(VAR c: ModuleCode; op: INTEGER; VAR ds: Item; params: SET);
-    VAR emitDSOff: BOOLEAN; spi, t: Item;
+  PROCEDURE PutSO*(VAR c: ModuleCode; op: INTEGER; ds: Item; params: SET);
+    VAR emitDSOff: BOOLEAN; spi, t, tds: Item;
   BEGIN (*emit format II instruction*) ASSERT(params = params*Byte);
     ASSERT(ds.reg < 16); ASSERT ((ds.ofs >= -C15) & (ds.ofs <= C16));
+    tds := ds;
     emitDSOff := FALSE; spi.reg := SP; spi.am := IndirectIncr; spi.ofs := 0;
-    IF op = POP THEN PutDO(c, MOV, spi, ds, Word) (*emulation*)
-    ELSIF op = RLA THEN PutDO(c, ADD, ds, ds, params)
-    ELSIF op = RLC THEN PutDO(c, ADDC, ds, ds, params)
+    IF op = POP THEN PutDO(c, MOV, spi, tds, Word) (*emulation*)
+    ELSIF op = RLA THEN PutDO(c, ADD, tds, tds, params)
+    ELSIF op = RLC THEN PutDO(c, ADDC, tds, tds, params)
     ELSIF op = NOP0 THEN (*do nothing*)
     ELSIF op = NEG THEN t.reg := 0; t.am := Immediate; t.ofs := -1; (*emulated by software*)
-      PutDO(c, XOR, t, ds, params); t.ofs := 1; PutDO(c, ADD, t, ds, params)
+      PutDO(c, XOR, t, tds, params); t.ofs := 1; PutDO(c, ADD, t, tds, params)
     ELSE ASSERT(op < 100H);
-      encSrc(op, ds.reg, ds.am, ds.ofs, emitDSOff, params);
+      encSrc(op, tds.reg, tds.am, tds.ofs, emitDSOff, params);
 
       IF enabled THEN
         c.code[c.pc+1] := LSR(op, 1);
-        c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + ds.reg;
+        c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + tds.reg;
         c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2);
         IF emitDSOff THEN Emit(c, getOfs(ds)) END
       END

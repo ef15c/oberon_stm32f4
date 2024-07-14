@@ -59,7 +59,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     mcode: A.ModuleCode;
     frmOfsSegs: FrameOffset;
 
-    cm1, c0, c1, c2, pc, sp, r4, r15, rh: Item;
+    cm1, c0, c1, c2, pc, sp, r4, r15: Item-; (*constant Items set by module initialization code*)
+    rh: Item;
     curImport: INTEGER;
 
   PROCEDURE CheckRTImport*(impid: S.Ident);
@@ -189,9 +190,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   RETURN traps[7] # NIL
   END AssertionChecked;
 
-  PROCEDURE GetOffset(VAR x: A.Item): INTEGER;
-    VAR res: INTEGER;
-  BEGIN IF x.ofs = A.C16 THEN (*Imported object*) res := x(Item).obj.usedat; x(Item).obj.usedat := mcode.pc ELSE res := x.ofs END
+  PROCEDURE GetOffset(x: A.Item): INTEGER;
+    VAR res: INTEGER; o!: B.Object;
+  BEGIN o := x(Item).obj;
+    IF x.ofs = A.C16 THEN (*Imported object*) res := o.usedat; o.usedat := mcode.pc ELSE res := x.ofs END
+
     RETURN res
   END GetOffset;
 
@@ -988,7 +991,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     END;
     IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); OfsPTOS(-size DIV 2, TRUE) END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
-    IF int THEN A.PutSO(mcode, A.RETI, pc, A.Word) ELSE A.PutNO(mcode, A.RET) END;
+    IF int THEN A.PutNO(mcode, A.RETI) ELSE A.PutNO(mcode, A.RET) END;
     AllocUp := FALSE; RIU := {}; RB := 15; VRS := RIU
   END Return;
 
@@ -1319,12 +1322,14 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     c.mode := B.Const; c.tmp := FALSE; c.a := v
   END initConst;
 
+  PROCEDURE initReg(VAR c: Item; r: BYTE);
+  BEGIN c.reg := r; c.am := A.Register; c.ofs := 0; c.obj := NIL; c.type := B.intType;
+    c.mode := Reg; c.tmp := FALSE; c.a := 0
+  END initReg;
+
 BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
   initConst(cm1, -1); initConst(c0, 0); initConst(c1, 1); initConst(c2, 2);
-  pc.reg := A.PC; pc.am := A.Register; pc.ofs := 0; pc.obj := NIL; pc.type := B.intType;
-  sp.reg := A.SP; sp.am := A.Register; sp.ofs := 0; sp.obj := NIL; sp.type := B.intType;
-  r4.reg := 4; r4.am := A.Register; r4.ofs := 0; r4.obj := NIL; r4.type := B.intType;
-  r15.reg := 15; r15.am := A.Register; r15.ofs := 0; r15.obj := NIL; r15.type := B.intType;
+  initReg(pc, A.PC); initReg(sp, A.SP); initReg(r4, 4); initReg(r15, 15);
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; relmap[3] := A.GE;
   B.SetRegRTProcCallback(RegisterRTproc)
 END OMSPG.

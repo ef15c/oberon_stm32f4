@@ -12,10 +12,10 @@ END testDeRef.
 OMSPTool.DecObj testDeRef.mpc
 
 decode testDeRef.mpc
-testDeRef D9C6CB1E    48
+testDeRef D9C6CB1E    44
 imports:
 type descriptors
- 0004 FFFF FFFF FFFF FFFF
+ 0004 FFFF FFFF FFFF
 data     6
 strings
 
@@ -26,13 +26,11 @@ vector table
 commands:
 entries
  0000
-pointer refs
- 000A
 fixup procedures chains
 fixup handlers chains
 fixup data chains
- 000E     0	 000A
- 0002     0	 000C
+ 000E     0	 0008
+ 0002     0	 000A
 fixup type chains
 entry =  0000
 code    24
