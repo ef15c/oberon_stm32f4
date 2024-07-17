@@ -62,9 +62,14 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     mcode: OM4A.ModuleCode;
     frmOfsSegs: FrameOffset;
 
-  PROCEDURE OfsPTOS(offset: INTEGER; increment: BOOLEAN);
-  BEGIN IF increment THEN INC(offset, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
-      IF offset # frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos THEN
+  PROCEDURE OfsPTOS(frameofs, returnofs: INTEGER; increment: BOOLEAN);
+    VAR offset: INTEGER;
+  BEGIN
+    IF increment THEN
+      INC(frameofs, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos MOD 10000H);
+      INC(returnofs, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos DIV 10000H);
+    END; offset := returnofs*10000H + frameofs;
+    IF offset # frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos THEN
       frmOfsSegs.Segs[frmOfsSegs.NofSegs].end := mcode.pc;
       INC(frmOfsSegs.NofSegs); frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos := offset
     END
@@ -909,8 +914,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE PrepCall*(VAR x: Item; VAR r, s: LONGINT);
   BEGIN (*x.type.form = OM4B.Proc*)
     IF x.mode > OM4B.Par THEN load(x) END ;
-    r := RH; IF RH > 0 THEN OM4A.SaveRegs(mcode, RH, frame); OfsPTOS(r, TRUE); RH := 0 END;
-    s := SH; IF SH > 0 THEN OM4A.SaveFPRegs(mcode, SH, frame); OfsPTOS(s, TRUE); SH := 0 END
+    r := RH; IF RH > 0 THEN OM4A.SaveRegs(mcode, RH, frame); OfsPTOS(r, r, TRUE); RH := 0 END;
+    s := SH; IF SH > 0 THEN OM4A.SaveFPRegs(mcode, SH, frame); OfsPTOS(s, s, TRUE); SH := 0 END
   END PrepCall;
 
   PROCEDURE Call*(VAR x: Item; r, s: LONGINT);
@@ -931,7 +936,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF x.mode <= OM4B.Par THEN load(x); DEC(RH)
       ELSE IF RH < 8 THEN (*POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + LSL(1, RH))
-        ELSE (*POP T3*) OM4A.Put0(mcode, OM4A.POPT3 + RH*OM4A.C12) END; OfsPTOS(-1, TRUE);
+        ELSE (*POP T3*) OM4A.Put0(mcode, OM4A.POPT3 + RH*OM4A.C12) END; OfsPTOS(-1, -1, TRUE);
         DEC(r); DEC(frame, 4)
       END;
       (*No NIL check needed because every even address will cause an usage fault exception
@@ -941,9 +946,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.type.base.form = OM4B.NoTyp THEN (*procedure*) RH := 0; SH := 0;
     ELSE (*function*)
       IF s > 0 THEN (* VMOV Ss, S0*) OM4A.Put0(mcode, OM4A.VMOVSS + s DIV OM4A.C1*OM4A.C12 +
-        s MOD OM4A.C1*OM4A.C22); OM4A.RestoreFPRegs(mcode, s, frame); OfsPTOS(-s, TRUE) END ;
+        s MOD OM4A.C1*OM4A.C22); OM4A.RestoreFPRegs(mcode, s, frame); OfsPTOS(-s, -s, TRUE) END ;
       IF r > 0 THEN OM4A.encMOVReg(mcode, r, 0); 
-        OM4A.RestoreRegs(mcode, r, frame); OfsPTOS(-r, TRUE) END ;
+        OM4A.RestoreRegs(mcode, r, frame); OfsPTOS(-r, -r, TRUE) END ;
       IF x.type.base.form = OM4B.Real THEN x.mode := FPReg; x.r := s; SH := s+1; RH := r 
       ELSE x.mode := Reg; x.r := r; RH := r+1; SH := s END
     END
@@ -951,7 +956,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN; reglim: INTEGER);
     VAR r: LONGINT;
-  BEGIN OfsPTOS(0, FALSE); frame := 0;
+  BEGIN OfsPTOS(0, -1, FALSE); frame := 0;
     IF locblksize >= OM4A.C16 THEN OM4S.Mark("local variables size exeeded") END;
     r := (parblksize-4) DIV 4;
     IF int THEN (*interrupt procedure, lot of registers are already saved in interrupt frame*)
@@ -963,15 +968,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
 
     IF locblksize - parblksize # 0 THEN
-      OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, r, locblksize - parblksize); OfsPTOS((locblksize - parblksize) DIV 4, TRUE) END;
+      OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, r, locblksize - parblksize); OfsPTOS((locblksize - parblksize) DIV 4, 0, TRUE) END;
 
-    IF r > 0 THEN OM4A.PushRegs(mcode, 0, r-1); OfsPTOS(r, TRUE) END;
+    IF r > 0 THEN OM4A.PushRegs(mcode, 0, r-1); OfsPTOS(r, 0, TRUE) END;
     IF reglim >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
       RL := reglim+1; IF reglim >= 4 THEN
-        OM4A.PushRegs(mcode, 4, reglim); OfsPTOS(reglim - 3, TRUE) (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*)
+        OM4A.PushRegs(mcode, 4, reglim); OfsPTOS(reglim - 3, 0, TRUE) (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*)
       END
     END;
-    (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, TRUE)
+    (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, 1, TRUE)
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; reglim: INTEGER);
@@ -979,10 +984,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF form # OM4B.NoTyp THEN 
       IF x.type.form = OM4B.Real THEN loadFP(x); ELSE load(x) END
     END;
-    (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, TRUE);
-    IF reglim >= 0 THEN IF reglim >= 4 THEN OM4A.PopRegs(mcode, 4, reglim); OfsPTOS(3 - reglim, TRUE) END; RL := SP END;
-    IF size # 4 THEN OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size - 4); OfsPTOS((4 - size) DIV 4, TRUE) END;
-    IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN OM4S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
+    (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
+    IF reglim >= 0 THEN IF reglim >= 4 THEN OM4A.PopRegs(mcode, 4, reglim); OfsPTOS(3 - reglim, 0, TRUE) END; RL := SP END;
+    IF size # 4 THEN OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size - 4); OfsPTOS((4 - size) DIV 4, 0, TRUE) END;
+    IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos MOD 10000H # 0 THEN OM4S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
     OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3); RH := 0; SH := 0;
   END Return;
 
@@ -1215,7 +1220,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Condition;
 
   PROCEDURE Open*(v: INTEGER);
-  BEGIN OM4A.Init(mcode); frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
+  BEGIN OM4A.Init(mcode); frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0FFFF0000H;
     tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGD := 0; fixORGT := 0; check := v # 0; version := v; RL := SP;
     IF v = 0 THEN mcode.pc := 4; (*Make room for the jump to entry point instruction*) END
   END Open;
@@ -1225,9 +1230,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SetDataSize;
 
   PROCEDURE Header*;
-  BEGIN entry := mcode.pc; OfsPTOS(0, FALSE);
+  BEGIN entry := mcode.pc; OfsPTOS(0, -1, FALSE);
     IF version = 0 THEN OM4A.modify(mcode, 0, OM4A.BT4 + OM4A.formatEvenImm25(mcode.pc-4))
-    ELSE (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, TRUE)
+    ELSE (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, 1, TRUE)
     END
   END Header;
 
@@ -1266,7 +1271,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF version = 0 THEN
       (*OM4A.BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)
       OM4A.encMOVImm32(mcode, 0, VarORG0+1); (*odd address to thumb mode*) OM4A.Put1(mcode, OM4A.BX)
-    ELSE (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, TRUE);
+    ELSE (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
       OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3)
     END ;
     obj := OM4B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0; nofusedextprocs := 0;
@@ -1348,7 +1353,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF (size < 255) & (mcode.pos[i] = mcode.pos[i-1]) THEN INC(size) ELSE Files.WriteByte(R, size); Files.WriteInt(R, mcode.pos[i - 1]); size := 1 END
     END; Files.WriteByte(R, size); Files.WriteInt(R, mcode.pos[mcode.pc DIV 2 - 1]); Files.Register(F);
     (*write word offset with caller top of stack*)
-    OfsPTOS(-1, FALSE); (*close last segment*) OM4B.MakeFileName(name, modid, ".rao"); F := Files.New(name); Files.Set(R, F, 0); 
+    OfsPTOS(-1, -1, FALSE); (*close last segment*) OM4B.MakeFileName(name, modid, ".rao"); F := Files.New(name); Files.Set(R, F, 0); 
     Files.WriteInt(R, frmOfsSegs.NofSegs);
     FOR i := 0 TO frmOfsSegs.NofSegs DO Files.WriteInt(R, frmOfsSegs.Segs[i].end); Files.WriteInt(R, frmOfsSegs.Segs[i].ofsptos) END;
     Files.Register(F)

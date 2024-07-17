@@ -433,6 +433,23 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END DecBin;
 
+  PROCEDURE DecRAO*;
+    VAR F!: Files.File; R!: Files.Rider;
+      S!: Texts.Scanner; n, i, t: INTEGER;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+    IF S.class = Texts.Name THEN
+      Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); Texts.WriteLn(W);
+      F := Files.Old(S.s);
+      IF F # NIL THEN Files.Set(R, F, 0);
+        Files.ReadInt(R, n); Texts.WriteInt(W, n, 4); Texts.WriteString(W, " segments"); Texts.WriteLn(W);
+        FOR i := 1 TO n DO Files.ReadInt(R, t); Texts.WriteHex(W, t);
+          Texts.Write(W, ":"); Files.ReadInt(R, t); Texts.WriteHex(W, t); Texts.WriteLn(W)
+        END
+      END;
+      Texts.Append(Oberon.Log, W.buf)
+    END
+  END DecRAO;
+
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 12.11.2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
 END OM4Tool.

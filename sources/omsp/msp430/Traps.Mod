@@ -13,12 +13,18 @@ MODULE Traps; (*runtime module implementing the trap handlers*)
     REPEAT UNTIL FALSE
   END AssertionViolated;
 
+  PROCEDURE TypeGuardFailure*;
+   BEGIN
+    BIS(M.P1OUT, {1}); (*turn LED on*)
+    REPEAT UNTIL FALSE
+  END TypeGuardFailure;
+
 END Traps.
 
 OMSPTool.DecObj Traps.mpc
 
 decode Traps.mpc
-Traps 251F09BA    40
+Traps 8AC7BA63    70
 imports:
 	msp430g2553 60723399
 type descriptors
@@ -32,18 +38,21 @@ vector table
 
 commands:
 	AssertionViolated 0000
+	TypeGuardFailure 0008
 entries
- 0008 0000
-pointer refs
-
+ 0010 0000 0008
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup type chains
-entry =  0008
-code    10
+entry =  0010
+code    18
  0000	     D3D2	BIS.B #1,&33
  0002	     0021
  0004	     3FFF	JMP #-1, goes to  0004
  0006	     4130	RET
- 0008	     4130	RET
+ 0008	     D3E2	BIS.B #2,&33
+ 000A	     0021
+ 000C	     3FFF	JMP #-1, goes to  000C
+ 000E	     4130	RET
+ 0010	     4130	RET

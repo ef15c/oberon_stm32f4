@@ -27,14 +27,14 @@ MODULE StackTrace;
 
   PROCEDURE unwind(VAR pc, sp: INTEGER; mod: Modules.Module);
     VAR F!: Files.File; Rf!: Files.Rider; name: ARRAY 32 OF CHAR;
-      rpc, nbs, end, ofs: INTEGER;
+      rpc, nbs, end, ofs, rofs: INTEGER;
   BEGIN rpc := pc - mod.code; name := mod.name; addExt(name, "rao"); F := Files.Old(name);
       IF F # NIL THEN Files.Set(Rf, F, 0); Files.ReadInt(Rf, nbs);
         REPEAT Files.ReadInt(Rf, end); Files.ReadInt(Rf, ofs); DEC(nbs) UNTIL (end > rpc) OR (nbs = 0);
-        IF end > rpc THEN
-          IF (ofs = 0) & (sp = 0) THEN (*LR not yet pushed*) pc := System.stack.LR 
+        IF end > rpc THEN rofs := ofs DIV 10000H; ofs := ofs MOD 10000H;
+          IF (rofs = -1) & (sp = 0) THEN (*LR not yet pushed*) pc := System.stack.LR 
           ELSE IF sp >= System.stack.len THEN Texts.WriteString(W, "stack underflow"); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf) END;
-            pc := System.stack.stack[sp]; INC(sp, ofs)
+            pc := System.stack.stack[sp + rofs]; INC(sp, ofs)
           END; DEC(pc, ORD(ODD(pc)))
         END
       ELSE Texts.WriteString(W, "Unable to open "); Texts.WriteString(W, name); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
@@ -57,12 +57,15 @@ MODULE StackTrace;
     VAR mod!: Modules.Module; pos, pc, sp, td: INTEGER;
   BEGIN pc :=  System.stack.PC; sp := 0; td := 10;
     IF pc # 0 THEN
+(*      FOR pos := 0 TO 7 DO Texts.WriteHex(W, System.stack.stack[pos]) END;
+      Texts.WriteLn(W);*)
       WHILE (pc # 0FFFFFFFEH) & (td > 0) DO mod := NIL;
         posModFromAdr(pc, pos, mod);
         IF mod # NIL THEN
           Texts.WriteString(W, "  pos "); Texts.WriteInt(W, pos, 5);
           Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name); Texts.WriteString(W, " at ");
-          Texts.WriteHex(W, pc); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+          Texts.WriteHex(W, pc); Texts.WriteLn(W);
+          Texts.Append(Oberon.Log, W.buf);
           unwind(pc, sp, mod); DEC(td)
         ELSE Texts.WriteString(W, "  unknown PC: "); Texts.WriteHex(W, pc); Texts.WriteLn(W);
           Texts.Append(Oberon.Log, W.buf); pc := 0FFFFFFFEH
