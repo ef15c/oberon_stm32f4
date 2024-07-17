@@ -44,6 +44,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   VAR varsize: LONGINT;   (*data index*)
     tdx, strx: LONGINT;
+    tddata: ARRAY maxTD OF INTEGER; (*type descriptors data*)
+    strdata: ARRAY maxStrx OF CHAR;
     entry: LONGINT;   (*main entry point*)
     AllocUp: BOOLEAN; (*if true, registers are in allocated in ascending or from R4 to R15, if false in descending order from R15 to R4*)
     RIU, VRS: SET;      (*in use and variable+parameter register sets*)
@@ -54,8 +56,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     vector: ARRAY 32 OF INTEGER;
     
     relmap: ARRAY 4 OF INTEGER;    (*condition codes for relations*)
-    data: ARRAY maxTD OF INTEGER;  (*type descriptors*)
-    str: ARRAY maxStrx OF CHAR;
     mcode: A.ModuleCode;
     frmOfsSegs: FrameOffset;
 
@@ -381,17 +381,20 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     VAR i: LONGINT;
   BEGIN x.mode := B.Const; x.type := B.strType; x.a := strx; x.b := len; i := 0; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF strx + len + 2 < maxStrx THEN
-      WHILE len > 0 DO str[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END ;
-      WHILE strx MOD 2 # 0 DO str[strx] := 0X; INC(strx) END
+      WHILE len > 0 DO strdata[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END ;
+      WHILE strx MOD 2 # 0 DO strdata[strx] := 0X; INC(strx) END
     ELSE S.Mark("too many strings")
     END
   END MakeStringItem;
 
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: LONGINT);
   BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
-    IF (y.class IN {B.Var, B.Par}) & (y.register # 0FFH) THEN
-      x.reg := y.register;
-      IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI; x.b := 0 (*TODO: check this*) END
+    IF (y.class IN {B.Var, B.Par}) THEN
+      x.b := 0;
+      IF y.register # 0FFH THEN
+        x.reg := y.register;
+        IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI (*TODO: check this*) END
+      END
     ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN x.b := y.lev  (*len*) ;
     ELSE x.c := y.lev
     END ;
@@ -407,7 +410,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       ELSE loadAdr(x); x.mode := RegI; x.a := y.val
       END
     ELSIF x.mode = RegI THEN x.a := x.a + y.val
-    ELSIF x.mode = B.Par THEN x.b := x.b + y.val
+    ELSIF x.mode = B.Par THEN INC(x.b, y.val)
     END
   END Field;
 
@@ -459,24 +462,23 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
 
-  PROCEDURE Q(T: B.Type; VAR dcw: LONGINT);
+  PROCEDURE Q(T: B.Type);
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
-      Q(T.base, dcw); data[dcw] := T.typobj.usedat;
-      T.typobj.usedat := dcw; INC(dcw)
+      Q(T.base); tddata[tdx] := T.typobj.usedat;
+      T.typobj.usedat := tdx; INC(tdx)
     END
   END Q;
 
-  PROCEDURE BuildTD*(T: B.Type; VAR dc: LONGINT);
-    VAR dcw, k, s: LONGINT;  (*dcw = word address*)
-  BEGIN dcw := dc DIV 2; s := T.size;
-    T.len := dc; data[dcw] := s; INC(dcw); (*len used as address*)
+  PROCEDURE BuildTD*(T: B.Type);
+    VAR k, s: LONGINT;  (*dcw = word address*)
+  BEGIN s := T.size;
+    T.len := WordSize*tdx (*len used as address*); tddata[tdx] := s; INC(tdx);
     k := T.nofpar;   (*extension level!*)
     IF k > 3 THEN S.Mark("ext level too large")
-    ELSE Q(T, dcw);
-      WHILE k < 3 DO data[dcw] := -1; INC(dcw); INC(k) END
+    ELSE Q(T);
+      WHILE k < 3 DO tddata[tdx] := -1; INC(tdx); INC(k) END
     END ;
-    tdx := dcw; dc := dcw*2;
     IF tdx >= maxTD THEN S.Mark("too many record types"); tdx := 0 END
   END BuildTD;
 
@@ -800,7 +802,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   (* Code generation of Assignments *)
 
   PROCEDURE StrToChar*(VAR x: Item);
-  BEGIN x.type := B.charType; DEC(strx, 2); x.a := ORD(str[x.a])
+  BEGIN x.type := B.charType; DEC(strx, 2); x.a := ORD(strdata[x.a])
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
@@ -853,7 +855,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   
   (* Code generation for parameters *)
   
-  PROCEDURE OpenArrayParam*(VAR x: Item; par: B.Object);
+  PROCEDURE OpenArrayParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
     VAR t!, ti!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
     ti.am := A.Indexed; ti.obj := NIL;
@@ -861,22 +863,22 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END
-    ELSE (*in stack*) pushAdr(x);
+    ELSE (*in stack*) pushAdr(x); size := 2*WordSize;
       IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
       END
     END
   END OpenArrayParam;
 
-  PROCEDURE VarParam*(VAR x: Item; par: B.Object);
+  PROCEDURE VarParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
     VAR xmd: INTEGER; t!, ti!, rh!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
-    ti.am := A.Indexed; ti.obj := NIL;
+    ti.am := A.Indexed; ti.obj := NIL; xmd := x.mode;
     IF par.register # 0FFH THEN
-      xmd := x.mode; loadAdr(x);
+      loadAdr(x); size := 0;
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN rh.reg := AllocR(); (*open array*)
         IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
-        ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame (*fix me*); A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+        ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         END
       ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN rh.reg := AllocR();
         IF xmd = B.Par THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
@@ -884,28 +886,28 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         END
       END
     ELSE (*in stack*)
-      xmd := x.mode; pushAdr(x);
+      pushAdr(x); size := WordSize;
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*) rh.reg := AllocR();
         IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
-        END
+        END; INC(size, WordSize)
       ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN
         IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
-        END
+        END; INC(size, WordSize)
       END
     END
   END VarParam;
 
-  PROCEDURE ValueParam*(VAR x: Item; par: B.Object);
-  BEGIN IF par.register #0FFH THEN forceload(x) ELSE push(x) END
+  PROCEDURE ValueParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
+  BEGIN IF par.register #0FFH THEN forceload(x); size := 0 ELSE push(x); size := WordSize END
   END ValueParam;
 
-  PROCEDURE StringParam*(VAR x: Item; par: B.Object);
+  PROCEDURE StringParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
     VAR t!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := x.b;
     IF par.register # 0FFH THEN loadStringAdr(x); rh.reg := AllocR(); A.PutDO(mcode, A.MOV, t, rh, A.Word) (*len*)
-    ELSE pushStringAdr(x); A.PutSO(mcode, A.PUSH, t, A.Word); (*len*)
+    ELSE pushStringAdr(x); A.PutSO(mcode, A.PUSH, t, A.Word) (*len*); size := 2*WordSize
     END
   END StringParam;
 
@@ -1141,7 +1143,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END Register;
 
   PROCEDURE Adr*(VAR x: Item);
-  BEGIN 
+  BEGIN (*TODO optimize by removing unnecessary load*)
     IF x.mode IN {B.Var, B.Par, RegI} THEN loadAdr(x)
     ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) THEN load(x)
     ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN loadStringAdr(x)
@@ -1244,12 +1246,12 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       obj := obj.next
     END;
     Files.Write(R, 0X);
-    WriteWord(R, tdx*2);
+    WriteWord(R, tdx*WordSize);
     i := 0;
-    WHILE i < tdx DO WriteWord(R, data[i]); INC(i) END ; (*type descriptors*)
-    WriteWord(R, varsize - tdx*2);  (*data*)
+    WHILE i < tdx DO WriteWord(R, tddata[i]); INC(i) END ; (*type descriptors*)
+    WriteWord(R, varsize);  (*data*)
     WriteWord(R, strx);
-    FOR i := 0 TO strx-1 DO Files.Write(R, str[i]) END ;  (*strings*)
+    FOR i := 0 TO strx-1 DO Files.Write(R, strdata[i]) END ;  (*strings*)
     WriteWord(R, mcode.pc);  (*code len*)
     FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
     Files.WriteByte(R, LEN(vector));  (*Vectors table*)

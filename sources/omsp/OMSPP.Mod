@@ -201,43 +201,44 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         OR (t0.form IN {B.Pointer, B.Proc}) & (t1.form = B.NilTyp))
   END CompTypes;
 
-  PROCEDURE Parameter(par: B.Object);
+  PROCEDURE Parameter(par: B.Object; VAR size: INTEGER);
     VAR x!: G.Item; varpar: BOOLEAN;
   BEGIN expression(x);
+    IF x.obj # NIL THEN x.rdo := x.obj.rdo END; (*allow updating of VAR parameters*)
     IF par # NIL THEN
       varpar := par.class = B.Par;
       IF CompTypes(par.type, x.type, varpar) THEN
-        IF ~varpar THEN G.ValueParam(x, par)
+        IF ~varpar THEN G.ValueParam(x, par, size)
         ELSE (*par.class = Par*)
           IF ~par.rdo THEN CheckReadOnly(x) END ;
-          G.VarParam(x, par)
+          G.VarParam(x, par, size)
         END
       ELSIF (x.type.form = B.Array) & (par.type.form = B.Array) &
           (x.type.base = par.type.base) & (par.type.len < 0) THEN
         IF ~par.rdo THEN CheckReadOnly(x) END ;
-        G.OpenArrayParam(x, par)
+        G.OpenArrayParam(x, par, size)
       ELSIF (x.type.form = B.String) & varpar & par.rdo & (par.type.form = B.Array) & 
-          (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x, par)
-      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par)  (*BYTE*)
+          (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x, par, size)
+      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par, size)  (*BYTE*)
       ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
-        G.StrToChar(x); G.ValueParam(x, par)
+        G.StrToChar(x); G.ValueParam(x, par, size)
       ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
           (par.type.len >= 0) & (par.type.size = x.type.size) THEN
-        G.VarParam(x, par)
+        G.VarParam(x, par, size)
       ELSE S.Mark("incompatible parameters")
       END
     END
   END Parameter;
 
   PROCEDURE ParamList(x: G.Item; VAR s: INTEGER);
-    VAR n: INTEGER; par!: B.Object;
+    VAR n, size: INTEGER; par!: B.Object;
   BEGIN par := x.type.dsc; n := 0; s := 0;
     IF sym # S.rparen THEN
-      Parameter(par); n := 1; IF par.register = 0FFH THEN INC(s, par.type.size) END;
+      Parameter(par, size); n := 1; INC(s, size);
       WHILE sym <= S.comma DO
         Check(S.comma, "comma?");
         IF par # NIL THEN par := par.next END ;
-        INC(n); Parameter(par); IF par.register = 0FFH THEN INC(s, par.type.size) END;
+        INC(n); Parameter(par, size); INC(s, size);
       END ;
       Check(S.rparen, ") missing")
     ELSE S.Get(sym);
@@ -854,7 +855,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
             IF obj.name = ptbase.name THEN ptbase.type.base := obj.type END ;
             ptbase := ptbase.next
           END ;
-          IF level = 0 THEN G.BuildTD(tp, dc) END    (*type descriptor; len used as its address*)
+          IF level = 0 THEN G.BuildTD(tp) END    (*type descriptor; len used as its address*)
         END ;
         Check(S.semicolon, "; missing")
       END
