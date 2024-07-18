@@ -351,12 +351,12 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE loadTypTagAdr(T: B.Type);
     VAR x!: Item;
-  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := NIL; loadAdr(x)
+  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := T.typobj; loadAdr(x)
   END loadTypTagAdr;
 
   PROCEDURE pushTypTagAdr(T: B.Type);
     VAR x!: Item;
-  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; pushAdr(x)
+  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := T.typobj; pushAdr(x)
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);

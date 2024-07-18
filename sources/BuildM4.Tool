@@ -9,7 +9,7 @@ OM4L.Link Modules ~
 OM4L.Load Modules.bin ~
 
 Commands for generation of outer core
-OM4P.Compile PS2.Mod/s InputM4.Mod/s DisplayM4.Mod/s Viewers.Mod/s FontsM4.Mod/s Texts.Mod/s 
+OM4P.Compile PS2.Mod/s InputM4Azerty.Mod/s DisplayM4.Mod/s Viewers.Mod/s FontsM4.Mod/s Texts.Mod/s 
   OberonM4.Mod/s MenuViewers.Mod/s TextFrames.Mod/s SystemM4.Mod/s Edit.Mod/s ~
 
 Commands for generation of the compiler
@@ -31,3 +31,6 @@ Command for generating programs
 OM4P.Compile Hilbert.Mod/s Sierpinski.Mod/s Blink.Mod/s Stars.Mod/s ~
 
 OM4Tool.DecBin Modules.bin ~
+
+Tool for compiler debugging
+BugsCompile.Tool
