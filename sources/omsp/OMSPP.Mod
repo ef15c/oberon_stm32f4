@@ -705,7 +705,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       INC(nofpar); obj.class := cl; obj.type := tp; obj.rdo := rdo; obj.lev := level; 
       IF inreg THEN obj.register := G.AllocR(); nbregs := parsize DIV G.WordSize;
         WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
-      ELSE obj.register := 0FFH; obj.val := adr; adr := adr + parsize END;
+      ELSE obj.register := 0FFH; obj.val := adr; adr := adr + parsize
+      END;
       obj := obj.next
     END ;
     IF adr >= 26 THEN S.Mark("too many parameters") END
@@ -932,14 +933,17 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
       B.OpenScope; INC(level); type.base := B.noType;
       ProcedureType(type, parblksize);  (*formal parameter list*)
-      Check(S.semicolon, "no ;"); locblksize := parblksize + 2; (*return address is between parameters and local variables*)
+      Check(S.semicolon, "no ;"); locblksize := parblksize + G.WordSize; (*return address is between parameters and local variables*)
       Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
-      loc := B.topScope.next; (*fix .val offsets with 0 for last local variable*)
+      loc := B.topScope.next; L := 0; (*fix .val offsets with 0 for last local variable*)
       WHILE loc # NIL DO
         IF loc.class IN {B.Var, B.Par} THEN
-          IF loc.register = 0FFH THEN loc.val := (locblksize - loc.type.size) - loc.val END
+          IF loc.register = 0FFH THEN
+            loc.val := (locblksize - loc.type.size) - loc.val;
+            IF L < type.nofpar THEN (*above return address*) INC(loc.val, G.WordSize) END
+          END
         END;
-        loc := loc.next
+        loc := loc.next; INC(L)
       END;
       IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
         G.resultRegister(x); G.ClearRIU; L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
