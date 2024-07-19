@@ -38,17 +38,17 @@ fixup procedures chains
  001C     0	 0000
 fixup handlers chains
 fixup data chains
- 0014     0	 0000
-fixup type chains
  0018     0	 0000
+fixup type chains
+ 0014     0	 0000
 entry =  0012
 code    34
- 0000	     411F	MOV 4(SP),R15
- 0002	     0004
+ 0000	     411F	MOV 2(SP),R15
+ 0002	     0002
  0004	     439F	MOV #1,0(R15)
  0006	     0000
- 0008	     411F	MOV 4(SP),R15
- 000A	     0004
+ 0008	     411F	MOV 2(SP),R15
+ 000A	     0002
  000C	     43AF	MOV #2,2(R15)
  000E	     0002
  0010	     4130	RET

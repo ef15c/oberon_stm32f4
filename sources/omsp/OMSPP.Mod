@@ -938,9 +938,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       loc := B.topScope.next; (*fix .val offsets with 0 for last local variable*)
       WHILE loc # NIL DO
         IF loc.class IN {B.Var, B.Par} THEN
-          IF loc.register = 0FFH THEN
-            L := loc.type.size; IF L > G.WordSize THEN L := G.WordSize END; loc.val := locblksize - loc.val - L;
-          END
+          IF loc.register = 0FFH THEN loc.val := locblksize - loc.val - loc.type.size END
         END;
         loc := loc.next
       END;

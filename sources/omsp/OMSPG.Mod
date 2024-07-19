@@ -885,7 +885,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         END
       END
     ELSE (*in stack*)
-      pushAdr(x); size := WordSize;
+      size := WordSize;
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*) rh.reg := AllocR();
         IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
@@ -894,7 +894,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
         END; INC(size, WordSize)
-      END
+      END; pushAdr(x)
     END
   END VarParam;
 
