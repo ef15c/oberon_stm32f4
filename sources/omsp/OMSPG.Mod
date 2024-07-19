@@ -390,14 +390,13 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: LONGINT);
   BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF (y.class IN {B.Var, B.Par}) THEN
-      x.b := 0;
+      x.b := 0; x.c := y.lev;
       IF y.register # 0FFH THEN
         x.reg := y.register;
         IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI (*TODO: check this*) END
       END
     ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN x.b := y.lev  (*len*) ;
-    ELSE x.c := y.lev
-    END ;
+    END;
     IF (y.lev > 0) & (y.lev # curlev) & (y.class # B.Const) THEN S.Mark("not accessible ") END
   END MakeItem;
 
@@ -485,7 +484,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   PROCEDURE TypeTest*(VAR x: Item; T: B.Type; varpar, isguard: BOOLEAN); (*TODO fix this proceedure*)
     VAR pc0: LONGINT; t!, ti!, pt!, tt!: Item;
   BEGIN ti.am := A.Indexed; ti.obj := NIL; pt.am := A.Register; pt.ofs := 0; pt.obj := NIL; tt.am := A.Register; tt.ofs := 0; tt.obj := NIL;
-    IF (traps[2] = NIL) OR (T = NIL) THEN IF x.mode > Reg THEN freeR(rh.reg) END; SetCC(x, A.AL)
+    IF ~TypeChecked() OR (T = NIL) THEN IF x.mode > Reg THEN freeR(rh.reg) END; SetCC(x, A.AL)
     ELSE (*fetch tag into RH*)
       IF varpar THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       ELSE load(x); t := c0; A.PutDO(mcode, A.CMP, t, x, A.Word);
@@ -495,7 +494,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       ti.reg := rh.reg; ti.ofs := T.nofpar*2; pt.reg := rh.reg; A.PutDO(mcode, A.MOV, ti, pt, A.Word); rh.reg := AllocR(); 
       tt := rh; loadTypTagAdr(T) (*tag of T*); A.PutDO(mcode, A.CMP, pt, tt, A.Word); freeR(rh.reg); free(x);
       IF isguard THEN
-        IF traps[2] # NIL THEN Trap(A.NE, 2) END
+        IF TypeChecked() THEN Trap(A.NE, 2) END
       ELSE SetCC(x, A.EQ);
         IF ~varpar THEN free(x) END
       END;
@@ -709,11 +708,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     END
   END shift;
 
-  PROCEDURE Rla*(VAR x, y: Item); (* x := LSL(x, y)*)
+  PROCEDURE Rla*(VAR x, y: Item); (* x := RLA(x, y)*)
   BEGIN shift(A.RLA, x, y)
   END Rla;
 
-  PROCEDURE Rra*(VAR x, y: Item); (* x := LSL(x, y)*)
+  PROCEDURE Rra*(VAR x, y: Item); (* x := RRA(x, y)*)
   BEGIN shift(A.RRA, x, y)
   END Rra;
 
@@ -880,7 +879,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         END
-      ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN rh.reg := AllocR();
+      ELSIF (par.type.form = B.Record) & TypeChecked() THEN rh.reg := AllocR();
         IF xmd = B.Par THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         ELSE loadTypTagAdr(x.type)
         END
@@ -891,7 +890,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         END; INC(size, WordSize)
-      ELSIF (par.type.form = B.Record) & (traps[2] # NIL) THEN
+      ELSIF (par.type.form = B.Record) & TypeChecked() THEN
         IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
         END; INC(size, WordSize)
@@ -1010,10 +1009,9 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE Include*(inorex: INTEGER; VAR x, y: Item);
     VAR op: BYTE; z!, t!: Item;
-  BEGIN     IF inorex = 0 THEN op := A.BIS ELSE op := A.BIC END;
+  BEGIN IF inorex = 0 THEN op := A.BIS ELSE op := A.BIC END;
     IF y.mode = B.Const THEN t.mode := B.Const; t.tmp := FALSE; t.obj := NIL; t.ofs := 0; t.a := LSL(1, y.a); PutDO(op, t, x)
-    ELSE z.mode := B.Const; z.a := 1; z.tmp := FALSE; z.ofs := 0; Rla(z, y); PutDO(op, z, x);
-      free(z)
+    ELSE z := c1; load(z); Rla(z, y); PutDO(op, z, x); free(z)
     END
   END Include;
 

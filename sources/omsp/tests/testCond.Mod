@@ -127,8 +127,6 @@ vector table
 commands:
 entries
  0028
-pointer refs
-
 fixup procedures chains
  002E     0	 0000
 fixup handlers chains
@@ -152,8 +150,8 @@ code    50
  001A	     4315	MOV #1,R5
  001C	     3C01	JMP #1, goes to  0020
  001E	     4305	MOV #0,R5
- 0020	     45C1	MOV.B R5,0(SP)
- 0022	     0000
+ 0020	     45C1	MOV.B R5,1(SP)
+ 0022	     0001
  0024	     5321	ADD #2,SP
  0026	     4130	RET
  0028	     4034	MOV #40,R4
@@ -178,8 +176,6 @@ vector table
 commands:
 entries
  0030
-pointer refs
-
 fixup procedures chains
  0036     0	 0000
 fixup handlers chains
@@ -207,8 +203,8 @@ code    60
  0022	     431F	MOV #1,R15
  0024	     3C01	JMP #1, goes to  0028
  0026	     430F	MOV #0,R15
- 0028	     4FC1	MOV.B R15,0(SP)
- 002A	     0000
+ 0028	     4FC1	MOV.B R15,1(SP)
+ 002A	     0001
  002C	     5321	ADD #2,SP
  002E	     4130	RET
  0030	     1230	PUSH #40

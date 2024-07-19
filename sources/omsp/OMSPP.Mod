@@ -885,7 +885,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF inreg THEN obj.register := G.AllocR(); nbregs := tp.size DIV G.WordSize;
             WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
           ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
-            obj.register := 0FFH; obj.val := varsize; varsize := varsize + obj.type.size
+            obj.register := 0FFH; obj.val := varsize; varsize := varsize + tp.size
           END;
           IF onetimeinit THEN obj.rdo := TRUE END;
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
@@ -935,15 +935,14 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ProcedureType(type, parblksize);  (*formal parameter list*)
       Check(S.semicolon, "no ;"); locblksize := parblksize + G.WordSize; (*return address is between parameters and local variables*)
       Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
-      loc := B.topScope.next; L := 0; (*fix .val offsets with 0 for last local variable*)
+      loc := B.topScope.next; (*fix .val offsets with 0 for last local variable*)
       WHILE loc # NIL DO
         IF loc.class IN {B.Var, B.Par} THEN
           IF loc.register = 0FFH THEN
-            loc.val := (locblksize - loc.type.size) - loc.val;
-            IF L < type.nofpar THEN (*above return address*) INC(loc.val, G.WordSize) END
+            L := loc.type.size; IF L > G.WordSize THEN L := G.WordSize END; loc.val := locblksize - loc.val - L;
           END
         END;
-        loc := loc.next; INC(L)
+        loc := loc.next
       END;
       IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
         G.resultRegister(x); G.ClearRIU; L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
