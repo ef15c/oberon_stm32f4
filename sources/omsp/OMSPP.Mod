@@ -705,7 +705,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       INC(nofpar); obj.class := cl; obj.type := tp; obj.rdo := rdo; obj.lev := level; 
       IF inreg THEN obj.register := G.AllocR(); nbregs := parsize DIV G.WordSize;
         WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
-      ELSE obj.register := 0FFH; obj.val := adr; adr := adr + parsize
+      ELSE obj.register := 0FFH; adr := adr + parsize; obj.val := adr
       END;
       obj := obj.next
     END ;
@@ -885,7 +885,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF inreg THEN obj.register := G.AllocR(); nbregs := tp.size DIV G.WordSize;
             WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
           ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
-            obj.register := 0FFH; obj.val := varsize; varsize := varsize + tp.size
+            obj.register := 0FFH;
+            IF level = 0 THEN obj.val := varsize; varsize := varsize + tp.size
+            ELSE varsize := varsize + tp.size; obj.val := varsize (*local variables are located above SP*)
+            END;
           END;
           IF onetimeinit THEN obj.rdo := TRUE END;
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
@@ -937,23 +940,19 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
       loc := B.topScope.next; (*fix .val offsets with 0 for last local variable*)
       WHILE loc # NIL DO
-        IF loc.class IN {B.Var, B.Par} THEN
-          IF loc.register = 0FFH THEN loc.val := locblksize - loc.val - loc.type.size END
-        END;
+        IF (loc.class IN {B.Var, B.Par}) & (loc.register = 0FFH) THEN loc.val := locblksize - loc.val END;
         loc := loc.next
       END;
       IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
         G.resultRegister(x); G.ClearRIU; L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
         loc := B.topScope.next; L := 0;
         WHILE (loc # NIL) & (L < type.nofpar) DO (*allocate registers to parameters, avoiding the result register*)
-          IF loc.class IN {B.Var, B.Par} THEN
-            IF loc.register # 0FFH THEN loc.register := G.AllocR() END (*allocate next free register to param or variable*)
-          END; loc := loc.next; INC(L)
+          IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
+          loc := loc.next; INC(L)
         END; G.freeR(x.reg); (*free sesult register*)
         WHILE loc # NIL DO (*allocate registers to local variables, including the result register*)
-          IF loc.class IN {B.Var, B.Par} THEN
-            IF loc.register # 0FFH THEN loc.register := G.AllocR() END (*allocate next free register to param or variable*)
-          END; loc := loc.next
+          IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
+          loc := loc.next
         END
       END;
       proc.val := G.Here(); 

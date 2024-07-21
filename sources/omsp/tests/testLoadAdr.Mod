@@ -5,7 +5,7 @@ MODULE testLoadAdr;
 
   VAR r1: rec;
 
-  PROCEDURE p(VAR r: rec);
+  PROCEDURE p(VAR r: rec*);
   BEGIN
     r.x := 1; r.y := 2
   END p;
@@ -94,7 +94,7 @@ code    24
  0008	     4130	RET
  000A	     4034	MOV #0,R4
  000C	     0000
- 000E	     4036	MOV #0,R6
+ 000E	     4035	MOV #0,R5
  0010	     0000
  0012	     12B0	CALL #0
  0014	     0000

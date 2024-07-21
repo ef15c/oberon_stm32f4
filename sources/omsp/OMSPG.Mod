@@ -317,17 +317,17 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.obj := x.obj; sva.ofs := A.C16;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*)
-        IF x.a + frame # 0 THEN A.PutDO(mcode, A.MOV, sp, rh, A.Word);
-          t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word); A.PutSO(mcode, A.PUSH, rh, A.Word)
+        IF x.a + frame # 0 THEN rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
+          t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word); A.PutSO(mcode, A.PUSH, rh, A.Word); freeR(rh.reg)
         ELSE A.PutSO(mcode, A.PUSH, sp, A.Word)
         END
       ELSE sva.am := A.Immediate; A.PutSO(mcode, A.PUSH, sva, A.Word)
       END
     ELSIF x.mode = B.Par THEN
-      ti.reg := A.SP; ti.ofs := x.a + frame; 
-      IF x.b # 0 THEN A.PutDO(mcode, A.MOV, ti, rh, A.Word);
-        A.PutDO(mcode, A.ADD, t, rh, A.Word); A.PutSO(mcode, A.PUSH, rh, A.Word)
-      ELSE A.PutSO(mcode, A.PUSH, t, A.Word)
+      ti.reg := A.SP; ti.ofs := x.a + frame;
+      IF x.b = 0 THEN A.PutSO(mcode, A.PUSH, ti, A.Word)
+      ELSE rh.reg := AllocR(); A.PutDO(mcode, A.MOV, ti, rh, A.Word); t.ofs := x.b; A.PutDO(mcode, A.ADD, t, rh, A.Word);
+        A.PutSO(mcode, A.PUSH, rh, A.Word); freeR(rh.reg)
       END
     ELSIF x.mode = RegI THEN
       x.am := A.Register; x.ofs := 0;
@@ -426,10 +426,10 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
           IF x.mode IN {B.Var, RegI} THEN INC(x.a, y.a * s)
           ELSIF x.mode = B.Par THEN x.b := y.a * s + x.b
           END
-        ELSE x.am := A.Immediate; x.ofs := A.C16; x.reg := 0; A.PutDO(mcode, A.MOV, x, rh, A.Word);
-          alloc(x); x.mode := RegI; x.a := y.a * s; x.am := A.Register; x.ofs := 0
+        ELSE x.am := A.Immediate; x.ofs := A.C16; x.reg := 0; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, x, rh, A.Word);
+          x.reg := rh.reg; x.mode := RegI; x.a := y.a * s; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
         END
-      ELSE load(y);
+      ELSE y.tmp := TRUE; load(y);
         IF traps[1] # NIL THEN  (*check array bounds*)
           IF lim >= 0 THEN t.ofs := lim; A.PutDO(mcode, A.CMP, t, y, A.Word)
           ELSE (*open array*)
@@ -442,13 +442,14 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         t.ofs := s; A.eswDO(mcode, A.MUL, t, y, A.Word);
         IF x.mode = B.Var THEN
           IF x.c > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
-          ELSE sva.am := A.Immediate; A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
-            A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0
+          ELSE sva.am := A.Immediate; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
+            A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0; freeR(rh.reg)
           END;
-          x.reg := y.reg; x.mode := RegI; x.am := A.Register; x.ofs := 0
-        ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs := x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
-          A.PutDO(mcode, A.ADD, rh, y, A.Word); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.am := A.Register; x.ofs := 0
-        ELSIF x.mode = RegI THEN A.PutDO(mcode, A.ADD, y, x, A.Word); free(y)
+          free(x); x.reg := y.reg; x.mode := RegI; x.am := A.Register; x.ofs := 0
+        ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs := x.a + frame; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, ti, rh, A.Word);
+          A.PutDO(mcode, A.ADD, rh, y, A.Word); freeR(rh.reg);
+          free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
+        ELSIF x.mode = RegI THEN alloc(x); A.PutDO(mcode, A.ADD, y, x, A.Word); free(y)
         END
       END
     END
@@ -632,18 +633,17 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END Call;
 
   PROCEDURE AddOp*(op: LONGINT; VAR x, y: Item);   (* x := x +- y *)
-    VAR t!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN
     IF op = S.plus THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a + y.a
       ELSIF y.mode = B.Const THEN
-        IF y.a # 0 THEN t.ofs := y.a; PutDO(A.ADD, t, x) END
+        IF y.a # 0 THEN PutDO(A.ADD, y, x) END
       ELSE PutDO(A.ADD, y, x); free(y)
       END
     ELSE (*op = S.minus*)
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a - y.a
       ELSIF y.mode = B.Const THEN
-        IF y.a # 0 THEN t.ofs := y.a; PutDO(A.SUB, t, x) END
+        IF y.a # 0 THEN PutDO(A.SUB, y, x) END
       ELSE PutDO(A.SUB, y, x); free(y)
       END
     END
@@ -862,10 +862,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
       IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END
-    ELSE (*in stack*) pushAdr(x); size := 2*WordSize;
+    ELSE (*in stack*) size := 2*WordSize;
       IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
-      END
+      END;
+      pushAdr(x)
     END
   END OpenArrayParam;
 
@@ -879,8 +880,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         END
-      ELSIF (par.type.form = B.Record) & TypeChecked() THEN rh.reg := AllocR();
-        IF xmd = B.Par THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+      ELSIF (par.type.form = B.Record) & TypeChecked() THEN
+        IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         ELSE loadTypTagAdr(x.type)
         END
       END
@@ -894,7 +895,8 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
         END; INC(size, WordSize)
-      END; pushAdr(x)
+      END;
+      pushAdr(x)
     END
   END VarParam;
 
