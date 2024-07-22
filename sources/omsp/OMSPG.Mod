@@ -8,7 +8,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   CONST WordSize* = 2;
     maxStrx = 3000; maxTD = 160; maxFOS = 1000;
     
-    Reg = 10; RegI = 11; Cond = 12; (*internal item modes*)
+    Reg = 10; RegI = 11; Cond = 12; Absol = 13; (*internal item modes*)
 
   TYPE Item* = RECORD(A.Item)
     mode*: INTEGER;
@@ -134,7 +134,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE AllocR*(): INTEGER;
     VAR RH: INTEGER;
   BEGIN (*register are allocated beginning in order according to AllocUp value*)
-(*S.DebugHex("AllocR AllocUp", ORD(AllocUp)); S.DebugHex("    RIU", ORD(RIU)); S.DebugHex("    RB", RB);*)
     RH := RB; WHILE (RIU*{RH} # {}) & (RH # RL) DO nextR(RH) END;
     IF RH = RL THEN S.Mark("register stack overflow"); rh.reg := RB ELSE allocR(RH); rh.reg := RH END
 
@@ -143,9 +142,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE alloc(VAR x: Item);
   BEGIN
-(*S.DebugHex("alloc", SYSTEM.ADR(x)); S.DebugHex("    x.obj", ORD(x.obj)); S.DebugHex("    x.mode", ORD(x.mode)); S.DebugHex("    x.a", ORD(x.a));
-S.DebugHex("    x.tmp", ORD(x.tmp));*)
-(*IF x.obj # NIL THEN S.DebugString("    name", x.obj.name) END;*)
     IF x.tmp OR ((x.obj = NIL) OR (x.obj.register = 0FFH)) OR ~(x.mode IN {Reg, RegI}) THEN
       x.reg := AllocR(); x.am := A.Register; x.ofs := 0; x.tmp := TRUE
     END
@@ -153,18 +149,12 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE freeR*(r: INTEGER);
   BEGIN
-(*S.DebugHex("freeR", r); S.DebugHex("    RIU", ORD(RIU));*)
     IF RIU*{r} # {} THEN EXCL(RIU, r)
     ELSE S.Mark("reg wild free"); ASSERT(FALSE) END
   END freeR;
 
   PROCEDURE free(VAR x: Item);
-  BEGIN
-(*S.DebugHex("free", SYSTEM.ADR(x)); S.DebugHex("    x.obj", ORD(x.obj)); S.DebugHex("    x.mode", ORD(x.mode)); S.DebugHex("    x.tmp", ORD(x.tmp));*)
-(*IF x.obj # NIL THEN S.DebugString("    name", x.obj.name) END;*)
-     IF x.tmp THEN
-      freeR(x.reg)
-    END
+  BEGIN IF x.tmp THEN freeR(x.reg) END
   END free;
 
   PROCEDURE resultRegister*(VAR res: Item);
@@ -222,7 +212,6 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   PROCEDURE load(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-(*S.DebugHex("load x.mode", x.mode);*)
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
     IF x.mode # Reg THEN
       IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
@@ -254,7 +243,6 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     ELSIF (*mode = REG*) x.tmp & (x.obj # NIL) & (x.reg = x.obj.register) THEN (*temporary copy needed*)
       x.am := A.Register; t := x;  alloc(x); A.PutDO(mcode, A.MOV, t, x, A.Word)
     END;
-(*S.DebugHex("    x.tmp", ORD(x.tmp));*)
     x.am := A.Register; x.ofs := 0
   END load;
 
@@ -263,11 +251,49 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   BEGIN t := x.tmp; x.tmp := TRUE; load(x); x.tmp := t
   END forceload;
 
+  PROCEDURE writable(i: Item): BOOLEAN;
+    RETURN (i.mode # B.Const) OR (i.type.form = B.Pointer)
+  END writable;
+
+  PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba: INTEGER; VAR bw: SET);
+    VAR ti!: Item;
+  BEGIN
+    IF i.type.size = 1 THEN bw := A.Byte END;
+    IF dst & i.rdo & (~writable(i) OR (op # A.PUSH) & (op # A.CALL) & (op # A.CMP) & (op # A.BIT)) THEN i.tmp := TRUE; load(i)
+    ELSIF i.mode = B.Var THEN
+      IF i.c > 0 THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame ELSE i.reg := 0; i.am := A.Absolute; i.ofs := A.C16 (*use static var address*) END
+    ELSIF i.mode = Reg THEN i.am := A.Register; i.ofs := 0
+    ELSIF i.mode = RegI THEN i.am := A.Indexed; i.ofs := i.a
+    ELSIF i.mode = Absol THEN  i.am := A.Absolute; i.ofs := i.a
+    ELSIF i.mode = B.Const THEN i.ofs := i.a; i.reg := 0;
+      IF i.type.form = B.Pointer THEN i.am := A.Absolute;
+        IF i.type.base.size = 1 THEN bw := A.Byte END;
+      ELSE i.am := A.Immediate; IF dst THEN S.Mark("not writable") END
+      END
+    ELSIF i.mode = B.Par THEN ASSERT(nba = -1); rh.reg := AllocR(); nba := rh.reg;
+      ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
+      A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
+    ELSE load(i)
+    END
+  END setRAO;
+
+  PROCEDURE PutDO(op: BYTE; VAR src, dst: Item);
+    VAR bw: SET; nba: INTEGER;
+  BEGIN nba := -1; bw := A.Word; setRAO(op, dst, TRUE, nba, bw); setRAO(op, src, FALSE, nba, bw);
+    A.PutDO(mcode, op, src, dst, bw);
+    IF nba >= 0 THEN freeR(nba) END
+  END PutDO;
+
+  PROCEDURE PutSO(op: INTEGER; VAR sd: Item);
+    VAR bw: SET; nba: INTEGER;
+  BEGIN nba := -1; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
+    A.PutSO(mcode, op, sd, bw);
+    IF nba >= 0 THEN freeR(nba) END
+  END PutSO;
+
   PROCEDURE push(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
-  BEGIN
-(*S.DebugHex("push", SYSTEM.ADR(x)); S.DebugHex("    RIU", ORD(RIU));*)
- t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
     IF x.mode = B.Const THEN
@@ -437,7 +463,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
           ELSE (*open array*)
             IF x.mode IN {B.Var, B.Par} THEN ti.reg := A.SP; ti.ofs := x.a + WordSize + frame; A.PutDO(mcode, A.CMP, ti, y, A.Word)
             ELSIF x.mode IN {Reg, RegI} THEN t.am := A.Register; t.ofs := 0; t.reg := x.reg + 1; A.PutDO(mcode, A.CMP, t, y, A.Word)
-            ELSE S.DebugHex("x.mode", x.mode) ; S.Mark("error in Index")
+            ELSE S.Mark("error in Index")
             END
           END;
           Trap(A.C, 1) (*MSP430 inverts the carry with SUB and CMP instructions*)
@@ -460,9 +486,11 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.reg)
-    ELSIF x.mode # Reg THEN S.Mark("bad mode in DeRef") END;
-    x.mode := RegI; x.a := 0; x.b := 0
+    IF (x.mode IN {B.Var, B.Par, RegI}) THEN load(x); NilCheck(x.reg); x.mode := RegI; x.a := 0
+    ELSIF x.mode = Reg THEN x.mode := RegI; x.a := 0
+    ELSIF writable(x) THEN x.mode := Absol; x.b := 0
+    ELSE S.Mark("bad mode in DeRef") 
+    END; x.b := 0
   END DeRef;
 
   PROCEDURE Q(T: B.Type);
@@ -510,45 +538,6 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   BEGIN IF vector[n] # 0FFFFH THEN S.Mark("vect mult def")
     ELSE vector[n] := h.usedat; h.usedat := n END
   END SetVector;
-
-  PROCEDURE writable(i: Item): BOOLEAN;
-    RETURN (i.mode # B.Const) OR (i.type.form = B.Pointer)
-  END writable;
-
-  PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba: INTEGER; VAR bw: SET);
-    VAR ti!: Item;
-  BEGIN
-    IF i.type.size = 1 THEN bw := A.Byte END;
-    IF dst & i.rdo & (~writable(i) OR (op # A.PUSH) & (op # A.CALL) & (op # A.CMP) & (op # A.BIT)) THEN i.tmp := TRUE; load(i)
-    ELSIF i.mode = B.Var THEN
-      IF i.c > 0 THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame ELSE i.reg := 0; i.am := A.Absolute; i.ofs := A.C16 (*use static var address*) END
-    ELSIF i.mode = Reg THEN i.am := A.Register; i.ofs := 0
-    ELSIF i.mode = RegI THEN i.am := A.Indexed; i.ofs := i.a
-    ELSIF i.mode = B.Const THEN  i.ofs := i.a; i.reg := 0;
-      IF i.type.form = B.Pointer THEN i.am := A.Absolute;
-        IF i.type.base.size = 1 THEN bw := A.Byte END;
-      ELSE i.am := A.Immediate; IF dst THEN S.Mark("not writable") END
-      END
-    ELSIF i.mode = B.Par THEN ASSERT(nba = -1); rh.reg := AllocR(); nba := rh.reg;
-      ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
-      A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
-    ELSE load(i)
-    END
-  END setRAO;
-
-  PROCEDURE PutDO(op: BYTE; VAR src, dst: Item);
-    VAR bw: SET; nba: INTEGER;
-  BEGIN nba := -1; bw := A.Word; setRAO(op, dst, TRUE, nba, bw); setRAO(op, src, FALSE, nba, bw);
-    A.PutDO(mcode, op, src, dst, bw);
-    IF nba >= 0 THEN freeR(nba) END
-  END PutDO;
-
-  PROCEDURE PutSO(op: INTEGER; VAR sd: Item);
-    VAR bw: SET; nba: INTEGER;
-  BEGIN nba := -1; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
-    A.PutSO(mcode, op, sd, bw);
-    IF nba >= 0 THEN freeR(nba) END
-  END PutSO;
 
   (* Code generation for Boolean operators *)
 
