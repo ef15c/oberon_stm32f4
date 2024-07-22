@@ -1222,23 +1222,19 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT);
     VAR obj!, obj2!: B.Object;
-      i, comsize, nofimps, size: LONGINT;
+      i, nofimps, size: LONGINT;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, TRUE);
-    obj := B.topScope.next; nofimps := 0; comsize := 2;
+    obj := B.topScope.next; nofimps := 0;
     WHILE obj # NIL DO
       IF (obj.class = B.Mod) & (obj.dsc # B.system) THEN INC(nofimps); (*count imports*)
-      ELSIF (obj.exno # 0) & (obj.class = B.Const) & (obj.type.form = B.Proc)
-          & (obj.type.nofpar = 0) & (obj.type.base = B.noType) THEN i := 0; (*count commands*)
-        WHILE obj.name[i] # 0X DO INC(i) END ;
-        i := (i+2) DIV 2 * 2; INC(comsize, i+2)
-      END ;
+      END;
       obj := obj.next
-    END ;
+    END;
     
     (*varsize includes type descriptors*)
-    size := varsize + strx + comsize + mcode.pc + (nofimps + nofent + 1)*2; (*size is aligned on 2 bytes boundary*)
+    size := varsize + strx + mcode.pc + (nofimps + nofent + 1)*2; (*size is aligned on 2 bytes boundary*)
     
     B.MakeFileName(name, modid, ".mpc"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key);
@@ -1259,15 +1255,6 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
     FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
     Files.WriteByte(R, LEN(vector));  (*Vectors table*)
     FOR i := 0 TO LEN(vector) - 1 DO WriteWord(R, vector[i]) END;
-    obj := B.topScope.next;
-    WHILE obj # NIL DO  (*commands*)
-      IF (obj.exno # 0) & (obj.class = B.Const) & (obj.type.form = B.Proc) &
-          (obj.type.nofpar = 0) & (obj.type.base = B.noType) THEN
-        Files.WriteString(R, obj.name); WriteWord(R, obj.val)
-      END ;
-      obj := obj.next
-    END ;
-    Files.Write(R, 0X);
     WriteWord(R, nofent); WriteWord(R, entry);
     obj := B.topScope.next;
     WHILE obj # NIL DO  (*entries*)

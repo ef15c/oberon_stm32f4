@@ -168,13 +168,6 @@ MODULE OMSPTool;  (*NW 18.2.2013
           IF i MOD 16 = 0 THEN Texts.WriteLn(W) END
         END;
         Texts.WriteLn(W);
-        Texts.WriteString(W, "commands:"); Texts.WriteLn(W);
-        Files.ReadString(R, name);
-        WHILE name[0] # 0X DO
-          Texts.Write(W, 9X); Texts.WriteString(W, name);
-          ReadWord(R, adr); TextsEx.WriteHexVLen(W, adr, 4, FALSE); Texts.WriteLn(W);
-          Files.ReadString(R, name)
-        END;
       (* Sync(R); *)
         Texts.WriteString(W, "entries"); Texts.WriteLn(W);
         ReadWord(R, n); i := 0;
