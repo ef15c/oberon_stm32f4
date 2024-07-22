@@ -133,7 +133,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ELSIF SOff = 0 THEN SReg := CG2; params := params + Rm
       ELSIF SOff = 1 THEN SReg := CG2; params := params + Im
       ELSIF SOff = 2 THEN SReg := CG2; params := params + IRm
-      ELSIF SOff = -1 THEN SReg := CG2; params := params + IRAm
+      ELSIF (SOff = -1) OR (SOff = 0FFFFH) OR ((SOff = 0FFH) & (params*Byte = Byte)) THEN SReg := CG2; params := params + IRAm
       ELSIF (op = ADD) & (SOff < -1) THEN op := SUB; SOff := -SOff; encSrc(op, SReg, sam, SOff, emitSOff, params)
       ELSIF (op = SUB) & (SOff < -1) THEN op := ADD; SOff := -SOff; encSrc(op, SReg, sam, SOff, emitSOff, params)
       ELSE SReg := PC; params := params + IRAm; emitSOff := TRUE
@@ -166,7 +166,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     ELSIF td.am = Indexed THEN ASSERT(~(td.reg IN {PC, SR, CG2})); params := params + Idm; emitDOff := TRUE
     ELSIF td.am = Symbolic THEN td.reg := PC; params := params + Idm; emitDOff := TRUE
     ELSIF td.am = Absolute THEN td.reg := SR; params := params + Idm; emitDOff := TRUE
-    ELSE ASSERT(FALSE)
+    ELSE S.DebugHex("putDO dam", td.am); ASSERT(FALSE)
     END;
 
     Put1(c, op, ts.reg, td.reg, params);

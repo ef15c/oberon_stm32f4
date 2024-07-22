@@ -241,7 +241,9 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         END
       ELSIF x.mode = B.Par THEN alloc(x); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
         ti.reg := rh.reg; ti.ofs := x.b; A.PutDO(mcode, A.MOV, ti, rh, bw)
-      ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.MOV, ti, x, bw)
+      ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; 
+        IF x.tmp & (x.obj # NIL) & (x.reg = x.obj.register) THEN (*temporary copy needed*) alloc(x) END;
+        A.PutDO(mcode, A.MOV, ti, x, bw)
       ELSIF x.mode = Cond THEN
         pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
         FixLink(x.b); t := c1; A.PutDO(mcode, A.MOV, t, rh, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
@@ -415,7 +417,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
     VAR s, lim: LONGINT; t!, ti!, sva!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN t.reg := 0; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva.obj := x.obj; sva.reg := 0; sva.ofs := A.C16; s := x.type.base.size; 
     IF s=0 THEN S.Mark("Invalid array item size")
     ELSE
@@ -433,13 +435,14 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         IF traps[1] # NIL THEN  (*check array bounds*)
           IF lim >= 0 THEN t.ofs := lim; A.PutDO(mcode, A.CMP, t, y, A.Word)
           ELSE (*open array*)
-            IF x.mode IN {B.Var, B.Par} THEN ti.reg := A.SP; ti.ofs := x.a + 4 + frame; A.PutDO(mcode, A.CMP, ti, y, A.Word)
-            ELSE S.Mark("error in Index")
+            IF x.mode IN {B.Var, B.Par} THEN ti.reg := A.SP; ti.ofs := x.a + WordSize + frame; A.PutDO(mcode, A.CMP, ti, y, A.Word)
+            ELSIF x.mode IN {Reg, RegI} THEN t.am := A.Register; t.ofs := 0; t.reg := x.reg + 1; A.PutDO(mcode, A.CMP, t, y, A.Word)
+            ELSE S.DebugHex("x.mode", x.mode) ; S.Mark("error in Index")
             END
           END;
           Trap(A.C, 1) (*MSP430 inverts the carry with SUB and CMP instructions*)
         END;
-        t.ofs := s; A.eswDO(mcode, A.MUL, t, y, A.Word);
+        t.am := A.Immediate; t.reg := 0; t.ofs := s; A.eswDO(mcode, A.MUL, t, y, A.Word);
         IF x.mode = B.Var THEN
           IF x.c > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
           ELSE sva.am := A.Immediate; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
@@ -449,7 +452,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
         ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs := x.a + frame; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, ti, rh, A.Word);
           A.PutDO(mcode, A.ADD, rh, y, A.Word); freeR(rh.reg);
           free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
-        ELSIF x.mode = RegI THEN alloc(x); A.PutDO(mcode, A.ADD, y, x, A.Word); free(y)
+        ELSIF x.mode = RegI THEN x.tmp := TRUE; load(x); A.PutDO(mcode, A.ADD, y, x, A.Word); x.mode := RegI; x.a := 0; free(y)
         END
       END
     END
@@ -871,7 +874,7 @@ S.DebugHex("    x.tmp", ORD(x.tmp));*)
   END OpenArrayParam;
 
   PROCEDURE VarParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
-    VAR xmd: INTEGER; t!, ti!, rh!: Item;
+    VAR xmd: INTEGER; t!, ti!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
     ti.am := A.Indexed; ti.obj := NIL; xmd := x.mode;
     IF par.register # 0FFH THEN
