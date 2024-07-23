@@ -36,7 +36,8 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     KBLeds: SET;
 
   PROCEDURE^3 PutByteInFIFOBuffer(VAR dev: DeviceDesc);
-    VAR curTick, x, y, dx, dy: INTEGER;
+    CONST YO = 7; XO = 6; YS = 5; XS = 4; MBO = 3; BM = 2; BR = 1; BL = 0;
+    VAR curTick, x, y, dx, dy: INTEGER; flags: SET;
       next: INTEGER;
   BEGIN
     IF dev.connectedDevice = MOUSE THEN
@@ -46,16 +47,16 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       END;
       dev.buf.buffer[dev.buf.head] := dev.dataIn; INC(dev.buf.head);
       IF dev.buf.head >= dev.mouseReportSize THEN (*Process Report*)
-        dev.buf.head := 0;
-        IF LSR(dev.buf.buffer[0], 6) = 0 THEN (*No overflow*)
+        dev.buf.head := 0; flags := SYSTEM.VAL(SET, 0+dev.buf.buffer[0]);
+        IF flags*{XO, YO, MBO} = {MBO} THEN (*No overflow*)
           x := mkb.MD MOD 1000H; y := LSR(mkb.MD, 12) MOD 1000H;
           dx := dev.buf.buffer[1]; dy := dev.buf.buffer[2];
-          IF ODD(LSR(dev.buf.buffer[0], 4)) THEN (*dx is negative*) DEC(dx, 100H) END;
+          IF flags*{XS} # {} THEN (*dx is negative*) DEC(dx, 100H) END; 
           INC(x, dx); IF x < 0 THEN x := 0 ELSIF x >= mkb.MW THEN x := mkb.MW - 1 END;
-          IF ODD(LSR(dev.buf.buffer[0], 5)) THEN (*dy is negative*) DEC(dy, 100H) END;
+          IF flags*{YS} # {} THEN (*dy is negative*) DEC(dy, 100H) END;
           INC(y, dy); IF y < 0 THEN y := 0 ELSIF y >= mkb.MH THEN y := mkb.MH - 1 END;
           (*Pack mouse report in Oberon's format*)
-          mkb.MD := LSL(LSR(dev.buf.buffer[0], 1) MOD 4, 24) + LSL(ORD(ODD(dev.buf.buffer[0])), 26) + x MOD 1000H + LSL(y MOD 1000H, 12)
+          mkb.MD := LSL(ORD(flags*{BM, BR}), 23) + LSL(ORD(flags*{BL}), 26) + x MOD 1000H + LSL(y MOD 1000H, 12)
         END
       END
     ELSE next := (dev.dest.head + 1) MOD BUFFERSIZE;

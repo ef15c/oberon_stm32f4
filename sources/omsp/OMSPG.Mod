@@ -431,7 +431,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation for Selectors, Variables, Constants *)
 
   PROCEDURE Field*(VAR x: Item; y: B.Object);   (* x := x.y *)
-  BEGIN;
+  BEGIN
     IF x.mode = B.Var THEN
       IF x.c >= 0 THEN x.a := x.a + y.val
       ELSE loadAdr(x); x.mode := RegI; x.a := y.val
@@ -802,29 +802,29 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE StoreStruct*(VAR x, y: Item); (* x := y, frame = 0 *)
     VAR s, pc0, pc1: LONGINT; t!, ti!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti.am := A.Indexed; ti.obj := NIL;
+  BEGIN t.mode := B.Const; t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti := y;
     pc0 := -1;
-    IF y.type.size # 0 THEN rh.reg := AllocR(); loadAdr(x); loadAdr(y);
+    IF y.type.size # 0 THEN loadAdr(x); loadAdr(y); rh.reg := AllocR(); 
       IF (x.type.form = B.Array) &  (x.type.len > 0) THEN
         IF y.type.len >= 0 THEN 
-          IF x.type.size = y.type.size THEN t.ofs := (y.type.size+1) DIV 2; PutDO(A.MOV, t, rh)
+          IF x.type.size = y.type.size THEN t.a := (y.type.size+1) DIV 2; PutDO(A.MOV, t, rh)
           ELSE S.Mark("different length/size, not implemented")
           END
-        ELSE (*y  open array*) ti.reg := A.SP; ti.ofs := y.a+2; PutDO(A.MOV, ti, rh); s := y.type.base.size;  (*element size*)
-          t := c0; A.PutDO(mcode, A.CMP, t, rh, A.Word); pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*BEQ L0*)
-          IF s = 1 THEN t := c1; A.PutDO(mcode, A.ADD, t, rh, A.Word); A.PutSO(mcode, A.RRA, rh, A.Word)
+        ELSE (*y  open array*) ti.reg := A.SP; ti.a := y.a+2; PutDO(A.MOV, ti, rh); s := y.type.base.size;  (*element size*)
+          t := c0; PutDO(A.CMP, t, rh); pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*BEQ L0*)
+          IF s = 1 THEN t := c1; PutDO(A.ADD, t, rh); PutSO(A.RRA, rh)
           ELSIF s # 2 THEN ASSERT(~ODD(s)); t.ofs := s DIV 2; A.eswDO(mcode, A.MUL, t, rh, A.Word)
           END;
-          IF traps[3] # NIL THEN t.ofs := (x.type.size+1) DIV 2+1; A.PutDO(mcode, A.CMP, t, rh, A.Word); Trap(A.GE, 3) END
+          IF traps[3] # NIL THEN t.a := (x.type.size+1) DIV 2+1; PutDO(A.CMP, t, rh); Trap(A.GE, 3) END
         END
-      ELSIF x.type.form = B.Record THEN t.ofs := x.type.size DIV 2; A.PutDO(mcode, A.MOV, t, rh, A.Word)
+      ELSIF x.type.form = B.Record THEN t.a := x.type.size DIV 2; PutDO(A.MOV, t, rh)
       ELSE S.Mark("inadmissible assignment")
       END;
       (*L1*) pc1 := mcode.pc; x.am := A.Indexed; x.ofs := 0; y.am := A.IndirectIncr;
-      A.PutDO(mcode, A.MOV, y, x, A.Word); x.am := A.Register; t := c2; A.PutDO(mcode, A.ADD, t, x, A.Word);
-      t := c1; A.PutDO(mcode, A.SUB, t, rh, A.Word); A.PutJ(mcode, A.NE, pc1 - mcode.pc -2); (*BNE L1*)
+      A.PutDO(mcode, A.MOV, y, x, A.Word); t := c2; PutDO(A.ADD, t, x);
+      t := c1; PutDO(A.SUB, t, rh); A.PutJ(mcode, A.NE, pc1 - mcode.pc -2); (*BNE L1*)
       (*L0:*) IF pc0 # -1 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END;
-      free(y); free(x); freeR(rh.reg)
+      freeR(rh.reg); free(y); free(x)
     END
   END StoreStruct;
 
