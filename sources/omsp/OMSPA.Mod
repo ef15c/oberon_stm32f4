@@ -91,7 +91,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     FreeRegisterProc* = PROCEDURE(r: INTEGER);
 
   VAR getOfs : GetOffsetProc; allocR: AllocRegisterProc; freeR: FreeRegisterProc;
-     enabled: BOOLEAN;
+    enabled: BOOLEAN;
+    PutSO0: PROCEDURE(VAR c: ModuleCode; op: INTEGER; ds: Item; params: SET);
 
   PROCEDURE SetProcs*(ofsp: GetOffsetProc; ar: AllocRegisterProc; fr: FreeRegisterProc);
   BEGIN getOfs := ofsp; allocR := ar; freeR := fr
@@ -156,22 +157,40 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   END Put1;
 
   PROCEDURE PutDO*(VAR c: ModuleCode; op: INTEGER; s, d: Item; params: SET);
-    VAR emitSOff, emitDOff: BOOLEAN; ts, td: Item;
+    VAR emitSOff, emitDOff: BOOLEAN; t, ts, td: Item;
   BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
     ASSERT(s.reg < 16); ASSERT(d.reg < 16); ASSERT ((s.ofs >= -C15) & (s.ofs <= C16)); ASSERT ((d.ofs >= -C15) & (d.ofs <= C16));
     ts := s; td := d;
-    encSrc(op, ts.reg, ts.am, ts.ofs, emitSOff, params);
+    IF op = MUL THEN 
+      IF ts.am = Immediate THEN
+        IF ts.ofs = 0 THEN t.reg := 0; t.am := Immediate; t.ofs := 0; PutDO(c, MOV, t, td, params)
+        ELSIF s.ofs < 0 THEN (*multiplicator is negative, change sign of multiplicator, do the multiplication, then change the sign of the result*)
+          ts.ofs := -ts.ofs; PutDO(c, op, ts, td, params); PutSO0(c, NEG, td, params)
+        ELSE (*multiplicator is positive*) WHILE ~ODD(ts.ofs) DO PutDO(c, ADD, td, td, params); ts.ofs := ts.ofs DIV 2 END;
+          t.am := Register; t.ofs := 0;
+          IF ts.ofs # 1 THEN t.reg := allocR(); PutDO(c, MOV, td, t, params);
+            REPEAT PutDO(c, ADD, t, t, params); ts.ofs := ts.ofs DIV 2;
+              IF ODD(ts.ofs) THEN PutDO(c, ADD, t, td, params) END
+            UNTIL ts.ofs = 1;
+            freeR(t.reg)
+          END
+        END
+      ELSE (*todo multiplication*) ASSERT(FALSE)
+      END
+    ELSE ASSERT(op < 10H);
+      encSrc(op, ts.reg, ts.am, ts.ofs, emitSOff, params);
 
-    IF d.am = Register THEN ASSERT(d.reg # CG2); params := params + Rdm
-    ELSIF td.am = Indexed THEN ASSERT(~(td.reg IN {PC, SR, CG2})); params := params + Idm; emitDOff := TRUE
-    ELSIF td.am = Symbolic THEN td.reg := PC; params := params + Idm; emitDOff := TRUE
-    ELSIF td.am = Absolute THEN td.reg := SR; params := params + Idm; emitDOff := TRUE
-    ELSE S.DebugHex("putDO dam", td.am); ASSERT(FALSE)
-    END;
+      IF d.am = Register THEN ASSERT(d.reg # CG2); params := params + Rdm
+      ELSIF td.am = Indexed THEN ASSERT(~(td.reg IN {PC, SR, CG2})); params := params + Idm; emitDOff := TRUE
+      ELSIF td.am = Symbolic THEN td.reg := PC; params := params + Idm; emitDOff := TRUE
+      ELSIF td.am = Absolute THEN td.reg := SR; params := params + Idm; emitDOff := TRUE
+      ELSE S.DebugHex("putDO dam", td.am); ASSERT(FALSE)
+      END;
 
-    Put1(c, op, ts.reg, td.reg, params);
-    IF emitSOff THEN Emit(c, getOfs(s)) END;
-    IF emitDOff THEN Emit(c, getOfs(d)) END
+      Put1(c, op, ts.reg, td.reg, params);
+      IF emitSOff THEN Emit(c, getOfs(s)) END;
+      IF emitDOff THEN Emit(c, getOfs(d)) END
+    END
   END PutDO;
 
   (*single operand instructions format (II):
@@ -201,29 +220,6 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       END
     END
   END PutSO;
-
-  PROCEDURE eswDO*(VAR c: ModuleCode; op: BYTE; VAR s, d: Item; params: SET);
-    VAR t: Item;
-  BEGIN
-    IF op = MUL THEN 
-      IF s.am = Immediate THEN
-        IF s.ofs = 0 THEN t.reg := 0; t.am := Immediate; t.ofs := 0; PutDO(c, MOV, t, d, params)
-        ELSIF s.ofs < 0 THEN (*multiplicator is negative, change sign of multiplicator, do the multiplication, then change the sign of the result*)
-          s.ofs := -s.ofs; eswDO(c, op, s, d, params); PutSO(c, NEG, d, params)
-        ELSE (*multiplicator is positive*) WHILE ~ODD(s.ofs) DO PutDO(c, ADD, d, d, params); s.ofs := s.ofs DIV 2 END;
-          t.am := Register; t.ofs := 0;
-          IF s.ofs # 1 THEN t.reg := allocR(); PutDO(c, MOV, d, t, params);
-            REPEAT PutDO(c, ADD, t, t, params); s.ofs := s.ofs DIV 2;
-              IF ODD(s.ofs) THEN PutDO(c, ADD, t, d, params) END
-            UNTIL s.ofs = 1;
-            freeR(t.reg)
-          END
-        END
-      ELSE (*todo multiplication*) ASSERT(FALSE)
-      END
-    ELSE (*TODO other ops*) ASSERT(FALSE)
-    END
-  END eswDO;
 
   (*jump instructions:
     |opcC/nd  /   o/ffse/t   | *)
@@ -327,4 +323,5 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   BEGIN c.pc := 0; enabled := TRUE
   END Init;
 
+BEGIN PutSO0 := PutSO
 END OMSPA.

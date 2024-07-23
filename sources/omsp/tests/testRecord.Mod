@@ -6,7 +6,7 @@ MODULE testRecord;
 	e: INTEGER
   END;
 
-  PROCEDURE p(VAR r: rec);
+  PROCEDURE p(VAR r: rec*);
   BEGIN
     r.a := 1;
     r.b := 2;
@@ -19,8 +19,9 @@ END testRecord.
 
 OMSPTool.DecObj testRecord.mpc
 
+not leaf:
 decode testRecord.mpc
-testRecord E4D72F38    62
+testRecord E4D72F38    54
 imports:
 type descriptors
  1F46 FFFF FFFF FFFF
@@ -32,13 +33,13 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0038
+ 0030
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup type chains
-entry =  0038
-code    58
+entry =  0030
+code    50
  0000	     411F	MOV 2(SP),R15
  0002	     0002
  0004	     439F	MOV #1,0(R15)
@@ -49,26 +50,61 @@ code    58
  000E	     0002
  0010	     411F	MOV 2(SP),R15
  0012	     0002
- 0014	     522F	ADD #4,R15
- 0016	     411E	MOV 2(SP),R14
- 0018	     0002
- 001A	     503E	ADD #4004,R14
- 001C	     0FA4
- 001E	     403D	MOV #2000,R13
- 0020	     07D0
- 0022	     4EBF	MOV @R14+,0(R15)
- 0024	     0000
- 0026	     532F	ADD #2,R15
- 0028	     831D	SUB #1,R13
- 002A	     23FB	JNE #-5, goes to  0022
- 002C	     411F	MOV 2(SP),R15
- 002E	     0002
- 0030	     40BF	MOV #3,8004(R15)
- 0032	     0003
- 0034	     1F44
- 0036	     4130	RET
- 0038	     4130	RET
+ 0014	     503F	ADD #4004,R15
+ 0016	     0FA4
+ 0018	     403E	MOV #2000,R14
+ 001A	     07D0
+ 001C	     4FBF	MOV @R15+,61534(R15)
+ 001E	     F05E
+ 0020	     831E	SUB #1,R14
+ 0022	     23FC	JNE #-4, goes to  001C
+ 0024	     411F	MOV 2(SP),R15
+ 0026	     0002
+ 0028	     40BF	MOV #3,8004(R15)
+ 002A	     0003
+ 002C	     1F44
+ 002E	     4130	RET
+ 0030	     4130	RET
 
+leaf:
+decode testRecord.mpc
+testRecord E4D72F38    40
+imports:
+type descriptors
+ 1F46 FFFF FFFF FFFF
+data     0
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+entries
+ 0022
+fixup procedures chains
+fixup handlers chains
+fixup data chains
+fixup type chains
+entry =  0022
+code    36
+ 0000	     4394	MOV #1,0(R4)
+ 0002	     0000
+ 0004	     43A4	MOV #2,2(R4)
+ 0006	     0002
+ 0008	     4405	MOV R4,R5
+ 000A	     5035	ADD #4004,R5
+ 000C	     0FA4
+ 000E	     4036	MOV #2000,R6
+ 0010	     07D0
+ 0012	     45B5	MOV @R5+,61534(R5)
+ 0014	     F05E
+ 0016	     8316	SUB #1,R6
+ 0018	     23FC	JNE #-4, goes to  0012
+ 001A	     40B4	MOV #3,8004(R4)
+ 001C	     0003
+ 001E	     1F44
+ 0020	     4130	RET
+ 0022	     4130	RET
 
 OM4Tool.DecObj testRecord.m4c
 decode testRecord.m4c
