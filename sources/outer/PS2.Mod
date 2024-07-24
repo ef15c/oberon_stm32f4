@@ -37,6 +37,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   PROCEDURE^3 PutByteInFIFOBuffer(VAR dev: DeviceDesc);
     CONST YO = 7; XO = 6; YS = 5; XS = 4; MBO = 3; BM = 2; BR = 1; BL = 0;
+      MaxMove = 200;
     VAR curTick, x, y, dx, dy: INTEGER; flags: SET;
       next: INTEGER;
   BEGIN
@@ -51,12 +52,14 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
         IF flags*{XO, YO, MBO} = {MBO} THEN (*No overflow*)
           x := mkb.MD MOD 1000H; y := LSR(mkb.MD, 12) MOD 1000H;
           dx := dev.buf.buffer[1]; dy := dev.buf.buffer[2];
-          IF flags*{XS} # {} THEN (*dx is negative*) DEC(dx, 100H) END; 
-          INC(x, dx); IF x < 0 THEN x := 0 ELSIF x >= mkb.MW THEN x := mkb.MW - 1 END;
+          IF flags*{XS} # {} THEN (*dx is negative*) DEC(dx, 100H) END;
           IF flags*{YS} # {} THEN (*dy is negative*) DEC(dy, 100H) END;
-          INC(y, dy); IF y < 0 THEN y := 0 ELSIF y >= mkb.MH THEN y := mkb.MH - 1 END;
-          (*Pack mouse report in Oberon's format*)
-          mkb.MD := LSL(ORD(flags*{BM, BR}), 23) + LSL(ORD(flags*{BL}), 26) + x MOD 1000H + LSL(y MOD 1000H, 12)
+          IF (dx > -MaxMove) & (dx < MaxMove) & (dy > -MaxMove) & (dy < MaxMove) THEN (*accept packet*)
+            INC(x, dx); IF x < 0 THEN x := 0 ELSIF x >= mkb.MW THEN x := mkb.MW - 1 END;
+            INC(y, dy); IF y < 0 THEN y := 0 ELSIF y >= mkb.MH THEN y := mkb.MH - 1 END;
+            (*Pack mouse report in Oberon's format*)
+            mkb.MD := LSL(ORD(flags*{BM, BR}), 23) + LSL(ORD(flags*{BL}), 26) + x MOD 1000H + LSL(y MOD 1000H, 12)
+          END
         END
       END
     ELSE next := (dev.dest.head + 1) MOD BUFFERSIZE;

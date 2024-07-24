@@ -34,12 +34,20 @@ MODULE Arith; (*runtime module implementing arithmetic operations*)
       RETURN q
   END divmod16;
 
+  PROCEDURE set*(x, y: INTEGER*): INTEGER; (*do not change this function interface*)
+    VAR r, b: INTEGER*;
+    BEGIN
+      IF x <= y THEN r := 2; RLA(r, y); b := 1; RLA(b, x); DEC(r, b) ELSE r := 0 END 
+
+      RETURN r
+  END set;
+
 END Arith.
 
 OMSPTool.DecObj Arith.mpc
 
 decode Arith.mpc
-Arith 0A7B9B13    98
+Arith 82E1081E   138
 imports:
 type descriptors
 
@@ -50,15 +58,14 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
- 0056 0000 0016
+ 007E 0000 0016 0056
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup type chains
-entry =  0056
-code    88
+entry =  007E
+code   128
  0000	     4304	MOV #0,R4
  0002	     9305	CMP #0,R5
  0004	     2407	JEQ #7, goes to  0014
@@ -102,4 +109,24 @@ code    88
  0050	     2001	JNE #1, goes to  0054
  0052	     4804	MOV R8,R4
  0054	     4130	RET
- 0056	     4130	RET
+ 0056	     9506	CMP R5,R6
+ 0058	     3810	JL #16, goes to  007A
+ 005A	     4324	MOV #2,R4
+ 005C	     4608	MOV R6,R8
+ 005E	     5318	ADD #1,R8
+ 0060	     8318	SUB #1,R8
+ 0062	     2402	JEQ #2, goes to  0068
+ 0064	     5404	ADD R4,R4
+ 0066	     3FFC	JMP #-4, goes to  0060
+ 0068	     4317	MOV #1,R7
+ 006A	     4508	MOV R5,R8
+ 006C	     5318	ADD #1,R8
+ 006E	     8318	SUB #1,R8
+ 0070	     2402	JEQ #2, goes to  0076
+ 0072	     5707	ADD R7,R7
+ 0074	     3FFC	JMP #-4, goes to  006E
+ 0076	     8704	SUB R7,R4
+ 0078	     3C01	JMP #1, goes to  007C
+ 007A	     4304	MOV #0,R4
+ 007C	     4130	RET
+ 007E	     4130	RET

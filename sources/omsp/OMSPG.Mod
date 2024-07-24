@@ -84,6 +84,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF curImport = 2 THEN
       IF p.name = "mul16" THEN arith[0] := p
       ELSIF p.name = "divmod16" THEN arith[1] := p
+      ELSIF p.name = "set" THEN arith[2] := p
       END
     END
   END RegisterRTproc;
@@ -233,11 +234,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; 
         IF x.tmp & (x.obj # NIL) THEN (*temporary copy needed*) alloc(x) END;
         A.PutDO(mcode, A.MOV, ti, x, bw)
-      ELSIF x.mode = Cond THEN
+      ELSIF x.mode = Cond THEN alloc(x);
         pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
-        FixLink(x.b); t := c1; A.PutDO(mcode, A.MOV, t, rh, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
-        A.fix(mcode, pc0, mcode.pc - pc0 - 2); FixLink(x.a); t := c0; A.PutDO(mcode, A.MOV, t, rh, A.Word);
-        A.fix(mcode, pc1, mcode.pc - pc1 - 2); alloc(x)
+        FixLink(x.b); t := c1; A.PutDO(mcode, A.MOV, t, x, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
+        A.fix(mcode, pc0, mcode.pc - pc0 - 2); FixLink(x.a); t := c0; A.PutDO(mcode, A.MOV, t, x, A.Word);
+        A.fix(mcode, pc1, mcode.pc - pc1 - 2)
       END;
       x.mode := Reg; x.tmp := TRUE
     ELSIF (*mode = REG*) x.tmp & (x.obj # NIL) & (x.reg = x.obj.register) THEN (*temporary copy needed*)
@@ -691,7 +692,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END DivOp;
 
   (* Code generation for shift operations *)
-  PROCEDURE shift(op: INTEGER; VAR x, y: Item); (* x := LSL(x, y)*)
+  PROCEDURE shift(op: INTEGER; VAR x, y: Item); (* x := op(x, y)*)
     VAR i, pb, pf: INTEGER; t! : Item;
   BEGIN
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := LSL(x.a, y.a) 
@@ -719,12 +720,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Singleton;
 
   PROCEDURE Set*(VAR x, y: Item); (* x := {x .. y} *)
-    VAR p!: Item; r, or: SET; s: INTEGER;
+    VAR p!: Item; r, or: SET; pau: BOOLEAN;
   BEGIN
     IF (x.mode = B.Const) & ( y.mode = B.Const) THEN
       IF x.a <= y.a THEN x.a := ORD({x.a .. y.a}) ELSE x.a := 0 END
-    ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set procedure")
-      ELSE MakeItem(p, arith[2], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, s); ASSERT(s = 0)
+    ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set function")
+      ELSE pau := AllocUp; MakeItem(p, arith[2], 0); PrepCall(p, r, or); load(x); load(y); Call(p, r, or, 0); x.reg := p.reg;
+        IF pau THEN SetRegisterAllocation END
       END
     END
   END Set;
@@ -732,7 +734,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE In*(VAR x, y: Item);  (* x := x IN y *)
     VAR c!: Item; pc0, pc1: INTEGER; t!: Item;
   BEGIN 
-    IF x.mode = B.Const THEN  c.reg := 0; c.am := A.Immediate; c.ofs := LSL(1, x.a); c.obj := NIL; PutDO(A.BIT, c, y);
+    IF x.mode = B.Const THEN  c.mode := B.Const; c.a := LSL(1, x.a); c.obj := NIL; PutDO(A.BIT, c, y);
       free(x)
     ELSE load(x); load(y); t := c1; PutDO(A.ADD, t, x); 
       pc0 := mcode.pc; PutDO(A.SUB, t, x); pc1 := mcode.pc; A.PutJ(mcode, A.EQ, 0);
@@ -1109,12 +1111,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.PutNO(mcode, A.CLRC)
   END ClrC;
 
-  PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item);
+  PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item); (*x := x op y*)
     VAR op: LONGINT;
   BEGIN IF (x.mode = B.Const) & (y.mode = B.Const) THEN
       IF fct = 0 THEN x.a := LSL(x.a, y.a) ELSIF fct = 2 THEN x.a := ASR(x.a, y.a) END 
-    ELSE IF fct = 0 THEN Rla(x, y) ELSIF fct = 2 THEN Rra(x, y) END;
-      free(y)
+    ELSE IF fct = 0 THEN Rla(x, y) ELSIF fct = 2 THEN Rra(x, y) END
     END
   END Shift;
 
@@ -1142,9 +1143,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!: Item;
   BEGIN t.obj := NIL; t.mode := B.Const; t.tmp := FALSE;
     IF y.mode = B.Const THEN t.a:= LSL(1, y.a); PutDO(A.BIT, t, x)
-    ELSE t := c1; Rla(t, y); PutDO(A.BIT, y, x)
+    ELSE t := c1; Rla(t, y); PutDO(A.BIT, t, x)
     END;
-    free(x); free(y);
+    free(x);
     SetCC(x, A.NE)
   END Bit;
 
