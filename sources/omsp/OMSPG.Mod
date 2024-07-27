@@ -6,7 +6,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      Procedure Close writes code-files*)
 
   CONST WordSize* = 2;
-    maxStrx = 3000; maxTD = 160; maxFOS = 1000;
+    maxStrx = 3000; maxGD = 200; maxTD = 160; maxFOS = 1000;
     
     Reg = 10; RegI = 11; Cond = 12; Absol = 13; (*internal item modes*)
 
@@ -40,10 +40,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       Segs: ARRAY maxFOS OF FrameOffsetSegment
     END;
 
-    FrameOffset = POINTER TO FrameOffsetDesc;
+    FixData = RECORD
+      adr, usedat: INTEGER
+    END;
 
   VAR varsize: LONGINT;   (*data index*)
     tdx, strx: LONGINT;
+    gvdata: ARRAY maxGD OF FixData; (*global variables references tracking*)
     tddata: ARRAY maxTD OF INTEGER; (*type descriptors data*)
     strdata: ARRAY maxStrx OF CHAR;
     entry: LONGINT;   (*main entry point*)
@@ -180,9 +183,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END AssertionChecked;
 
   PROCEDURE GetOffset(x: A.Item): INTEGER;
-    VAR res: INTEGER; o!: B.Object;
+    VAR res: INTEGER; o!: B.Object; i: INTEGER;
   BEGIN o := x(Item).obj;
-    IF x.ofs = A.C16 THEN (*Imported object*) res := o.usedat; o.usedat := mcode.pc ELSE res := x.ofs END
+    IF x.ofs = A.C16 THEN
+      IF (x(Item).mode = B.Var) & (x(Item).c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
+        WHILE (gvdata[i].adr # -1) & (gvdata[i].adr # x(Item).a) DO INC(i) END;
+        IF gvdata[i].adr = -1 THEN gvdata[i].adr := x(Item).a; gvdata[i].usedat := 0; gvdata[i+1].adr := -1 END;
+        res := gvdata[i].usedat; gvdata[i].usedat := mcode.pc
+      ELSE (*Imported variable or other object type*) res := o.usedat; o.usedat := mcode.pc END
+    ELSE res := x.ofs
+    END
 
     RETURN res
   END GetOffset;
@@ -211,7 +221,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE load(VAR x: Item); (*load item in a temporary register*)
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
+    ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
     IF x.mode = B.Const THEN alloc(x);
       IF x.type.form = B.Proc THEN
@@ -284,7 +294,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE push(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.ofs := A.C16; sva.obj := x.obj;
+    ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
     IF x.mode = B.Const THEN
       IF x.type.form = B.Proc THEN
@@ -313,7 +323,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE loadAdr(VAR x: Item);
     VAR t!, ti!, sva!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.obj := x.obj; sva.ofs := A.C16;
+    ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*) alloc(x); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
         IF x.a + frame # 0 THEN t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
@@ -335,7 +345,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE pushAdr(VAR x: Item);
     VAR t!, ti!, sva!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    ti.am := A.Indexed; ti.obj := NIL; sva.reg := 0; sva.obj := x.obj; sva.ofs := A.C16;
+    ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*)
         IF x.a + frame # 0 THEN rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
@@ -372,7 +382,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE loadTypTagAdr(T: B.Type);
     VAR x!: Item;
-  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := T.typobj; loadAdr(x)
+  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := T.typobj; x.tmp := FALSE; loadAdr(x)
   END loadTypTagAdr;
 
   PROCEDURE pushTypTagAdr(T: B.Type);
@@ -436,9 +446,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
     VAR s, lim: LONGINT; t!, ti!, sva!: Item;
-  BEGIN t.reg := 0; t.obj := NIL;
-    ti.am := A.Indexed; ti.obj := NIL; sva.obj := x.obj; sva.reg := 0; sva.ofs := A.C16; s := x.type.base.size; 
-    IF s=0 THEN S.Mark("Invalid array item size")
+  BEGIN t.reg := 0; t.obj := NIL; ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
+    s := x.type.base.size;
+    IF s = 0 THEN S.Mark("Invalid array item size")
     ELSE
       lim := x.type.len;
       IF (y.mode = B.Const) & (lim >= 0) THEN
@@ -1158,7 +1168,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Open*;
     VAR i: INTEGER;
-  BEGIN A.Init(mcode); curImport := 0; frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
+  BEGIN A.Init(mcode); gvdata[0].adr := -1; curImport := 0; frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
     FOR i := 0 TO LEN(traps) - 1 DO traps[i] := NIL END;
     FOR i := 0 TO LEN(arith) - 1 DO arith[i] := NIL END;
     FOR i := 0 TO LEN(vector) - 1 DO vector[i] := 0FFFFH END;
@@ -1197,7 +1207,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     obj := B.topScope.next;
     WHILE obj # NIL DO  (*local objects fixup chains*)
-      IF (obj.class = class) & ((form = 0) OR (obj.type.form = form)) & (obj.usedat # 0) & (obj.lev = 0) THEN
+      IF (obj.class = class) & ((form = 0) OR (obj.type.form = form)) & (obj.usedat # 0) & (obj.lev = 0) THEN ASSERT(obj.class # B.Var);
         WriteWord(R, obj.usedat); Files.WriteByte(R, 0); (*local object*); WriteWord(R, obj.val); (*relative address*)
       END;
       obj := obj.next
@@ -1270,6 +1280,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     WriteFixup(R, B.Const, B.Proc); (*procedures fixup data*)
     WriteFixup(R, B.Const, B.Handler); (*interrupt handlers fixup data*)
+    i := 0; WHILE gvdata[i].adr # -1 DO WriteWord(R, gvdata[i].usedat); Files.WriteByte(R, 0); WriteWord(R, gvdata[i].adr); INC(i) END; (*global variables fixup data*)
     WriteFixup(R, B.Var, 0); (*variable fixup data*)
     (*record types fixup data*)
     obj := B.topScope.next;

@@ -28,8 +28,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
- 000E     0	 0000
  0002     0	 0002
+ 000E     0	 0000
 fixup type chains
 entry =  0000
 code    24

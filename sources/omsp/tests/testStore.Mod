@@ -1,0 +1,437 @@
+MODULE testStore;
+  TYPE string = ARRAY 10 OF CHAR;
+    vector = ARRAY 5 OF INTEGER;
+
+  VAR s,t: string;
+    v,u: vector;
+    i: INTEGER;
+
+  PROCEDURE p(a: ARRAY OF CHAR*; c: string*;
+    VAR x:ARRAY OF CHAR*; VAR z: string*);
+    VAR j: INTEGER*;
+  BEGIN
+    j := j*3;
+    z := c;
+    z := s;
+    s := z;
+    x[j] := a[1];
+    x[j] := s[1];
+    z[j] := a[1]
+  END p;
+
+  PROCEDURE q(b: ARRAY OF INTEGER*; d: vector*;
+    VAR y: ARRAY OF INTEGER*; VAR t: vector*);
+    VAR j: INTEGER*;
+  BEGIN
+    t := d;
+    t := v;
+    v := t;
+    y[j] := b[1];
+    y[j] := v[1];
+    t[j] := b[1]
+  END q;
+
+BEGIN
+  i := i*3;
+  s := t;
+  s[i] := s[1];
+  u := v;
+  v[i] := v[1]
+END testStore.
+
+OMSPTool.DecObj testStore.mpc ~
+
+not leaf:
+decode testStore.mpc
+testStore E6E3DA2C   414
+imports:
+type descriptors
+
+data    42
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+entries
+ 0112
+fixup procedures chains
+fixup handlers chains
+fixup data chains
+ 013C     0	 0000
+ 0142     0	 0001
+ 0164     0	 0014
+ 016A     0	 0016
+ 015E     0	 0028
+ 0122     0	 000A
+ 014C     0	 001E
+fixup type chains
+entry =  0112
+code   368
+ 0000	     8321	SUB #2,SP
+ 0002	     412F	MOV @SP,R15
+ 0004	     4F0E	MOV R15,R14
+ 0006	     5E0E	ADD R14,R14
+ 0008	     5E0F	ADD R14,R15
+ 000A	     4F81	MOV R15,0(SP)
+ 000C	     0000
+ 000E	     411F	MOV 10(SP),R15
+ 0010	     000A
+ 0012	     411E	MOV 4(SP),R14
+ 0014	     0004
+ 0016	     403D	MOV #5,R13
+ 0018	     0005
+ 001A	     4FBE	MOV @R15+,0(R14)
+ 001C	     0000
+ 001E	     532E	ADD #2,R14
+ 0020	     831D	SUB #1,R13
+ 0022	     23FB	JNE #-5, goes to  001A
+ 0024	     403F	MOV #0,R15
+ 0026	     0000
+ 0028	     411E	MOV 4(SP),R14
+ 002A	     0004
+ 002C	     403D	MOV #5,R13
+ 002E	     0005
+ 0030	     4FBE	MOV @R15+,0(R14)
+ 0032	     0000
+ 0034	     532E	ADD #2,R14
+ 0036	     831D	SUB #1,R13
+ 0038	     23FB	JNE #-5, goes to  0030
+ 003A	     411F	MOV 4(SP),R15
+ 003C	     0004
+ 003E	     403E	MOV #38,R14
+ 0040	     0026
+ 0042	     403D	MOV #5,R13
+ 0044	     0005
+ 0046	     4FBE	MOV @R15+,0(R14)
+ 0048	     0000
+ 004A	     532E	ADD #2,R14
+ 004C	     831D	SUB #1,R13
+ 004E	     23FB	JNE #-5, goes to  0046
+ 0050	     412F	MOV @SP,R15
+ 0052	     411E	MOV 6(SP),R14
+ 0054	     0006
+ 0056	     5E0F	ADD R14,R15
+ 0058	     431E	MOV #1,R14
+ 005A	     411D	MOV 12(SP),R13
+ 005C	     000C
+ 005E	     5D0E	ADD R13,R14
+ 0060	     4EEF	MOV.B @R14,0(R15)
+ 0062	     0000
+ 0064	     412F	MOV @SP,R15
+ 0066	     411E	MOV 6(SP),R14
+ 0068	     0006
+ 006A	     5E0F	ADD R14,R15
+ 006C	     42DF	MOV.B &0,0(R15)
+ 006E	     0000
+ 0070	     0000
+ 0072	     412F	MOV @SP,R15
+ 0074	     411E	MOV 4(SP),R14
+ 0076	     0004
+ 0078	     5E0F	ADD R14,R15
+ 007A	     431E	MOV #1,R14
+ 007C	     411D	MOV 12(SP),R13
+ 007E	     000C
+ 0080	     5D0E	ADD R13,R14
+ 0082	     4EEF	MOV.B @R14,0(R15)
+ 0084	     0000
+ 0086	     5321	ADD #2,SP
+ 0088	     4130	RET
+ 008A	     8321	SUB #2,SP
+ 008C	     411F	MOV 10(SP),R15
+ 008E	     000A
+ 0090	     411E	MOV 4(SP),R14
+ 0092	     0004
+ 0094	     403D	MOV #5,R13
+ 0096	     0005
+ 0098	     4FBE	MOV @R15+,0(R14)
+ 009A	     0000
+ 009C	     532E	ADD #2,R14
+ 009E	     831D	SUB #1,R13
+ 00A0	     23FB	JNE #-5, goes to  0098
+ 00A2	     403F	MOV #0,R15
+ 00A4	     0000
+ 00A6	     411E	MOV 4(SP),R14
+ 00A8	     0004
+ 00AA	     403D	MOV #5,R13
+ 00AC	     0005
+ 00AE	     4FBE	MOV @R15+,0(R14)
+ 00B0	     0000
+ 00B2	     532E	ADD #2,R14
+ 00B4	     831D	SUB #1,R13
+ 00B6	     23FB	JNE #-5, goes to  00AE
+ 00B8	     411F	MOV 4(SP),R15
+ 00BA	     0004
+ 00BC	     403E	MOV #164,R14
+ 00BE	     00A4
+ 00C0	     403D	MOV #5,R13
+ 00C2	     0005
+ 00C4	     4FBE	MOV @R15+,0(R14)
+ 00C6	     0000
+ 00C8	     532E	ADD #2,R14
+ 00CA	     831D	SUB #1,R13
+ 00CC	     23FB	JNE #-5, goes to  00C4
+ 00CE	     412F	MOV @SP,R15
+ 00D0	     5F0F	ADD R15,R15
+ 00D2	     411E	MOV 6(SP),R14
+ 00D4	     0006
+ 00D6	     5E0F	ADD R14,R15
+ 00D8	     431E	MOV #1,R14
+ 00DA	     5E0E	ADD R14,R14
+ 00DC	     411D	MOV 12(SP),R13
+ 00DE	     000C
+ 00E0	     5D0E	ADD R13,R14
+ 00E2	     4EAF	MOV @R14,0(R15)
+ 00E4	     0000
+ 00E6	     412F	MOV @SP,R15
+ 00E8	     5F0F	ADD R15,R15
+ 00EA	     411E	MOV 6(SP),R14
+ 00EC	     0006
+ 00EE	     5E0F	ADD R14,R15
+ 00F0	     429F	MOV &0,0(R15)
+ 00F2	     0000
+ 00F4	     0000
+ 00F6	     412F	MOV @SP,R15
+ 00F8	     5F0F	ADD R15,R15
+ 00FA	     411E	MOV 4(SP),R14
+ 00FC	     0004
+ 00FE	     5E0F	ADD R14,R15
+ 0100	     431E	MOV #1,R14
+ 0102	     5E0E	ADD R14,R14
+ 0104	     411D	MOV 12(SP),R13
+ 0106	     000C
+ 0108	     5D0E	ADD R13,R14
+ 010A	     4EAF	MOV @R14,0(R15)
+ 010C	     0000
+ 010E	     5321	ADD #2,SP
+ 0110	     4130	RET
+ 0112	     421F	MOV &0,R15
+ 0114	     0000
+ 0116	     4F0E	MOV R15,R14
+ 0118	     5E0E	ADD R14,R14
+ 011A	     5E0F	ADD R14,R15
+ 011C	     4F82	MOV R15,&276
+ 011E	     0114
+ 0120	     403F	MOV #0,R15
+ 0122	     0000
+ 0124	     403E	MOV #64,R14
+ 0126	     0040
+ 0128	     403D	MOV #5,R13
+ 012A	     0005
+ 012C	     4FBE	MOV @R15+,0(R14)
+ 012E	     0000
+ 0130	     532E	ADD #2,R14
+ 0132	     831D	SUB #1,R13
+ 0134	     23FB	JNE #-5, goes to  012C
+ 0136	     421F	MOV &286,R15
+ 0138	     011E
+ 013A	     403E	MOV #294,R14
+ 013C	     0126
+ 013E	     5E0F	ADD R14,R15
+ 0140	     42DF	MOV.B &110,0(R15)
+ 0142	     006E
+ 0144	     0000
+ 0146	     403F	MOV #190,R15
+ 0148	     00BE
+ 014A	     403E	MOV #0,R14
+ 014C	     0000
+ 014E	     403D	MOV #5,R13
+ 0150	     0005
+ 0152	     4FBE	MOV @R15+,0(R14)
+ 0154	     0000
+ 0156	     532E	ADD #2,R14
+ 0158	     831D	SUB #1,R13
+ 015A	     23FB	JNE #-5, goes to  0152
+ 015C	     421F	MOV &312,R15
+ 015E	     0138
+ 0160	     5F0F	ADD R15,R15
+ 0162	     403E	MOV #328,R14
+ 0164	     0148
+ 0166	     5E0F	ADD R14,R15
+ 0168	     429F	MOV &242,0(R15)
+ 016A	     00F2
+ 016C	     0000
+ 016E	     4130	RET
+
+leaf:
+decode testStore.mpc
+testStore E6E3DA2C   352
+imports:
+type descriptors
+
+data    42
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+entries
+ 00D4
+fixup procedures chains
+fixup handlers chains
+fixup data chains
+ 00FE     0	 0000
+ 0104     0	 0001
+ 0126     0	 0014
+ 012C     0	 0016
+ 0120     0	 0028
+ 00E4     0	 000A
+ 010E     0	 001E
+fixup type chains
+entry =  00D4
+code   306
+ 0000	     4A0B	MOV R10,R11
+ 0002	     4B0C	MOV R11,R12
+ 0004	     5C0C	ADD R12,R12
+ 0006	     5C0B	ADD R12,R11
+ 0008	     4B0A	MOV R11,R10
+ 000A	     403B	MOV #5,R11
+ 000C	     0005
+ 000E	     46B9	MOV @R6+,0(R9)
+ 0010	     0000
+ 0012	     5329	ADD #2,R9
+ 0014	     831B	SUB #1,R11
+ 0016	     23FB	JNE #-5, goes to  000E
+ 0018	     403B	MOV #0,R11
+ 001A	     0000
+ 001C	     403C	MOV #5,R12
+ 001E	     0005
+ 0020	     4BB9	MOV @R11+,0(R9)
+ 0022	     0000
+ 0024	     5329	ADD #2,R9
+ 0026	     831C	SUB #1,R12
+ 0028	     23FB	JNE #-5, goes to  0020
+ 002A	     403B	MOV #26,R11
+ 002C	     001A
+ 002E	     403C	MOV #5,R12
+ 0030	     0005
+ 0032	     49BB	MOV @R9+,0(R11)
+ 0034	     0000
+ 0036	     532B	ADD #2,R11
+ 0038	     831C	SUB #1,R12
+ 003A	     23FB	JNE #-5, goes to  0032
+ 003C	     4A0B	MOV R10,R11
+ 003E	     472C	MOV @R7,R12
+ 0040	     5B0C	ADD R11,R12
+ 0042	     431B	MOV #1,R11
+ 0044	     442D	MOV @R4,R13
+ 0046	     5B0D	ADD R11,R13
+ 0048	     4DEC	MOV.B @R13,0(R12)
+ 004A	     0000
+ 004C	     4A0B	MOV R10,R11
+ 004E	     472C	MOV @R7,R12
+ 0050	     5B0C	ADD R11,R12
+ 0052	     42DC	MOV.B &0,0(R12)
+ 0054	     0000
+ 0056	     0000
+ 0058	     4A0B	MOV R10,R11
+ 005A	     492C	MOV @R9,R12
+ 005C	     5B0C	ADD R11,R12
+ 005E	     431B	MOV #1,R11
+ 0060	     442D	MOV @R4,R13
+ 0062	     5B0D	ADD R11,R13
+ 0064	     4DEC	MOV.B @R13,0(R12)
+ 0066	     0000
+ 0068	     4130	RET
+ 006A	     403B	MOV #5,R11
+ 006C	     0005
+ 006E	     46B9	MOV @R6+,0(R9)
+ 0070	     0000
+ 0072	     5329	ADD #2,R9
+ 0074	     831B	SUB #1,R11
+ 0076	     23FB	JNE #-5, goes to  006E
+ 0078	     403B	MOV #0,R11
+ 007A	     0000
+ 007C	     403C	MOV #5,R12
+ 007E	     0005
+ 0080	     4BB9	MOV @R11+,0(R9)
+ 0082	     0000
+ 0084	     5329	ADD #2,R9
+ 0086	     831C	SUB #1,R12
+ 0088	     23FB	JNE #-5, goes to  0080
+ 008A	     403B	MOV #122,R11
+ 008C	     007A
+ 008E	     403C	MOV #5,R12
+ 0090	     0005
+ 0092	     49BB	MOV @R9+,0(R11)
+ 0094	     0000
+ 0096	     532B	ADD #2,R11
+ 0098	     831C	SUB #1,R12
+ 009A	     23FB	JNE #-5, goes to  0092
+ 009C	     4A0B	MOV R10,R11
+ 009E	     5B0B	ADD R11,R11
+ 00A0	     472C	MOV @R7,R12
+ 00A2	     5B0C	ADD R11,R12
+ 00A4	     431B	MOV #1,R11
+ 00A6	     5B0B	ADD R11,R11
+ 00A8	     442D	MOV @R4,R13
+ 00AA	     5B0D	ADD R11,R13
+ 00AC	     4DAC	MOV @R13,0(R12)
+ 00AE	     0000
+ 00B0	     4A0B	MOV R10,R11
+ 00B2	     5B0B	ADD R11,R11
+ 00B4	     472C	MOV @R7,R12
+ 00B6	     5B0C	ADD R11,R12
+ 00B8	     429C	MOV &0,0(R12)
+ 00BA	     0000
+ 00BC	     0000
+ 00BE	     4A0B	MOV R10,R11
+ 00C0	     5B0B	ADD R11,R11
+ 00C2	     492C	MOV @R9,R12
+ 00C4	     5B0C	ADD R11,R12
+ 00C6	     431B	MOV #1,R11
+ 00C8	     5B0B	ADD R11,R11
+ 00CA	     442D	MOV @R4,R13
+ 00CC	     5B0D	ADD R11,R13
+ 00CE	     4DAC	MOV @R13,0(R12)
+ 00D0	     0000
+ 00D2	     4130	RET
+ 00D4	     421F	MOV &0,R15
+ 00D6	     0000
+ 00D8	     4F0E	MOV R15,R14
+ 00DA	     5E0E	ADD R14,R14
+ 00DC	     5E0F	ADD R14,R15
+ 00DE	     4F82	MOV R15,&214
+ 00E0	     00D6
+ 00E2	     403F	MOV #0,R15
+ 00E4	     0000
+ 00E6	     403E	MOV #44,R14
+ 00E8	     002C
+ 00EA	     403D	MOV #5,R13
+ 00EC	     0005
+ 00EE	     4FBE	MOV @R15+,0(R14)
+ 00F0	     0000
+ 00F2	     532E	ADD #2,R14
+ 00F4	     831D	SUB #1,R13
+ 00F6	     23FB	JNE #-5, goes to  00EE
+ 00F8	     421F	MOV &224,R15
+ 00FA	     00E0
+ 00FC	     403E	MOV #232,R14
+ 00FE	     00E8
+ 0100	     5E0F	ADD R14,R15
+ 0102	     42DF	MOV.B &84,0(R15)
+ 0104	     0054
+ 0106	     0000
+ 0108	     403F	MOV #140,R15
+ 010A	     008C
+ 010C	     403E	MOV #0,R14
+ 010E	     0000
+ 0110	     403D	MOV #5,R13
+ 0112	     0005
+ 0114	     4FBE	MOV @R15+,0(R14)
+ 0116	     0000
+ 0118	     532E	ADD #2,R14
+ 011A	     831D	SUB #1,R13
+ 011C	     23FB	JNE #-5, goes to  0114
+ 011E	     421F	MOV &250,R15
+ 0120	     00FA
+ 0122	     5F0F	ADD R15,R15
+ 0124	     403E	MOV #266,R14
+ 0126	     010A
+ 0128	     5E0F	ADD R14,R15
+ 012A	     429F	MOV &186,0(R15)
+ 012C	     00BA
+ 012E	     0000
+ 0130	     4130	RET

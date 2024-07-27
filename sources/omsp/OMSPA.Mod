@@ -77,13 +77,13 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   (*|0003|*) MOd* = 3;
 
   TYPE
-    ModuleCode* = POINTER TO ModuleCodeDesc;
-    
     ModuleCodeDesc* = RECORD
       pc*: LONGINT; (*program counter*)
       code*: ARRAY maxCode OF BYTE;   (*MSP instructions are multiple of 16bit words, but this size does not exists in Oberon 07 cross compiler*)
       pos*: ARRAY maxCode DIV 2 OF INTEGER
     END;
+
+    ModuleCode* = POINTER TO ModuleCodeDesc;
 
     Item* = RECORD reg*, am*: BYTE; ofs*: INTEGER END;
     GetOffsetProc* = PROCEDURE(x: Item): INTEGER;
@@ -111,7 +111,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   (*instruction assemblers*)
 
   PROCEDURE Emit*(VAR c: ModuleCodeDesc; val: INTEGER);
-  BEGIN
+  BEGIN ASSERT ((val >= -C15) & (val < C16));
     IF enabled THEN
       c.code[c.pc+1] := LSR(val, 8) MOD C8;
       c.code[c.pc] := val MOD C8;
@@ -159,7 +159,6 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   PROCEDURE PutDO*(VAR c: ModuleCodeDesc; op: INTEGER; s, d: Item; params: SET);
     VAR emitSOff, emitDOff: BOOLEAN; t, ts, td: Item;
   BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
-    ASSERT(s.reg < 16); ASSERT(d.reg < 16); ASSERT ((s.ofs >= -C15) & (s.ofs <= C16)); ASSERT ((d.ofs >= -C15) & (d.ofs <= C16));
     ts := s; td := d;
     IF op = MUL THEN 
       IF ts.am = Immediate THEN
@@ -187,6 +186,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ELSE S.DebugHex("putDO dam", td.am); ASSERT(FALSE)
       END;
 
+      ASSERT(ts.reg < 16); ASSERT(td.reg < 16);
       Put1(c, op, ts.reg, td.reg, params);
       IF emitSOff THEN Emit(c, getOfs(s)) END;
       IF emitDOff THEN Emit(c, getOfs(d)) END
@@ -200,7 +200,6 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   PROCEDURE PutSO*(VAR c: ModuleCodeDesc; op: INTEGER; ds: Item; params: SET);
     VAR emitDSOff: BOOLEAN; spi, t, tds: Item;
   BEGIN (*emit format II instruction*) ASSERT(params = params*Byte);
-    ASSERT(ds.reg < 16); ASSERT ((ds.ofs >= -C15) & (ds.ofs <= C16));
     tds := ds;
     emitDSOff := FALSE; spi.reg := SP; spi.am := IndirectIncr; spi.ofs := 0;
     IF op = POP THEN PutDO(c, MOV, spi, tds, Word) (*emulation*)
@@ -213,6 +212,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       encSrc(op, tds.reg, tds.am, tds.ofs, emitDSOff, params);
 
       IF enabled THEN
+        ASSERT(tds.reg < 16);
         c.code[c.pc+1] := LSR(op, 1);
         c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + tds.reg;
         c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2);
