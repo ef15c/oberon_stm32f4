@@ -2,8 +2,8 @@ MODULE testInc;
   VAR a, b: INTEGER;
     c, d: BYTE;
   PROCEDURE p;
-    VAR i, j: INTEGER;
-    k, l: BYTE;
+    VAR i, j: INTEGER*;
+    k, l: BYTE*;
   BEGIN
     INC(a); INC(a, 2); INC(a, -2); INC(a, b);
     INC(c); INC(c, 2); INC(c, -2); INC(c, d);
@@ -22,7 +22,7 @@ OMSPTool.DecObj testInc.mpc
 
 not leaf:
 decode testInc.mpc
-testInc 74D6D3BE   164
+testInc 74D6D3BE   162
 imports:
 type descriptors
 
@@ -33,11 +33,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0096
-pointer refs
-
 fixup procedures chains
 fixup handlers chains
 fixup data chains
@@ -127,7 +124,7 @@ code   152
 
 leaf:
 decode testInc.mpc
-testInc 74D6D3BE   120
+testInc 74D6D3BE   118
 imports:
 type descriptors
 
@@ -138,11 +135,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  006A
-pointer refs
-
 fixup procedures chains
 fixup handlers chains
 fixup data chains

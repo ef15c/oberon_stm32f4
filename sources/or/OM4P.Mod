@@ -1004,7 +1004,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         IF newSF THEN Texts.WriteString(W, " new symbol file") END
       END ;
       IF OM4S.errcnt = 0 THEN
-        Texts.WriteInt(W, OM4G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key);
+        Texts.WriteInt(W, OM4G.Here(), 6); Texts.WriteInt(W, dc, 8); Texts.WriteHex(W, key);
         OM4G.Close(modid, key, exno)
       ELSE Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol 
       END ;

@@ -13,10 +13,9 @@ END testFunc.
 
 OMSPTool.DecObj testFunc.mpc
 
-decode testFunc.mpc
-
 not leaf:
-testFunc D7E1DBBA    40
+decode testFunc.mpc
+testFunc D7E1DBBA    38
 imports:
 type descriptors
 
@@ -27,11 +26,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  000A
-pointer refs
-
 fixup procedures chains
  0010     0	 0000
 fixup handlers chains
@@ -59,7 +55,7 @@ code    32
 
 leaf:
 decode testFunc.mpc
-testFunc D7E1DBBA    34
+testFunc D7E1DBBA    32
 imports:
 type descriptors
 
@@ -70,11 +66,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0006
-pointer refs
-
 fixup procedures chains
  000C     0	 0000
 fixup handlers chains

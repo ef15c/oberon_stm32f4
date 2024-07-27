@@ -1,8 +1,9 @@
 MODULE testParam;
+  IMPORT Traps;
 
   TYPE ti = ARRAY 10 OF INTEGER;
 
-  PROCEDURE p(i: INTEGER; VAR s: ARRAY OF INTEGER);
+  PROCEDURE p(i: INTEGER*; VAR s: ARRAY OF INTEGER*);
   BEGIN
     i := i+10; s[i] := 1
   END p;
@@ -20,7 +21,7 @@ OMSPTool.DecObj testParam.mpc
 
 not leaf:
 decode testParam.mpc
-testParam D5E6C731    88
+testParam D5E6C731    86
 imports:
 	Traps 45642D7E
 type descriptors
@@ -32,7 +33,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  004E
 fixup procedures chains
@@ -86,7 +86,7 @@ code    80
 
 leaf:
 decode testParam.mpc
-testParam D5E6C731    70
+testParam D5E6C731    68
 imports:
 	Traps 45642D7E
 type descriptors
@@ -98,7 +98,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  003C
 fixup procedures chains
@@ -140,57 +139,3 @@ code    62
  0038	     002A
  003A	     4130	RET
  003C	     4130	RET
-
-
-OM4Tool.DecObj testParam.m4c
-decode testParam.m4c
-testParam D5E6C731   1    96
-imports:
-type descriptors
-
-data     0
-strings
-
-code
-commands:
-entries
-    76
-pointer refs
-
-fixP =        0
-fixD =        0
-fixT =        0
-entry =       76
- 00000000	     B407	PUSH R0 R1 R2
- 00000002	     B500	PUSH LR
- 00000004	     9801	LDR R0 [SP + 4]
- 00000006	     300A	ADDS R0 #10
- 00000008	     9001	STR R0 [SP + 4]
- 0000000A	     9801	LDR R0 [SP + 4]
- 0000000C	     9903	LDR R1 [SP + 12]
- 0000000E	     4288	CMP R0 R1
- 00000010	     BF28	IT CS
- 00000012	 EC001041	TrapCS 1 at pos 132
- 00000016	     9902	LDR R1 [SP + 8]
- 00000018	 EB110080	ADDS R0 R1 R0 LSL #2
- 0000001C	     2101	MOVS R1 #1
- 0000001E	     6001	STR R1 [ R0 + 0]
- 00000020	 F85DEB04	LDR LR [ SP ] + 4
- 00000024	 F11D0D0C	ADDS SP SP #12
- 00000028	     4770	BX LR
- 0000002A	     B407	PUSH R0 R1 R2
- 0000002C	     B500	PUSH LR
- 0000002E	     2001	MOVS R0 #1
- 00000030	     9901	LDR R1 [SP + 4]
- 00000032	     220A	MOVS R2 #10
- 00000034	 F7FFFFE4	BL #-56, goes to  00000000
- 00000038	     2001	MOVS R0 #1
- 0000003A	     9902	LDR R1 [SP + 8]
- 0000003C	     9A03	LDR R2 [SP + 12]
- 0000003E	 F7FFFFDF	BL #-66, goes to  00000000
- 00000042	 F85DEB04	LDR LR [ SP ] + 4
- 00000046	 F11D0D0C	ADDS SP SP #12
- 0000004A	     4770	BX LR
- 0000004C	     B500	PUSH LR
- 0000004E	 F85DEB04	LDR LR [ SP ] + 4
- 00000052	     4770	BX LR

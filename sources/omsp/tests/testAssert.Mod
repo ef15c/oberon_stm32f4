@@ -16,7 +16,7 @@ OMSPTool.DecObj testAssert.mpc
 
 Traps not imported:
 decode testAssert.mpc
-testAssert DAE74D27    14
+testAssert DAE74D27    12
 imports:
 type descriptors
 
@@ -27,11 +27,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0006
-pointer refs
-
 fixup procedures chains
 fixup handlers chains
 fixup data chains
@@ -44,9 +41,10 @@ code     8
  0006	     4130	RET
 
 Traps imported:
-testAssert DAE74D27    86
+decode testAssert.mpc
+testAssert DAE74D27    84
 imports:
-	Traps 251F09BA
+	Traps 45642D7E
 type descriptors
 
 data     0
@@ -56,13 +54,10 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  004C
-pointer refs
-
 fixup procedures chains
- 0046     1	 0001
+ 0046     1	 0003
 fixup handlers chains
 fixup data chains
 fixup type chains

@@ -30,7 +30,7 @@ OMSPTool.DecObj testIntRelat.mpc
 
 not leaf:
 decode testIntRelat.mpc
-testIntRelat 3B494122   342
+testIntRelat 3B494122   340
 imports:
 type descriptors
 
@@ -41,7 +41,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  014E
 fixup procedures chains
@@ -221,7 +220,7 @@ code   336
 
 leaf:
 decode testIntRelat.mpc
-testIntRelat 3B494122   250
+testIntRelat 3B494122   248
 imports:
 type descriptors
 
@@ -232,7 +231,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  00F2
 fixup procedures chains

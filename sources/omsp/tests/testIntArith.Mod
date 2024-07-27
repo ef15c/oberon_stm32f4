@@ -17,9 +17,9 @@ END testIntArith.
 OMSPTool.DecObj testIntArith.mpc
 
 decode testIntArith.mpc
-testIntArith 1E5C3E2F    86
+testIntArith 1E5C3E2F    84
 imports:
-	Arith 0A7B9B13
+	Arith 82E1081E
 type descriptors
 
 data     0
@@ -29,7 +29,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  004C
 fixup procedures chains

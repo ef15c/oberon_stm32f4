@@ -56,12 +56,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     vector: ARRAY 32 OF INTEGER;
     
     relmap: ARRAY 4 OF INTEGER;    (*condition codes for relations*)
-    mcode: A.ModuleCode;
-    frmOfsSegs: FrameOffset;
-
     cm1, c0, c1, c2, pc, sp, r4, r15: Item-; (*constant Items set by module initialization code*)
     rh: Item;
     curImport: INTEGER;
+
+    mcode: A.ModuleCodeDesc;
+    frmOfsSegs: FrameOffsetDesc;
 
   PROCEDURE CheckRTImport*(impid: S.Ident);
   BEGIN
@@ -395,15 +395,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
   PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: LONGINT);
-  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
+  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
 
   PROCEDURE MakeStringItem*(VAR x: Item; len: LONGINT); (*copies string from OMSPS-buffer to OMSPG-string array*)
     VAR i: LONGINT;
-  BEGIN x.mode := B.Const; x.type := B.strType; x.a := strx; x.b := len; i := 0; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
-    IF strx + len + 2 < maxStrx THEN
+  BEGIN x.mode := B.Const; x.type := B.strType; x.a := strx; x.b := len; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
+    IF strx + len + WordSize < maxStrx THEN i := 0;
       WHILE len > 0 DO strdata[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END ;
-      WHILE strx MOD 2 # 0 DO strdata[strx] := 0X; INC(strx) END
+      WHILE strx MOD WordSize # 0 DO strdata[strx] := 0X; INC(strx) END
     ELSE S.Mark("too many strings")
     END
   END MakeStringItem;
@@ -467,7 +467,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSE sva.am := A.Immediate; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
             A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0; freeR(rh.reg)
           END;
-          free(x); x.reg := y.reg; x.mode := RegI; x.am := A.Register; x.ofs := 0
+          free(x); x.reg := y.reg; x.mode := RegI; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
         ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs := x.a + frame; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, ti, rh, A.Word);
           A.PutDO(mcode, A.ADD, rh, y, A.Word); freeR(rh.reg);
           free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
@@ -1317,7 +1317,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     c.mode := Reg; c.tmp := FALSE; c.a := 0
   END initReg;
 
-BEGIN NEW(mcode); NEW(frmOfsSegs); A.SetProcs(GetOffset, AllocR, freeR);
+BEGIN A.SetProcs(GetOffset, AllocR, freeR);
   initConst(cm1, -1); initConst(c0, 0); initConst(c1, 1); initConst(c2, 2);
   initReg(pc, A.PC); initReg(sp, A.SP); initReg(r4, 4); initReg(r15, 15);
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; relmap[3] := A.GE;

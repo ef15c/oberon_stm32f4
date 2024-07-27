@@ -7,7 +7,7 @@ END testIfThen.
 OMSPTool.DecObj testIfThen.mpc
 
 decode testIfThen.mpc
-testIfThen DDC83A22    26
+testIfThen DDC83A22    24
 imports:
 type descriptors
 
@@ -18,11 +18,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0000
-pointer refs
-
 fixup procedures chains
 fixup handlers chains
 fixup data chains

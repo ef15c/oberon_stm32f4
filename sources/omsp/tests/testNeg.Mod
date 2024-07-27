@@ -1,7 +1,7 @@
 MODULE testNeg;
 
   PROCEDURE p;
-    VAR a: INTEGER*;
+    VAR a: INTEGER;
   BEGIN a := -a;
   END p;
 
@@ -11,7 +11,7 @@ OMSPTool.DecObj testNeg.mpc
 
 not leaf:
 decode testNeg.mpc
-testNeg 74DACAC3    24
+testNeg 74DACAC3    22
 imports:
 type descriptors
 
@@ -22,7 +22,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0010
 fixup procedures chains
@@ -43,7 +42,7 @@ code    18
 
 leaf:
 decode testNeg.mpc
-testNeg 74DACAC3    18
+testNeg 74DACAC3    16
 imports:
 type descriptors
 
@@ -54,7 +53,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  000A
 fixup procedures chains

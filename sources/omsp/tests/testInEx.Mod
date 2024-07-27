@@ -13,7 +13,7 @@ OMSPTool.DecObj testInEx.mpc
 
 not leaf:
 decode testInEx.mpc
-testInEx ECB8D4BD    60
+testInEx ECB8D4BD    58
 imports:
 type descriptors
 
@@ -24,11 +24,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0034
-pointer refs
-
 fixup procedures chains
 fixup handlers chains
 fixup data chains
@@ -65,7 +62,7 @@ code    54
 
 leaf:
 decode testInEx.mpc
-testInEx ECB8D4BD    48
+testInEx ECB8D4BD    46
 imports:
 type descriptors
 
@@ -76,11 +73,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0028
-pointer refs
-
 fixup procedures chains
 fixup handlers chains
 fixup data chains

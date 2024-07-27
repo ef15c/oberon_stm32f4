@@ -1,7 +1,7 @@
 MODULE testCond;
 
   PROCEDURE p(v: INTEGER);
-    VAR b: BOOLEAN*;
+    VAR b: BOOLEAN;
   BEGIN b := (v>-1) & (v<1) OR (v>9) & (v<11)
   END p;
 
@@ -12,7 +12,7 @@ OMSPTool.DecObj testCond.mpc
 
 leaf, local variable in register:
 decode testCond.mpc
-testCond D8E1D5B7    60
+testCond D8E1D5B7    58
 imports:
 type descriptors
 
@@ -23,11 +23,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  002A
-pointer refs
-
 fixup procedures chains
  0030     0	 0000
 fixup handlers chains
@@ -65,7 +62,7 @@ code    54
 
 leaf, param and local variable in registers:
 decode testCond.mpc
-testCond D8E1D5B7    50
+testCond D8E1D5B7    48
 imports:
 type descriptors
 
@@ -76,11 +73,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0022
-pointer refs
-
 fixup procedures chains
  0028     0	 0000
 fixup handlers chains
@@ -113,7 +107,7 @@ code    44
 
 leaf, param in register:
 decode testCond.mpc
-testCond D8E1D5B7    56
+testCond D8E1D5B7    54
 imports:
 type descriptors
 
@@ -124,7 +118,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0028
 fixup procedures chains
@@ -162,7 +155,7 @@ code    50
 
 not leaf:
 decode testCond.mpc
-testCond D8E1D5B7    66
+testCond D8E1D5B7    64
 imports:
 type descriptors
 
@@ -173,7 +166,6 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0030
 fixup procedures chains

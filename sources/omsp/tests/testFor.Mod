@@ -13,7 +13,7 @@ OMSPTool.DecObj testFor.mpc
 
 not leaf:
 decode testFor.mpc
-testFor 74E5D4BB    62
+testFor 74E5D4BB    60
 imports:
 type descriptors
 
@@ -24,11 +24,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0036
-pointer refs
-
 fixup procedures chains
 fixup handlers chains
 fixup data chains
@@ -66,7 +63,7 @@ code    56
 
 leaf:
 decode testFor.mpc
-testFor 74E5D4BB    42
+testFor 74E5D4BB    40
 imports:
 type descriptors
 
@@ -77,11 +74,8 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
-commands:
 entries
  0022
-pointer refs
-
 fixup procedures chains
 fixup handlers chains
 fixup data chains
@@ -106,51 +100,3 @@ code    36
  001E	     3FFC	JMP #-4, goes to  0018
  0020	     4130	RET
  0022	     4130	RET
-
-OM4Tool.DecObj testFor.m4c
-
-decode testFor.m4c
-testFor 74E5D4BB   1    80
-imports:
-type descriptors
-
-data     0
-strings
-
-code
-commands:
-entries
-    60
-pointer refs
-
-fixP =        0
-fixD =        0
-fixT =        0
-entry =       60
- 00000000	 F1BD0D08	SUBS SP SP #8
- 00000004	     B500	PUSH LR
- 00000006	     2001	MOVS R0 #1
- 00000008	     210A	MOVS R1 #10
- 0000000A	     4288	CMP R0 R1
- 0000000C	 F3008007	BGT #14, goes to  0000001E
- 00000010	     9001	STR R0 [SP + 4]
- 00000012	     9801	LDR R0 [SP + 4]
- 00000014	     0040	LSLS R0 R0 #1
- 00000016	     9002	STR R0 [SP + 8]
- 00000018	     9801	LDR R0 [SP + 4]
- 0000001A	     1C40	ADDS R0 R0 #1
- 0000001C	     E7F4	B #-24, goes to  00000008
- 0000001E	     200A	MOVS R0 #10
- 00000020	     2101	MOVS R1 #1
- 00000022	     4288	CMP R0 R1
- 00000024	 F2C08005	BLT #10, goes to  00000032
- 00000028	     9001	STR R0 [SP + 4]
- 0000002A	     9801	LDR R0 [SP + 4]
- 0000002C	 F1B00002	SUBS R0 R0 #2
- 00000030	     E7F6	B #-20, goes to  00000020
- 00000032	 F85DEB04	LDR LR [ SP ] + 4
- 00000036	 F11D0D08	ADDS SP SP #8
- 0000003A	     4770	BX LR
- 0000003C	     B500	PUSH LR
- 0000003E	 F85DEB04	LDR LR [ SP ] + 4
- 00000042	     4770	BX LR

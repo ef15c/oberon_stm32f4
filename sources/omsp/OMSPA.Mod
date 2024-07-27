@@ -92,7 +92,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   VAR getOfs : GetOffsetProc; allocR: AllocRegisterProc; freeR: FreeRegisterProc;
     enabled: BOOLEAN;
-    PutSO0: PROCEDURE(VAR c: ModuleCode; op: INTEGER; ds: Item; params: SET);
+    PutSO0: PROCEDURE(VAR c: ModuleCodeDesc; op: INTEGER; ds: Item; params: SET);
 
   PROCEDURE SetProcs*(ofsp: GetOffsetProc; ar: AllocRegisterProc; fr: FreeRegisterProc);
   BEGIN getOfs := ofsp; allocR := ar; freeR := fr
@@ -110,7 +110,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   (*instruction assemblers*)
 
-  PROCEDURE Emit*(VAR c: ModuleCode; val: INTEGER);
+  PROCEDURE Emit*(VAR c: ModuleCodeDesc; val: INTEGER);
   BEGIN
     IF enabled THEN
       c.code[c.pc+1] := LSR(val, 8) MOD C8;
@@ -147,7 +147,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |                 A B              |
     | op /Sreg/dWAs/Dreg| *)
 
-  PROCEDURE Put1(VAR c: ModuleCode; op, src, dst: BYTE; params: SET);
+  PROCEDURE Put1(VAR c: ModuleCodeDesc; op, src, dst: BYTE; params: SET);
   BEGIN
     IF enabled THEN
       c.code[c.pc+1] := LSL(op, 4) + src;
@@ -156,7 +156,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END Put1;
 
-  PROCEDURE PutDO*(VAR c: ModuleCode; op: INTEGER; s, d: Item; params: SET);
+  PROCEDURE PutDO*(VAR c: ModuleCodeDesc; op: INTEGER; s, d: Item; params: SET);
     VAR emitSOff, emitDOff: BOOLEAN; t, ts, td: Item;
   BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
     ASSERT(s.reg < 16); ASSERT(d.reg < 16); ASSERT ((s.ofs >= -C15) & (s.ofs <= C16)); ASSERT ((d.ofs >= -C15) & (d.ofs <= C16));
@@ -197,7 +197,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |                   B               |
     | opc/ode / WAd/Dreg| *)
 
-  PROCEDURE PutSO*(VAR c: ModuleCode; op: INTEGER; ds: Item; params: SET);
+  PROCEDURE PutSO*(VAR c: ModuleCodeDesc; op: INTEGER; ds: Item; params: SET);
     VAR emitDSOff: BOOLEAN; spi, t, tds: Item;
   BEGIN (*emit format II instruction*) ASSERT(params = params*Byte);
     ASSERT(ds.reg < 16); ASSERT ((ds.ofs >= -C15) & (ds.ofs <= C16));
@@ -224,7 +224,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   (*jump instructions:
     |opcC/nd  /   o/ffse/t   | *)
 
-  PROCEDURE PutJ*(VAR c: ModuleCode; cond: BYTE; offset: LONGINT);
+  PROCEDURE PutJ*(VAR c: ModuleCodeDesc; cond: BYTE; offset: LONGINT);
   BEGIN (*emit jump instruction*) ASSERT (cond <=  NV); ASSERT(~ODD(offset));
     IF enabled THEN IF cond = NV THEN (*NOP*) cond := AL; offset := 0 END;
       offset := LSR(offset, 1);
@@ -234,7 +234,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END PutJ;
 
-  PROCEDURE PutNO*(VAR c: ModuleCode; op: INTEGER);
+  PROCEDURE PutNO*(VAR c: ModuleCodeDesc; op: INTEGER);
   BEGIN
     IF op = RET THEN Put1(c, MOV, SP, PC, IRAm + Rdm + Word)
     ELSIF op = CLRC THEN Put1(c, BIC, CG2, SR, Im + Rdm + Word)
@@ -253,7 +253,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     RETURN cond
   END negated;
 
-  PROCEDURE fix*(VAR c: ModuleCode; at, with: LONGINT);
+  PROCEDURE fix*(VAR c: ModuleCodeDesc; at, with: LONGINT);
   (*The statement must be a jump*)
   BEGIN
     IF enabled THEN
@@ -267,18 +267,18 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END fix;
 
-  PROCEDURE FixOne*(VAR c: ModuleCode; at: LONGINT);
+  PROCEDURE FixOne*(VAR c: ModuleCodeDesc; at: LONGINT);
   BEGIN 
     IF enabled THEN fix(c, at, c.pc-at-2) END
   END FixOne;
 
-  PROCEDURE FixLink*(VAR c: ModuleCode; L: LONGINT);
+  PROCEDURE FixLink*(VAR c: ModuleCodeDesc; L: LONGINT);
     VAR L1: LONGINT;
   BEGIN
     IF enabled THEN WHILE L # 0 DO L1 := (c.code[L+1] MOD C2*C8 + c.code[L])*2; fix(c, L, c.pc-L-2); L := L1 END END
   END FixLink;
 
-  PROCEDURE FixLinkWith*(VAR c: ModuleCode; L0, dst: LONGINT);
+  PROCEDURE FixLinkWith*(VAR c: ModuleCodeDesc; L0, dst: LONGINT);
     VAR L1: LONGINT;
   BEGIN
     IF enabled THEN
@@ -289,7 +289,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END FixLinkWith;
 
-  PROCEDURE merged*(VAR c: ModuleCode; L0, L1: LONGINT): LONGINT;
+  PROCEDURE merged*(VAR c: ModuleCodeDesc; L0, L1: LONGINT): LONGINT;
     VAR L2, L3: LONGINT;
   BEGIN
     IF enabled & (L0 # 0) THEN L3 := L0;
@@ -305,21 +305,21 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     RETURN L1
   END merged;
 
-  PROCEDURE PushRegs*(VAR c: ModuleCode; regs: SET): INTEGER;
+  PROCEDURE PushRegs*(VAR c: ModuleCodeDesc; regs: SET): INTEGER;
     VAR n, i: INTEGER; t: Item;
   BEGIN t.am := Register; t.ofs := 0; n := 0;
     FOR i := 15 TO 0 BY -1 DO IF regs*{i} # {} THEN INC(n); t.reg := i; PutSO(c, PUSH, t, Word) END END
     RETURN n
   END PushRegs;
 
-  PROCEDURE PopRegs*(VAR c: ModuleCode; regs: SET): INTEGER;
+  PROCEDURE PopRegs*(VAR c: ModuleCodeDesc; regs: SET): INTEGER;
     VAR i, n: INTEGER; t: Item;
   BEGIN t.am := Register; t.ofs := 0; n := 0;
     FOR i := 0 TO 15 DO IF regs*{i} # {} THEN INC(n); t.reg := i; PutSO(c, POP, t, Word) END END
     RETURN n
   END PopRegs;
 
-  PROCEDURE Init*(VAR c: ModuleCode);
+  PROCEDURE Init*(VAR c: ModuleCodeDesc);
   BEGIN c.pc := 0; enabled := TRUE
   END Init;
 
