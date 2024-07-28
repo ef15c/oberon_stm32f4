@@ -333,10 +333,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ti.reg := A.SP; ti.ofs := x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
       IF x.b # 0 THEN t.ofs := x.b; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
     ELSIF x.mode = RegI THEN
-      IF x.a # 0 THEN
-        IF ~x.tmp THEN rh.reg := AllocR(); x.mode := Reg; PutDO(A.MOV, x, rh); x.reg := rh.reg; x.tmp := TRUE END;
-        t.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.ADD, t, x, A.Word)
-      END
+      IF ~x.tmp THEN rh.reg := AllocR(); x.mode := Reg; PutDO(A.MOV, x, rh); x.reg := rh.reg; x.tmp := TRUE; x.mode := RegI END;
+      IF x.a # 0 THEN t.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.ADD, t, x, A.Word) END
     ELSE S.Mark("address error")
     END;
     x.mode := Reg; x.am := A.Register; x.ofs := 0
