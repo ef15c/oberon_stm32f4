@@ -8,9 +8,9 @@ MODULE testStore;
     v,u: vector;
     i: INTEGER;
 
-  PROCEDURE p(a: ARRAY OF CHAR; c: string;
-    VAR x:ARRAY OF CHAR; VAR z: string );
-    VAR j: INTEGER;
+  PROCEDURE p(a: ARRAY OF CHAR*; c: string*;
+    VAR x:ARRAY OF CHAR*; VAR z: string* );
+    VAR j: INTEGER*;
   BEGIN
     j := j*3;
     z := c;
@@ -21,9 +21,9 @@ MODULE testStore;
     z[j] := a[1]
   END p;
 
-  PROCEDURE q(b: ARRAY OF INTEGER; d: vector;
-    VAR y: ARRAY OF INTEGER; VAR t: vector );
-    VAR j: INTEGER;
+  PROCEDURE q(b: ARRAY OF INTEGER*; d: vector*;
+    VAR y: ARRAY OF INTEGER*; VAR t: vector* );
+    VAR j: INTEGER*;
   BEGIN
     t := d;
     t := v;
@@ -45,7 +45,7 @@ OMSPTool.DecObj testStore.mpc ~
 
 not leaf:
 decode testStore.mpc
-testStore E6E3DA2C   402
+testStore E6E3DA2C   390
 imports:
 type descriptors
 
@@ -61,16 +61,15 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
- 0130     0	 0000
- 0136     0	 0001
- 0158     0	 0014
- 015E     0	 0016
- 0152     0	 0028
+ 012A     0	 0000
+ 0130     0	 0001
+ 014C     0	 0014
+ 0152     0	 0016
+ 0146     0	 0028
  0116     0	 000A
- 0140     0	 001E
 fixup type chains
 entry =  0106
-code   356
+code   344
  0000	     8321	SUB #2,SP
  0002	     412F	MOV @SP,R15
  0004	     4F0E	MOV R15,R14
@@ -211,48 +210,42 @@ code   356
  0112	     0108
  0114	     403F	MOV #0,R15
  0116	     0000
- 0118	     403E	MOV #64,R14
- 011A	     0040
- 011C	     403D	MOV #5,R13
- 011E	     0005
- 0120	     4FBE	MOV @R15+,0(R14)
- 0122	     0000
- 0124	     532E	ADD #2,R14
- 0126	     831D	SUB #1,R13
- 0128	     23FB	JNE #-5, goes to  0120
- 012A	     421F	MOV &274,R15
- 012C	     0112
- 012E	     403E	MOV #282,R14
- 0130	     011A
- 0132	     5E0F	ADD R14,R15
- 0134	     42DF	MOV.B &108,0(R15)
- 0136	     006C
- 0138	     0000
- 013A	     403F	MOV #186,R15
- 013C	     00BA
- 013E	     403E	MOV #0,R14
- 0140	     0000
- 0142	     403D	MOV #5,R13
- 0144	     0005
- 0146	     4FBE	MOV @R15+,0(R14)
- 0148	     0000
- 014A	     532E	ADD #2,R14
- 014C	     831D	SUB #1,R13
- 014E	     23FB	JNE #-5, goes to  0146
- 0150	     421F	MOV &300,R15
- 0152	     012C
- 0154	     5F0F	ADD R15,R15
- 0156	     403E	MOV #316,R14
- 0158	     013C
- 015A	     5E0F	ADD R14,R15
- 015C	     429F	MOV &234,0(R15)
- 015E	     00EA
- 0160	     0000
- 0162	     4130	RET
+ 0118	     403E	MOV #5,R14
+ 011A	     0005
+ 011C	     4FBF	MOV @R15+,65524(R15)
+ 011E	     FFF4
+ 0120	     831E	SUB #1,R14
+ 0122	     23FC	JNE #-4, goes to  011C
+ 0124	     421F	MOV &274,R15
+ 0126	     0112
+ 0128	     403E	MOV #64,R14
+ 012A	     0040
+ 012C	     5E0F	ADD R14,R15
+ 012E	     42DF	MOV.B &108,0(R15)
+ 0130	     006C
+ 0132	     0000
+ 0134	     403F	MOV #186,R15
+ 0136	     00BA
+ 0138	     403E	MOV #5,R14
+ 013A	     0005
+ 013C	     4FBF	MOV @R15+,8(R15)
+ 013E	     0008
+ 0140	     831E	SUB #1,R14
+ 0142	     23FC	JNE #-4, goes to  013C
+ 0144	     421F	MOV &294,R15
+ 0146	     0126
+ 0148	     5F0F	ADD R15,R15
+ 014A	     403E	MOV #310,R14
+ 014C	     0136
+ 014E	     5E0F	ADD R14,R15
+ 0150	     429F	MOV &234,0(R15)
+ 0152	     00EA
+ 0154	     0000
+ 0156	     4130	RET
 
 leaf:
 decode testStore.mpc
-testStore E6E3DA2C   342
+testStore E6E3DA2C   330
 imports:
 type descriptors
 
@@ -268,16 +261,15 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
- 00F4     0	 0000
- 00FA     0	 0001
- 011C     0	 0014
- 0122     0	 0016
- 0116     0	 0028
+ 00EE     0	 0000
+ 00F4     0	 0001
+ 0110     0	 0014
+ 0116     0	 0016
+ 010A     0	 0028
  00DA     0	 000A
- 0104     0	 001E
 fixup type chains
 entry =  00CA
-code   296
+code   284
  0000	     4A0B	MOV R10,R11
  0002	     4B0C	MOV R11,R12
  0004	     5C0C	ADD R12,R12
@@ -388,48 +380,42 @@ code   296
  00D6	     00CC
  00D8	     403F	MOV #0,R15
  00DA	     0000
- 00DC	     403E	MOV #52,R14
- 00DE	     0034
- 00E0	     403D	MOV #5,R13
- 00E2	     0005
- 00E4	     4FBE	MOV @R15+,0(R14)
- 00E6	     0000
- 00E8	     532E	ADD #2,R14
- 00EA	     831D	SUB #1,R13
- 00EC	     23FB	JNE #-5, goes to  00E4
- 00EE	     421F	MOV &214,R15
- 00F0	     00D6
- 00F2	     403E	MOV #222,R14
- 00F4	     00DE
- 00F6	     5E0F	ADD R14,R15
- 00F8	     42DF	MOV.B &84,0(R15)
- 00FA	     0054
- 00FC	     0000
- 00FE	     403F	MOV #142,R15
- 0100	     008E
- 0102	     403E	MOV #0,R14
- 0104	     0000
- 0106	     403D	MOV #5,R13
- 0108	     0005
- 010A	     4FBE	MOV @R15+,0(R14)
- 010C	     0000
- 010E	     532E	ADD #2,R14
- 0110	     831D	SUB #1,R13
- 0112	     23FB	JNE #-5, goes to  010A
- 0114	     421F	MOV &240,R15
- 0116	     00F0
- 0118	     5F0F	ADD R15,R15
- 011A	     403E	MOV #256,R14
- 011C	     0100
- 011E	     5E0F	ADD R14,R15
- 0120	     429F	MOV &182,0(R15)
- 0122	     00B6
- 0124	     0000
- 0126	     4130	RET
+ 00DC	     403E	MOV #5,R14
+ 00DE	     0005
+ 00E0	     4FBF	MOV @R15+,65524(R15)
+ 00E2	     FFF4
+ 00E4	     831E	SUB #1,R14
+ 00E6	     23FC	JNE #-4, goes to  00E0
+ 00E8	     421F	MOV &214,R15
+ 00EA	     00D6
+ 00EC	     403E	MOV #52,R14
+ 00EE	     0034
+ 00F0	     5E0F	ADD R14,R15
+ 00F2	     42DF	MOV.B &84,0(R15)
+ 00F4	     0054
+ 00F6	     0000
+ 00F8	     403F	MOV #142,R15
+ 00FA	     008E
+ 00FC	     403E	MOV #5,R14
+ 00FE	     0005
+ 0100	     4FBF	MOV @R15+,8(R15)
+ 0102	     0008
+ 0104	     831E	SUB #1,R14
+ 0106	     23FC	JNE #-4, goes to  0100
+ 0108	     421F	MOV &234,R15
+ 010A	     00EA
+ 010C	     5F0F	ADD R15,R15
+ 010E	     403E	MOV #250,R14
+ 0110	     00FA
+ 0112	     5E0F	ADD R14,R15
+ 0114	     429F	MOV &182,0(R15)
+ 0116	     00B6
+ 0118	     0000
+ 011A	     4130	RET
 
 not leaf, with module Traps imported:
 decode testStore.mpc
-testStore E6E3DA2C   552
+testStore E6E3DA2C   540
 imports:
 	Traps 45642D7E
 type descriptors
@@ -444,19 +430,18 @@ vector table
 entries
  0182
 fixup procedures chains
- 01E2     1	 0001
+ 01D6     1	 0001
 fixup handlers chains
 fixup data chains
- 01B8     0	 0000
- 01BE     0	 0001
- 01EC     0	 0014
- 01F2     0	 0016
- 01E6     0	 0028
+ 01B2     0	 0000
+ 01B8     0	 0001
+ 01E0     0	 0014
+ 01E6     0	 0016
+ 01DA     0	 0028
  0192     0	 000A
- 01C8     0	 001E
 fixup type chains
 entry =  0182
-code   504
+code   492
  0000	     8321	SUB #2,SP
  0002	     412F	MOV @SP,R15
  0004	     4F0E	MOV R15,R14
@@ -659,60 +644,54 @@ code   504
  018E	     0184
  0190	     403F	MOV #0,R15
  0192	     0000
- 0194	     403E	MOV #64,R14
- 0196	     0040
- 0198	     403D	MOV #5,R13
- 019A	     0005
- 019C	     4FBE	MOV @R15+,0(R14)
- 019E	     0000
- 01A0	     532E	ADD #2,R14
- 01A2	     831D	SUB #1,R13
- 01A4	     23FB	JNE #-5, goes to  019C
- 01A6	     90B2	CMP #10,&398
- 01A8	     000A
- 01AA	     018E
- 01AC	     2802	JNC #2, goes to  01B2
- 01AE	     12B0	CALL #368
- 01B0	     0170
- 01B2	     421F	MOV &426,R15
- 01B4	     01AA
- 01B6	     403E	MOV #406,R14
- 01B8	     0196
- 01BA	     5E0F	ADD R14,R15
- 01BC	     42DF	MOV.B &144,0(R15)
- 01BE	     0090
- 01C0	     0000
- 01C2	     403F	MOV #246,R15
- 01C4	     00F6
- 01C6	     403E	MOV #0,R14
- 01C8	     0000
- 01CA	     403D	MOV #5,R13
- 01CC	     0005
- 01CE	     4FBE	MOV @R15+,0(R14)
- 01D0	     0000
- 01D2	     532E	ADD #2,R14
- 01D4	     831D	SUB #1,R13
- 01D6	     23FB	JNE #-5, goes to  01CE
- 01D8	     90B2	CMP #5,&436
- 01DA	     0005
- 01DC	     01B4
- 01DE	     2802	JNC #2, goes to  01E4
- 01E0	     12B0	CALL #432
- 01E2	     01B0
- 01E4	     421F	MOV &476,R15
- 01E6	     01DC
- 01E8	     5F0F	ADD R15,R15
- 01EA	     403E	MOV #452,R14
- 01EC	     01C4
- 01EE	     5E0F	ADD R14,R15
- 01F0	     429F	MOV &332,0(R15)
- 01F2	     014C
- 01F4	     0000
- 01F6	     4130	RET
+ 0194	     403E	MOV #5,R14
+ 0196	     0005
+ 0198	     4FBF	MOV @R15+,65524(R15)
+ 019A	     FFF4
+ 019C	     831E	SUB #1,R14
+ 019E	     23FC	JNE #-4, goes to  0198
+ 01A0	     90B2	CMP #10,&398
+ 01A2	     000A
+ 01A4	     018E
+ 01A6	     2802	JNC #2, goes to  01AC
+ 01A8	     12B0	CALL #368
+ 01AA	     0170
+ 01AC	     421F	MOV &420,R15
+ 01AE	     01A4
+ 01B0	     403E	MOV #64,R14
+ 01B2	     0040
+ 01B4	     5E0F	ADD R14,R15
+ 01B6	     42DF	MOV.B &144,0(R15)
+ 01B8	     0090
+ 01BA	     0000
+ 01BC	     403F	MOV #246,R15
+ 01BE	     00F6
+ 01C0	     403E	MOV #5,R14
+ 01C2	     0005
+ 01C4	     4FBF	MOV @R15+,8(R15)
+ 01C6	     0008
+ 01C8	     831E	SUB #1,R14
+ 01CA	     23FC	JNE #-4, goes to  01C4
+ 01CC	     90B2	CMP #5,&430
+ 01CE	     0005
+ 01D0	     01AE
+ 01D2	     2802	JNC #2, goes to  01D8
+ 01D4	     12B0	CALL #426
+ 01D6	     01AA
+ 01D8	     421F	MOV &464,R15
+ 01DA	     01D0
+ 01DC	     5F0F	ADD R15,R15
+ 01DE	     403E	MOV #446,R14
+ 01E0	     01BE
+ 01E2	     5E0F	ADD R14,R15
+ 01E4	     429F	MOV &332,0(R15)
+ 01E6	     014C
+ 01E8	     0000
+ 01EA	     4130	RET
 
 leaf, with module Traps imported:
 decode testStore.mpc
-testStore E6E3DA2C   472
+testStore E6E3DA2C   460
 imports:
 	Traps 45642D7E
 type descriptors
@@ -727,19 +706,18 @@ vector table
 entries
  0132
 fixup procedures chains
- 0192     1	 0001
+ 0186     1	 0001
 fixup handlers chains
 fixup data chains
- 0168     0	 0000
- 016E     0	 0001
- 019C     0	 0014
- 01A2     0	 0016
- 0196     0	 0028
+ 0162     0	 0000
+ 0168     0	 0001
+ 0190     0	 0014
+ 0196     0	 0016
+ 018A     0	 0028
  0142     0	 000A
- 0178     0	 001E
 fixup type chains
 entry =  0132
-code   424
+code   412
  0000	     4A0B	MOV R10,R11
  0002	     4B0C	MOV R11,R12
  0004	     5C0C	ADD R12,R12
@@ -902,53 +880,47 @@ code   424
  013E	     0134
  0140	     403F	MOV #0,R15
  0142	     0000
- 0144	     403E	MOV #52,R14
- 0146	     0034
- 0148	     403D	MOV #5,R13
- 014A	     0005
- 014C	     4FBE	MOV @R15+,0(R14)
- 014E	     0000
- 0150	     532E	ADD #2,R14
- 0152	     831D	SUB #1,R13
- 0154	     23FB	JNE #-5, goes to  014C
- 0156	     90B2	CMP #10,&318
- 0158	     000A
- 015A	     013E
- 015C	     2802	JNC #2, goes to  0162
- 015E	     12B0	CALL #292
- 0160	     0124
- 0162	     421F	MOV &346,R15
- 0164	     015A
- 0166	     403E	MOV #326,R14
- 0168	     0146
- 016A	     5E0F	ADD R14,R15
- 016C	     42DF	MOV.B &112,0(R15)
- 016E	     0070
- 0170	     0000
- 0172	     403F	MOV #192,R15
- 0174	     00C0
- 0176	     403E	MOV #0,R14
- 0178	     0000
- 017A	     403D	MOV #5,R13
- 017C	     0005
- 017E	     4FBE	MOV @R15+,0(R14)
- 0180	     0000
- 0182	     532E	ADD #2,R14
- 0184	     831D	SUB #1,R13
- 0186	     23FB	JNE #-5, goes to  017E
- 0188	     90B2	CMP #5,&356
- 018A	     0005
- 018C	     0164
- 018E	     2802	JNC #2, goes to  0194
- 0190	     12B0	CALL #352
- 0192	     0160
- 0194	     421F	MOV &396,R15
- 0196	     018C
- 0198	     5F0F	ADD R15,R15
- 019A	     403E	MOV #372,R14
- 019C	     0174
- 019E	     5E0F	ADD R14,R15
- 01A0	     429F	MOV &262,0(R15)
- 01A2	     0106
- 01A4	     0000
- 01A6	     4130	RET
+ 0144	     403E	MOV #5,R14
+ 0146	     0005
+ 0148	     4FBF	MOV @R15+,65524(R15)
+ 014A	     FFF4
+ 014C	     831E	SUB #1,R14
+ 014E	     23FC	JNE #-4, goes to  0148
+ 0150	     90B2	CMP #10,&318
+ 0152	     000A
+ 0154	     013E
+ 0156	     2802	JNC #2, goes to  015C
+ 0158	     12B0	CALL #292
+ 015A	     0124
+ 015C	     421F	MOV &340,R15
+ 015E	     0154
+ 0160	     403E	MOV #52,R14
+ 0162	     0034
+ 0164	     5E0F	ADD R14,R15
+ 0166	     42DF	MOV.B &112,0(R15)
+ 0168	     0070
+ 016A	     0000
+ 016C	     403F	MOV #192,R15
+ 016E	     00C0
+ 0170	     403E	MOV #5,R14
+ 0172	     0005
+ 0174	     4FBF	MOV @R15+,8(R15)
+ 0176	     0008
+ 0178	     831E	SUB #1,R14
+ 017A	     23FC	JNE #-4, goes to  0174
+ 017C	     90B2	CMP #5,&350
+ 017E	     0005
+ 0180	     015E
+ 0182	     2802	JNC #2, goes to  0188
+ 0184	     12B0	CALL #346
+ 0186	     015A
+ 0188	     421F	MOV &384,R15
+ 018A	     0180
+ 018C	     5F0F	ADD R15,R15
+ 018E	     403E	MOV #366,R14
+ 0190	     016E
+ 0192	     5E0F	ADD R14,R15
+ 0194	     429F	MOV &262,0(R15)
+ 0196	     0106
+ 0198	     0000
+ 019A	     4130	RET
