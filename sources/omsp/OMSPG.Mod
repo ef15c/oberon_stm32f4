@@ -443,8 +443,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Field;
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
-    VAR s, lim: LONGINT; t!, ti!, sva!: Item;
-  BEGIN t.reg := 0; t.obj := NIL; t.mode := B.Const; ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
+    VAR s, lim: LONGINT; t!, sva!: Item;
+  BEGIN (*t.reg := 0; t.obj := NIL; t.mode := B.Const; ti.am := A.Indexed; ti.obj := NIL;*) sva := x; sva.ofs := A.C16;
     s := x.type.base.size;
     IF s = 0 THEN S.Mark("Invalid array item size")
     ELSE
@@ -460,23 +460,23 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END
       ELSE
         IF traps[1] # NIL THEN  (*check array bounds*)
-          IF lim >= 0 THEN t.a := lim; PutDO(A.CMP, t, y)
-          ELSE (*open array*)
-            IF x.mode IN {B.Var, B.Par} THEN ti := x; INC(ti.a, WordSize); PutDO(A.CMP, ti, y)
-            ELSIF x.mode IN {Reg, RegI} THEN ti := x; INC(ti.reg); PutDO(A.CMP, ti, y)
+          IF lim >= 0 THEN t.mode := B.Const; t.a := lim; PutDO(A.CMP, t, y)
+          ELSE (*open array*) t := x;
+            IF x.mode IN {B.Var, B.Par} THEN t.mode := B.Var; INC(t.a, WordSize); PutDO(A.CMP, t, y)
+            ELSIF x.mode IN {Reg, RegI} THEN t.mode := Reg; INC(t.reg); PutDO(A.CMP, t, y)
             ELSE S.Mark("error in Index")
             END
           END;
           Trap(A.C, 1) (*MSP430 inverts the carry with SUB and CMP instructions*)
         END;
-        IF s # 1 THEN t.a := s; PutDO(A.MUL, t, y) END;
+        IF s # 1 THEN t.mode := B.Const; t.a := s; PutDO(A.MUL, t, y) END;
         IF x.mode = B.Var THEN load(y);
           IF x.c > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
           ELSE sva.am := A.Immediate; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
             A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0; freeR(rh.reg)
           END;
           free(x); x.reg := y.reg; x.mode := RegI; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
-        ELSIF x.mode = B.Par THEN load(y); ti.reg := A.SP; ti.ofs := x.a + frame; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, ti, rh, A.Word);
+        ELSIF x.mode = B.Par THEN load(y); t.reg := A.SP; t.am := A.Indexed; t.ofs := x.a + frame; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, t, rh, A.Word);
           A.PutDO(mcode, A.ADD, rh, y, A.Word); freeR(rh.reg);
           free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
         ELSIF x.mode = RegI THEN loadAdr(x); PutDO( A.ADD, y, x); x.mode := RegI; x.a := 0; free(y)
