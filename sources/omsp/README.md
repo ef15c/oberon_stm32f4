@@ -1,6 +1,6 @@
 # MSP430 Oberon compiler
 <b>WORK IN PROGRESS<b>
-## Specific extension
+## Specific extensions
 ### Runtime modules
 Due to the limited RAM and Flash resources, it is useful to remove the trap
 overhead from the final code.<br>
