@@ -1,11 +1,11 @@
 # oberon_stm32f4
 Portage of Oberon system to stm32f429i-disco board<br><br>
 <b>Version 6 released!</b><br>
-* Oberon MSP430 compiler<br>
+* Oberon MSP430 compiler:<br>
 Work in progress: parser and generator are under testing. Instruction generator and disassembler are tested OK.
 See osmp/README.md for information about MSP430 specific extensions.
 * Minor fixes on OM4 compiler.
-* Introduction of one time initialized global variables in OM4 ans OMSP compilers<br>
+* Introduction of one time initialized global variables in OM4 and OMSP compilers:<br>
   Global variables whose type is followed by an hypen sign are now read only, except in the initialization block of the module.
 * Kernel.Coalesce fix
 * StackTrace fix (requires recompilation of modules)
