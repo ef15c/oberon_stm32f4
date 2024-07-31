@@ -1,13 +1,15 @@
 # oberon_stm32f4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 5 released!</b><br>
-
-* Start of writing a cross compiler for MSP430 microcontrollers<br>
-* Fix MaX and MaxY values of default font<br>
-* A post trap call stack analysis is available (StackTrace.Calls)<br>
-* The blue push button now allows to abort current command (TRAP 10)<br>
-* Reduced heap fragmentation by allocating code generator structures only once<br>
-* An experimental heap defragmention procedure can be invoked by the command Kernel.Coalesce<br>
+<b>Version 6 released!</b><br>
+* Oberon MSP430 compiler<br>
+Work in progress: parser and generator are under testing. Instruction generator and disassembler are tested OK.
+See osmp/README.md for information about MSP430 specific extensions.
+* Minor fixes on OM4 compiler.
+* Introduction of one time initialized global variables in OM4 ans OMSP compilers<br>
+  Global variables whose type is followed by an hypen sign are now read only, except in the initialization block of the module.
+* Kernel.Coalesce fix
+* StackTrace fix (requires recompilation of modules)
+* Improved mouse management
 <br>
 QWERTY keyboard can be activated by middle clicking on the text "OM4P.Compile InputM4Qwerty.Mod ~"<br>
 displayed in yellow in the middle of the System.Tool window. Restart the system to load the updated Input module.<br>
