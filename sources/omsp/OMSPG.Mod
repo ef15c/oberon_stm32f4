@@ -45,7 +45,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
 
   VAR varsize: LONGINT;   (*data index*)
-    tdx, strx: LONGINT;
+    tdx, strx, mstrx, nofstrs: LONGINT;
     gvdata: ARRAY maxGD OF FixData; (*global variables references tracking*)
     tddata: ARRAY maxTD OF INTEGER; (*type descriptors data*)
     strdata: ARRAY maxStrx OF CHAR;
@@ -190,6 +190,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         WHILE (gvdata[i].adr # -1) & (gvdata[i].adr # x(Item).a) DO INC(i) END;
         IF gvdata[i].adr = -1 THEN gvdata[i].adr := x(Item).a; gvdata[i].usedat := 0; gvdata[i+1].adr := -1 END;
         res := gvdata[i].usedat; gvdata[i].usedat := mcode.pc
+      ELSIF (x(Item).mode = B.Const) & (x(Item).type = B.strType) & (x(Item).c = 0) THEN
+        i := x(Item).a; res := ORD(strdata[i]) + ORD(strdata[i + 1]) * 100H;
+        strdata[i] := CHR(mcode.pc MOD 100H); strdata[i + 1] := CHR(mcode.pc DIV 100H);
       ELSE (*Imported variable or other object type*) res := o.usedat; o.usedat := mcode.pc END
     ELSE res := x.ofs
     END
@@ -389,14 +392,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
-  BEGIN x.c := 0; x.a := varsize+x.a; x.reg := 0; x.am := A.Immediate; x.ofs := A.C16;
-    A.PutDO(mcode, A.MOV, x, rh, A.Word); alloc(x);
-    x.mode := Reg; x.am := A.Register; x.ofs := 0
+  BEGIN x.c := 0; x.am := A.Immediate; x.ofs := A.C16;
+     rh.reg := AllocR(); A.PutDO(mcode, A.MOV, x, rh, A.Word);
+    x.mode := Reg; x.am := A.Register; x.reg := rh.reg; x.ofs := 0; x.tmp := TRUE
   END loadStringAdr;
 
   PROCEDURE pushStringAdr(x: Item);
     VAR x1!: Item;
-  BEGIN x1.c := 0; x1.a := varsize+x.a; x1.reg := 0; x1.am := A.Immediate; x1.ofs := A.C16; x1.obj := x.obj;
+  BEGIN x1 := x; x1.c := 0; x1.am := A.Immediate; x1.ofs := A.C16;
     A.PutSO(mcode, A.PUSH, x1, A.Word)
   END pushStringAdr;
 
@@ -406,13 +409,31 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
 
-  PROCEDURE MakeStringItem*(VAR x: Item; len: LONGINT); (*copies string from OMSPS-buffer to OMSPG-string array*)
-    VAR i: LONGINT;
-  BEGIN x.mode := B.Const; x.type := B.strType; x.a := strx; x.b := len; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
-    IF strx + len + WordSize < maxStrx THEN i := 0;
-      WHILE len > 0 DO strdata[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END ;
-      WHILE strx MOD WordSize # 0 DO strdata[strx] := 0X; INC(strx) END
-    ELSE S.Mark("too many strings")
+  PROCEDURE stringFound(VAR usedat: INTEGER): BOOLEAN; (*if the string exists in table, return TRUE with the position in parameter pos*)
+    VAR found: BOOLEAN; i, pos: INTEGER;
+  BEGIN found := FALSE;
+    pos := 0; usedat := maxStrx;
+    WHILE ~found & (pos < strx) DO
+      i := 0; WHILE (S.str[i] # 0X) & (S.str[i] = strdata[pos + i]) DO INC(i) END; DEC(usedat, WordSize);
+      IF S.str[i] = strdata[pos + i] THEN found := TRUE
+      ELSE INC(pos, WordSize + 1 + i); WHILE pos MOD WordSize # 0 DO INC(pos) END
+      END
+    END
+
+    RETURN found
+  END stringFound;
+
+  PROCEDURE MakeStringItem*(VAR x: Item); (*copies string from OMSPS-buffer to OMSPG-string array*)
+    VAR i, len: LONGINT;
+  BEGIN len := S.slen; x.mode := B.Const; x.type := B.strType; x.b := len; x.c := 0 (*global string*); x.rdo := TRUE;
+    x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
+    IF ~stringFound(x.a) THEN
+      IF strx + len  + WordSize < mstrx THEN
+        FOR i := 1 TO WordSize DO DEC(mstrx); strdata[mstrx] := 0X END; (*reserve room for usage tracking data*); x.a := mstrx;
+        i := 0; WHILE len > 0 DO strdata[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END;
+        WHILE strx MOD WordSize # 0 DO strdata[strx] := 0X; INC(strx) END; INC(nofstrs)
+      ELSE S.Mark("too many strings")
+      END
     END
   END MakeStringItem;
 
@@ -475,11 +496,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSE sva.am := A.Immediate; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
             A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0; freeR(rh.reg)
           END;
-          free(x); x.reg := y.reg; x.mode := RegI; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
-        ELSIF x.mode = B.Par THEN load(y); t.reg := A.SP; t.am := A.Indexed; t.ofs := x.a + frame; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, t, rh, A.Word);
-          A.PutDO(mcode, A.ADD, rh, y, A.Word); freeR(rh.reg);
-          free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
-        ELSIF x.mode = RegI THEN loadAdr(x); PutDO( A.ADD, y, x); x.mode := RegI; x.a := 0; free(y)
+          free(x); x.reg := y.reg; x.mode := RegI; x.tmp := TRUE
+        ELSIF x.mode = B.Par THEN load(y); t.mode := B.Var; t.c := x.c; t.a := x.a + frame; t.tmp := FALSE; t.obj := x.obj; PutDO(A.ADD, t, y); free(t);
+          free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.tmp := TRUE
+        ELSIF x.mode = RegI THEN x.mode := Reg; PutDO( A.ADD, x, y);
+          free(x); x.mode := RegI; x.reg := y.reg; x.tmp := TRUE
         END
       END
     END
@@ -857,8 +878,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     loadStringAdr(y);
     (*L0:*) pc0 := mcode.pc; x.am := A.Indexed; x.ofs := 0; y.am := A.IndirectIncr; x1 := x;
-    A.PutDO(mcode, A.MOV, y, x, A.Word); x.am := A.Register; t := c1; A.PutDO(mcode, A.ADD, t, x, A.Word); (*x points to high byte of current word*)
-    x.am := A.IndirectIncr; A.PutDO(mcode, A.BIT, x, x1, A.Byte) (*test 0 and increment x register*); A.PutJ(mcode, A.NE, pc0 - mcode.pc -2); (*BNE L0*)
+    A.PutDO(mcode, A.MOV, y, x, A.Word); x.am := A.Register; t := c2; A.PutDO(mcode, A.ADD, t, x, A.Word);
+    y.am := A.Indexed; y.ofs := -1; t := c0; A.PutDO(mcode, A.CMP, t, y, A.Byte) (*test 0*); A.PutJ(mcode, A.NE, pc0 - mcode.pc -2); (*BNE L0*)
     free(y); free(x)
    END CopyString;
   
@@ -918,7 +939,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := x.b;
     IF par.register # 0FFH THEN loadStringAdr(x); rh.reg := AllocR(); A.PutDO(mcode, A.MOV, t, rh, A.Word) (*len*)
-    ELSE pushStringAdr(x); A.PutSO(mcode, A.PUSH, t, A.Word) (*len*); size := 2*WordSize
+    ELSE A.PutSO(mcode, A.PUSH, t, A.Word) (*len*); pushStringAdr(x); size := 2*WordSize
     END
   END StringParam;
 
@@ -1170,7 +1191,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     FOR i := 0 TO LEN(traps) - 1 DO traps[i] := NIL END;
     FOR i := 0 TO LEN(arith) - 1 DO arith[i] := NIL END;
     FOR i := 0 TO LEN(vector) - 1 DO vector[i] := 0FFFFH END;
-    tdx := 0; strx := 0; RIU := {};
+    tdx := 0; strx := 0; mstrx := maxStrx; nofstrs := 0; RIU := {};
     rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL; rh.mode := Reg; rh.type := B.intType;
     AllocUp := FALSE; RL := A.CG2; RB := 15;
   END Open;
@@ -1228,7 +1249,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT);
     VAR obj!, obj2!: B.Object;
-      i, nofimps, size: LONGINT;
+      i, sx, suax, nofimps, flashSize: LONGINT;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, TRUE);
@@ -1239,12 +1260,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       obj := obj.next
     END;
     
-    (*varsize includes type descriptors*)
-    size := varsize + strx + mcode.pc + (nofimps + nofent + 1)*2; (*size is aligned on 2 bytes boundary*)
+    flashSize := tdx*WordSize + strx + mcode.pc;
     
     B.MakeFileName(name, modid, ".mpc"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key);
-    WriteWord(R, size);
+    WriteWord(R, flashSize);
     obj := B.topScope.next;
     WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imports*)
       IF obj.dsc # B.system THEN Files.WriteString(R, obj(B.Module).orgname); Files.WriteInt(R, obj.val) END;
@@ -1301,14 +1321,20 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END;
       obj := obj.next
     END;
+    (*strings fixup data*)
+    suax := maxStrx; sx := 0;
+    FOR i := 1 TO nofstrs DO
+      DEC(suax, 2); WriteWord(R, ORD(strdata[suax]) + ORD(strdata[suax + 1])*100H); Files.WriteByte(R, 0); WriteWord(R, sx + tdx*WordSize (*skip td*));
+      WHILE strdata[sx] # 0X DO INC(sx) END; REPEAT INC(sx) UNTIL sx MOD WordSize = 0
+    END;
     WriteWord(R, 0);
     WriteWord(R, entry);
     Files.Write(R, "O"); Files.Register(F);
     (*write object addresses to source position mapping in .o43 file*)
-    B.MakeFileName(name, modid, ".o43"); F := Files.New(name); Files.Set(R, F, 0); WriteWord(R, mcode.pc DIV 2); size := 1;
+    B.MakeFileName(name, modid, ".o43"); F := Files.New(name); Files.Set(R, F, 0); WriteWord(R, mcode.pc DIV 2); sx := 1;
     FOR i := 1 TO mcode.pc DIV 2 - 1 DO 
-      IF (size < 255) & (mcode.pos[i] = mcode.pos[i-1]) THEN INC(size) ELSE Files.WriteByte(R, size); Files.WriteInt(R, mcode.pos[i - 1]); size := 1 END
-    END; Files.WriteByte(R, size); Files.WriteInt(R, mcode.pos[mcode.pc DIV 2 - 1]); Files.Register(F);
+      IF (sx < 255) & (mcode.pos[i] = mcode.pos[i-1]) THEN INC(sx) ELSE Files.WriteByte(R, sx); Files.WriteInt(R, mcode.pos[i - 1]); sx := 1 END
+    END; Files.WriteByte(R, sx); Files.WriteInt(R, mcode.pos[mcode.pc DIV 2 - 1]); Files.Register(F);
     (*write word offset with caller top of stack*)
     OfsPTOS(-1, FALSE); (*close last segment*) B.MakeFileName(name, modid, ".r43"); F := Files.New(name); Files.Set(R, F, 0); 
     Files.WriteInt(R, frmOfsSegs.NofSegs);

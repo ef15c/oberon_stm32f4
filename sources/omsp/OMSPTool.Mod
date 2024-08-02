@@ -140,7 +140,8 @@ MODULE OMSPTool;  (*NW 18.2.2013
         NEW(mcode);
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
         Files.ReadInt(R, key); Texts.WriteHex(W, key);
-        ReadWord(R, size); Texts.WriteInt(W, size, 6); Texts.WriteLn(W);
+        ReadWord(R, size); Texts.WriteString(W, " Flash"); Texts.WriteInt(W, size, 6);
+        Texts.WriteLn(W);
         Texts.Append(Oberon.Log, W.buf); ASSERT(size < 100000);
         Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
         WHILE name[0] # 0X DO
@@ -179,7 +180,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
       fixup("procedures", R);
       fixup("handlers", R);
       fixup("data", R);
-      fixup("type", R);
+      fixup("types and strings", R);
         ReadWord(R, data); Texts.WriteString(W, "entry = "); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
         Files.Read(R, ch);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
