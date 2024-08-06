@@ -338,7 +338,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     ELSIF sym = S.int THEN G.MakeConstItem(x, B.intType, S.ival); S.Get(sym)
     ELSIF sym = S.char THEN G.MakeConstItem(x, B.charType, S.ival); S.Get(sym)
     ELSIF sym = S.nil THEN S.Get(sym); G.MakeConstItem(x, B.nilType, 0)
-    ELSIF sym = S.string THEN G.MakeStringItem(x, S.slen); S.Get(sym)
+    ELSIF sym = S.string THEN G.MakeStringItem(x); S.Get(sym)
     ELSIF sym = S.lparen THEN S.Get(sym); expression(x); Check(S.rparen, "no )")
     ELSIF sym = S.lbrace THEN S.Get(sym); set(x); Check(S.rbrace, "no }")
     ELSIF sym = S.not THEN S.Get(sym); factor(x); CheckBool(x); G.Not(x)
@@ -835,7 +835,11 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         expression(x);
         IF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x) END ;
         B.NewObj(obj, id, B.Const); obj.expo := expo;
-        IF x.mode = B.Const THEN obj.val := x.a; obj.lev := x.b; obj.type := x.type
+        IF x.mode = B.Const THEN
+          IF x.type.form = B.String THEN ASSERT(x.a < 10000H); ASSERT(x.b < 10000H); IF obj.expo THEN obj.exno := exno; INC(exno) END;
+            obj.lev := x.c; obj.val := x.a MOD 10000H + x.b*10000H; (*for string constants, encode address and length in obj.val*)
+          ELSE obj.val := x.a
+          END; obj.type := x.type
         ELSE S.Mark("expression not constant"); obj.type := B.intType
         END;
         Check(S.semicolon, "; missing")

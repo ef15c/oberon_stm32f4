@@ -14,7 +14,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     mode*: INTEGER;
     type*: B.Type;
     obj*: B.Object; (*symbol object, for register variables and update of "used at" chain*)
-    a*, b*, c: LONGINT;
+    a*, b*, c*: LONGINT;
     rdo*, tmp: BOOLEAN  (*read only*)
   END ;
 
@@ -392,7 +392,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
-  BEGIN x.c := 0; x.am := A.Immediate; x.ofs := A.C16;
+  BEGIN x.am := A.Immediate; x.ofs := A.C16;
      rh.reg := AllocR(); A.PutDO(mcode, A.MOV, x, rh, A.Word);
     x.mode := Reg; x.am := A.Register; x.reg := rh.reg; x.ofs := 0; x.tmp := TRUE
   END loadStringAdr;
@@ -438,14 +438,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END MakeStringItem;
 
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: LONGINT);
-  BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
+  BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.c := y.lev;
+    x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF (y.class IN {B.Var, B.Par}) THEN
       x.b := 0; x.c := y.lev;
       IF y.register # 0FFH THEN
         x.reg := y.register;
         IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI (*TODO: check this*) END
       END
-    ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN x.b := y.lev  (*len*) ;
+    ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN 
+      x.a := y.val MOD 10000H; x.b := y.val DIV 10000H MOD 10000H (*len*)
     END;
     IF (y.lev > 0) & (y.lev # curlev) & (y.class # B.Const) THEN S.Mark("not accessible ") END
   END MakeItem;
@@ -816,7 +818,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation of Assignments *)
 
   PROCEDURE StrToChar*(VAR x: Item);
-  BEGIN x.type := B.charType; DEC(strx, 2); x.a := ORD(strdata[x.a])
+  BEGIN ASSERT(x.b = 2); x.type := B.charType; x.a := ORD(strdata[x.a]);
+    DEC(strx, 2); INC(mstrx, WordSize); DEC(nofstrs) (*remove string from strdata table*)
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
@@ -1249,7 +1252,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT);
     VAR obj!, obj2!: B.Object;
-      i, sx, suax, nofimps, flashSize: LONGINT;
+      i, sx, suax, nofimps, fixadr, flashSize: LONGINT;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, TRUE);
@@ -1285,8 +1288,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     obj := B.topScope.next;
     WHILE obj # NIL DO  (*entries*)
       IF obj.exno # 0 THEN
-        IF (obj.class = B.Const) & (obj.type.form = B.Proc) OR (obj.class = B.Var) THEN
-          WriteWord(R, obj.val);
+        IF (obj.class = B.Const) & (obj.type.form = B.Proc) OR (obj.class = B.Var) THEN WriteWord(R, obj.val)
+        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN WriteWord(R, obj.val MOD 10000H)
         ELSIF obj.class = B.Typ THEN
           IF obj.type.form = B.Record THEN WriteWord(R, obj.type.len)
           ELSIF (obj.type.form = B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
@@ -1324,7 +1327,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*strings fixup data*)
     suax := maxStrx; sx := 0;
     FOR i := 1 TO nofstrs DO
-      DEC(suax, 2); WriteWord(R, ORD(strdata[suax]) + ORD(strdata[suax + 1])*100H); Files.WriteByte(R, 0); WriteWord(R, sx + tdx*WordSize (*skip td*));
+      DEC(suax, 2); fixadr := ORD(strdata[suax]) + ORD(strdata[suax + 1])*100H;
+      IF fixadr # 0 THEN WriteWord(R, fixadr); Files.WriteByte(R, 0); WriteWord(R, sx + tdx*WordSize (*skip td*)) END;
       WHILE strdata[sx] # 0X DO INC(sx) END; REPEAT INC(sx) UNTIL sx MOD WordSize = 0
     END;
     WriteWord(R, 0);

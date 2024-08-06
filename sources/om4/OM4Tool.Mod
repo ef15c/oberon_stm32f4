@@ -97,7 +97,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
               END ;
               Texts.Write(W, ")")
             ELSIF (class = OM4B.Const) OR (class = OM4B.Var) THEN
-              Files.ReadNum(R, k); Texts.WriteInt(W, k, 5);  (*Reals, Strings!*)
+              Files.ReadInt(R, k); Texts.WriteInt(W, k, 8);  (*Reals, Strings!*)
             END ;
             Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
             Read(R, class)
@@ -213,7 +213,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Texts.WriteString(W, "entries"); Texts.WriteLn(W);
         Files.ReadInt(R, n); i := 0;
         WHILE i < n DO
-          Files.ReadInt(R, adr); Texts.WriteInt(W, adr, 6); INC(i)
+          Files.ReadInt(R, adr); Texts.WriteHex(W, adr); INC(i)
         END ;
         Texts.WriteLn(W);
       (* Sync(R); *)

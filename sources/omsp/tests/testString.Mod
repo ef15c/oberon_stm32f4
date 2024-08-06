@@ -1,5 +1,5 @@
 MODULE testString;
-  CONST st* = "salut";
+  CONST st* = "salut"; st1 = "hi";
   VAR s: ARRAY 10 OF CHAR;
 
   PROCEDURE p(m: ARRAY OF CHAR);
@@ -8,19 +8,19 @@ MODULE testString;
 
 BEGIN
   s := "bonjour";
-  p(s); p(st)
+  p(s); p(st); p("salut")
 END testString.
 
 
 OMSPTool.DecObj testString.mpc
 decode testString.mpc
-testString DF726B2B Flash    66
+testString DF726B2B Flash    84
 imports:
 type descriptors
 
 data    10
 strings
-salut|bonjour|
+salut|hi||bonjour|
 vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
@@ -28,15 +28,15 @@ vector table
 entries
  0002
 fixup procedures chains
- 002E     0	 0000
+ 003C     0	 0000
 fixup handlers chains
 fixup data chains
  001C     0	 0000
 fixup types and strings chains
- 002A     0	 0000
- 0008     0	 0006
+ 0038     0	 0000
+ 0008     0	 000A
 entry =  0002
-code    52
+code    66
  0000	     4130	RET
  0002	     403F	MOV #0,R15
  0004	     0000
@@ -62,7 +62,14 @@ code    52
  002C	     12B0	CALL #32
  002E	     0020
  0030	     5221	ADD #4,SP
- 0032	     4130	RET
+ 0032	     1230	PUSH #6
+ 0034	     0006
+ 0036	     1230	PUSH #42
+ 0038	     002A
+ 003A	     12B0	CALL #46
+ 003C	     002E
+ 003E	     5221	ADD #4,SP
+ 0040	     4130	RET
 
 OM4Tool.DecObj testString.m4c
 decode testString.m4c

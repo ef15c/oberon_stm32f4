@@ -1,3 +1,5 @@
+(*bug present in Project Oberon 2013:
+  error in generated code*)
 MODULE testSet;
 
   PROCEDURE set;
