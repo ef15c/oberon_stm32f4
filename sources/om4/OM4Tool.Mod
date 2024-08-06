@@ -30,7 +30,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       ref, class, form, readonly: INTEGER;
       name, modname: ARRAY 32 OF CHAR;
   BEGIN Read(R, ref); Texts.Write(W, " "); Texts.Write(W, "[");
-    IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1)
+    IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1); IF -ref <= OM4B.String THEN form := -ref END
     ELSE Texts.WriteInt(W, ref, 1);
       Read(R, form); Texts.WriteString(W, "  form = "); Texts.WriteInt(W, form, 1);
       IF form = OM4B.Pointer THEN ReadType(R)
@@ -96,8 +96,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
                 Texts.WriteString(W, " ->"); Texts.WriteInt(W, class, 4); Read(R, class)
               END ;
               Texts.Write(W, ")")
-            ELSIF (class = OM4B.Const) OR (class = OM4B.Var) THEN
-              Files.ReadInt(R, k); Texts.WriteInt(W, k, 8);  (*Reals, Strings!*)
+            ELSIF class = OM4B.Const THEN
+              IF Form IN {OM4B.Real, OM4B.String} THEN Files.ReadInt(R, k) (*Reals, Strings!*)
+              ELSE Files.ReadNum(R, k)
+              END; Texts.WriteInt(W, k, 8);
+            ELSIF class = OM4B.Var THEN
+              Files.ReadNum(R, k); Texts.WriteInt(W, k, 6);  (*exno*)
             END ;
             Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
             Read(R, class)

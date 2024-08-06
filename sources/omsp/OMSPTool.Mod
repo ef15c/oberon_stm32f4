@@ -22,7 +22,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
       ref, class, form, readonly: INTEGER;
       name, modname: ARRAY 32 OF CHAR;
   BEGIN Read(R, ref); Texts.Write(W, " "); Texts.Write(W, "[");
-    IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1)
+    IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1); IF -ref <= B.String THEN form := -ref END
     ELSE Texts.WriteInt(W, ref, 1);
       Read(R, form); Texts.WriteString(W, "  form = "); Texts.WriteInt(W, form, 1);
       Files.ReadNum(R, size); Texts.WriteString(W, "  size = "); Texts.WriteInt(W, size, 1);
@@ -87,9 +87,13 @@ MODULE OMSPTool;  (*NW 18.2.2013
                 Texts.WriteString(W, " ->"); Texts.WriteInt(W, class, 4); Read(R, class)
               END ;
               Texts.Write(W, ")")
-            ELSIF (class = B.Const) OR (class = B.Var) THEN
-              Files.ReadNum(R, k); Texts.WriteInt(W, k, 5);  (*Reals, Strings!*)
-            END ;
+            ELSIF class = B.Const THEN
+              IF Form = B.String THEN Files.ReadInt(R, k)
+              ELSE Files.ReadNum(R, k)
+              END; Texts.WriteInt(W, k, 8);
+            ELSIF class = B.Var THEN
+              Files.ReadNum(R, k); Texts.WriteInt(W, k, 6) (*exno*)
+            END;
             Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
             Read(R, class)
           END
