@@ -1317,7 +1317,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     obj := B.topScope.next;
     WHILE obj # NIL DO  (*local types fixup chains*)
       IF (obj.class = B.Typ) & (obj.usedat # 0) & (obj.type.mno = 0) THEN
-        WriteWord(R, obj.usedat); Files.WriteByte(R, 0); (*local type*); WriteWord(R, obj.type.len); (*relative address*)
+        WriteWord(R, obj.usedat); Files.WriteByte(R, 0); (*local type*); WriteWord(R, obj.type.len) (*relative address*)
       END;
       obj := obj.next
     END;
@@ -1327,7 +1327,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         obj2 := obj.dsc;
         WHILE obj2 # NIL DO
           IF (obj2.class = B.Typ) & (obj2.usedat # 0) & (obj2.type.mno > 0) THEN
-            WriteWord(R, obj2.usedat); Files.WriteByte(R, obj2.type.mno); (*module number*); WriteWord(R, obj2.type.len); (*object address*)
+            WriteWord(R, obj2.usedat); Files.WriteByte(R, obj2.type.mno); (*module number*); WriteWord(R, obj2.type.len) (*object address*)
+          ELSIF (obj2.class = B.Const) & (obj2.type.form = B.String) & (obj2.usedat # 0) & (obj2.lev < 0) THEN
+            WriteWord(R, obj2.usedat); Files.WriteByte(R, -obj2.lev); (*module number*); WriteWord(R, obj2.val MOD 10000H) (*object number*)
           END;
           obj2 := obj2.next
         END

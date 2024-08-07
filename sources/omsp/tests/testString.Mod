@@ -1,5 +1,5 @@
 MODULE testString;
-  CONST st* = "salut"; st1 = "hi";
+  CONST st* = "salut"; st1* = "hi";
   VAR s*: ARRAY 10 OF CHAR;
 
   PROCEDURE p(m: ARRAY OF CHAR);

@@ -1,21 +1,17 @@
 MODULE testImportString;
-  IMPORT Texts, Oberon, testString;
+  IMPORT testString;
 
-  VAR W: Texts.Writer;
+  VAR s: ARRAY 10 OF CHAR;
 
-  PROCEDURE run*;
-  BEGIN Texts.WriteString(W, "---"); Texts.WriteString(W, testString.st); Texts.WriteString(W, "+++");
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
-  END run;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 04.08.24"); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+BEGIN s := testString.st
 END testImportString.
 
 OMSPTool.DecObj testImportString.mpc
 decode testImportString.mpc
 testImportString BFA5B1A1 Flash    22
 imports:
-	testString DF726B2B
+	testString 6ACDB7DC
 type descriptors
 
 data    10
@@ -32,12 +28,13 @@ fixup handlers chains
 fixup data chains
  0002     0	 0000
 fixup types and strings chains
+ 0006     1	 0001
 entry =  0000
 code    22
  0000	     403F	MOV #0,R15
  0002	     0000
- 0004	     403E	MOV #56,R14
- 0006	     0038
+ 0004	     403E	MOV #0,R14
+ 0006	     0000
  0008	     4EBF	MOV @R14+,0(R15)
  000A	     0000
  000C	     532F	ADD #2,R15
@@ -50,7 +47,7 @@ OM4Tool.DecObj testImportString.m4c
 decode testImportString.m4c
 testImportString BFA5B1A1   1    64
 imports:
-	testString DF5AB52B
+	testString 6ACEC5CF
 type descriptors
 
 data    12
@@ -59,7 +56,7 @@ strings
 code
 commands:
 entries
-     0
+ 00000000
 pointer refs
 
 fixP =        0
@@ -69,8 +66,8 @@ entry =        0
  00000000	     B500	PUSH LR
  00000002	 00000001	MOV R0 lower 16-bits base(0)
  00000006	 00000000	MOVT R0 higher 16-bits base + 0
- 0000000A	 10000004	MOV R1 lower 16-bits base(0)
- 0000000E	 0000000C	MOVT R1 higher 16-bits base + 12
+ 0000000A	 11000004	MOV R1 lower 16-bits base(1)
+ 0000000E	 00000001	MOVT R1 higher 16-bits var(1)
  00000012	 F8512B04	LDR R2 [ R1 ] + 4
  00000016	 F8402B04	STR R2 [ R0 ] + 4
  0000001A	     1612	ASRS R2 R2 #24
