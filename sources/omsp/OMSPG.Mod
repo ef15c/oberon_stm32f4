@@ -409,15 +409,25 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
 
+  PROCEDURE GetStringAddress(usedat: INTEGER): INTEGER;
+    VAR adr, ua: INTEGER;
+  BEGIN adr := 0; ua := maxStrx - WordSize; adr := 0;
+    WHILE (adr <  strx) & (ua # usedat) DO
+      WHILE strdata[adr] # 0X DO INC(adr) END; INC(adr); WHILE adr MOD WordSize # 0 DO INC(adr) END;
+      DEC(ua, WordSize)
+    END;
+
+    RETURN adr
+  END GetStringAddress;
+
   PROCEDURE stringFound(VAR usedat: INTEGER): BOOLEAN; (*if the string exists in table, return TRUE with the position in parameter pos*)
     VAR found: BOOLEAN; i, pos: INTEGER;
   BEGIN found := FALSE;
     pos := 0; usedat := maxStrx;
-    WHILE ~found & (pos < strx) DO
-      i := 0; WHILE (S.str[i] # 0X) & (S.str[i] = strdata[pos + i]) DO INC(i) END; DEC(usedat, WordSize);
-      IF S.str[i] = strdata[pos + i] THEN found := TRUE
-      ELSE INC(pos, WordSize + 1 + i); WHILE pos MOD WordSize # 0 DO INC(pos) END
-      END
+    WHILE ~found & (pos < strx) DO DEC(usedat, WordSize);
+      i := 0; WHILE (S.str[i] # 0X) & (S.str[i] = strdata[pos + i]) DO INC(i) END;
+      IF S.str[i] = strdata[pos + i] THEN found := TRUE ELSE WHILE strdata[pos + i] # 0X DO INC(i) END END;
+      INC(pos, i + 1); WHILE pos MOD WordSize # 0 DO INC(pos) END
     END
 
     RETURN found
@@ -1289,7 +1299,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     WHILE obj # NIL DO  (*entries*)
       IF obj.exno # 0 THEN
         IF (obj.class = B.Const) & (obj.type.form = B.Proc) OR (obj.class = B.Var) THEN WriteWord(R, obj.val)
-        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN WriteWord(R, obj.val MOD 10000H)
+        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN WriteWord(R, GetStringAddress(obj.val MOD 10000H))
         ELSIF obj.class = B.Typ THEN
           IF obj.type.form = B.Record THEN WriteWord(R, obj.type.len)
           ELSIF (obj.type.form = B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN

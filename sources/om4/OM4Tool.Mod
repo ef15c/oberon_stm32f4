@@ -97,7 +97,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
               END ;
               Texts.Write(W, ")")
             ELSIF class = OM4B.Const THEN
-              IF Form IN {OM4B.Real, OM4B.String} THEN Files.ReadInt(R, k) (*Reals, Strings!*)
+              IF Form = OM4B.Real THEN Files.ReadInt(R, k)
+              ELSIF Form = OM4B.String THEN Files.ReadInt(R, k); Texts.WriteInt(W, k DIV 10000H, 6); (*len*) k := k MOD 10000H
               ELSE Files.ReadNum(R, k)
               END; Texts.WriteInt(W, k, 8);
             ELSIF class = OM4B.Var THEN
