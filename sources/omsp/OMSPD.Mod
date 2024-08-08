@@ -18,10 +18,15 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
   END WriteReg;
  
   PROCEDURE WritePCOffset(VAR W: Texts.Writer; at: LONGINT; ofs: LONGINT);
-  BEGIN IF ofs > 200H THEN DEC(ofs, 400H) END;
+  BEGIN IF ofs >= 200H THEN DEC(ofs, 400H) END;
     Texts.WriteString(W, " #"); Texts.WriteInt(W, ofs, 1);
     Texts.WriteString(W, ", goes to "); TextsEx.WriteHexVLen(W, at + 2*ofs, 4, FALSE);
   END WritePCOffset;
+
+  PROCEDURE WordToInt(x : INTEGER): INTEGER;
+  BEGIN IF x >= 8000H THEN DEC(x, 10000H) END
+    RETURN x
+  END WordToInt;
 
   PROCEDURE isConstant(op: SET; src: BYTE; VAR c: INTEGER): BOOLEAN;
     VAR res: BOOLEAN;
@@ -36,6 +41,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
       ELSIF op*A.IRAm = A.IRm THEN c := 2
       ELSIF op*A.IRAm = A.IRAm THEN c := -1
       END
+    ELSIF c >= 8000H THEN DEC(c, 10000H)
     END
 
     RETURN res
@@ -46,14 +52,14 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
   BEGIN
     IF isConstant(op, reg, ct) THEN Texts.Write(W, "#"); Texts.WriteInt(W, ct, 1)
     ELSIF (op*A.IRAm = A.IRAm) & (reg = A.PC) THEN (*immediate*)
-      ct := c[i+1]*100H + c[i]; INC(i, 2); Texts.Write(W, "#"); Texts.WriteInt(W, ct, 1)
+      ct := c[i+1]*100H + c[i]; INC(i, 2); Texts.Write(W, "#"); Texts.WriteInt(W, WordToInt(ct), 1)
     ELSIF (op*A.IRAm = A.Im) & (reg = A.SR) THEN (*absolute*)
       ct := c[i+1]*100H + c[i]; INC(i, 2); Texts.Write(W, "&"); Texts.WriteInt(W, ct, 1)
     ELSE
       IF op*A.IRm = A.IRm THEN (*indirect*) Texts.WriteString(W, "@");
         WriteReg(W, reg); IF op*A.IRAm = A.IRAm THEN (*auto increment*) Texts.WriteString(W, "+") END
       ELSIF op*A.Im = A.Im THEN (*indexed*) ct := c[i+1]*100H + c[i]; INC(i, 2);
-        Texts.WriteInt(W, ct, 1); Texts.Write(W, "("); WriteReg(W, reg); Texts.Write(W, ")")
+        Texts.WriteInt(W, WordToInt(ct), 1); Texts.Write(W, "("); WriteReg(W, reg); Texts.Write(W, ")")
       ELSE WriteReg(W, reg)
       END
     END
@@ -83,7 +89,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
         WriteSD(W, c, i, op, b1 MOD 10H); Texts.Write(W, ",");
         IF op*A.Idm = A.Idm THEN (*indexed*) ct := c[i+1]*100H + c[i]; INC(i, 2);
           IF b2 MOD 10H = A.SR THEN (*absolute*) Texts.Write(W, "&"); Texts.WriteInt(W, ct, 1)
-          ELSE Texts.WriteInt(W, ct, 1); Texts.Write(W, "("); WriteReg(W, b2 MOD 10H); Texts.Write(W, ")")
+          ELSE Texts.WriteInt(W, WordToInt(ct), 1); Texts.Write(W, "("); WriteReg(W, b2 MOD 10H); Texts.Write(W, ")")
           END
         ELSE WriteReg(W, b2 MOD 10H)
         END

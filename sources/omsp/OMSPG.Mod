@@ -58,7 +58,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     traps: ARRAY 8 OF B.Object; arith: ARRAY 4 OF B.Object;
     vector: ARRAY 32 OF INTEGER;
     
-    relmap: ARRAY 4 OF INTEGER;    (*condition codes for relations*)
+    relmap, urelmap: ARRAY 4 OF INTEGER;    (*condition codes for relations*)
     cm1, c0, c1, c2, pc, sp, r4, r15: Item-; (*constant Items set by module initialization code*)
     rh: Item;
     curImport: INTEGER;
@@ -813,16 +813,21 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     free(y); free(x)
   END IntRelation;
 
-  PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
+  PROCEDURE StringRelation*(op: INTEGER; VAR x0, y0: Item);   (* x := x < y *)
     (*x, y are char arrays or strings*)
-    VAR pc0, tbf0: LONGINT; x1!: Item;
+    VAR pc0, tbf0: LONGINT; x!, y!, t!: Item;
   BEGIN
-    IF x.type.form = B.String THEN loadStringAdr(x) ELSE loadAdr(x) END ; x.am := A.Indexed; x.ofs := 0; x1 := x; x1.am := A.IndirectIncr;
-    IF y.type.form = B.String THEN loadStringAdr(y) ELSE loadAdr(y) END ; y.am := A.IndirectIncr;
-    (*Compare:*) pc0 := mcode.pc; A.PutDO(mcode, A.CMP, y, x, A.Byte); tbf0 := mcode.pc; A.PutJ(mcode, A.NE, 0) (*JNE Fin*);
-    A.PutDO(mcode, A.BIT, x1, x, A.Byte) (*increment x and test if x^ is 0*); A.PutJ(mcode, A.NE, pc0 - mcode.pc - 2) (*JNE Compare*);
-    (* Fin: *) A.fix(mcode, tbf0, mcode.pc - tbf0 - 2); free(y); free(x);
-    SetCC(x, relmap[op - S.eql])
+    IF x0.type.form = B.String THEN loadStringAdr(x0) ELSE loadAdr(x0) END;
+    IF y0.type.form = B.String THEN loadStringAdr(y0) ELSE loadAdr(y0) END;
+    IF op < S.gtr THEN x := x0; y := y0 ELSE x := y0; y := x0 END;
+    (*Compare:*) pc0 := mcode.pc;
+    x.am := A.Register; A.PutDO(mcode, A.ADD, c1, x, A.Word);
+    x.am := A.Indexed; x.ofs := -1; y.am := A.IndirectIncr; A.PutDO(mcode, A.CMP, y, x, A.Byte);
+    tbf0 := mcode.pc; A.PutJ(mcode, A.NE, 0) (*JNE Fin*);
+    x.mode := RegI; x.a := -1; x.type := B.byteType; t := c0; PutDO(A.CMP, t, x); (*compare x^ to 0*)
+    A.PutJ(mcode, A.NE, pc0 - mcode.pc - 2) (*JNE Compare*);
+    (* Fin: *) A.fix(mcode, tbf0, mcode.pc - tbf0 - 2); free(y0); free(x0); free(t);
+    IF op < S.gtr THEN SetCC(x0, urelmap[op - S.eql]) ELSE SetCC(x0, urelmap[op - S.gtr + 2]) END
   END StringRelation;
 
   (* Code generation of Assignments *)
@@ -1359,7 +1364,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Close;
 
   PROCEDURE initConst(VAR c: Item; v: INTEGER);
-  BEGIN c.reg := 0; c.am := A.Immediate; c.ofs := v; c.obj := NIL; c.type := B.intType;
+  BEGIN c.reg := 0; c.am := A.Immediate; c.ofs := v; c.obj := NIL; c.type := B.intType; c.rdo := TRUE;
     c.mode := B.Const; c.tmp := FALSE; c.a := v
   END initConst;
 
@@ -1372,5 +1377,6 @@ BEGIN A.SetProcs(GetOffset, AllocR, freeR);
   initConst(cm1, -1); initConst(c0, 0); initConst(c1, 1); initConst(c2, 2);
   initReg(pc, A.PC); initReg(sp, A.SP); initReg(r4, 4); initReg(r15, 15);
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; relmap[3] := A.GE;
+  urelmap[0] := A.EQ; urelmap[1] := A.NE; urelmap[2] := A.NC; urelmap[3] := A.C;
   B.SetRegRTProcCallback(RegisterRTproc)
 END OMSPG.
