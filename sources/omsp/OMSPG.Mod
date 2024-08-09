@@ -821,12 +821,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF y0.type.form = B.String THEN loadStringAdr(y0) ELSE loadAdr(y0) END;
     IF op < S.gtr THEN x := x0; y := y0 ELSE x := y0; y := x0 END;
     (*Compare:*) pc0 := mcode.pc;
-    x.am := A.Register; A.PutDO(mcode, A.ADD, c1, x, A.Word);
-    x.am := A.Indexed; x.ofs := -1; y.am := A.IndirectIncr; A.PutDO(mcode, A.CMP, y, x, A.Byte);
+    x.am := A.IndirectIncr; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, x, rh, A.Byte);
+    y.am := A.IndirectIncr; A.PutDO(mcode, A.CMP, y, rh, A.Byte);
     tbf0 := mcode.pc; A.PutJ(mcode, A.NE, 0) (*JNE Fin*);
-    x.mode := RegI; x.a := -1; x.type := B.byteType; t := c0; PutDO(A.CMP, t, x); (*compare x^ to 0*)
+    t := c0; t.type := B.charType; PutDO(A.CMP, t, rh); (*compare char x^ to 0*)
     A.PutJ(mcode, A.NE, pc0 - mcode.pc - 2) (*JNE Compare*);
-    (* Fin: *) A.fix(mcode, tbf0, mcode.pc - tbf0 - 2); free(y0); free(x0); free(t);
+    (* Fin: *) A.fix(mcode, tbf0, mcode.pc - tbf0 - 2); free(y0); free(x0); freeR(rh.reg);
     IF op < S.gtr THEN SetCC(x0, urelmap[op - S.eql]) ELSE SetCC(x0, urelmap[op - S.gtr + 2]) END
   END StringRelation;
 

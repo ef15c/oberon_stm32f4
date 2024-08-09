@@ -28,7 +28,7 @@ END testStringRelat.
 
 OMSPTool.DecObj testStringRelat.mpc
 decode testStringRelat.mpc
-testStringRelat 43ACA2A2 Flash   684
+testStringRelat 43ACA2A2 Flash   612
 imports:
 type descriptors
 
@@ -40,19 +40,19 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0292
+ 024A
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup types and strings chains
- 00DE     0	 0000
- 0102     0	 0004
- 0126     0	 0008
- 014A     0	 000C
- 016E     0	 0010
- 0192     0	 0014
-entry =  0292
-code   660
+ 00C6     0	 0000
+ 00E6     0	 0004
+ 0106     0	 0008
+ 0126     0	 000C
+ 0146     0	 0010
+ 0166     0	 0014
+entry =  024A
+code   588
  0000	     8031	SUB #22,SP
  0002	     0016
  0004	     410F	MOV SP,R15
@@ -60,326 +60,290 @@ code   660
  0008	     000C
  000A	     403E	MOV #0,R14
  000C	     0000
- 000E	     531E	ADD #1,R14
- 0010	     9FFE	CMP.B @R15+,-1(R14)
- 0012	     FFFF
- 0014	     2003	JNE #3, goes to  001C
- 0016	     93CE	CMP.B #0,-1(R14)
- 0018	     FFFF
- 001A	     23F9	JNE #-7, goes to  000E
- 001C	     2C02	JC #2, goes to  0022
- 001E	     431F	MOV #1,R15
- 0020	     3C01	JMP #1, goes to  0024
- 0022	     430F	MOV #0,R15
- 0024	     4FC1	MOV.B R15,1(SP)
- 0026	     0001
- 0028	     410F	MOV SP,R15
- 002A	     503F	ADD #12,R15
- 002C	     000C
- 002E	     403E	MOV #0,R14
- 0030	     0000
- 0032	     531F	ADD #1,R15
- 0034	     9EFF	CMP.B @R14+,-1(R15)
- 0036	     FFFF
- 0038	     2003	JNE #3, goes to  0040
- 003A	     93CF	CMP.B #0,-1(R15)
- 003C	     FFFF
- 003E	     23F9	JNE #-7, goes to  0032
- 0040	     2802	JNC #2, goes to  0046
- 0042	     431F	MOV #1,R15
- 0044	     3C01	JMP #1, goes to  0048
- 0046	     430F	MOV #0,R15
- 0048	     4FC1	MOV.B R15,1(SP)
- 004A	     0001
- 004C	     410F	MOV SP,R15
- 004E	     503F	ADD #12,R15
- 0050	     000C
- 0052	     403E	MOV #0,R14
- 0054	     0000
- 0056	     531F	ADD #1,R15
- 0058	     9EFF	CMP.B @R14+,-1(R15)
- 005A	     FFFF
- 005C	     2003	JNE #3, goes to  0064
- 005E	     93CF	CMP.B #0,-1(R15)
- 0060	     FFFF
- 0062	     23F9	JNE #-7, goes to  0056
- 0064	     2002	JNE #2, goes to  006A
- 0066	     431F	MOV #1,R15
- 0068	     3C01	JMP #1, goes to  006C
- 006A	     430F	MOV #0,R15
- 006C	     4FC1	MOV.B R15,1(SP)
- 006E	     0001
- 0070	     410F	MOV SP,R15
- 0072	     503F	ADD #12,R15
- 0074	     000C
- 0076	     403E	MOV #0,R14
- 0078	     0000
- 007A	     531F	ADD #1,R15
- 007C	     9EFF	CMP.B @R14+,-1(R15)
- 007E	     FFFF
- 0080	     2003	JNE #3, goes to  0088
- 0082	     93CF	CMP.B #0,-1(R15)
- 0084	     FFFF
- 0086	     23F9	JNE #-7, goes to  007A
- 0088	     2C02	JC #2, goes to  008E
- 008A	     431F	MOV #1,R15
- 008C	     3C01	JMP #1, goes to  0090
- 008E	     430F	MOV #0,R15
- 0090	     4FC1	MOV.B R15,1(SP)
- 0092	     0001
- 0094	     410F	MOV SP,R15
- 0096	     503F	ADD #12,R15
- 0098	     000C
- 009A	     403E	MOV #0,R14
- 009C	     0000
- 009E	     531E	ADD #1,R14
- 00A0	     9FFE	CMP.B @R15+,-1(R14)
- 00A2	     FFFF
- 00A4	     2003	JNE #3, goes to  00AC
- 00A6	     93CE	CMP.B #0,-1(R14)
- 00A8	     FFFF
- 00AA	     23F9	JNE #-7, goes to  009E
- 00AC	     2802	JNC #2, goes to  00B2
- 00AE	     431F	MOV #1,R15
- 00B0	     3C01	JMP #1, goes to  00B4
- 00B2	     430F	MOV #0,R15
- 00B4	     4FC1	MOV.B R15,1(SP)
- 00B6	     0001
- 00B8	     410F	MOV SP,R15
- 00BA	     503F	ADD #12,R15
- 00BC	     000C
- 00BE	     403E	MOV #0,R14
- 00C0	     0000
- 00C2	     531F	ADD #1,R15
- 00C4	     9EFF	CMP.B @R14+,-1(R15)
- 00C6	     FFFF
- 00C8	     2003	JNE #3, goes to  00D0
- 00CA	     93CF	CMP.B #0,-1(R15)
- 00CC	     FFFF
- 00CE	     23F9	JNE #-7, goes to  00C2
- 00D0	     2402	JEQ #2, goes to  00D6
- 00D2	     431F	MOV #1,R15
- 00D4	     3C01	JMP #1, goes to  00D8
- 00D6	     430F	MOV #0,R15
- 00D8	     4FC1	MOV.B R15,1(SP)
- 00DA	     0001
- 00DC	     403F	MOV #12,R15
- 00DE	     000C
- 00E0	     410E	MOV SP,R14
- 00E2	     503E	ADD #12,R14
- 00E4	     000C
- 00E6	     531E	ADD #1,R14
- 00E8	     9FFE	CMP.B @R15+,-1(R14)
- 00EA	     FFFF
- 00EC	     2003	JNE #3, goes to  00F4
- 00EE	     93CE	CMP.B #0,-1(R14)
- 00F0	     FFFF
- 00F2	     23F9	JNE #-7, goes to  00E6
- 00F4	     2C02	JC #2, goes to  00FA
- 00F6	     431F	MOV #1,R15
- 00F8	     3C01	JMP #1, goes to  00FC
- 00FA	     430F	MOV #0,R15
- 00FC	     4FC1	MOV.B R15,1(SP)
- 00FE	     0001
- 0100	     403F	MOV #48,R15
- 0102	     0030
- 0104	     410E	MOV SP,R14
- 0106	     503E	ADD #12,R14
- 0108	     000C
- 010A	     531F	ADD #1,R15
- 010C	     9EFF	CMP.B @R14+,-1(R15)
- 010E	     FFFF
- 0110	     2003	JNE #3, goes to  0118
- 0112	     93CF	CMP.B #0,-1(R15)
- 0114	     FFFF
- 0116	     23F9	JNE #-7, goes to  010A
- 0118	     2802	JNC #2, goes to  011E
+ 000E	     4E7D	MOV.B @R14+,R13
+ 0010	     9F7D	CMP.B @R15+,R13
+ 0012	     2002	JNE #2, goes to  0018
+ 0014	     934D	CMP.B #0,R13
+ 0016	     23FB	JNE #-5, goes to  000E
+ 0018	     2C02	JC #2, goes to  001E
+ 001A	     431F	MOV #1,R15
+ 001C	     3C01	JMP #1, goes to  0020
+ 001E	     430F	MOV #0,R15
+ 0020	     4FC1	MOV.B R15,1(SP)
+ 0022	     0001
+ 0024	     410F	MOV SP,R15
+ 0026	     503F	ADD #12,R15
+ 0028	     000C
+ 002A	     403E	MOV #0,R14
+ 002C	     0000
+ 002E	     4F7D	MOV.B @R15+,R13
+ 0030	     9E7D	CMP.B @R14+,R13
+ 0032	     2002	JNE #2, goes to  0038
+ 0034	     934D	CMP.B #0,R13
+ 0036	     23FB	JNE #-5, goes to  002E
+ 0038	     2802	JNC #2, goes to  003E
+ 003A	     431F	MOV #1,R15
+ 003C	     3C01	JMP #1, goes to  0040
+ 003E	     430F	MOV #0,R15
+ 0040	     4FC1	MOV.B R15,1(SP)
+ 0042	     0001
+ 0044	     410F	MOV SP,R15
+ 0046	     503F	ADD #12,R15
+ 0048	     000C
+ 004A	     403E	MOV #0,R14
+ 004C	     0000
+ 004E	     4F7D	MOV.B @R15+,R13
+ 0050	     9E7D	CMP.B @R14+,R13
+ 0052	     2002	JNE #2, goes to  0058
+ 0054	     934D	CMP.B #0,R13
+ 0056	     23FB	JNE #-5, goes to  004E
+ 0058	     2002	JNE #2, goes to  005E
+ 005A	     431F	MOV #1,R15
+ 005C	     3C01	JMP #1, goes to  0060
+ 005E	     430F	MOV #0,R15
+ 0060	     4FC1	MOV.B R15,1(SP)
+ 0062	     0001
+ 0064	     410F	MOV SP,R15
+ 0066	     503F	ADD #12,R15
+ 0068	     000C
+ 006A	     403E	MOV #0,R14
+ 006C	     0000
+ 006E	     4F7D	MOV.B @R15+,R13
+ 0070	     9E7D	CMP.B @R14+,R13
+ 0072	     2002	JNE #2, goes to  0078
+ 0074	     934D	CMP.B #0,R13
+ 0076	     23FB	JNE #-5, goes to  006E
+ 0078	     2C02	JC #2, goes to  007E
+ 007A	     431F	MOV #1,R15
+ 007C	     3C01	JMP #1, goes to  0080
+ 007E	     430F	MOV #0,R15
+ 0080	     4FC1	MOV.B R15,1(SP)
+ 0082	     0001
+ 0084	     410F	MOV SP,R15
+ 0086	     503F	ADD #12,R15
+ 0088	     000C
+ 008A	     403E	MOV #0,R14
+ 008C	     0000
+ 008E	     4E7D	MOV.B @R14+,R13
+ 0090	     9F7D	CMP.B @R15+,R13
+ 0092	     2002	JNE #2, goes to  0098
+ 0094	     934D	CMP.B #0,R13
+ 0096	     23FB	JNE #-5, goes to  008E
+ 0098	     2802	JNC #2, goes to  009E
+ 009A	     431F	MOV #1,R15
+ 009C	     3C01	JMP #1, goes to  00A0
+ 009E	     430F	MOV #0,R15
+ 00A0	     4FC1	MOV.B R15,1(SP)
+ 00A2	     0001
+ 00A4	     410F	MOV SP,R15
+ 00A6	     503F	ADD #12,R15
+ 00A8	     000C
+ 00AA	     403E	MOV #0,R14
+ 00AC	     0000
+ 00AE	     4F7D	MOV.B @R15+,R13
+ 00B0	     9E7D	CMP.B @R14+,R13
+ 00B2	     2002	JNE #2, goes to  00B8
+ 00B4	     934D	CMP.B #0,R13
+ 00B6	     23FB	JNE #-5, goes to  00AE
+ 00B8	     2402	JEQ #2, goes to  00BE
+ 00BA	     431F	MOV #1,R15
+ 00BC	     3C01	JMP #1, goes to  00C0
+ 00BE	     430F	MOV #0,R15
+ 00C0	     4FC1	MOV.B R15,1(SP)
+ 00C2	     0001
+ 00C4	     403F	MOV #12,R15
+ 00C6	     000C
+ 00C8	     410E	MOV SP,R14
+ 00CA	     503E	ADD #12,R14
+ 00CC	     000C
+ 00CE	     4E7D	MOV.B @R14+,R13
+ 00D0	     9F7D	CMP.B @R15+,R13
+ 00D2	     2002	JNE #2, goes to  00D8
+ 00D4	     934D	CMP.B #0,R13
+ 00D6	     23FB	JNE #-5, goes to  00CE
+ 00D8	     2C02	JC #2, goes to  00DE
+ 00DA	     431F	MOV #1,R15
+ 00DC	     3C01	JMP #1, goes to  00E0
+ 00DE	     430F	MOV #0,R15
+ 00E0	     4FC1	MOV.B R15,1(SP)
+ 00E2	     0001
+ 00E4	     403F	MOV #44,R15
+ 00E6	     002C
+ 00E8	     410E	MOV SP,R14
+ 00EA	     503E	ADD #12,R14
+ 00EC	     000C
+ 00EE	     4F7D	MOV.B @R15+,R13
+ 00F0	     9E7D	CMP.B @R14+,R13
+ 00F2	     2002	JNE #2, goes to  00F8
+ 00F4	     934D	CMP.B #0,R13
+ 00F6	     23FB	JNE #-5, goes to  00EE
+ 00F8	     2802	JNC #2, goes to  00FE
+ 00FA	     431F	MOV #1,R15
+ 00FC	     3C01	JMP #1, goes to  0100
+ 00FE	     430F	MOV #0,R15
+ 0100	     4FC1	MOV.B R15,1(SP)
+ 0102	     0001
+ 0104	     403F	MOV #76,R15
+ 0106	     004C
+ 0108	     410E	MOV SP,R14
+ 010A	     503E	ADD #12,R14
+ 010C	     000C
+ 010E	     4F7D	MOV.B @R15+,R13
+ 0110	     9E7D	CMP.B @R14+,R13
+ 0112	     2002	JNE #2, goes to  0118
+ 0114	     934D	CMP.B #0,R13
+ 0116	     23FB	JNE #-5, goes to  010E
+ 0118	     2002	JNE #2, goes to  011E
  011A	     431F	MOV #1,R15
  011C	     3C01	JMP #1, goes to  0120
  011E	     430F	MOV #0,R15
  0120	     4FC1	MOV.B R15,1(SP)
  0122	     0001
- 0124	     403F	MOV #84,R15
- 0126	     0054
+ 0124	     403F	MOV #108,R15
+ 0126	     006C
  0128	     410E	MOV SP,R14
  012A	     503E	ADD #12,R14
  012C	     000C
- 012E	     531F	ADD #1,R15
- 0130	     9EFF	CMP.B @R14+,-1(R15)
- 0132	     FFFF
- 0134	     2003	JNE #3, goes to  013C
- 0136	     93CF	CMP.B #0,-1(R15)
- 0138	     FFFF
- 013A	     23F9	JNE #-7, goes to  012E
- 013C	     2002	JNE #2, goes to  0142
- 013E	     431F	MOV #1,R15
- 0140	     3C01	JMP #1, goes to  0144
- 0142	     430F	MOV #0,R15
- 0144	     4FC1	MOV.B R15,1(SP)
- 0146	     0001
- 0148	     403F	MOV #120,R15
- 014A	     0078
- 014C	     410E	MOV SP,R14
- 014E	     503E	ADD #12,R14
- 0150	     000C
- 0152	     531F	ADD #1,R15
- 0154	     9EFF	CMP.B @R14+,-1(R15)
- 0156	     FFFF
- 0158	     2003	JNE #3, goes to  0160
- 015A	     93CF	CMP.B #0,-1(R15)
- 015C	     FFFF
- 015E	     23F9	JNE #-7, goes to  0152
- 0160	     2C02	JC #2, goes to  0166
- 0162	     431F	MOV #1,R15
- 0164	     3C01	JMP #1, goes to  0168
- 0166	     430F	MOV #0,R15
- 0168	     4FC1	MOV.B R15,1(SP)
- 016A	     0001
- 016C	     403F	MOV #156,R15
- 016E	     009C
- 0170	     410E	MOV SP,R14
- 0172	     503E	ADD #12,R14
- 0174	     000C
- 0176	     531E	ADD #1,R14
- 0178	     9FFE	CMP.B @R15+,-1(R14)
- 017A	     FFFF
- 017C	     2003	JNE #3, goes to  0184
- 017E	     93CE	CMP.B #0,-1(R14)
- 0180	     FFFF
- 0182	     23F9	JNE #-7, goes to  0176
- 0184	     2802	JNC #2, goes to  018A
- 0186	     431F	MOV #1,R15
- 0188	     3C01	JMP #1, goes to  018C
- 018A	     430F	MOV #0,R15
- 018C	     4FC1	MOV.B R15,1(SP)
- 018E	     0001
- 0190	     403F	MOV #192,R15
- 0192	     00C0
- 0194	     410E	MOV SP,R14
- 0196	     503E	ADD #12,R14
- 0198	     000C
- 019A	     531F	ADD #1,R15
- 019C	     9EFF	CMP.B @R14+,-1(R15)
- 019E	     FFFF
- 01A0	     2003	JNE #3, goes to  01A8
- 01A2	     93CF	CMP.B #0,-1(R15)
- 01A4	     FFFF
- 01A6	     23F9	JNE #-7, goes to  019A
- 01A8	     2402	JEQ #2, goes to  01AE
- 01AA	     431F	MOV #1,R15
- 01AC	     3C01	JMP #1, goes to  01B0
- 01AE	     430F	MOV #0,R15
- 01B0	     4FC1	MOV.B R15,1(SP)
- 01B2	     0001
- 01B4	     410F	MOV SP,R15
- 01B6	     503F	ADD #12,R15
- 01B8	     000C
- 01BA	     410E	MOV SP,R14
- 01BC	     532E	ADD #2,R14
- 01BE	     531E	ADD #1,R14
- 01C0	     9FFE	CMP.B @R15+,-1(R14)
- 01C2	     FFFF
- 01C4	     2003	JNE #3, goes to  01CC
- 01C6	     93CE	CMP.B #0,-1(R14)
- 01C8	     FFFF
- 01CA	     23F9	JNE #-7, goes to  01BE
- 01CC	     2C02	JC #2, goes to  01D2
- 01CE	     431F	MOV #1,R15
- 01D0	     3C01	JMP #1, goes to  01D4
- 01D2	     430F	MOV #0,R15
- 01D4	     4FC1	MOV.B R15,1(SP)
- 01D6	     0001
- 01D8	     410F	MOV SP,R15
- 01DA	     503F	ADD #12,R15
- 01DC	     000C
- 01DE	     410E	MOV SP,R14
- 01E0	     532E	ADD #2,R14
- 01E2	     531F	ADD #1,R15
- 01E4	     9EFF	CMP.B @R14+,-1(R15)
- 01E6	     FFFF
- 01E8	     2003	JNE #3, goes to  01F0
- 01EA	     93CF	CMP.B #0,-1(R15)
- 01EC	     FFFF
- 01EE	     23F9	JNE #-7, goes to  01E2
- 01F0	     2802	JNC #2, goes to  01F6
- 01F2	     431F	MOV #1,R15
- 01F4	     3C01	JMP #1, goes to  01F8
- 01F6	     430F	MOV #0,R15
- 01F8	     4FC1	MOV.B R15,1(SP)
- 01FA	     0001
- 01FC	     410F	MOV SP,R15
- 01FE	     503F	ADD #12,R15
- 0200	     000C
- 0202	     410E	MOV SP,R14
- 0204	     532E	ADD #2,R14
- 0206	     531F	ADD #1,R15
- 0208	     9EFF	CMP.B @R14+,-1(R15)
- 020A	     FFFF
- 020C	     2003	JNE #3, goes to  0214
- 020E	     93CF	CMP.B #0,-1(R15)
- 0210	     FFFF
- 0212	     23F9	JNE #-7, goes to  0206
- 0214	     2002	JNE #2, goes to  021A
- 0216	     431F	MOV #1,R15
- 0218	     3C01	JMP #1, goes to  021C
- 021A	     430F	MOV #0,R15
- 021C	     4FC1	MOV.B R15,1(SP)
- 021E	     0001
- 0220	     410F	MOV SP,R15
- 0222	     503F	ADD #12,R15
- 0224	     000C
- 0226	     410E	MOV SP,R14
- 0228	     532E	ADD #2,R14
- 022A	     531F	ADD #1,R15
- 022C	     9EFF	CMP.B @R14+,-1(R15)
- 022E	     FFFF
- 0230	     2003	JNE #3, goes to  0238
- 0232	     93CF	CMP.B #0,-1(R15)
- 0234	     FFFF
- 0236	     23F9	JNE #-7, goes to  022A
- 0238	     2C02	JC #2, goes to  023E
+ 012E	     4F7D	MOV.B @R15+,R13
+ 0130	     9E7D	CMP.B @R14+,R13
+ 0132	     2002	JNE #2, goes to  0138
+ 0134	     934D	CMP.B #0,R13
+ 0136	     23FB	JNE #-5, goes to  012E
+ 0138	     2C02	JC #2, goes to  013E
+ 013A	     431F	MOV #1,R15
+ 013C	     3C01	JMP #1, goes to  0140
+ 013E	     430F	MOV #0,R15
+ 0140	     4FC1	MOV.B R15,1(SP)
+ 0142	     0001
+ 0144	     403F	MOV #140,R15
+ 0146	     008C
+ 0148	     410E	MOV SP,R14
+ 014A	     503E	ADD #12,R14
+ 014C	     000C
+ 014E	     4E7D	MOV.B @R14+,R13
+ 0150	     9F7D	CMP.B @R15+,R13
+ 0152	     2002	JNE #2, goes to  0158
+ 0154	     934D	CMP.B #0,R13
+ 0156	     23FB	JNE #-5, goes to  014E
+ 0158	     2802	JNC #2, goes to  015E
+ 015A	     431F	MOV #1,R15
+ 015C	     3C01	JMP #1, goes to  0160
+ 015E	     430F	MOV #0,R15
+ 0160	     4FC1	MOV.B R15,1(SP)
+ 0162	     0001
+ 0164	     403F	MOV #172,R15
+ 0166	     00AC
+ 0168	     410E	MOV SP,R14
+ 016A	     503E	ADD #12,R14
+ 016C	     000C
+ 016E	     4F7D	MOV.B @R15+,R13
+ 0170	     9E7D	CMP.B @R14+,R13
+ 0172	     2002	JNE #2, goes to  0178
+ 0174	     934D	CMP.B #0,R13
+ 0176	     23FB	JNE #-5, goes to  016E
+ 0178	     2402	JEQ #2, goes to  017E
+ 017A	     431F	MOV #1,R15
+ 017C	     3C01	JMP #1, goes to  0180
+ 017E	     430F	MOV #0,R15
+ 0180	     4FC1	MOV.B R15,1(SP)
+ 0182	     0001
+ 0184	     410F	MOV SP,R15
+ 0186	     503F	ADD #12,R15
+ 0188	     000C
+ 018A	     410E	MOV SP,R14
+ 018C	     532E	ADD #2,R14
+ 018E	     4E7D	MOV.B @R14+,R13
+ 0190	     9F7D	CMP.B @R15+,R13
+ 0192	     2002	JNE #2, goes to  0198
+ 0194	     934D	CMP.B #0,R13
+ 0196	     23FB	JNE #-5, goes to  018E
+ 0198	     2C02	JC #2, goes to  019E
+ 019A	     431F	MOV #1,R15
+ 019C	     3C01	JMP #1, goes to  01A0
+ 019E	     430F	MOV #0,R15
+ 01A0	     4FC1	MOV.B R15,1(SP)
+ 01A2	     0001
+ 01A4	     410F	MOV SP,R15
+ 01A6	     503F	ADD #12,R15
+ 01A8	     000C
+ 01AA	     410E	MOV SP,R14
+ 01AC	     532E	ADD #2,R14
+ 01AE	     4F7D	MOV.B @R15+,R13
+ 01B0	     9E7D	CMP.B @R14+,R13
+ 01B2	     2002	JNE #2, goes to  01B8
+ 01B4	     934D	CMP.B #0,R13
+ 01B6	     23FB	JNE #-5, goes to  01AE
+ 01B8	     2802	JNC #2, goes to  01BE
+ 01BA	     431F	MOV #1,R15
+ 01BC	     3C01	JMP #1, goes to  01C0
+ 01BE	     430F	MOV #0,R15
+ 01C0	     4FC1	MOV.B R15,1(SP)
+ 01C2	     0001
+ 01C4	     410F	MOV SP,R15
+ 01C6	     503F	ADD #12,R15
+ 01C8	     000C
+ 01CA	     410E	MOV SP,R14
+ 01CC	     532E	ADD #2,R14
+ 01CE	     4F7D	MOV.B @R15+,R13
+ 01D0	     9E7D	CMP.B @R14+,R13
+ 01D2	     2002	JNE #2, goes to  01D8
+ 01D4	     934D	CMP.B #0,R13
+ 01D6	     23FB	JNE #-5, goes to  01CE
+ 01D8	     2002	JNE #2, goes to  01DE
+ 01DA	     431F	MOV #1,R15
+ 01DC	     3C01	JMP #1, goes to  01E0
+ 01DE	     430F	MOV #0,R15
+ 01E0	     4FC1	MOV.B R15,1(SP)
+ 01E2	     0001
+ 01E4	     410F	MOV SP,R15
+ 01E6	     503F	ADD #12,R15
+ 01E8	     000C
+ 01EA	     410E	MOV SP,R14
+ 01EC	     532E	ADD #2,R14
+ 01EE	     4F7D	MOV.B @R15+,R13
+ 01F0	     9E7D	CMP.B @R14+,R13
+ 01F2	     2002	JNE #2, goes to  01F8
+ 01F4	     934D	CMP.B #0,R13
+ 01F6	     23FB	JNE #-5, goes to  01EE
+ 01F8	     2C02	JC #2, goes to  01FE
+ 01FA	     431F	MOV #1,R15
+ 01FC	     3C01	JMP #1, goes to  0200
+ 01FE	     430F	MOV #0,R15
+ 0200	     4FC1	MOV.B R15,1(SP)
+ 0202	     0001
+ 0204	     410F	MOV SP,R15
+ 0206	     503F	ADD #12,R15
+ 0208	     000C
+ 020A	     410E	MOV SP,R14
+ 020C	     532E	ADD #2,R14
+ 020E	     4E7D	MOV.B @R14+,R13
+ 0210	     9F7D	CMP.B @R15+,R13
+ 0212	     2002	JNE #2, goes to  0218
+ 0214	     934D	CMP.B #0,R13
+ 0216	     23FB	JNE #-5, goes to  020E
+ 0218	     2802	JNC #2, goes to  021E
+ 021A	     431F	MOV #1,R15
+ 021C	     3C01	JMP #1, goes to  0220
+ 021E	     430F	MOV #0,R15
+ 0220	     4FC1	MOV.B R15,1(SP)
+ 0222	     0001
+ 0224	     410F	MOV SP,R15
+ 0226	     503F	ADD #12,R15
+ 0228	     000C
+ 022A	     410E	MOV SP,R14
+ 022C	     532E	ADD #2,R14
+ 022E	     4F7D	MOV.B @R15+,R13
+ 0230	     9E7D	CMP.B @R14+,R13
+ 0232	     2002	JNE #2, goes to  0238
+ 0234	     934D	CMP.B #0,R13
+ 0236	     23FB	JNE #-5, goes to  022E
+ 0238	     2402	JEQ #2, goes to  023E
  023A	     431F	MOV #1,R15
  023C	     3C01	JMP #1, goes to  0240
  023E	     430F	MOV #0,R15
  0240	     4FC1	MOV.B R15,1(SP)
  0242	     0001
- 0244	     410F	MOV SP,R15
- 0246	     503F	ADD #12,R15
- 0248	     000C
- 024A	     410E	MOV SP,R14
- 024C	     532E	ADD #2,R14
- 024E	     531E	ADD #1,R14
- 0250	     9FFE	CMP.B @R15+,-1(R14)
- 0252	     FFFF
- 0254	     2003	JNE #3, goes to  025C
- 0256	     93CE	CMP.B #0,-1(R14)
- 0258	     FFFF
- 025A	     23F9	JNE #-7, goes to  024E
- 025C	     2802	JNC #2, goes to  0262
- 025E	     431F	MOV #1,R15
- 0260	     3C01	JMP #1, goes to  0264
- 0262	     430F	MOV #0,R15
- 0264	     4FC1	MOV.B R15,1(SP)
- 0266	     0001
- 0268	     410F	MOV SP,R15
- 026A	     503F	ADD #12,R15
- 026C	     000C
- 026E	     410E	MOV SP,R14
- 0270	     532E	ADD #2,R14
- 0272	     531F	ADD #1,R15
- 0274	     9EFF	CMP.B @R14+,-1(R15)
- 0276	     FFFF
- 0278	     2003	JNE #3, goes to  0280
- 027A	     93CF	CMP.B #0,-1(R15)
- 027C	     FFFF
- 027E	     23F9	JNE #-7, goes to  0272
- 0280	     2402	JEQ #2, goes to  0286
- 0282	     431F	MOV #1,R15
- 0284	     3C01	JMP #1, goes to  0288
- 0286	     430F	MOV #0,R15
- 0288	     4FC1	MOV.B R15,1(SP)
- 028A	     0001
- 028C	     5031	ADD #22,SP
- 028E	     0016
- 0290	     4130	RET
- 0292	     4130	RET
+ 0244	     5031	ADD #22,SP
+ 0246	     0016
+ 0248	     4130	RET
+ 024A	     4130	RET
