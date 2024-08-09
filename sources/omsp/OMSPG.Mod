@@ -381,9 +381,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END loadCond;
 
-  PROCEDURE loadTypTagAdr(T: B.Type);
+  PROCEDURE loadTypTagAdr(T: B.Type): BYTE;
     VAR x!: Item;
   BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := T.typobj; x.tmp := FALSE; loadAdr(x)
+    RETURN x.reg
   END loadTypTagAdr;
 
   PROCEDURE pushTypTagAdr(T: B.Type);
@@ -495,10 +496,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF traps[1] # NIL THEN  (*check array bounds*)
           IF lim >= 0 THEN t.mode := B.Const; t.a := lim; PutDO(A.CMP, t, y)
           ELSE (*open array*) t := x;
-            IF x.mode IN {B.Var, B.Par} THEN t.mode := B.Var; INC(t.a, WordSize); PutDO(A.CMP, t, y)
-            ELSIF x.mode IN {Reg, RegI} THEN t.mode := Reg; INC(t.reg); PutDO(A.CMP, t, y)
+            IF x.mode IN {B.Var, B.Par} THEN t.mode := B.Var; INC(t.a, WordSize)
+            ELSIF x.mode IN {Reg, RegI} THEN t.mode := Reg; INC(t.reg)
             ELSE S.Mark("error in Index")
-            END
+            END; PutDO(A.CMP, t, y)
           END;
           Trap(A.C, 1) (*MSP430 inverts the carry with SUB and CMP instructions*)
         END;
@@ -531,7 +532,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
       Q(T.base); tddata[tdx] := T.typobj.usedat;
-      T.typobj.usedat := tdx; INC(tdx)
+      T.typobj.usedat := tdx*WordSize; INC(tdx)
     END
   END Q;
 
@@ -547,24 +548,23 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF tdx >= maxTD THEN S.Mark("too many record types"); tdx := 0 END
   END BuildTD;
 
-  PROCEDURE TypeTest*(VAR x: Item; T: B.Type; varpar, isguard: BOOLEAN); (*TODO fix this proceedure*)
-    VAR pc0: LONGINT; t!, ti!, pt!, tt!: Item;
-  BEGIN ti.am := A.Indexed; ti.obj := NIL; pt.am := A.Register; pt.ofs := 0; pt.obj := NIL; tt.am := A.Register; tt.ofs := 0; tt.obj := NIL;
-    IF ~TypeChecked() OR (T = NIL) THEN IF x.mode > Reg THEN freeR(rh.reg) END; SetCC(x, A.AL)
-    ELSE (*fetch tag into RH*)
-      IF varpar THEN ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
-      ELSE load(x); t := c0; A.PutDO(mcode, A.CMP, t, x, A.Word);
-        pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*NIL belongs to every pointer type*)
-        ti.reg := x.reg; ti.ofs := -8; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
-      END;
-      ti.reg := rh.reg; ti.ofs := T.nofpar*2; pt.reg := rh.reg; A.PutDO(mcode, A.MOV, ti, pt, A.Word); rh.reg := AllocR(); 
-      tt := rh; loadTypTagAdr(T) (*tag of T*); A.PutDO(mcode, A.CMP, pt, tt, A.Word); freeR(rh.reg); free(x);
-      IF isguard THEN
-        IF TypeChecked() THEN Trap(A.NE, 2) END
-      ELSE SetCC(x, A.EQ);
-        IF ~varpar THEN free(x) END
-      END;
-      IF ~varpar THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END
+  PROCEDURE TypeTest*(VAR x: Item; T: B.Type; varpar, isguard: BOOLEAN);
+    VAR t!, pt!, tt!: Item;
+  BEGIN (*ti.am := A.Indexed; ti.obj := NIL; pt.am := A.Register; pt.ofs := 0; pt.obj := NIL; tt.am := A.Register; tt.ofs := 0; tt.obj := NIL;*)
+    IF TypeChecked() OR ~isguard THEN
+      IF T = NIL THEN free(x); SetCC(x, A.AL)
+      ELSE rh.reg := AllocR(); (*fetch tag into RH*)
+        IF varpar THEN t := x;
+          IF x.mode IN {B.Var, B.Par} THEN t.mode := B.Var; INC(t.a, WordSize)
+          ELSIF x.mode IN {Reg, RegI} THEN t.mode := Reg; INC(t.reg)
+          ELSE S.Mark("error in TypeTest")
+          END; PutDO(A.MOV, t, rh);
+          t := rh; t.mode := RegI; t.a := T.nofpar*2; pt := t; pt.mode := Reg; PutDO(A.MOV, t, pt);
+          tt := rh; tt.reg := loadTypTagAdr(T) (*tag of T*); tt.mode := Reg; PutDO(A.CMP, pt, tt); free(tt); free(pt); free(t); free(x);
+          IF isguard THEN Trap(A.NE, 2) ELSE SetCC(x, A.EQ) END;
+        ELSE S.Mark("pointer not allowed")
+        END
+      END
     END
   END TypeTest;
 
@@ -930,8 +930,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         END
       ELSIF (par.type.form = B.Record) & TypeChecked() THEN
-        IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
-        ELSE loadTypTagAdr(x.type)
+        IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+        ELSE xmd := loadTypTagAdr(x.type)
         END
       END
     ELSE (*in stack*)

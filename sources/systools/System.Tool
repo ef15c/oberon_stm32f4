@@ -19,21 +19,20 @@ System.ShowModules  System.ShowCommands ^
 PCLink1.Run
 Hilbert.Draw  Sierpinski.Draw  Blink.Run  Stars.Open
 
-Tools.Inspect 0D0201000H Tools.Inspect 0E0042000H Tools.Inspect 20000600H
-
-Tools.Sector 0 Tools.ShowFile Empty.mpc
 Tools.Recall  Tools.Clear
+Tools.Inspect 0D0201000H Tools.Inspect 0E0042000H Tools.Inspect 20000600H
+Tools.Sector 0 Tools.ShowFile testString.sm4
 
 Edit.Open BuildM4.Tool
 Edit.Open BuildMSP.Tool
+
 OM4P.Compile InputM4Qwerty.Mod ~
 
-Net.SendFiles CS OMSPG.Mod ~
-Net.ReceiveFiles CS msp430g2553.Mod ~
+Net.SendFiles CS OMSPG.Mod testTypTag.Mod ~
+Net.ReceiveFiles CS testTypTag.Mod ~
 
 testRS232.Mod testRS232.hello
 StackTrace.ShowDump StackTrace.Calls
 System.CopyFiles OM4D.Mod => OMSPD.Mod ~
-HeapTool.Mod HeapTool.ShowFree System.Free HeapTool
-System.Free OMSPTool OMSPD OMSPP OMSPG OMSPA ~
-testAssert.Mod Traps.Mod msp430g2553.Mod
+HeapTool.ShowFree Kernel.Coalesce
+System.Free OMSPTool OMSPD ~ System.Free OMSPP OMSPG ~ OMSPA OMSPB OMSPS ~
