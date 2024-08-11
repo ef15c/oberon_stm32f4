@@ -6,7 +6,11 @@ MODULE testTypTag;
     
 PROCEDURE p(VAR v: tr);
     VAR b: BYTE;
-BEGIN b := v(tr1).b
+BEGIN b := v(tr1).b;
+  CASE v OF
+    tr1: b := v.b
+  | tr: b := v.a
+  END
 END p;
 
 PROCEDURE p2(v: tpr);
@@ -26,9 +30,8 @@ BEGIN q
 END testTypTag.
 
 OMSPTool.DecObj testTypTag.mpc
-
 decode testTypTag.mpc
-testTypTag C9E44629 Flash    88
+testTypTag C9E44629 Flash   128
 imports:
 type descriptors
  0002 FFFF FFFF FFFF 0004 0000 FFFF FFFF
@@ -40,121 +43,72 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0042
+ 006A
 fixup procedures chains
- 002C     0	 0000
- 0034     0	 0010
- 0044     0	 0020
+ 0054     0	 0000
+ 005C     0	 0034
+ 006C     0	 0044
 fixup handlers chains
 fixup data chains
-fixup types and strings chains
+fixup constants chains
+ 004A     0	 0008
+fixup types chains
  000A     0	 0008
-entry =  0042
-code    72
+entry =  006A
+code   112
  0000	     8321	SUB #2,SP
  0002	     411F	MOV 4(SP),R15
  0004	     0004
  0006	     4FD1	MOV.B 2(R15),1(SP)
  0008	     0002
  000A	     0001
- 000C	     5321	ADD #2,SP
- 000E	     4130	RET
- 0010	     8321	SUB #2,SP
- 0012	     411F	MOV 4(SP),R15
- 0014	     0004
- 0016	     4FD1	MOV.B 2(R15),1(SP)
- 0018	     0002
- 001A	     0001
- 001C	     5321	ADD #2,SP
- 001E	     4130	RET
- 0020	     8031	SUB #6,SP
- 0022	     0006
- 0024	     410F	MOV SP,R15
- 0026	     532F	ADD #2,R15
- 0028	     120F	PUSH R15
- 002A	     12B0	CALL #0
- 002C	     0000
- 002E	     5321	ADD #2,SP
- 0030	     1221	PUSH @SP
- 0032	     12B0	CALL #0
- 0034	     0000
- 0036	     5321	ADD #2,SP
- 0038	     43D1	MOV.B #1,4(SP)
- 003A	     0004
- 003C	     5031	ADD #6,SP
- 003E	     0006
- 0040	     4130	RET
- 0042	     12B0	CALL #0
- 0044	     0000
- 0046	     4130	RET
-
-OM4Tool.DecObj testTypTag.m4c
-decode testTypTag.m4c
-testTypTag C9E44629   1   208
-imports:
-type descriptors
- 00000020 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF 00000020 00014006 FFFFFFFF FFFFFFFF FFFFFFFF
-data     0
-strings
-
-code
-commands:
-entries
- 0000008E
-pointer refs
-
-fixP =        0
-fixD =      108
-fixT =        6
-entry =      142
- 00000000	 F1BD0D04	SUBS SP SP #4
- 00000004	     B403	PUSH R0 R1
- 00000006	     B500	PUSH LR
- 00000008	     9802	LDR R0 [SP + 8]
- 0000000A	     6840	LDR R0 [ R0 + 4]
- 0000000C	 10000006	MOV R1 lower 16-bits base(0)
- 00000010	 00000014	MOVT R1 higher 16-bits base + 20
- 00000014	     4281	CMP R1 R0
- 00000016	     BF18	IT NE
- 00000018	 EC0014C2	TrapNE 2 at pos 204
- 0000001C	     9801	LDR R0 [SP + 4]
- 0000001E	     7900	LDRB R0 [ R0 + 4]
- 00000020	 F88D000C	STRB R0 [ SP + 12 ]
- 00000024	 F85DEB04	LDR LR [ SP ] + 4
- 00000028	 F11D0D0C	ADDS SP SP #12
- 0000002C	     4770	BX LR
- 0000002E	 F1BD0D04	SUBS SP SP #4
- 00000032	     B401	PUSH R0
- 00000034	     B500	PUSH LR
- 00000036	     9801	LDR R0 [SP + 4]
- 00000038	     2800	CMP R0 #0
- 0000003A	     D00A	BEQ #20, goes to  00000052
- 0000003C	 F8501C08	LDR R1 [ R0 - 8 ]
- 00000040	     6849	LDR R1 [ R1 + 4]
- 00000042	 2000001B	MOV R2 lower 16-bits base(0)
- 00000046	 00000014	MOVT R2 higher 16-bits base + 20
- 0000004A	     428A	CMP R2 R1
- 0000004C	     BF18	IT NE
- 0000004E	 EC002102	TrapNE 2 at pos 272
- 00000052	     7900	LDRB R0 [ R0 + 4]
- 00000054	 F88D0008	STRB R0 [ SP + 8 ]
- 00000058	 F85DEB04	LDR LR [ SP ] + 4
- 0000005C	 F11D0D08	ADDS SP SP #8
- 00000060	     4770	BX LR
- 00000062	 F1BD0D0C	SUBS SP SP #12
- 00000066	     B500	PUSH LR
- 00000068	 F11D0004	ADDS R0 SP #4
- 0000006C	 10000015	MOV R1 lower 16-bits base(0)
- 00000070	 00000014	MOVT R1 higher 16-bits base + 20
- 00000074	 F7FFFFC4	BL #-120, goes to  00000000
- 00000078	     9803	LDR R0 [SP + 12]
- 0000007A	 F7FFFFD8	BL #-80, goes to  0000002E
- 0000007E	     2001	MOVS R0 #1
- 00000080	 F88D0008	STRB R0 [ SP + 8 ]
- 00000084	 F85DEB04	LDR LR [ SP ] + 4
- 00000088	 F11D0D0C	ADDS SP SP #12
- 0000008C	     4770	BX LR
- 0000008E	     B500	PUSH LR
- 00000090	 F7FFFFE7	BL #-50, goes to  00000062
- 00000094	 F85DEB04	LDR LR [ SP ] + 4
- 00000098	     4770	BX LR
+ 000C	     411F	MOV 6(SP),R15
+ 000E	     0006
+ 0010	     4F1F	MOV 2(R15),R15
+ 0012	     0002
+ 0014	     403E	MOV #0,R14
+ 0016	     0000
+ 0018	     9F0E	CMP R15,R14
+ 001A	     2006	JNE #6, goes to  0028
+ 001C	     411F	MOV 4(SP),R15
+ 001E	     0004
+ 0020	     4FD1	MOV.B 2(R15),1(SP)
+ 0022	     0002
+ 0024	     0001
+ 0026	     3C04	JMP #4, goes to  0030
+ 0028	     411F	MOV 4(SP),R15
+ 002A	     0004
+ 002C	     4FE1	MOV.B @R15,1(SP)
+ 002E	     0001
+ 0030	     5321	ADD #2,SP
+ 0032	     4130	RET
+ 0034	     8321	SUB #2,SP
+ 0036	     411F	MOV 4(SP),R15
+ 0038	     0004
+ 003A	     4FD1	MOV.B 2(R15),1(SP)
+ 003C	     0002
+ 003E	     0001
+ 0040	     5321	ADD #2,SP
+ 0042	     4130	RET
+ 0044	     8031	SUB #6,SP
+ 0046	     0006
+ 0048	     1230	PUSH #22
+ 004A	     0016
+ 004C	     410F	MOV SP,R15
+ 004E	     532F	ADD #2,R15
+ 0050	     120F	PUSH R15
+ 0052	     12B0	CALL #0
+ 0054	     0000
+ 0056	     5221	ADD #4,SP
+ 0058	     1221	PUSH @SP
+ 005A	     12B0	CALL #0
+ 005C	     0000
+ 005E	     5321	ADD #2,SP
+ 0060	     43D1	MOV.B #1,4(SP)
+ 0062	     0004
+ 0064	     5031	ADD #6,SP
+ 0066	     0006
+ 0068	     4130	RET
+ 006A	     12B0	CALL #0
+ 006C	     0000
+ 006E	     4130	RET

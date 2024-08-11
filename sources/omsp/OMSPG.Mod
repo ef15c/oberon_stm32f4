@@ -44,6 +44,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       adr, usedat: INTEGER
     END;
 
+    FixupCond = PROCEDURE(obj: B.Object; local:BOOLEAN): BOOLEAN; (*fixup selection criteria*)
+    FixupAction = PROCEDURE(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN); (*fixup action*)
+
   VAR varsize: LONGINT;   (*data index*)
     tdx, strx, mstrx, nofstrs: LONGINT;
     gvdata: ARRAY maxGD OF FixData; (*global variables references tracking*)
@@ -174,7 +177,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN x.mode := Cond; x.a := 0; x.b := 0; x.c := n
   END SetCC;
 
-  PROCEDURE TypeChecked*(): BOOLEAN;
+  PROCEDURE TypeChecked(): BOOLEAN;
   RETURN traps[2] # NIL
   END TypeChecked;
 
@@ -327,10 +330,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!, ti!, sva!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
-    IF x.mode = B.Var THEN
-      IF x.c > 0 THEN (*local*) alloc(x); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
+    IF x.mode = B.Var THEN alloc(x);
+      IF x.c > 0 THEN (*local*) A.PutDO(mcode, A.MOV, sp, rh, A.Word);
         IF x.a + frame # 0 THEN t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
-      ELSE alloc(x); sva.am := A.Immediate; A.PutDO(mcode, A.MOV, sva, rh, A.Word)
+      ELSE sva.am := A.Immediate; A.PutDO(mcode, A.MOV, sva, rh, A.Word)
       END
     ELSIF x.mode = B.Par THEN alloc(x);
       ti.reg := A.SP; ti.ofs := x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
@@ -374,7 +377,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.type.form = B.Bool THEN
       IF x.mode = B.Const THEN IF x.a = 0 THEN x.c := A.NV ELSE x.c := A.AL END
-      ELSE load(x); t := c0; A.PutDO(mcode, A.CMP, t, x, A.Word); x.c := A.NE; free(x)
+      ELSE t := c0; PutDO(A.CMP, t, x); x.c := A.NE; free(x)
       END;
       x.mode := Cond; x.a := 0; x.b := 0
     ELSE S.Mark("not Boolean?")
@@ -531,8 +534,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Q(T: B.Type);
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
-      Q(T.base); tddata[tdx] := T.typobj.usedat;
-      T.typobj.usedat := tdx*WordSize; INC(tdx)
+      Q(T.base); tddata[tdx] := T.typobj.val;
+      T.typobj.val := tdx*WordSize; INC(tdx)
     END
   END Q;
 
@@ -555,12 +558,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF T = NIL THEN free(x); SetCC(x, A.AL)
       ELSE rh.reg := AllocR(); (*fetch tag into RH*)
         IF varpar THEN t := x;
-          IF x.mode IN {B.Var, B.Par} THEN t.mode := B.Var; INC(t.a, WordSize)
-          ELSIF x.mode IN {Reg, RegI} THEN t.mode := Reg; INC(t.reg)
+          IF t.mode IN {B.Var, B.Par} THEN t.mode := B.Var; INC(t.a, WordSize)
+          ELSIF t.mode IN {Reg, RegI} THEN t.mode := Reg; INC(t.reg)
           ELSE S.Mark("error in TypeTest")
-          END; PutDO(A.MOV, t, rh);
-          t := rh; t.mode := RegI; t.a := T.nofpar*2; pt := t; pt.mode := Reg; PutDO(A.MOV, t, pt);
-          tt := rh; tt.reg := loadTypTagAdr(T) (*tag of T*); tt.mode := Reg; PutDO(A.CMP, pt, tt); free(tt); free(pt); free(t); free(x);
+          END; PutDO(A.MOV, t, rh); free(x);
+          t := rh; t.mode := RegI; t.a := T.nofpar*2; pt := t; pt.mode := Reg; pt.rdo := FALSE; PutDO(A.MOV, t, pt);
+          tt.reg := loadTypTagAdr(T) (*tag of T*); tt.mode := Reg; PutDO(A.CMP, pt, tt);
+          freeR(pt.reg); freeR(tt.reg);
           IF isguard THEN Trap(A.NE, 2) ELSE SetCC(x, A.EQ) END;
         ELSE S.Mark("pointer not allowed")
         END
@@ -929,7 +933,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         END
-      ELSIF (par.type.form = B.Record) & TypeChecked() THEN
+      ELSIF par.type.form = B.Record THEN
         IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         ELSE xmd := loadTypTagAdr(x.type)
         END
@@ -940,7 +944,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         END; INC(size, WordSize)
-      ELSIF (par.type.form = B.Record) & TypeChecked() THEN
+      ELSIF (par.type.form = B.Record) THEN
         IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
         END; INC(size, WordSize)
@@ -993,8 +997,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE CFJump*(VAR x: Item);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.PutJ(mcode, A.negated(x.c), x.a);
-    A.FixLink(mcode, x.b); x.a := mcode.pc - 2
+    IF x.c # A.AL THEN A.PutJ(mcode, A.negated(x.c), x.a); x.a := mcode.pc - 2 END;
+    A.FixLink(mcode, x.b)
   END CFJump;
 
   PROCEDURE BJump*(L: LONGINT);
@@ -1239,24 +1243,81 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END FindPtrs;
 
-  PROCEDURE WriteFixup(VAR R: Files.Rider; class: BYTE; form: INTEGER);
+  PROCEDURE procFixupCond(obj: B.Object; local:BOOLEAN): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN res := (obj.class = B.Const) & (obj.type.form = B.Proc) & (obj.usedat # 0);
+    IF local THEN res := res & (obj.lev = 0) ELSE res := res & (obj.lev < 0) END
+
+    RETURN res
+  END procFixupCond;
+
+  PROCEDURE handlerFixupCond(obj: B.Object; local:BOOLEAN): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN res := (obj.class = B.Const) & (obj.type.form = B.Handler) & (obj.usedat # 0);
+    IF local THEN res := res & (obj.lev = 0) ELSE res := res & (obj.lev < 0) END
+
+    RETURN res
+  END handlerFixupCond;
+
+  PROCEDURE varFixupCond(obj: B.Object; local:BOOLEAN): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN res := (obj.class = B.Var) & (obj.usedat # 0);
+    IF local THEN res := res & (obj.lev = 0) ELSE res := res & (obj.lev < 0) END
+
+    RETURN res
+  END varFixupCond;
+
+  PROCEDURE constFixupCond(obj: B.Object; local:BOOLEAN): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN res := obj.usedat # 0;
+    IF local THEN res := res & (obj.class = B.Typ) & (obj.type.mno = 0)
+    ELSE res := res & ((obj.class = B.Typ) & (obj.type.mno > 0) OR
+      (obj.class = B.Const) & (obj.type.form = B.String) & (obj.lev < 0))
+    END
+
+    RETURN res
+  END constFixupCond;
+
+  PROCEDURE typFixupCond(obj: B.Object; local:BOOLEAN): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN res := (obj.class = B.Typ) & (obj.val # 0);
+    IF local THEN res := res & (obj.type.mno = 0) ELSE res := res & (obj.type.mno > 0) END
+
+    RETURN res
+  END typFixupCond;
+
+  PROCEDURE objFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
+  BEGIN WriteWord(R, obj.usedat); Files.WriteByte(R, -obj.lev); (*module number*)
+    WriteWord(R, obj.val) (*local object relative address or imported object number*)
+  END objFixupAction;
+
+  PROCEDURE constFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
+  BEGIN WriteWord(R, obj.usedat);
+    IF local THEN Files.WriteByte(R, 0); (*local type*); WriteWord(R, obj.type.len) (*relative address*)
+    ELSIF obj.class = B.Typ THEN Files.WriteByte(R, obj.type.mno); (*module number*); WriteWord(R, obj.type.len) (*object number TODO \E0 v\E9rifier*)
+    ELSE (*exported string*) Files.WriteByte(R, -obj.lev); (*module number*); WriteWord(R, obj.val MOD 10000H) (*object number*)
+    END
+  END constFixupAction;
+
+  PROCEDURE typFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
+  BEGIN WriteWord(R, obj.val); Files.WriteByte(R, obj.type.mno); (*module number*)
+    WriteWord(R, obj.type.len) (*local object relative address or imported object number*)
+  END typFixupAction;
+
+  PROCEDURE WriteFixup(VAR R: Files.Rider; cond: FixupCond; action: FixupAction);
     VAR obj!, obj2!: B.Object;
   BEGIN
     obj := B.topScope.next;
-    WHILE obj # NIL DO  (*local objects fixup chains*)
-      IF (obj.class = class) & ((form = 0) OR (obj.type.form = form)) & (obj.usedat # 0) & (obj.lev = 0) THEN ASSERT(obj.class # B.Var);
-        WriteWord(R, obj.usedat); Files.WriteByte(R, 0); (*local object*); WriteWord(R, obj.val); (*relative address*)
-      END;
+    WHILE obj # NIL DO  (*local elements fixup chains*)
+      IF cond(obj, TRUE) THEN ASSERT(obj.class # B.Var); action(R, obj, TRUE) END;
       obj := obj.next
     END;
     obj := B.topScope.next;
-    WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imported objects fixup chains*)
+    WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imported elements fixup chains*)
       IF obj.dsc # B.system THEN
         obj2 := obj.dsc;
         WHILE obj2 # NIL DO
-          IF (obj2.class = class) & ((form = 0) OR (obj2.type.form = form)) & (obj2.usedat # 0) & (obj2.lev < 0) THEN
-            WriteWord(R, obj2.usedat); Files.WriteByte(R, -obj2.lev); (*module number*); WriteWord(R, obj2.val); (*object number*)
-          END;
+          IF cond(obj2, FALSE) THEN action(R, obj2, FALSE) END;
           obj2 := obj2.next
         END
       END;
@@ -1314,41 +1375,19 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END ;
       obj := obj.next
     END ;
-    WriteFixup(R, B.Const, B.Proc); (*procedures fixup data*)
-    WriteFixup(R, B.Const, B.Handler); (*interrupt handlers fixup data*)
+    WriteFixup(R, procFixupCond, objFixupAction); (*procedures fixup data*)
+    WriteFixup(R, handlerFixupCond, objFixupAction); (*interrupt handlers fixup data*)
     i := 0; WHILE gvdata[i].adr # -1 DO WriteWord(R, gvdata[i].usedat); Files.WriteByte(R, 0); WriteWord(R, gvdata[i].adr); INC(i) END; (*global variables fixup data*)
-    WriteFixup(R, B.Var, 0); (*variable fixup data*)
-    (*record types fixup data*)
-    obj := B.topScope.next;
-    WHILE obj # NIL DO  (*local types fixup chains*)
-      IF (obj.class = B.Typ) & (obj.usedat # 0) & (obj.type.mno = 0) THEN
-        WriteWord(R, obj.usedat); Files.WriteByte(R, 0); (*local type*); WriteWord(R, obj.type.len) (*relative address*)
-      END;
-      obj := obj.next
-    END;
-    obj := B.topScope.next;
-    WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imported types fixup chains*)
-      IF obj.dsc # B.system THEN
-        obj2 := obj.dsc;
-        WHILE obj2 # NIL DO
-          IF (obj2.class = B.Typ) & (obj2.usedat # 0) & (obj2.type.mno > 0) THEN
-            WriteWord(R, obj2.usedat); Files.WriteByte(R, obj2.type.mno); (*module number*); WriteWord(R, obj2.type.len) (*object address*)
-          ELSIF (obj2.class = B.Const) & (obj2.type.form = B.String) & (obj2.usedat # 0) & (obj2.lev < 0) THEN
-            WriteWord(R, obj2.usedat); Files.WriteByte(R, -obj2.lev); (*module number*); WriteWord(R, obj2.val MOD 10000H) (*object number*)
-          END;
-          obj2 := obj2.next
-        END
-      END;
-      obj := obj.next
-    END;
-    (*strings fixup data*)
+    WriteFixup(R, varFixupCond, objFixupAction); (*variable fixup data*)
+    (*local strings fixup data*)
     suax := maxStrx; sx := 0;
     FOR i := 1 TO nofstrs DO
       DEC(suax, 2); fixadr := ORD(strdata[suax]) + ORD(strdata[suax + 1])*100H;
       IF fixadr # 0 THEN WriteWord(R, fixadr); Files.WriteByte(R, 0); WriteWord(R, sx + tdx*WordSize (*skip td*)) END;
       WHILE strdata[sx] # 0X DO INC(sx) END; REPEAT INC(sx) UNTIL sx MOD WordSize = 0
     END;
-    WriteWord(R, 0);
+    WriteFixup(R, constFixupCond, constFixupAction); (*fixup data for references to constants in code*)
+    WriteFixup(R, typFixupCond, typFixupAction); (*fixup data for type extension*)
     WriteWord(R, entry);
     Files.Write(R, "O"); Files.Register(F);
     (*write object addresses to source position mapping in .o43 file*)

@@ -225,9 +225,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |opcC/nd  /   o/ffse/t   | *)
 
   PROCEDURE PutJ*(VAR c: ModuleCodeDesc; cond: BYTE; offset: LONGINT);
-  BEGIN (*emit jump instruction*) ASSERT (cond <=  NV); ASSERT(~ODD(offset));
-    IF enabled THEN IF cond = NV THEN (*NOP*) cond := AL; offset := 0 END;
-      offset := LSR(offset, 1);
+  BEGIN (*emit jump instruction*) ASSERT (cond < NV); ASSERT(~ODD(offset));
+    IF enabled THEN offset := LSR(offset, 1);
       c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8) MOD 4;
       c.code[c.pc]   := offset MOD C8;
       c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
