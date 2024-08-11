@@ -17,7 +17,7 @@ END testIntArith.
 OMSPTool.DecObj testIntArith.mpc
 
 decode testIntArith.mpc
-testIntArith 1E5C3E2F    84
+testIntArith 1E5C3E2F Flash    78
 imports:
 	Arith 82E1081E
 type descriptors
@@ -36,7 +36,8 @@ fixup procedures chains
  0020     1	 0001
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  004C
 code    78
  0000	     8031	SUB #6,SP

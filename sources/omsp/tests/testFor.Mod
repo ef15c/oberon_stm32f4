@@ -1,7 +1,7 @@
 MODULE testFor;
 
   PROCEDURE p;
-    VAR i,j: INTEGER;
+    VAR i,j: INTEGER*;
   BEGIN
     FOR i := 1 TO 10 DO j := 2*i END;
     FOR i := 10 TO 1 BY -2 DO END
@@ -13,7 +13,7 @@ OMSPTool.DecObj testFor.mpc
 
 not leaf:
 decode testFor.mpc
-testFor 74E5D4BB    60
+testFor 74E5D4BB Flash    56
 imports:
 type descriptors
 
@@ -29,7 +29,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0036
 code    56
  0000	     8221	SUB #4,SP
@@ -63,7 +64,7 @@ code    56
 
 leaf:
 decode testFor.mpc
-testFor 74E5D4BB    40
+testFor 74E5D4BB Flash    36
 imports:
 type descriptors
 
@@ -79,7 +80,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0022
 code    36
  0000	     4314	MOV #1,R4

@@ -5,13 +5,13 @@ MODULE testStore;
 
   VAR s,t: string; v,u: vector; i: INTEGER;
 
-  PROCEDURE p(a: ARRAY OF CHAR*; c: string*; VAR x:ARRAY OF CHAR*; VAR z: string* );
-    VAR j: INTEGER*;
+  PROCEDURE p(a: ARRAY OF CHAR; c: string; VAR x:ARRAY OF CHAR; VAR z: string );
+    VAR j: INTEGER;
   BEGIN j := j*3; z := c; z := s; s := z; x[j] := a[1]; x[j] := s[1]; z[j] := a[1]
   END p;
 
-  PROCEDURE q(b: ARRAY OF INTEGER*; d: vector*; VAR y: ARRAY OF INTEGER*; VAR t: vector* );
-    VAR j: INTEGER*;
+  PROCEDURE q(b: ARRAY OF INTEGER; d: vector; VAR y: ARRAY OF INTEGER; VAR t: vector );
+    VAR j: INTEGER;
   BEGIN t := d; t := v; v := t; y[j] := b[1]; y[j] := v[1]; t[j] := b[1]
   END q;
 
@@ -22,7 +22,7 @@ OMSPTool.DecObj testStore.mpc ~
 
 not leaf:
 decode testStore.mpc
-testStore E6E3DA2C   378
+testStore E6E3DA2C Flash   332
 imports:
 type descriptors
 
@@ -44,7 +44,8 @@ fixup data chains
  0146     0	 0016
  013A     0	 0028
  010A     0	 000A
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  00FA
 code   332
  0000	     8321	SUB #2,SP
@@ -183,7 +184,7 @@ code   332
  010A	     0000
  010C	     403E	MOV #5,R14
  010E	     0005
- 0110	     4FBF	MOV @R15+,65524(R15)
+ 0110	     4FBF	MOV @R15+,-12(R15)
  0112	     FFF4
  0114	     831E	SUB #1,R14
  0116	     23FC	JNE #-4, goes to  0110
@@ -216,7 +217,7 @@ code   332
 
 leaf:
 decode testStore.mpc
-testStore E6E3DA2C   324
+testStore E6E3DA2C Flash   278
 imports:
 type descriptors
 
@@ -238,7 +239,8 @@ fixup data chains
  0110     0	 0016
  0104     0	 0028
  00D4     0	 000A
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  00C4
 code   278
  0000	     4A0B	MOV R10,R11
@@ -350,7 +352,7 @@ code   278
  00D4	     0000
  00D6	     403E	MOV #5,R14
  00D8	     0005
- 00DA	     4FBF	MOV @R15+,65524(R15)
+ 00DA	     4FBF	MOV @R15+,-12(R15)
  00DC	     FFF4
  00DE	     831E	SUB #1,R14
  00E0	     23FC	JNE #-4, goes to  00DA
@@ -383,7 +385,7 @@ code   278
 
 not leaf, with module Traps imported:
 decode testStore.mpc
-testStore E6E3DA2C   520
+testStore E6E3DA2C Flash   472
 imports:
 	Traps 45642D7E
 type descriptors
@@ -407,7 +409,8 @@ fixup data chains
  01D2     0	 0016
  01C6     0	 0028
  017E     0	 000A
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  016E
 code   472
  0000	     8321	SUB #2,SP
@@ -604,7 +607,7 @@ code   472
  017E	     0000
  0180	     403E	MOV #5,R14
  0182	     0005
- 0184	     4FBF	MOV @R15+,65524(R15)
+ 0184	     4FBF	MOV @R15+,-12(R15)
  0186	     FFF4
  0188	     831E	SUB #1,R14
  018A	     23FC	JNE #-4, goes to  0184
@@ -649,7 +652,7 @@ code   472
 
 leaf, with module Traps imported:
 decode testStore.mpc
-testStore E6E3DA2C   446
+testStore E6E3DA2C Flash   398
 imports:
 	Traps 45642D7E
 type descriptors
@@ -673,7 +676,8 @@ fixup data chains
  0188     0	 0016
  017C     0	 0028
  0134     0	 000A
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0124
 code   398
  0000	     4A0B	MOV R10,R11
@@ -833,7 +837,7 @@ code   398
  0134	     0000
  0136	     403E	MOV #5,R14
  0138	     0005
- 013A	     4FBF	MOV @R15+,65524(R15)
+ 013A	     4FBF	MOV @R15+,-12(R15)
  013C	     FFF4
  013E	     831E	SUB #1,R14
  0140	     23FC	JNE #-4, goes to  013A

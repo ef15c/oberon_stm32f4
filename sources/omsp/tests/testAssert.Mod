@@ -16,7 +16,7 @@ OMSPTool.DecObj testAssert.mpc
 
 Traps not imported:
 decode testAssert.mpc
-testAssert DAE74D27    12
+testAssert DAE74D27 Flash     8
 imports:
 type descriptors
 
@@ -32,7 +32,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0006
 code     8
  0000	     8221	SUB #4,SP
@@ -42,7 +43,7 @@ code     8
 
 Traps imported:
 decode testAssert.mpc
-testAssert DAE74D27    84
+testAssert DAE74D27 Flash    78
 imports:
 	Traps 45642D7E
 type descriptors
@@ -60,7 +61,8 @@ fixup procedures chains
  0046     1	 0003
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  004C
 code    78
  0000	     8221	SUB #4,SP

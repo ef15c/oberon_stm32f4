@@ -1,8 +1,8 @@
 MODULE testIntRelat;
     
 PROCEDURE p;
-    VAR a, b: INTEGER*;
-      t: BOOLEAN*;
+    VAR a, b: INTEGER;
+      t: BOOLEAN;
 BEGIN
   t := a>1;
   t := a>=2;
@@ -30,7 +30,7 @@ OMSPTool.DecObj testIntRelat.mpc
 
 not leaf:
 decode testIntRelat.mpc
-testIntRelat 3B494122   340
+testIntRelat 3B494122 Flash   336
 imports:
 type descriptors
 
@@ -46,7 +46,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  014E
 code   336
  0000	     8031	SUB #6,SP
@@ -85,7 +86,7 @@ code   336
  0042	     430F	MOV #0,R15
  0044	     4FC1	MOV.B R15,1(SP)
  0046	     0001
- 0048	     403F	MOV #65534,R15
+ 0048	     403F	MOV #-2,R15
  004A	     FFFE
  004C	     911F	CMP 4(SP),R15
  004E	     0004
@@ -95,7 +96,7 @@ code   336
  0056	     430F	MOV #0,R15
  0058	     4FC1	MOV.B R15,1(SP)
  005A	     0001
- 005C	     90B1	CMP #65533,4(SP)
+ 005C	     90B1	CMP #-3,4(SP)
  005E	     FFFD
  0060	     0004
  0062	     2402	JEQ #2, goes to  0068
@@ -140,7 +141,7 @@ code   336
  00B0	     430F	MOV #0,R15
  00B2	     4FC1	MOV.B R15,1(SP)
  00B4	     0001
- 00B6	     90B1	CMP #65534,4(SP)
+ 00B6	     90B1	CMP #-2,4(SP)
  00B8	     FFFE
  00BA	     0004
  00BC	     3802	JL #2, goes to  00C2
@@ -149,7 +150,7 @@ code   336
  00C2	     430F	MOV #0,R15
  00C4	     4FC1	MOV.B R15,1(SP)
  00C6	     0001
- 00C8	     403F	MOV #65533,R15
+ 00C8	     403F	MOV #-3,R15
  00CA	     FFFD
  00CC	     911F	CMP 4(SP),R15
  00CE	     0004
@@ -220,7 +221,7 @@ code   336
 
 leaf:
 decode testIntRelat.mpc
-testIntRelat 3B494122   248
+testIntRelat 3B494122 Flash   244
 imports:
 type descriptors
 
@@ -236,7 +237,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  00F2
 code   244
  0000	     4317	MOV #1,R7
@@ -265,7 +267,7 @@ code   244
  002E	     3C01	JMP #1, goes to  0032
  0030	     4307	MOV #0,R7
  0032	     4746	MOV.B R7,R6
- 0034	     4037	MOV #65534,R7
+ 0034	     4037	MOV #-2,R7
  0036	     FFFE
  0038	     9407	CMP R4,R7
  003A	     3802	JL #2, goes to  0040
@@ -273,7 +275,7 @@ code   244
  003E	     3C01	JMP #1, goes to  0042
  0040	     4307	MOV #0,R7
  0042	     4746	MOV.B R7,R6
- 0044	     9034	CMP #65533,R4
+ 0044	     9034	CMP #-3,R4
  0046	     FFFD
  0048	     2402	JEQ #2, goes to  004E
  004A	     4317	MOV #1,R7
@@ -308,14 +310,14 @@ code   244
  0084	     3C01	JMP #1, goes to  0088
  0086	     4307	MOV #0,R7
  0088	     4746	MOV.B R7,R6
- 008A	     9034	CMP #65534,R4
+ 008A	     9034	CMP #-2,R4
  008C	     FFFE
  008E	     3802	JL #2, goes to  0094
  0090	     4317	MOV #1,R7
  0092	     3C01	JMP #1, goes to  0096
  0094	     4307	MOV #0,R7
  0096	     4746	MOV.B R7,R6
- 0098	     4037	MOV #65533,R7
+ 0098	     4037	MOV #-3,R7
  009A	     FFFD
  009C	     9407	CMP R4,R7
  009E	     2402	JEQ #2, goes to  00A4

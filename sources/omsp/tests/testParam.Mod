@@ -5,7 +5,7 @@ MODULE testParam;
 
   VAR t0: ti; u0: ARRAY 10 OF INTEGER;
 
-  PROCEDURE p(i: INTEGER; VAR s: ARRAY OF INTEGER);
+  PROCEDURE p(i: INTEGER*; VAR s: ARRAY OF INTEGER*);
   BEGIN
     i := i+10; s[i] := 1
   END p;
@@ -24,7 +24,7 @@ OMSPTool.DecObj testParam.mpc
 
 not leaf:
 decode testParam.mpc
-testParam D5E6C731   146
+testParam D5E6C731 Flash   100
 imports:
 	Traps 45642D7E
 type descriptors
@@ -46,7 +46,8 @@ fixup handlers chains
 fixup data chains
  0050     0	 0000
  0058     0	 0014
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  004E
 code   100
  0000	     411F	MOV 6(SP),R15
@@ -102,7 +103,7 @@ code   100
 
 leaf:
 decode testParam.mpc
-testParam D5E6C731   126
+testParam D5E6C731 Flash    80
 imports:
 	Traps 45642D7E
 type descriptors
@@ -124,7 +125,8 @@ fixup handlers chains
 fixup data chains
  003C     0	 0000
  0044     0	 0014
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  003A
 code    80
  0000	     4407	MOV R4,R7

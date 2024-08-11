@@ -7,7 +7,7 @@ MODULE testLoadAdr;
 
   VAR r1: rec;
 
-  PROCEDURE p(VAR r: rec);
+  PROCEDURE p(VAR r: rec*);
   BEGIN
     r.x := 1; r.y := 2
   END p;
@@ -21,7 +21,7 @@ OMSPTool.DecObj testLoadAdr.mpc ~
 
 not leaf:
 decode testLoadAdr.mpc
-testLoadAdr D9473902    44
+testLoadAdr D9473902 Flash    42
 imports:
 	Traps 45642D7E
 type descriptors
@@ -40,8 +40,9 @@ fixup procedures chains
 fixup handlers chains
 fixup data chains
  0018     0	 0000
-fixup type chains
+fixup constants chains
  0014     0	 0000
+fixup types chains
 entry =  0012
 code    34
  0000	     411F	MOV 2(SP),R15
@@ -64,7 +65,7 @@ code    34
 
 leaf:
 decode testLoadAdr.mpc
-testLoadAdr D9473902    34
+testLoadAdr D9473902 Flash    32
 imports:
 	Traps 45642D7E
 type descriptors
@@ -83,8 +84,9 @@ fixup procedures chains
 fixup handlers chains
 fixup data chains
  000C     0	 0000
-fixup type chains
+fixup constants chains
  0010     0	 0000
+fixup types chains
 entry =  000A
 code    24
  0000	     4394	MOV #1,0(R4)

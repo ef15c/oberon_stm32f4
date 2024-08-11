@@ -47,7 +47,7 @@ END Arith.
 OMSPTool.DecObj Arith.mpc
 
 decode Arith.mpc
-Arith 82E1081E   138
+Arith 82E1081E Flash   128
 imports:
 type descriptors
 
@@ -63,7 +63,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  007E
 code   128
  0000	     4304	MOV #0,R4

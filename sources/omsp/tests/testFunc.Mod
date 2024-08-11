@@ -2,7 +2,7 @@ MODULE testFunc;
 
   VAR i: INTEGER;
 
-  PROCEDURE SumI(a, b: INTEGER*): INTEGER;
+  PROCEDURE SumI(a, b: INTEGER): INTEGER;
   BEGIN
     RETURN a + b
   END SumI;
@@ -15,7 +15,7 @@ OMSPTool.DecObj testFunc.mpc
 
 not leaf:
 decode testFunc.mpc
-testFunc D7E1DBBA    38
+testFunc D7E1DBBA Flash    32
 imports:
 type descriptors
 
@@ -33,7 +33,8 @@ fixup procedures chains
 fixup handlers chains
 fixup data chains
  001C     0	 0000
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  000A
 code    32
  0000	     411F	MOV 4(SP),R15
@@ -55,7 +56,7 @@ code    32
 
 leaf:
 decode testFunc.mpc
-testFunc D7E1DBBA    32
+testFunc D7E1DBBA Flash    26
 imports:
 type descriptors
 
@@ -73,7 +74,8 @@ fixup procedures chains
 fixup handlers chains
 fixup data chains
  0016     0	 0000
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0006
 code    26
  0000	     4504	MOV R5,R4

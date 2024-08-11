@@ -12,7 +12,7 @@ END testDeRef.
 OMSPTool.DecObj testDeRef.mpc
 
 decode testDeRef.mpc
-testDeRef D9C6CB1E    34
+testDeRef D9C6CB1E Flash    32
 imports:
 type descriptors
  0004 FFFF FFFF FFFF
@@ -30,7 +30,8 @@ fixup handlers chains
 fixup data chains
  0002     0	 0002
  000E     0	 0000
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0000
 code    24
  0000	     403F	MOV #0,R15

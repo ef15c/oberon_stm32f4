@@ -13,7 +13,7 @@ OMSPTool.DecObj testInEx.mpc
 
 not leaf:
 decode testInEx.mpc
-testInEx ECB8D4BD    58
+testInEx ECB8D4BD Flash    54
 imports:
 type descriptors
 
@@ -29,7 +29,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0034
 code    54
  0000	     8221	SUB #4,SP
@@ -62,7 +63,7 @@ code    54
 
 leaf:
 decode testInEx.mpc
-testInEx ECB8D4BD    46
+testInEx ECB8D4BD Flash    42
 imports:
 type descriptors
 
@@ -78,7 +79,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0028
 code    42
  0000	     D234	BIS #8,R4

@@ -1,7 +1,7 @@
 MODULE testCond;
 
   PROCEDURE p(v: INTEGER);
-    VAR b: BOOLEAN;
+    VAR b: BOOLEAN*;
   BEGIN b := (v>-1) & (v<1) OR (v>9) & (v<11)
   END p;
 
@@ -12,7 +12,7 @@ OMSPTool.DecObj testCond.mpc
 
 leaf, local variable in register:
 decode testCond.mpc
-testCond D8E1D5B7    58
+testCond D8E1D5B7 Flash    54
 imports:
 type descriptors
 
@@ -29,7 +29,8 @@ fixup procedures chains
  0030     0	 0000
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  002A
 code    54
  0000	     4335	MOV #-1,R5
@@ -62,7 +63,7 @@ code    54
 
 leaf, param and local variable in registers:
 decode testCond.mpc
-testCond D8E1D5B7    48
+testCond D8E1D5B7 Flash    44
 imports:
 type descriptors
 
@@ -79,7 +80,8 @@ fixup procedures chains
  0028     0	 0000
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0022
 code    44
  0000	     4336	MOV #-1,R6
@@ -107,7 +109,7 @@ code    44
 
 leaf, param in register:
 decode testCond.mpc
-testCond D8E1D5B7    54
+testCond D8E1D5B7 Flash    50
 imports:
 type descriptors
 
@@ -124,7 +126,8 @@ fixup procedures chains
  002E     0	 0000
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0028
 code    50
  0000	     8321	SUB #2,SP
@@ -155,7 +158,7 @@ code    50
 
 not leaf:
 decode testCond.mpc
-testCond D8E1D5B7    64
+testCond D8E1D5B7 Flash    60
 imports:
 type descriptors
 
@@ -172,7 +175,8 @@ fixup procedures chains
  0036     0	 0000
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0030
 code    60
  0000	     8321	SUB #2,SP

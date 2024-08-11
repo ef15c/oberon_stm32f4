@@ -1,7 +1,7 @@
 MODULE testNeg;
 
   PROCEDURE p;
-    VAR a: INTEGER;
+    VAR a: INTEGER*;
   BEGIN a := -a;
   END p;
 
@@ -11,7 +11,7 @@ OMSPTool.DecObj testNeg.mpc
 
 not leaf:
 decode testNeg.mpc
-testNeg 74DACAC3    22
+testNeg 74DACAC3 Flash    18
 imports:
 type descriptors
 
@@ -27,7 +27,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0010
 code    18
  0000	     8321	SUB #2,SP
@@ -42,7 +43,7 @@ code    18
 
 leaf:
 decode testNeg.mpc
-testNeg 74DACAC3    16
+testNeg 74DACAC3 Flash    12
 imports:
 type descriptors
 
@@ -58,7 +59,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  000A
 code    12
  0000	     4405	MOV R4,R5

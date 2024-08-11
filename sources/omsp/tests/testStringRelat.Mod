@@ -44,13 +44,14 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup types and strings chains
+fixup constants chains
  00C6     0	 0000
  00E6     0	 0004
  0106     0	 0008
  0126     0	 000C
  0146     0	 0010
  0166     0	 0014
+fixup types chains
 entry =  024A
 code   588
  0000	     8031	SUB #22,SP

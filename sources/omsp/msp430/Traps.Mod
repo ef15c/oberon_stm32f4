@@ -29,7 +29,7 @@ END Traps.
 OMSPTool.DecObj Traps.mpc
 
 decode Traps.mpc
-Traps 45642D7E    38
+Traps 45642D7E Flash    26
 imports:
 	msp430g2553 60723399
 type descriptors
@@ -46,7 +46,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0018
 code    26
  0000	     42E2	MOV.B #4,&33

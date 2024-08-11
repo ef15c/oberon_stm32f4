@@ -7,7 +7,7 @@ END testIfThen.
 OMSPTool.DecObj testIfThen.mpc
 
 decode testIfThen.mpc
-testIfThen DDC83A22    24
+testIfThen DDC83A22 Flash    18
 imports:
 type descriptors
 
@@ -24,7 +24,8 @@ fixup procedures chains
 fixup handlers chains
 fixup data chains
  000E     0	 0000
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0000
 code    18
  0000	     9382	CMP #0,&0

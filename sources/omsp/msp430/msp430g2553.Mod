@@ -192,7 +192,7 @@ END msp430g2553.
 OMSPTool.DecObj msp430g2553.mpc
 
 decode msp430g2553.mpc
-msp430g2553 60723399     6
+msp430g2553 60723399 Flash     2
 imports:
 type descriptors
 
@@ -208,7 +208,8 @@ entries
 fixup procedures chains
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  0000
 code     2
  0000	     4130	RET

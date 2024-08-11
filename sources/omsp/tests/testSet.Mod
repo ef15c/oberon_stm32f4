@@ -24,7 +24,7 @@ END testSet.
 OMSPTool.DecObj testSet.mpc ~
 
 decode testSet.mpc
-testSet 74E7CAC8   168
+testSet 74E7CAC8 Flash   162
 imports:
 	Arith 82E1081E
 type descriptors
@@ -42,7 +42,8 @@ fixup procedures chains
  0032     1	 0003
 fixup handlers chains
 fixup data chains
-fixup type chains
+fixup constants chains
+fixup types chains
 entry =  00A0
 code   162
  0000	     8031	SUB #12,SP
