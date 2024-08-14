@@ -911,13 +911,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!, ti!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
     ti.am := A.Indexed; ti.obj := NIL;
-    IF par.register # 0FFH THEN loadAdr(x); rh.reg := AllocR();
+    IF par.register # 0FFH THEN (*in registers*) size := 0; loadAdr(x); rh.reg := AllocR();
       IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
-      ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+      ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END
     ELSE (*in stack*) size := 2*WordSize;
       IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
-      ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
+      ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
       END;
       pushAdr(x)
     END
@@ -1137,12 +1137,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Ord;
 
   PROCEDURE Len*(VAR x: Item);
-    VAR ti!: Item;
-  BEGIN ti.am := A.Indexed; ti.obj := NIL;
+  BEGIN
     IF x.type.len >= 0 THEN
-      IF x.mode = RegI THEN free(x) END;
-      x.mode := B.Const; x.a := x.type.len
-    ELSE (*open array*) alloc(x); ti.reg := A.SP; ti.ofs := x.a + 2 + frame; A.PutDO(mcode, A.MOV, ti, x, A.Word);
+      free(x); x.mode := B.Const; x.a := x.type.len
+    ELSE (*open array*)
+      IF x.mode IN {B.Var, B.Par} THEN x.mode := B.Var; INC(x.a, WordSize)
+      ELSIF x.mode IN {Reg, RegI} THEN x.mode := Reg; INC(x.reg)
+      ELSE S.Mark("bad mode in Len")
+      END
     END 
   END Len;
 

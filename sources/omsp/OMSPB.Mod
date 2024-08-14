@@ -404,30 +404,30 @@ BEGIN
   ptrIntType := type2(Pointer, Pointer, 2, intType);
     
   (*initialize universe with data types and in-line procedures;
-    ADC, SBC; LDREG, REG, COND are not in language definition*)
+    BIC, BIS, XOR, AND, ADC, SBC, CLRC, RLA, RLC, RRA, RRC, LDREG, REG, COND, CMP are not in language definition*)
   system := NIL;  (*n = procno*10 + nofpar*)
-  enter("SBC", SFunc, intType, 122); (*functions*)
-  enter("ADC", SFunc, intType, 112);
-  enter("LEN", SFunc, intType, 61);
-  enter("CHR", SFunc, charType, 51);
-  enter("ORD", SFunc, intType, 41);
+  enter("ABS", SFunc, intType, 1); (*functions*)
   enter("ODD", SFunc, boolType, 11);
-  enter("ABS", SFunc, intType, 1);
+  enter("ORD", SFunc, intType, 41);
+  enter("CHR", SFunc, charType, 51);
+  enter("LEN", SFunc, intType, 61);
+  enter("BIT", SFunc, boolType, 142);
   enter("ASSERT", SProc, noType, 41); (*procedures*)
-  enter("EXCL", SProc, noType, 32);
-  enter("INCL", SProc, noType, 22);
-  enter("DEC", SProc, noType, 11);
   enter("INC", SProc, noType, 1);
+  enter("DEC", SProc, noType, 11);
+  enter("INCL", SProc, noType, 22);
+  enter("EXCL", SProc, noType, 32);
   enter("BIC", SProc, noType, 52);
   enter("BIS", SProc, noType, 62);
   enter("XOR", SProc, noType, 72);
   enter("AND", SProc, noType, 82);
   enter("CLRC", SProc, noType, 130);
+  enter("ADC", SProc, intType, 152);
+  enter("SBC", SProc, intType, 162);
   enter("RLA", SProc, intType, 172);
   enter("RLC", SProc, intType, 181);
   enter("RRA", SProc, intType, 192);
   enter("RRC", SProc, intType, 201);
-  enter("BIT", SFunc, boolType, 142);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);

@@ -267,8 +267,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
       ELSIF fct = 6 THEN (*LEN*)
           IF x.type.form = B.Array THEN G.Len(x) ELSE S.Mark("not an array") END
-      ELSIF fct = 11 THEN (*ADC*) G.ADC(x, y)
-      ELSIF fct = 12 THEN (*SBC*) G.SBC(x, y)
       ELSIF fct = 14 THEN (*BIT*) IF x.type.form IN {B.Int, B.Set} THEN CheckInt(y); G.Bit(x, y) ELSE S.Mark("bad type") END
       ELSIF fct = 15 THEN (*REG*) CheckConst(x); CheckInt(x); G.Register(x)
       ELSIF fct = 16 THEN (*VAL*)
@@ -460,6 +458,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 13 THEN G.ClrC
       ELSIF pno = 14 THEN G.LDREG(y)
+      ELSIF pno = 15 THEN G.ADC(x, y)
+      ELSIF pno = 16 THEN G.SBC(x, y)
       ELSIF pno IN {17, 19} THEN (*RLA, RRA*) CheckInt(y);
         IF x.type.form IN {B.Int, B.Set} THEN G.Shift(pno-17, x, y) ELSE S.Mark("bad type") END
       ELSIF pno IN {18, 20} THEN (*RLC, RRC*)
