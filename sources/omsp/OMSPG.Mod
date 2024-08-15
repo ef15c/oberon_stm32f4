@@ -1207,14 +1207,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Register*(VAR x: Item);
   BEGIN (*x.mode = Const*)
-    x.reg := x.a; x.mode := Reg; PutDO(A.MOV, x, rh); alloc(x)
+    x.reg := x.a; x.mode := Reg; x.rdo := TRUE
   END Register;
 
   PROCEDURE Adr*(VAR x: Item);
   BEGIN (*TODO optimize by removing unnecessary load*)
     IF x.mode = B.Var THEN adr(x)
     ELSIF x.mode IN {B.Par, RegI} THEN loadAdr(x)
-    ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) THEN load(x)
+    ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) THEN
+      IF x.c = 0 THEN load(x) ELSE x.a := A.C16 END
     ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN loadStringAdr(x)
     ELSE S.Mark("not addressable")
     END

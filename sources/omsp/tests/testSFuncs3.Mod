@@ -35,7 +35,7 @@ END testSFuncs3.
 
 OMSPTool.DecObj testSFuncs3.mpc
 decode testSFuncs3.mpc
-testSFuncs3 E31C1F2B Flash   112
+testSFuncs3 E31C1F2B Flash   108
 imports:
 	testSFuncs2 6353DF1C
 type descriptors
@@ -48,18 +48,18 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0066
+ 0062
 fixup procedures chains
  0026     1	 0004
 fixup handlers chains
 fixup data chains
- 0038     0	 0000
+ 0036     0	 0000
  0016     1	 0003
  0020     1	 0002
 fixup constants chains
 fixup types chains
-entry =  0066
-code   104
+entry =  0062
+code   100
  0000	     8031	SUB #20,SP
  0002	     0014
  0004	     8391	SUB #1,18(SP)
@@ -78,37 +78,35 @@ code   104
  001E	     40B1	MOV #0,18(SP)
  0020	     0000
  0022	     0012
- 0024	     403F	MOV #0,R15
+ 0024	     40B1	MOV #0,18(SP)
  0026	     0000
- 0028	     4F81	MOV R15,18(SP)
- 002A	     0012
- 002C	     400F	MOV PC,R15
- 002E	     803F	SUB #46,R15
- 0030	     002E
- 0032	     4F81	MOV R15,18(SP)
- 0034	     0012
- 0036	     40B1	MOV #0,18(SP)
- 0038	     0000
- 003A	     0012
- 003C	     410F	MOV SP,R15
- 003E	     523F	ADD #8,R15
- 0040	     4F81	MOV R15,18(SP)
- 0042	     0012
- 0044	     4181	MOV SP,18(SP)
- 0046	     0012
- 0048	     40B1	MOV #6,18(SP)
- 004A	     0006
- 004C	     0012
- 004E	     4291	MOV &100,6(SP)
- 0050	     0064
- 0052	     0006
- 0054	     4191	MOV 18(SP),16(SP)
- 0056	     0012
- 0058	     0010
- 005A	     420F	MOV SR,R15
- 005C	     4F81	MOV R15,18(SP)
- 005E	     0012
- 0060	     5031	ADD #20,SP
- 0062	     0014
- 0064	     4130	RET
- 0066	     4130	RET
+ 0028	     0012
+ 002A	     400F	MOV PC,R15
+ 002C	     803F	SUB #44,R15
+ 002E	     002C
+ 0030	     4F81	MOV R15,18(SP)
+ 0032	     0012
+ 0034	     40B1	MOV #0,18(SP)
+ 0036	     0000
+ 0038	     0012
+ 003A	     410F	MOV SP,R15
+ 003C	     523F	ADD #8,R15
+ 003E	     4F81	MOV R15,18(SP)
+ 0040	     0012
+ 0042	     4181	MOV SP,18(SP)
+ 0044	     0012
+ 0046	     40B1	MOV #6,18(SP)
+ 0048	     0006
+ 004A	     0012
+ 004C	     4291	MOV &100,6(SP)
+ 004E	     0064
+ 0050	     0006
+ 0052	     4191	MOV 18(SP),16(SP)
+ 0054	     0012
+ 0056	     0010
+ 0058	     4281	MOV SR,18(SP)
+ 005A	     0012
+ 005C	     5031	ADD #20,SP
+ 005E	     0014
+ 0060	     4130	RET
+ 0062	     4130	RET
