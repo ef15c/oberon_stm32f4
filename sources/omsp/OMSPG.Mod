@@ -189,7 +189,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR res: INTEGER; o!: B.Object; i: INTEGER;
   BEGIN o := x(Item).obj;
     IF x.ofs = A.C16 THEN
-      IF (x(Item).mode = B.Var) & (x(Item).c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
+      IF ((x(Item).mode = B.Var) OR (x(Item).mode = B.Const) & (o # NIL) & (o.type.form # B.Proc)) &
+        (x(Item).c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
         WHILE (gvdata[i].adr # -1) & (gvdata[i].adr # x(Item).a) DO INC(i) END;
         IF gvdata[i].adr = -1 THEN gvdata[i].adr := x(Item).a; gvdata[i].usedat := 0; gvdata[i+1].adr := -1 END;
         res := gvdata[i].usedat; gvdata[i].usedat := mcode.pc
@@ -325,6 +326,19 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       FixLink(x.a); t := c0; A.PutSO(mcode, A.MOV, t, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
     END
   END push;
+
+  PROCEDURE adr(VAR x:Item);
+    VAR t!: Item;
+  BEGIN
+    IF x.mode = B.Var THEN ASSERT(x.tmp = FALSE);
+      IF x.c > 0 THEN (*local*)
+        IF x.a + frame = 0 THEN x.mode := Reg; x.reg := A.SP
+        ELSE x.mode := Reg; x.reg := A.SP; t.mode := B.Const; t.a := x.a + frame; PutDO(A.ADD, t, x)
+        END
+      ELSE (*global or imported*) x.mode := B.Const; x.a := A.C16
+      END
+    END
+  END adr;
 
   PROCEDURE loadAdr(VAR x: Item);
     VAR t!, ti!, sva!: Item;
@@ -1198,7 +1212,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Adr*(VAR x: Item);
   BEGIN (*TODO optimize by removing unnecessary load*)
-    IF x.mode IN {B.Var, B.Par, RegI} THEN loadAdr(x)
+    IF x.mode = B.Var THEN adr(x)
+    ELSIF x.mode IN {B.Par, RegI} THEN loadAdr(x)
     ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) THEN load(x)
     ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN loadStringAdr(x)
     ELSE S.Mark("not addressable")
