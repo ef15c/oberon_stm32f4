@@ -189,7 +189,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR res: INTEGER; o!: B.Object; i: INTEGER;
   BEGIN o := x(Item).obj;
     IF x.ofs > A.C16 THEN (*strings with index encoded in offset*)
-      i := x(Item).a - A.C16; res := ORD(strdata[i]) + ORD(strdata[i + 1]) * 100H;
+      i := x.ofs - A.C16; res := ORD(strdata[i]) + ORD(strdata[i + 1]) * 100H;
       strdata[i] := CHR(mcode.pc MOD 100H); strdata[i + 1] := CHR(mcode.pc DIV 100H)
     ELSIF x.ofs = A.C16 THEN
       IF ((x(Item).mode = B.Var) OR (x(Item).mode = B.Const) & (o # NIL) & (o.type.form # B.Proc)) &
@@ -227,7 +227,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE load(VAR x: Item); (*load item in a temporary register*)
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN t := x; t.reg := 0; t.am := A.Immediate;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
     IF x.mode = B.Const THEN alloc(x);
@@ -300,7 +300,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE push(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
+  BEGIN t := x; t.reg := 0; t.am := A.Immediate;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
     IF x.mode = B.Const THEN
@@ -329,7 +329,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE adr(VAR x:Item);
     VAR t!: Item;
-  BEGIN t.mode := B.Const;
+  BEGIN t.mode := B.Const; t.type := B.intType; t.obj := NIL;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE);
         IF x.a + frame = 0 THEN x.mode := Reg; x.reg := A.SP
@@ -347,49 +347,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END adr;
 
   PROCEDURE loadAdr(VAR x: Item);
-    VAR t!, ti!, sva!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
-    IF x.mode = B.Var THEN alloc(x);
-      IF x.c > 0 THEN (*local*) A.PutDO(mcode, A.MOV, sp, rh, A.Word);
-        IF x.a + frame # 0 THEN t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
-      ELSE sva.am := A.Immediate; A.PutDO(mcode, A.MOV, sva, rh, A.Word)
-      END
-    ELSIF x.mode = B.Par THEN alloc(x);
-      ti.reg := A.SP; ti.ofs := x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
-      IF x.b # 0 THEN t.ofs := x.b; A.PutDO(mcode, A.ADD, t, rh, A.Word) END
-    ELSIF x.mode = RegI THEN
-      IF ~x.tmp THEN rh.reg := AllocR(); x.mode := Reg; PutDO(A.MOV, x, rh); x.reg := rh.reg; x.tmp := TRUE; x.mode := RegI END;
-      IF x.a # 0 THEN t.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutDO(mcode, A.ADD, t, x, A.Word) END
-    ELSE S.Mark("address error")
-    END;
-    x.mode := Reg; x.am := A.Register; x.ofs := 0
+  BEGIN adr(x); load(x)
   END loadAdr;
 
   PROCEDURE pushAdr(VAR x: Item);
-    VAR t!, ti!, sva!: Item;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
-    IF x.mode = B.Var THEN
-      IF x.c > 0 THEN (*local*)
-        IF x.a + frame # 0 THEN rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sp, rh, A.Word);
-          t.ofs := x.a + frame; A.PutDO(mcode, A.ADD, t, rh, A.Word); A.PutSO(mcode, A.PUSH, rh, A.Word); freeR(rh.reg)
-        ELSE A.PutSO(mcode, A.PUSH, sp, A.Word)
-        END
-      ELSE sva.am := A.Immediate; A.PutSO(mcode, A.PUSH, sva, A.Word)
-      END
-    ELSIF x.mode = B.Par THEN
-      ti.reg := A.SP; ti.ofs := x.a + frame;
-      IF x.b = 0 THEN A.PutSO(mcode, A.PUSH, ti, A.Word)
-      ELSE rh.reg := AllocR(); A.PutDO(mcode, A.MOV, ti, rh, A.Word); t.ofs := x.b; A.PutDO(mcode, A.ADD, t, rh, A.Word);
-        A.PutSO(mcode, A.PUSH, rh, A.Word); freeR(rh.reg)
-      END
-    ELSIF x.mode = RegI THEN
-      x.am := A.Register; x.ofs := 0;
-      IF x.a # 0 THEN t.ofs := x.a; x.a := 0; A.PutDO(mcode, A.ADD, t, x, A.Word) END;
-      A.PutSO(mcode, A.PUSH, x, A.Word)
-    ELSE S.Mark("address error")
-    END;
+  BEGIN adr(x); push(x)
   END pushAdr;
 
   PROCEDURE loadCond(VAR x: Item);
@@ -405,14 +367,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END loadCond;
 
   PROCEDURE loadTypTagAdr(T: B.Type): BYTE;
-    VAR x!: Item;
-  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := T.typobj; x.tmp := FALSE; loadAdr(x)
-    RETURN x.reg
+    VAR sva!: Item;
+  BEGIN sva.am := A.Immediate; sva.ofs := A.C16; sva.obj := T.typobj;
+    rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word)
+    RETURN rh.reg
   END loadTypTagAdr;
 
   PROCEDURE pushTypTagAdr(T: B.Type);
-    VAR x!: Item;
-  BEGIN x.mode := B.Var; x.type := NIL; x.a := T.len; x.c := -T.mno; x.obj := T.typobj; pushAdr(x)
+    VAR sva!: Item;
+  BEGIN sva.am := A.Immediate; sva.ofs := A.C16; sva.obj := T.typobj;
+    A.PutSO(mcode, A.PUSH, sva, A.Word)
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);

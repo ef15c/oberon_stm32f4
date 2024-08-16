@@ -7,21 +7,24 @@ MODULE testLoadAdr;
 
   VAR r1: rec;
 
-  PROCEDURE p(VAR r: rec*);
+  PROCEDURE p(VAR r: rec);
   BEGIN
     r.x := 1; r.y := 2
   END p;
 
+  PROCEDURE q(VAR r: rec*);
+  BEGIN
+    r.x := 1; r.y := 2
+  END q;
+
 BEGIN
-  p(r1)
+  p(r1); q(r1)
 END testLoadAdr.
 
 
 OMSPTool.DecObj testLoadAdr.mpc ~
-
-not leaf:
 decode testLoadAdr.mpc
-testLoadAdr D9473902 Flash    42
+testLoadAdr D9473902 Flash    64
 imports:
 	Traps 45642D7E
 type descriptors
@@ -34,17 +37,18 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0012
+ 001C
 fixup procedures chains
- 001C     0	 0000
+ 0026     0	 0000
+ 0034     0	 0012
 fixup handlers chains
 fixup data chains
- 0018     0	 0000
+ 002C     0	 0000
 fixup constants chains
- 0014     0	 0000
+ 0030     0	 0000
 fixup types chains
-entry =  0012
-code    34
+entry =  001C
+code    56
  0000	     411F	MOV 2(SP),R15
  0002	     0002
  0004	     439F	MOV #1,0(R15)
@@ -54,50 +58,22 @@ code    34
  000C	     43AF	MOV #2,2(R15)
  000E	     0002
  0010	     4130	RET
- 0012	     1230	PUSH #0
+ 0012	     4394	MOV #1,0(R4)
  0014	     0000
- 0016	     1230	PUSH #0
- 0018	     0000
- 001A	     12B0	CALL #0
- 001C	     0000
- 001E	     5221	ADD #4,SP
- 0020	     4130	RET
-
-leaf:
-decode testLoadAdr.mpc
-testLoadAdr D9473902 Flash    32
-imports:
-	Traps 45642D7E
-type descriptors
- 0004 FFFF FFFF FFFF
-data     4
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 000A
-fixup procedures chains
- 0014     0	 0000
-fixup handlers chains
-fixup data chains
- 000C     0	 0000
-fixup constants chains
- 0010     0	 0000
-fixup types chains
-entry =  000A
-code    24
- 0000	     4394	MOV #1,0(R4)
- 0002	     0000
- 0004	     43A4	MOV #2,2(R4)
- 0006	     0002
- 0008	     4130	RET
- 000A	     4034	MOV #0,R4
- 000C	     0000
- 000E	     4035	MOV #0,R5
- 0010	     0000
- 0012	     12B0	CALL #0
- 0014	     0000
- 0016	     4130	RET
+ 0016	     43A4	MOV #2,2(R4)
+ 0018	     0002
+ 001A	     4130	RET
+ 001C	     1230	PUSH #0
+ 001E	     0000
+ 0020	     1230	PUSH #0
+ 0022	     0000
+ 0024	     12B0	CALL #0
+ 0026	     0000
+ 0028	     5221	ADD #4,SP
+ 002A	     4034	MOV #34,R4
+ 002C	     0022
+ 002E	     4035	MOV #30,R5
+ 0030	     001E
+ 0032	     12B0	CALL #0
+ 0034	     0000
+ 0036	     4130	RET
