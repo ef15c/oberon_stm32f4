@@ -21,7 +21,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Item forms and meaning of fields:
     mode    c           a           b                      
     ----------------------------
-    Const   -        value   (proc adr)        (immediate value)
+    Const   -        value                           (proc adr) or (immediate or runtime value)
     Var     base      off           -                 (direct adr)
     Par      -          off0        off1              (indirect adr)
     Reg     -           -            -
@@ -188,15 +188,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE GetOffset(x: A.Item): INTEGER;
     VAR res: INTEGER; o!: B.Object; i: INTEGER;
   BEGIN o := x(Item).obj;
-    IF x.ofs = A.C16 THEN
+    IF x.ofs > A.C16 THEN (*strings with index encoded in offset*)
+      i := x(Item).a - A.C16; res := ORD(strdata[i]) + ORD(strdata[i + 1]) * 100H;
+      strdata[i] := CHR(mcode.pc MOD 100H); strdata[i + 1] := CHR(mcode.pc DIV 100H)
+    ELSIF x.ofs = A.C16 THEN
       IF ((x(Item).mode = B.Var) OR (x(Item).mode = B.Const) & (o # NIL) & (o.type.form # B.Proc)) &
         (x(Item).c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
         WHILE (gvdata[i].adr # -1) & (gvdata[i].adr # x(Item).a) DO INC(i) END;
         IF gvdata[i].adr = -1 THEN gvdata[i].adr := x(Item).a; gvdata[i].usedat := 0; gvdata[i+1].adr := -1 END;
         res := gvdata[i].usedat; gvdata[i].usedat := mcode.pc
-      ELSIF (x(Item).mode = B.Const) & (x(Item).type = B.strType) & (x(Item).c = 0) THEN
-        i := x(Item).a; res := ORD(strdata[i]) + ORD(strdata[i + 1]) * 100H;
-        strdata[i] := CHR(mcode.pc MOD 100H); strdata[i + 1] := CHR(mcode.pc DIV 100H);
       ELSE (*Imported variable or other object type*) res := o.usedat; o.usedat := mcode.pc END
     ELSE res := x.ofs
     END
@@ -329,14 +329,20 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE adr(VAR x:Item);
     VAR t!: Item;
-  BEGIN
-    IF x.mode = B.Var THEN ASSERT(x.tmp = FALSE);
-      IF x.c > 0 THEN (*local*)
+  BEGIN t.mode := B.Const;
+    IF x.mode = B.Var THEN
+      IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE);
         IF x.a + frame = 0 THEN x.mode := Reg; x.reg := A.SP
-        ELSE x.mode := Reg; x.reg := A.SP; t.mode := B.Const; t.a := x.a + frame; PutDO(A.ADD, t, x)
+        ELSE x.mode := Reg; x.reg := A.SP; t.a := x.a + frame; PutDO(A.ADD, t, x)
         END
       ELSE (*global or imported*) x.mode := B.Const; x.a := A.C16
       END
+    ELSIF x.mode = B.Par THEN x.mode := B.Var;
+      IF x.b # 0 THEN t.a := x.b; PutDO(A.ADD, t, x) END
+    ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN INC(x.a, A.C16) (*encode string index in constant value*)
+    ELSIF x.mode = RegI THEN x.mode := Reg;
+      IF x.a # 0 THEN t.a := x.a; PutDO(A.ADD, t, x) END
+    ELSE S.Mark("not addressable")
     END
   END adr;
 
@@ -410,14 +416,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
-  BEGIN x.am := A.Immediate; x.ofs := A.C16;
+  BEGIN x.am := A.Immediate; x.ofs := A.C16+x.a;
      rh.reg := AllocR(); A.PutDO(mcode, A.MOV, x, rh, A.Word);
     x.mode := Reg; x.am := A.Register; x.reg := rh.reg; x.ofs := 0; x.tmp := TRUE
   END loadStringAdr;
 
   PROCEDURE pushStringAdr(x: Item);
     VAR x1!: Item;
-  BEGIN x1 := x; x1.c := 0; x1.am := A.Immediate; x1.ofs := A.C16;
+  BEGIN x1 := x; x1.c := 0; x1.am := A.Immediate; x1.ofs := A.C16+x.a;
     A.PutSO(mcode, A.PUSH, x1, A.Word)
   END pushStringAdr;
 
@@ -1211,13 +1217,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Register;
 
   PROCEDURE Adr*(VAR x: Item);
-  BEGIN (*TODO optimize by removing unnecessary load*)
-    IF x.mode = B.Var THEN adr(x)
-    ELSIF x.mode IN {B.Par, RegI} THEN loadAdr(x)
-    ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) THEN
+  BEGIN
+    IF (x.mode = B.Const) & (x.type.form = B.Proc) THEN
       IF x.c = 0 THEN load(x) ELSE x.a := A.C16 END
-    ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN loadStringAdr(x)
-    ELSE S.Mark("not addressable")
+    ELSE adr(x)
     END
   END Adr;
 
