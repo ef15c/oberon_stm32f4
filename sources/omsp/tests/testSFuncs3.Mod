@@ -32,7 +32,6 @@ MODULE testSFuncs3;
     v := SYSTEM.SIZE(rt);
     pr := SYSTEM.VAL(prt, 100);
     s := SYSTEM.VAL(SET, v);
-    v := SYSTEM.REG(2)
   END p;
 
   PROCEDURE q(VAR x: INTEGER*; y: rt*; VAR py: prt*);
@@ -57,7 +56,6 @@ MODULE testSFuncs3;
     v := SYSTEM.SIZE(rt);
     pr := SYSTEM.VAL(prt, 100);
     s := SYSTEM.VAL(SET, v);
-    v := SYSTEM.REG(2)
   END q;
 
 END testSFuncs3.
@@ -65,7 +63,7 @@ END testSFuncs3.
 
 OMSPTool.DecObj testSFuncs3.mpc
 decode testSFuncs3.mpc
-testSFuncs3 E31C1F2B Flash   230
+testSFuncs3 E31C1F2B Flash   224
 imports:
 	testSFuncs2 6353DF1C
 type descriptors
@@ -78,19 +76,19 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 00D4
+ 00CE
 fixup procedures chains
- 00A0     1	 0004
+ 009C     1	 0004
 fixup handlers chains
 fixup data chains
- 00AC     0	 0000
- 0094     1	 0003
- 009C     1	 0002
+ 00A8     0	 0000
+ 0090     1	 0003
+ 0098     1	 0002
 fixup constants chains
- 008A     0	 0008
+ 0086     0	 0008
 fixup types chains
-entry =  00D4
-code   214
+entry =  00CE
+code   208
  0000	     8031	SUB #20,SP
  0002	     0014
  0004	     40B1	MOV #0,18(SP)
@@ -152,49 +150,46 @@ code   214
  0074	     4191	MOV 18(SP),16(SP)
  0076	     0012
  0078	     0010
- 007A	     4281	MOV SR,18(SP)
- 007C	     0012
- 007E	     5031	ADD #20,SP
- 0080	     0014
- 0082	     4130	RET
- 0084	     8031	SUB #16,SP
- 0086	     0010
- 0088	     4038	MOV #6,R8
- 008A	     0006
- 008C	     4408	MOV R4,R8
- 008E	     4508	MOV R5,R8
- 0090	     4708	MOV R7,R8
- 0092	     403A	MOV #40,R10
- 0094	     0028
- 0096	     532A	ADD #2,R10
- 0098	     4A08	MOV R10,R8
- 009A	     4038	MOV #50,R8
- 009C	     0032
- 009E	     4038	MOV #56,R8
- 00A0	     0038
- 00A2	     400A	MOV PC,R10
- 00A4	     803A	SUB #164,R10
- 00A6	     00A4
- 00A8	     4A08	MOV R10,R8
- 00AA	     4038	MOV #72,R8
- 00AC	     0048
- 00AE	     410A	MOV SP,R10
- 00B0	     523A	ADD #8,R10
- 00B2	     4A08	MOV R10,R8
- 00B4	     4108	MOV SP,R8
- 00B6	     8318	SUB #1,R8
- 00B8	     23FE	JNE #-2, goes to  00B6
- 00BA	     5318	ADD #1,R8
- 00BC	     9308	CMP #0,R8
- 00BE	     23FD	JNE #-3, goes to  00BA
- 00C0	     4038	MOV #6,R8
- 00C2	     0006
- 00C4	     4291	MOV &100,6(SP)
- 00C6	     0064
- 00C8	     0006
- 00CA	     4809	MOV R8,R9
- 00CC	     4208	MOV SR,R8
- 00CE	     5031	ADD #16,SP
- 00D0	     0010
- 00D2	     4130	RET
- 00D4	     4130	RET
+ 007A	     5031	ADD #20,SP
+ 007C	     0014
+ 007E	     4130	RET
+ 0080	     8031	SUB #16,SP
+ 0082	     0010
+ 0084	     4038	MOV #6,R8
+ 0086	     0006
+ 0088	     4408	MOV R4,R8
+ 008A	     4508	MOV R5,R8
+ 008C	     4708	MOV R7,R8
+ 008E	     403A	MOV #40,R10
+ 0090	     0028
+ 0092	     532A	ADD #2,R10
+ 0094	     4A08	MOV R10,R8
+ 0096	     4038	MOV #50,R8
+ 0098	     0032
+ 009A	     4038	MOV #56,R8
+ 009C	     0038
+ 009E	     400A	MOV PC,R10
+ 00A0	     803A	SUB #160,R10
+ 00A2	     00A0
+ 00A4	     4A08	MOV R10,R8
+ 00A6	     4038	MOV #72,R8
+ 00A8	     0048
+ 00AA	     410A	MOV SP,R10
+ 00AC	     523A	ADD #8,R10
+ 00AE	     4A08	MOV R10,R8
+ 00B0	     4108	MOV SP,R8
+ 00B2	     8318	SUB #1,R8
+ 00B4	     23FE	JNE #-2, goes to  00B2
+ 00B6	     5318	ADD #1,R8
+ 00B8	     9308	CMP #0,R8
+ 00BA	     23FD	JNE #-3, goes to  00B6
+ 00BC	     4038	MOV #6,R8
+ 00BE	     0006
+ 00C0	     4291	MOV &100,6(SP)
+ 00C2	     0064
+ 00C4	     0006
+ 00C6	     4809	MOV R8,R9
+ 00C8	     5031	ADD #16,SP
+ 00CA	     0010
+ 00CC	     4130	RET
+ 00CE	     4130	RET

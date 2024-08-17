@@ -268,7 +268,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 6 THEN (*LEN*)
           IF x.type.form = B.Array THEN G.Len(x) ELSE S.Mark("not an array") END
       ELSIF fct = 14 THEN (*BIT*) IF x.type.form IN {B.Int, B.Set} THEN CheckInt(y); G.Bit(x, y) ELSE S.Mark("bad type") END
-      ELSIF fct = 15 THEN (*REG*) CheckConst(x); CheckInt(x); G.Register(x)
       ELSIF fct = 16 THEN (*VAL*)
         IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; x := y
         ELSE S.Mark("casting not allowed")
@@ -436,7 +435,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       IF (pno = 4) (*ASSERT*) & ~G.AssertionChecked() THEN G.EnableCode(FALSE) END;
       expression(x); nap := 1; x.rdo := x.obj.rdo;
       IF sym = S.comma THEN S.Get(sym);
-        IF pno = 14 (*LDREG*) THEN CheckConst(x); CheckInt(x); G.allocR(x.a) (*TODO: fix me*) END;
         expression(y); nap := 2; z.type := B.noType;
         WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
       ELSE y.type := B.noType
@@ -453,11 +451,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         CheckSet(x); CheckReadOnly(x); CheckInt(y); G.Include(pno-2, x, y)
       ELSIF pno = 4 THEN CheckBool(x); G.Assert(x)
       ELSIF pno IN {5, 6, 7, 8} THEN G.Logical(pno-5, x, y)
-      ELSIF pno = 10 THEN CheckPointerToInt(x); G.Get(x, y)
-      ELSIF pno = 11 THEN CheckPointerToInt(x); G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 13 THEN G.ClrC
-      ELSIF pno = 14 THEN G.LDREG(y)
       ELSIF pno = 15 THEN G.ADC(x, y)
       ELSIF pno = 16 THEN G.SBC(x, y)
       ELSIF pno IN {17, 19} THEN (*RLA, RRA*) CheckInt(y);

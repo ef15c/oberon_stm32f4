@@ -404,7 +404,7 @@ BEGIN
   ptrIntType := type2(Pointer, Pointer, 2, intType);
     
   (*initialize universe with data types and in-line procedures;
-    BIC, BIS, XOR, AND, ADC, SBC, CLRC, RLA, RLC, RRA, RRC, LDREG, REG, COND, CMP are not in language definition*)
+    BIC, BIS, XOR, AND, ADC, SBC, CLRC, RLA, RLC, RRA, RRC, COND, CMP are not in language definition*)
   system := NIL;  (*n = procno*10 + nofpar*)
   enter("ABS", SFunc, intType, 1); (*functions*)
   enter("ODD", SFunc, boolType, 11);
@@ -445,9 +445,5 @@ BEGIN
   enter("SIZE", SFunc, intType, 181);
   enter("ADR", SFunc, intType, 171);
   enter("VAL", SFunc, intType, 162);
-  enter("REG", SFunc, intType, 151);
-  enter("LDREG", SProc, noType, 142);  (*procedures*)
-  enter("COPY", SProc, noType, 123);
-  enter("PUT", SProc, noType, 112);
-  enter("GET", SProc, noType, 102);
+  enter("COPY", SProc, noType, 123) (*procedures*)
 END OMSPB.

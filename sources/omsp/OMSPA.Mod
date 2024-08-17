@@ -161,15 +161,15 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
     ts := s; td := d;
     IF op = MUL THEN 
-      IF ts.am = Immediate THEN
-        IF ts.ofs = 0 THEN t.reg := 0; t.am := Immediate; t.ofs := 0; PutDO(c, MOV, t, td, params)
+      IF s.am = Immediate THEN ASSERT(s.ofs < C16);
+        IF s.ofs = 0 THEN t.reg := 0; t.am := Immediate; t.ofs := 0; PutDO(c, MOV, t, d, params)
         ELSIF s.ofs < 0 THEN (*multiplicator is negative, change sign of multiplicator, do the multiplication, then change the sign of the result*)
-          ts.ofs := -ts.ofs; PutDO(c, op, ts, td, params); PutSO0(c, NEG, td, params)
-        ELSE (*multiplicator is positive*) WHILE ~ODD(ts.ofs) DO PutDO(c, ADD, td, td, params); ts.ofs := ts.ofs DIV 2 END;
+          ts.ofs := -ts.ofs; PutDO(c, op, ts, d, params); PutSO0(c, NEG, d, params)
+        ELSE (*multiplicator is positive*) WHILE ~ODD(ts.ofs) DO PutDO(c, ADD, d, d, params); ts.ofs := ts.ofs DIV 2 END;
           t.am := Register; t.ofs := 0;
-          IF ts.ofs # 1 THEN t.reg := allocR(); PutDO(c, MOV, td, t, params);
+          IF ts.ofs # 1 THEN t.reg := allocR(); PutDO(c, MOV, d, t, params);
             REPEAT PutDO(c, ADD, t, t, params); ts.ofs := ts.ofs DIV 2;
-              IF ODD(ts.ofs) THEN PutDO(c, ADD, t, td, params) END
+              IF ODD(ts.ofs) THEN PutDO(c, ADD, t, d, params) END
             UNTIL ts.ofs = 1;
             freeR(t.reg)
           END
@@ -202,12 +202,12 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   BEGIN (*emit format II instruction*) ASSERT(params = params*Byte);
     tds := ds;
     emitDSOff := FALSE; spi.reg := SP; spi.am := IndirectIncr; spi.ofs := 0;
-    IF op = POP THEN PutDO(c, MOV, spi, tds, Word) (*emulation*)
-    ELSIF op = RLA THEN PutDO(c, ADD, tds, tds, params)
-    ELSIF op = RLC THEN PutDO(c, ADDC, tds, tds, params)
+    IF op = POP THEN PutDO(c, MOV, spi, ds, Word) (*emulation*)
+    ELSIF op = RLA THEN PutDO(c, ADD, ds, ds, params)
+    ELSIF op = RLC THEN PutDO(c, ADDC, ds, ds, params)
     ELSIF op = NOP0 THEN (*do nothing*)
     ELSIF op = NEG THEN t.reg := 0; t.am := Immediate; t.ofs := -1; (*emulated by software*)
-      PutDO(c, XOR, t, tds, params); t.ofs := 1; PutDO(c, ADD, t, tds, params)
+      PutDO(c, XOR, t, ds, params); t.ofs := 1; PutDO(c, ADD, t, ds, params)
     ELSE ASSERT(op < 100H);
       encSrc(op, tds.reg, tds.am, tds.ofs, emitDSOff, params);
 

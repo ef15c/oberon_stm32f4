@@ -1069,15 +1069,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Assert; 
   
-  PROCEDURE Get*(VAR x, y: Item);
-  BEGIN PutDO(A.MOV, x, y); free(y); free(x)
-  END Get;
-
-  PROCEDURE Put*(VAR x, y: Item);
-    VAR bw: SET;
-  BEGIN PutDO(A.MOV, y, x); free(y); free(x)
-  END Put;
-
   PROCEDURE Copy*(VAR x, y, z: Item);
     VAR pc0, pc1: LONGINT; t!: Item;
   BEGIN load(x); load(y);
@@ -1094,10 +1085,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     PutDO(A.SUB, t, z); A.PutJ(mcode, A.NE, pc1 - mcode.pc - 2); (*BNE L1*)
     IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END; free(z); free(y); free(x)
   END Copy;
-
-  PROCEDURE LDREG*(VAR y: Item);
-  BEGIN load(y); RIU := {}
-  END LDREG;
 
   (*In-line code functions*)
 
@@ -1174,11 +1161,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     free(x);
     SetCC(x, A.NE)
   END Bit;
-
-  PROCEDURE Register*(VAR x: Item);
-  BEGIN (*x.mode = Const*)
-    x.reg := x.a; x.mode := Reg; x.rdo := TRUE
-  END Register;
 
   PROCEDURE Adr*(VAR x: Item);
   BEGIN
