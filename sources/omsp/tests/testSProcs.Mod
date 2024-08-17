@@ -229,7 +229,7 @@ code   458
  0170	     531F	ADD #1,R15
  0172	     831F	SUB #1,R15
  0174	     2403	JEQ #3, goes to  017C
- 0176	     1151	RRA 1(SP)
+ 0176	     1151	RRA.B 1(SP)
  0178	     0001
  017A	     3FFB	JMP #-5, goes to  0172
  017C	     411F	MOV 2(SP),R15
@@ -245,7 +245,7 @@ code   458
  0190	     535F	ADD.B #1,R15
  0192	     835F	SUB.B #1,R15
  0194	     2403	JEQ #3, goes to  019C
- 0196	     1151	RRA 1(SP)
+ 0196	     1151	RRA.B 1(SP)
  0198	     0001
  019A	     3FFB	JMP #-5, goes to  0192
  019C	     403F	MOV #10,R15
@@ -261,7 +261,7 @@ code   458
  01B0	     531F	ADD #1,R15
  01B2	     831F	SUB #1,R15
  01B4	     2403	JEQ #3, goes to  01BC
- 01B6	     1151	RRA 1(SP)
+ 01B6	     1151	RRA.B 1(SP)
  01B8	     0001
  01BA	     3FFB	JMP #-5, goes to  01B2
  01BC	     1011	RRC 2(SP)
