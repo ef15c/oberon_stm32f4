@@ -832,7 +832,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE distance(x, y: Item; VAR d: INTEGER): BOOLEAN;
     VAR res: BOOLEAN; ox, oy: INTEGER;
   BEGIN res := TRUE;
-    IF (x.obj # NIL) & (x.obj = y.obj) THEN
+    IF (x.obj # NIL) & (x.obj = y.obj) & (x.mode # RegI) & (y.mode # RegI) THEN
       IF x.mode = B.Par THEN ox := x.b ELSE ox := x.a END;
       IF y.mode = B.Par THEN oy := y.b ELSE oy := y.a END;
       d := ox - oy
@@ -849,7 +849,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     pc0 := -1;
     oneReg := distance(x, y, d);
     IF y.type.size # 0 THEN
-      loadAdr(y); IF oneReg THEN x.reg := y.reg; DEC(d, WordSize) ELSE loadAdr(x); d := 0 END; rh.reg := AllocR(); 
+      loadAdr(y); IF oneReg THEN free(x); x.reg := y.reg; x.tmp := FALSE; DEC(d, WordSize) ELSE loadAdr(x); d := 0 END; rh.reg := AllocR(); 
       IF (x.type.form = B.Array) &  (x.type.len > 0) THEN
         IF y.type.len >= 0 THEN 
           IF x.type.size = y.type.size THEN t.a := (y.type.size+1) DIV 2; PutDO(A.MOV, t, rh)
