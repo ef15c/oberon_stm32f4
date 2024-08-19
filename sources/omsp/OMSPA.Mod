@@ -259,7 +259,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ASSERT(LSR(c.code[at+1], 5) = LSR(JMPh, 5)); (*Check op code*)
       ASSERT (~ODD(with)); with := with DIV 2;
       IF (with < -C10) OR (with >= C10) THEN S.Mark("jump too far")
-      ELSE with := with MOD C8; 
+      ELSE with := with MOD C10; 
         c.code[at+1] := LSL(LSR(c.code[at+1], 2), 2) + LSR(with, 8);
         c.code[at] := with MOD C8 
       END

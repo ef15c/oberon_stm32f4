@@ -996,7 +996,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE CBJump*(VAR x: Item; L: LONGINT);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.PutJ(mcode, A.negated(x.c), L - mcode.pc - 2); A.FixLink(mcode, x.b); A.FixLinkWith(mcode, x.a, L)
+    IF x.c # A.AL THEN A.PutJ(mcode, A.negated(x.c), L - mcode.pc - 2) END;
+    A.FixLink(mcode, x.b); A.FixLinkWith(mcode, x.a, L)
   END CBJump;
 
   PROCEDURE Fixup*(VAR x: Item);
