@@ -3,9 +3,8 @@ MODULE testExport;
     x*, y*: INTEGER;
   END;
 
-  VAR l*: LONGINT;
+  VAR l*: INTEGER;
     p1*: PROCEDURE;
-    r*: REAL;
     v*: rec;
     w: INTEGER;
 
@@ -21,68 +20,63 @@ BEGIN p; p1 := p; p1;
 END testExport.
 
 
-OM4Tool.DecObj testExport.m4c
-decode testExport.m4c
-testExport 633B402B   1   196
+OMSPTool.DecObj testExport.mpc
+decode testExport.mpc
+testExport F14EC58E Flash    56
 imports:
 type descriptors
- 00000020 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF
-data    24
+ 0004 FFFF FFFF FFFF
+data    10
 strings
 
-code
-commands:
-	p    0
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
 entries
-    24     0    20    24    28    32     0
-pointer refs
+ 0014 0000 0000 0002 0004 0000
+fixup procedures chains
+ 001A     0	 0000
+fixup handlers chains
+fixup data chains
+ 0020     0	 0002
+ 0024     0	 0004
+ 002A     0	 0008
+ 002C     0	 0006
+fixup constants chains
+fixup types chains
+entry =  0014
+code    48
+ 0000	     8031	SUB #6,SP
+ 0002	     0006
+ 0004	     4191	MOV 4(SP),0(SP)
+ 0006	     0004
+ 0008	     0000
+ 000A	     41A1	MOV @SP,2(SP)
+ 000C	     0002
+ 000E	     5031	ADD #6,SP
+ 0010	     0006
+ 0012	     4130	RET
+ 0014	     12B0	CALL #0
+ 0016	     0000
+ 0018	     40B2	MOV #22,&0
+ 001A	     0016
+ 001C	     0000
+ 001E	     1292	CALL &28
+ 0020	     001C
+ 0022	     4292	MOV &0,&0
+ 0024	     0000
+ 0026	     0000
+ 0028	     4292	MOV &38,&0
+ 002A	     0026
+ 002C	     0000
+ 002E	     4130	RET
 
-fixP =        0
-fixD =       90
-fixT =        0
-entry =       24
- 00000000	 F1BD0D0C	SUBS SP SP #12
- 00000004	     B500	PUSH LR
- 00000006	     9802	LDR R0 [SP + 8]
- 00000008	     9003	STR R0 [SP + 12]
- 0000000A	     9803	LDR R0 [SP + 12]
- 0000000C	     9001	STR R0 [SP + 4]
- 0000000E	 F85DEB04	LDR LR [ SP ] + 4
- 00000012	 F11D0D0C	ADDS SP SP #12
- 00000016	     4770	BX LR
- 00000018	     B500	PUSH LR
- 0000001A	 F7FFFFF1	BL #-30, goes to  00000000
- 0000001E	 F000F800	BL #0, goes to  00000022
- 00000022	 F1BE0022	SUBS R0 LR #34
- 00000026	 10000013	MOV R1 lower 16-bits base(0)
- 0000002A	 00000018	MOVT R1 higher 16-bits base + 24
- 0000002E	     6008	STR R0 [ R1 + 0]
- 00000030	 00000005	MOV R0 lower 16-bits base(0)
- 00000034	 00000018	MOVT R0 higher 16-bits base + 24
- 00000038	     6800	LDR R0 [ R0 + 0]
- 0000003A	     4780	BLX R0
- 0000003C	 00000006	MOV R0 lower 16-bits base(0)
- 00000040	 00000020	MOVT R0 higher 16-bits base + 32
- 00000044	     6800	LDR R0 [ R0 + 0]
- 00000046	 10000005	MOV R1 lower 16-bits base(0)
- 0000004A	 00000028	MOVT R1 higher 16-bits base + 40
- 0000004E	     6008	STR R0 [ R1 + 0]
- 00000050	 00000005	MOV R0 lower 16-bits base(0)
- 00000054	 00000028	MOVT R0 higher 16-bits base + 40
- 00000058	     6800	LDR R0 [ R0 + 0]
- 0000005A	 10000005	MOV R1 lower 16-bits base(0)
- 0000005E	 00000024	MOVT R1 higher 16-bits base + 36
- 00000062	     6008	STR R0 [ R1 + 0]
- 00000064	 F85DEB04	LDR LR [ SP ] + 4
- 00000068	     4770	BX LR
-
-OM4Tool.DecSym testExport.sm4
-decode testExport.sm4
-testExport 633B402B  1
-   5 rec [14  form = 13 [^9]  exno = 1  extlev = 0  size = 8 { y [^4]   4 x [^4]   0}]()
-   2 l [^4]    2
-   2 p1 [0  form = 10 [^9]()]    3
-   2 r [^5]    4
-   2 v [^14]    5
-   1 p [0  form = 10 [^9]()]    6
-
+OMSPTool.DecSym testExport.sms
+decode testExport.sms
+testExport F14EC58E  1
+   5 rec [16  form = 13  size = 4 [^9]{  exno = 1  extlev = 0 { y [^4]   2 x [^4]   0}]()
+   2 l [^4]     2
+   2 p1 [0  form = 10  size = 2 [^9] UR 0000()]     3
+   2 v [^16]     4
+   1 p [0  form = 10  size = 2 [^9] UR 0000()]       5
