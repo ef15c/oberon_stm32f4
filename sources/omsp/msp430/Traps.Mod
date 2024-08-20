@@ -14,13 +14,13 @@ MODULE Traps; (*runtime module implementing the trap handlers*)
 
   PROCEDURE TypeGuardFailure*;
    BEGIN
-    BIS(M.P1OUT, {1}); (*turn LED 1 on*)
+    BIS(M.P1OUT^, {1}); (*turn LED 1 on*)
     REPEAT UNTIL FALSE
   END TypeGuardFailure;
 
   PROCEDURE AssertionViolated*;
    BEGIN
-    BIS(M.P1OUT, {0}); (*turn LED 0 on*)
+    BIS(M.P1OUT^, {0}); (*turn LED 0 on*)
     REPEAT UNTIL FALSE
   END AssertionViolated;
 

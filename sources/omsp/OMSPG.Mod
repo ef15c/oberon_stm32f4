@@ -259,28 +259,21 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     x.mode := Reg; x.tmp := TRUE; x.am := A.Register; x.ofs := 0
   END load;
 
-  PROCEDURE writable(i: Item): BOOLEAN;
-    RETURN (i.mode # B.Const) OR (i.type.form = B.Pointer)
-  END writable;
-
   PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba: INTEGER; VAR bw: SET);
     VAR ti!: Item;
   BEGIN IF (op = A.PUSH) OR (op = A.CALL) THEN dst := FALSE END;
     IF i.type = B.longIntType THEN S.Mark("LONGINT not implemented") END;
     IF i.type.size = 1 THEN bw := A.Byte END;
-    IF dst & i.rdo & (~writable(i) OR (op # A.CMP) & (op # A.BIT)) THEN load(i)
+    IF dst & i.rdo & ((i.mode = B.Const) OR (op # A.CMP) & (op # A.BIT)) THEN load(i)
     ELSIF i.mode = B.Var THEN
       IF i.c > 0 THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame ELSE i.reg := 0; i.am := A.Absolute; i.ofs := A.C16 (*use static var address*) END
     ELSIF i.mode = Reg THEN i.am := A.Register; i.ofs := 0
     ELSIF i.mode = RegI THEN i.am := A.Indexed; i.ofs := i.a
     ELSIF i.mode = Absol THEN  i.am := A.Absolute; i.ofs := i.a
     ELSIF i.mode = B.Const THEN i.ofs := i.a; i.reg := 0;
-      IF i.type.form = B.Pointer THEN i.am := A.Absolute;
-        IF i.type.base.size = 1 THEN bw := A.Byte END
-      ELSE i.am := A.Immediate;
-        IF i.type.form = B.Proc THEN i.ofs := A.C16 END;
-        IF dst THEN S.Mark("not writable") END
-      END
+      i.am := A.Immediate;
+      IF i.type.form = B.Proc THEN i.ofs := A.C16 END;
+      IF dst THEN S.Mark("not writable"); i.am := A.Absolute END
     ELSIF i.mode = B.Par THEN ASSERT(nba = -1); rh.reg := AllocR(); nba := rh.reg;
       ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
       A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
@@ -514,7 +507,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF (x.mode IN {B.Var, B.Par, RegI}) THEN load(x); NilCheck(x.reg); x.mode := RegI; x.a := 0
     ELSIF x.mode = Reg THEN x.mode := RegI; x.a := 0
-    ELSIF writable(x) THEN x.mode := Absol; x.b := 0
+    ELSIF x.type.form = B.Pointer THEN x.mode := Absol; x.b := 0
     ELSE S.Mark("bad mode in DeRef") 
     END; x.b := 0
   END DeRef;
@@ -829,13 +822,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
-    VAR of: INTEGER;
-  BEGIN (*TODO: find a way to avoid this ugly hack*)
-    IF (x.type.form = B.Pointer) & (y.mode = B.Const) & (y.type.form = B.Pointer) THEN 
-      of := y.type.form; y.type.form := B.Int; PutDO(A.MOV, y, x); y.type.form := of
-    ELSE PutDO(A.MOV, y, x)
-    END; (*store const pointer into var pointer*)
-    free(y); free(x)
+   BEGIN PutDO(A.MOV, y, x); free(y); free(x)
   END Store;
 
   PROCEDURE distance(x, y: Item; VAR d: INTEGER): BOOLEAN;
