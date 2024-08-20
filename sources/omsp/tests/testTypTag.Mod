@@ -53,7 +53,7 @@ fixup data chains
 fixup constants chains
  004A     0	 0008
 fixup types chains
- 000A     0	 0008
+ 000A     0	 0000
 entry =  006A
 code   112
  0000	     8321	SUB #2,SP

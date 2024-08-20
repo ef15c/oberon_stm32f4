@@ -260,7 +260,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       IF fct = 0 THEN (*ABS*) CheckInt(x); G.Abs(x)
       ELSIF fct = 1 THEN (*ODD*) CheckInt(x); G.Odd(x)
       ELSIF fct = 4 THEN (*ORD*)
-        IF x.type.form <= B.Proc THEN G.Ord(x)
+        IF x.type.form <= B.Proc THEN G.Ord(x); IF x.type.size = 1 THEN restyp := B.byteType END
         ELSIF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x)
         ELSE S.Mark("bad type")
         END

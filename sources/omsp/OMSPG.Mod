@@ -306,8 +306,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
   BEGIN t := x; t.reg := 0; t.am := A.Immediate;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
-    IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END ;
-    IF x.mode = B.Const THEN
+    IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
+    IF x.mode = Reg THEN PutSO(A.PUSH, x)
+    ELSIF x.mode = B.Const THEN
       IF x.type.form = B.Proc THEN
         IF x.c > 0 THEN S.Mark("not allowed")
         ELSIF x.c = 0 THEN A.PutDO(mcode, A.MOV, pc, rh, A.Word); (*Put address of next statement in RH*)
@@ -315,7 +316,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           A.PutSO(mcode, A.PUSH, rh, A.Word)
         ELSE sva.am := A.Immediate (*imported*); A.PutSO(mcode, A.PUSH, sva, A.Word)
         END
-      ELSE t.ofs := x.a; A.PutSO(mcode, A.PUSH, t, A.Word)
+      ELSE t.ofs := x.a; A.PutSO(mcode, A.PUSH, t, bw)
       END
     ELSIF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*) ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutSO(mcode, A.PUSH, ti, bw)
@@ -335,10 +336,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!: Item;
   BEGIN t.mode := B.Const; t.type := B.intType; t.obj := NIL;
     IF x.mode = B.Var THEN
-      IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE);
-        IF x.a + frame = 0 THEN x.mode := Reg; x.reg := A.SP
-        ELSE x.mode := Reg; x.reg := A.SP; t.a := x.a + frame; PutDO(A.ADD, t, x)
-        END
+      IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE); x.mode := Reg; x.reg := A.SP; x.rdo := TRUE;
+        IF x.a + frame # 0 THEN t.a := x.a + frame; PutDO(A.ADD, t, x) END
       ELSE (*global or imported*) x.mode := B.Const; x.a := A.C16
       END
     ELSIF x.mode = B.Par THEN x.mode := B.Var;
@@ -447,7 +446,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       x.b := 0; x.c := y.lev;
       IF y.register # 0FFH THEN
         x.reg := y.register;
-        IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI (*TODO: check this*) END
+        IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI END
       END
     ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN 
       x.a := y.val MOD 10000H; x.b := y.val DIV 10000H MOD 10000H (*len*)
@@ -523,13 +522,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Q(T: B.Type);
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
-      Q(T.base); tddata[tdx] := T.typobj.val;
-      T.typobj.val := tdx*WordSize; INC(tdx)
+      Q(T.base); tddata[tdx] := T.base.typobj.val;
+      T.base.typobj.val := tdx*WordSize; INC(tdx)
     END
   END Q;
 
   PROCEDURE BuildTD*(T: B.Type);
-    VAR k, s: LONGINT;  (*dcw = word address*)
+    VAR k, s: LONGINT;
   BEGIN s := T.size;
     T.len := WordSize*tdx (*len used as address*); tddata[tdx] := s; INC(tdx);
     k := T.nofpar;   (*extension level!*)
@@ -1108,8 +1107,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Odd;
 
   PROCEDURE Ord*(VAR x: Item);
-  BEGIN (*todo : check if load(x) is really needed*)
-    IF x.mode IN {B.Var, B.Par, RegI, Cond} THEN load(x) END
+  BEGIN IF x.mode = Cond THEN load(x) END
   END Ord;
 
   PROCEDURE Len*(VAR x: Item);
@@ -1266,7 +1264,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE constFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
   BEGIN WriteWord(R, obj.usedat);
     IF local THEN Files.WriteByte(R, 0); (*local type*); WriteWord(R, obj.type.len) (*relative address*)
-    ELSIF obj.class = B.Typ THEN Files.WriteByte(R, obj.type.mno); (*module number*); WriteWord(R, obj.type.len) (*object number TODO \E0 v\E9rifier*)
+    ELSIF obj.class = B.Typ THEN Files.WriteByte(R, obj.type.mno); (*module number*); WriteWord(R, obj.type.len)
     ELSE (*exported string*) Files.WriteByte(R, -obj.lev); (*module number*); WriteWord(R, obj.val MOD 10000H) (*object number*)
     END
   END constFixupAction;

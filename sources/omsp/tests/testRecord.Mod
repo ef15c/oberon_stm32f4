@@ -3,7 +3,7 @@ MODULE testRecord;
   TYPE rec = RECORD
     a, b: INTEGER;
     c, d: ARRAY 2000 OF INTEGER;
-	e: INTEGER
+    e: INTEGER
   END;
 
   PROCEDURE p(VAR r: rec*);

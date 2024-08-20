@@ -6,7 +6,8 @@ MODULE testSFuncs;
     a := ABS(v);
     b := ODD(a);
     v := ORD(b);
-    c := CHR(a)
+    c := CHR(a);
+    a := ORD(c)
   END p;
 
 END testSFuncs.
@@ -52,14 +53,14 @@ code    62
  0020	     430F	MOV #0,R15
  0022	     4FC1	MOV.B R15,1(SP)
  0024	     0001
- 0026	     415F	MOV.B 1(SP),R15
+ 0026	     41D1	MOV.B 1(SP),2(SP)
  0028	     0001
- 002A	     4F81	MOV R15,2(SP)
- 002C	     0002
- 002E	     411F	MOV 4(SP),R15
- 0030	     0004
- 0032	     4FC1	MOV.B R15,0(SP)
- 0034	     0000
+ 002A	     0002
+ 002C	     41D1	MOV.B 4(SP),0(SP)
+ 002E	     0004
+ 0030	     0000
+ 0032	     41E1	MOV.B @SP,4(SP)
+ 0034	     0004
  0036	     5031	ADD #6,SP
  0038	     0006
  003A	     4130	RET
