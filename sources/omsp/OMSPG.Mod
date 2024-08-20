@@ -186,16 +186,17 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END AssertionChecked;
 
   PROCEDURE GetOffset(x: A.Item): INTEGER;
-    VAR res: INTEGER; o!: B.Object; i: INTEGER;
-  BEGIN o := x(Item).obj;
-    IF x.ofs > A.C16 THEN (*strings with index encoded in offset*)
-      i := x.ofs - A.C16; res := ORD(strdata[i]) + ORD(strdata[i + 1]) * 100H;
-      strdata[i] := CHR(mcode.pc MOD 100H); strdata[i + 1] := CHR(mcode.pc DIV 100H)
-    ELSIF x.ofs = A.C16 THEN
+    VAR res, ofs, a, i: INTEGER; o!: B.Object;
+  BEGIN o := x(Item).obj; ofs := x.ofs; a := x(Item).a;
+    IF x.ofs >= A.C17 THEN (*global constants with address encoded in offset*) a := ofs - A.C17; ofs := A.C16 END;
+    IF ofs > A.C16 THEN (*strings with index encoded in offset*)
+      a := ofs - A.C16; res := ORD(strdata[a]) + ORD(strdata[a + 1]) * 100H;
+      strdata[a] := CHR(mcode.pc MOD 100H); strdata[a + 1] := CHR(mcode.pc DIV 100H)
+    ELSIF ofs = A.C16 THEN
       IF ((x(Item).mode = B.Var) OR (x(Item).mode = B.Const) & (o # NIL) & (o.type.form # B.Proc)) &
         (x(Item).c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
-        WHILE (gvdata[i].adr # -1) & (gvdata[i].adr # x(Item).a) DO INC(i) END;
-        IF gvdata[i].adr = -1 THEN gvdata[i].adr := x(Item).a; gvdata[i].usedat := 0; gvdata[i+1].adr := -1 END;
+        WHILE (gvdata[i].adr # -1) & (gvdata[i].adr # a) DO INC(i) END;
+        IF gvdata[i].adr = -1 THEN gvdata[i].adr := a; gvdata[i].usedat := 0; gvdata[i+1].adr := -1 END;
         res := gvdata[i].usedat; gvdata[i].usedat := mcode.pc
       ELSE (*Imported variable or other object type*) res := o.usedat; o.usedat := mcode.pc END
     ELSE res := x.ofs
@@ -276,10 +277,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF i.mode = B.Const THEN i.ofs := i.a; i.reg := 0;
       IF i.type.form = B.Pointer THEN i.am := A.Absolute;
         IF i.type.base.size = 1 THEN bw := A.Byte END
-      ELSE
-        IF i.type.form = B.Proc THEN i.am := A.Immediate; i.ofs := A.C16
-        ELSE i.am := A.Immediate
-        END; IF dst THEN S.Mark("not writable") END
+      ELSE i.am := A.Immediate;
+        IF i.type.form = B.Proc THEN i.ofs := A.C16 END;
+        IF dst THEN S.Mark("not writable") END
       END
     ELSIF i.mode = B.Par THEN ASSERT(nba = -1); rh.reg := AllocR(); nba := rh.reg;
       ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
@@ -338,7 +338,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE); x.mode := Reg; x.reg := A.SP; x.rdo := TRUE;
         IF x.a + frame # 0 THEN t.a := x.a + frame; PutDO(A.ADD, t, x) END
-      ELSE (*global or imported*) x.mode := B.Const; x.a := A.C16
+      ELSE (*global or imported*) x.mode := B.Const; INC(x.a, A.C17)
       END
     ELSIF x.mode = B.Par THEN x.mode := B.Var;
       IF x.b # 0 THEN t.a := x.b; PutDO(A.ADD, t, x) END
@@ -829,7 +829,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
-  BEGIN PutDO(A.MOV, y, x); free(y); free(x)
+    VAR of: INTEGER;
+  BEGIN (*TODO: find a way to avoid this ugly hack*)
+    IF (x.type.form = B.Pointer) & (y.mode = B.Const) & (y.type.form = B.Pointer) THEN 
+      of := y.type.form; y.type.form := B.Int; PutDO(A.MOV, y, x); y.type.form := of
+    ELSE PutDO(A.MOV, y, x)
+    END; (*store const pointer into var pointer*)
+    free(y); free(x)
   END Store;
 
   PROCEDURE distance(x, y: Item; VAR d: INTEGER): BOOLEAN;

@@ -10,9 +10,8 @@ BEGIN r := SYSTEM.VAL(prec, SYSTEM.ADR(a));
 END testDeRef.
 
 OMSPTool.DecObj testDeRef.mpc
-
 decode testDeRef.mpc
-testDeRef D9C6CB1E Flash    32
+testDeRef D9C6CB1E Flash    30
 imports:
 type descriptors
  0004 FFFF FFFF FFFF
@@ -29,20 +28,19 @@ fixup procedures chains
 fixup handlers chains
 fixup data chains
  0002     0	 0002
- 000E     0	 0000
+ 000C     0	 0000
 fixup constants chains
 fixup types chains
 entry =  0000
-code    24
- 0000	     403F	MOV #0,R15
+code    22
+ 0000	     40B2	MOV #0,&0
  0002	     0000
- 0004	     4F82	MOV R15,&0
- 0006	     0000
- 0008	     421F	MOV &6,R15
- 000A	     0006
- 000C	     421E	MOV &10,R14
- 000E	     000A
- 0010	     4E9F	MOV 2(R14),0(R15)
- 0012	     0002
- 0014	     0000
- 0016	     4130	RET
+ 0004	     0000
+ 0006	     421F	MOV &4,R15
+ 0008	     0004
+ 000A	     421E	MOV &8,R14
+ 000C	     0008
+ 000E	     4E9F	MOV 2(R14),0(R15)
+ 0010	     0002
+ 0012	     0000
+ 0014	     4130	RET
