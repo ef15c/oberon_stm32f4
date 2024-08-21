@@ -44,10 +44,13 @@ MODULE OMSPTool;  (*NW 18.2.2013
         END ;
         Texts.Write(W, "}")
       ELSIF form = B.Proc THEN
-        ReadType(R); Texts.Write(W, "("); Read(R, class);
+        ReadType(R); Read(R, class); IF class = 1 THEN Texts.WriteString(W, " leaf") END;
+        Files.ReadInt(R, off); IF class = 1 THEN Texts.WriteString(W, " UR"); TextsEx.WriteHexVLen(W, off, 4, FALSE) END;
+        Texts.Write(W, "("); Read(R, class);
         WHILE class # 0 DO
           Texts.WriteString(W, " class = "); Texts.WriteInt(W, class, 1); Read(R, readonly);
-          IF readonly = 1 THEN Texts.Write(W, "#") END ;
+          IF readonly = 1 THEN Texts.Write(W, "#") END;
+          Read(R, off); IF off # -1 THEN Texts.WriteString(W, " R"); Texts.WriteInt(W, off, 1) END;
           ReadType(R); Read(R, class)
         END ;
         Texts.Write(W, ")")

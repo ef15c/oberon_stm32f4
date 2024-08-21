@@ -5,7 +5,6 @@ BEGIN
 END testIfThen.
 
 OMSPTool.DecObj testIfThen.mpc
-
 decode testIfThen.mpc
 testIfThen DDC83A22 Flash    18
 imports:

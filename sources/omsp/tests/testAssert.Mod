@@ -41,6 +41,23 @@ code     8
  0004	     4130	RET
  0006	     4130	RET
 
+
+MODULE testAssert;
+  IMPORT Traps;
+
+  PROCEDURE p;
+    VAR a,b: INTEGER;
+  BEGIN
+    ASSERT(a # 0);
+    ASSERT((a # 0) & (b # 0));
+    ASSERT((a # 0) OR (b # 0));
+    ASSERT((a # 0) & (b # 0) OR (a = 1) & (b = 1));
+  END p;
+  
+END testAssert.
+
+OMSPTool.DecObj testAssert.mpc
+
 Traps imported:
 decode testAssert.mpc
 testAssert DAE74D27 Flash    78

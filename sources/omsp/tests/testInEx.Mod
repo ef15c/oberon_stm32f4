@@ -1,19 +1,25 @@
 MODULE testInEx;
   PROCEDURE p;
-    VAR s: SET*;
-      p: INTEGER*;
+    VAR s: SET;
+      p: INTEGER;
   BEGIN
     INCL(s, 3); INCL(s, p);
     EXCL(s, 5); EXCL(s, p);
   END p;
   
-END testInEx.
+  PROCEDURE q;
+    VAR s: SET*;
+      p: INTEGER*;
+  BEGIN
+    INCL(s, 3); INCL(s, p);
+    EXCL(s, 5); EXCL(s, p);
+  END q;
+
+ END testInEx.
 
 OMSPTool.DecObj testInEx.mpc
-
-not leaf:
 decode testInEx.mpc
-testInEx ECB8D4BD Flash    54
+testInEx ECB8D4BD Flash    94
 imports:
 type descriptors
 
@@ -25,14 +31,14 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0034
+ 005C
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup constants chains
 fixup types chains
-entry =  0034
-code    54
+entry =  005C
+code    94
  0000	     8221	SUB #4,SP
  0002	     D2B1	BIS #8,2(SP)
  0004	     0002
@@ -59,48 +65,24 @@ code    54
  002E	     0002
  0030	     5221	ADD #4,SP
  0032	     4130	RET
- 0034	     4130	RET
-
-leaf:
-decode testInEx.mpc
-testInEx ECB8D4BD Flash    42
-imports:
-type descriptors
-
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 0028
-fixup procedures chains
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
-entry =  0028
-code    42
- 0000	     D234	BIS #8,R4
- 0002	     4316	MOV #1,R6
- 0004	     4507	MOV R5,R7
- 0006	     5317	ADD #1,R7
- 0008	     8317	SUB #1,R7
- 000A	     2402	JEQ #2, goes to  0010
- 000C	     5606	ADD R6,R6
- 000E	     3FFC	JMP #-4, goes to  0008
- 0010	     D604	BIS R6,R4
- 0012	     C034	BIC #32,R4
- 0014	     0020
- 0016	     4316	MOV #1,R6
- 0018	     4507	MOV R5,R7
- 001A	     5317	ADD #1,R7
- 001C	     8317	SUB #1,R7
- 001E	     2402	JEQ #2, goes to  0024
- 0020	     5606	ADD R6,R6
- 0022	     3FFC	JMP #-4, goes to  001C
- 0024	     C604	BIC R6,R4
- 0026	     4130	RET
- 0028	     4130	RET
+ 0034	     D234	BIS #8,R4
+ 0036	     4316	MOV #1,R6
+ 0038	     4507	MOV R5,R7
+ 003A	     5317	ADD #1,R7
+ 003C	     8317	SUB #1,R7
+ 003E	     2402	JEQ #2, goes to  0044
+ 0040	     5606	ADD R6,R6
+ 0042	     3FFC	JMP #-4, goes to  003C
+ 0044	     D604	BIS R6,R4
+ 0046	     C034	BIC #32,R4
+ 0048	     0020
+ 004A	     4316	MOV #1,R6
+ 004C	     4507	MOV R5,R7
+ 004E	     5317	ADD #1,R7
+ 0050	     8317	SUB #1,R7
+ 0052	     2402	JEQ #2, goes to  0058
+ 0054	     5606	ADD R6,R6
+ 0056	     3FFC	JMP #-4, goes to  0050
+ 0058	     C604	BIC R6,R4
+ 005A	     4130	RET
+ 005C	     4130	RET

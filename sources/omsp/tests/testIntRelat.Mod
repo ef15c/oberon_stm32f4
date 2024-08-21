@@ -24,13 +24,34 @@ BEGIN
   t := a#b
 END p;
 
+PROCEDURE q;
+    VAR a, b: INTEGER*;
+      t: BOOLEAN*;
+BEGIN
+  t := a>1;
+  t := a>=2;
+  t := a=3;
+  t := a<-1;
+  t := a<=-2;
+  t := a#-3;
+  t := 1>a;
+  t := 2>=a;
+  t := 3=a;
+  t := -1<a;
+  t := -2<=a;
+  t := -3#a;
+  t := a>b;
+  t := a>=b;
+  t := a=b;
+  t := a<b;
+  t := a<=b;
+  t := a#b
+END q;
 END testIntRelat.
 
 OMSPTool.DecObj testIntRelat.mpc
-
-not leaf:
 decode testIntRelat.mpc
-testIntRelat 3B494122 Flash   336
+testIntRelat 3B494122 Flash   578
 imports:
 type descriptors
 
@@ -42,14 +63,14 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 014E
+ 0240
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup constants chains
 fixup types chains
-entry =  014E
-code   336
+entry =  0240
+code   578
  0000	     8031	SUB #6,SP
  0002	     0006
  0004	     431F	MOV #1,R15
@@ -217,149 +238,125 @@ code   336
  0148	     5031	ADD #6,SP
  014A	     0006
  014C	     4130	RET
- 014E	     4130	RET
-
-leaf:
-decode testIntRelat.mpc
-testIntRelat 3B494122 Flash   244
-imports:
-type descriptors
-
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 00F2
-fixup procedures chains
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
-entry =  00F2
-code   244
- 0000	     4317	MOV #1,R7
- 0002	     9407	CMP R4,R7
- 0004	     3402	JGE #2, goes to  000A
- 0006	     4317	MOV #1,R7
- 0008	     3C01	JMP #1, goes to  000C
- 000A	     4307	MOV #0,R7
- 000C	     4746	MOV.B R7,R6
- 000E	     9324	CMP #2,R4
- 0010	     3802	JL #2, goes to  0016
- 0012	     4317	MOV #1,R7
- 0014	     3C01	JMP #1, goes to  0018
- 0016	     4307	MOV #0,R7
- 0018	     4746	MOV.B R7,R6
- 001A	     9034	CMP #3,R4
- 001C	     0003
- 001E	     2002	JNE #2, goes to  0024
- 0020	     4317	MOV #1,R7
- 0022	     3C01	JMP #1, goes to  0026
- 0024	     4307	MOV #0,R7
- 0026	     4746	MOV.B R7,R6
- 0028	     9334	CMP #-1,R4
- 002A	     3402	JGE #2, goes to  0030
- 002C	     4317	MOV #1,R7
- 002E	     3C01	JMP #1, goes to  0032
- 0030	     4307	MOV #0,R7
- 0032	     4746	MOV.B R7,R6
- 0034	     4037	MOV #-2,R7
- 0036	     FFFE
- 0038	     9407	CMP R4,R7
- 003A	     3802	JL #2, goes to  0040
- 003C	     4317	MOV #1,R7
- 003E	     3C01	JMP #1, goes to  0042
- 0040	     4307	MOV #0,R7
- 0042	     4746	MOV.B R7,R6
- 0044	     9034	CMP #-3,R4
- 0046	     FFFD
- 0048	     2402	JEQ #2, goes to  004E
- 004A	     4317	MOV #1,R7
- 004C	     3C01	JMP #1, goes to  0050
- 004E	     4307	MOV #0,R7
- 0050	     4746	MOV.B R7,R6
- 0052	     9314	CMP #1,R4
- 0054	     3402	JGE #2, goes to  005A
- 0056	     4317	MOV #1,R7
- 0058	     3C01	JMP #1, goes to  005C
- 005A	     4307	MOV #0,R7
- 005C	     4746	MOV.B R7,R6
- 005E	     4327	MOV #2,R7
- 0060	     9407	CMP R4,R7
- 0062	     3802	JL #2, goes to  0068
- 0064	     4317	MOV #1,R7
- 0066	     3C01	JMP #1, goes to  006A
- 0068	     4307	MOV #0,R7
- 006A	     4746	MOV.B R7,R6
- 006C	     4037	MOV #3,R7
- 006E	     0003
- 0070	     9407	CMP R4,R7
- 0072	     2002	JNE #2, goes to  0078
- 0074	     4317	MOV #1,R7
- 0076	     3C01	JMP #1, goes to  007A
- 0078	     4307	MOV #0,R7
- 007A	     4746	MOV.B R7,R6
- 007C	     4337	MOV #-1,R7
- 007E	     9407	CMP R4,R7
- 0080	     3402	JGE #2, goes to  0086
- 0082	     4317	MOV #1,R7
- 0084	     3C01	JMP #1, goes to  0088
- 0086	     4307	MOV #0,R7
- 0088	     4746	MOV.B R7,R6
- 008A	     9034	CMP #-2,R4
- 008C	     FFFE
- 008E	     3802	JL #2, goes to  0094
- 0090	     4317	MOV #1,R7
- 0092	     3C01	JMP #1, goes to  0096
- 0094	     4307	MOV #0,R7
- 0096	     4746	MOV.B R7,R6
- 0098	     4037	MOV #-3,R7
- 009A	     FFFD
- 009C	     9407	CMP R4,R7
- 009E	     2402	JEQ #2, goes to  00A4
- 00A0	     4317	MOV #1,R7
- 00A2	     3C01	JMP #1, goes to  00A6
- 00A4	     4307	MOV #0,R7
- 00A6	     4746	MOV.B R7,R6
- 00A8	     9405	CMP R4,R5
- 00AA	     3402	JGE #2, goes to  00B0
- 00AC	     4317	MOV #1,R7
- 00AE	     3C01	JMP #1, goes to  00B2
- 00B0	     4307	MOV #0,R7
- 00B2	     4746	MOV.B R7,R6
- 00B4	     9504	CMP R5,R4
- 00B6	     3802	JL #2, goes to  00BC
- 00B8	     4317	MOV #1,R7
- 00BA	     3C01	JMP #1, goes to  00BE
- 00BC	     4307	MOV #0,R7
- 00BE	     4746	MOV.B R7,R6
- 00C0	     9504	CMP R5,R4
- 00C2	     2002	JNE #2, goes to  00C8
- 00C4	     4317	MOV #1,R7
- 00C6	     3C01	JMP #1, goes to  00CA
- 00C8	     4307	MOV #0,R7
- 00CA	     4746	MOV.B R7,R6
- 00CC	     9504	CMP R5,R4
- 00CE	     3402	JGE #2, goes to  00D4
- 00D0	     4317	MOV #1,R7
- 00D2	     3C01	JMP #1, goes to  00D6
- 00D4	     4307	MOV #0,R7
- 00D6	     4746	MOV.B R7,R6
- 00D8	     9405	CMP R4,R5
- 00DA	     3802	JL #2, goes to  00E0
- 00DC	     4317	MOV #1,R7
- 00DE	     3C01	JMP #1, goes to  00E2
- 00E0	     4307	MOV #0,R7
- 00E2	     4746	MOV.B R7,R6
- 00E4	     9504	CMP R5,R4
- 00E6	     2402	JEQ #2, goes to  00EC
- 00E8	     4317	MOV #1,R7
- 00EA	     3C01	JMP #1, goes to  00EE
- 00EC	     4307	MOV #0,R7
- 00EE	     4746	MOV.B R7,R6
- 00F0	     4130	RET
- 00F2	     4130	RET
+ 014E	     4317	MOV #1,R7
+ 0150	     9407	CMP R4,R7
+ 0152	     3402	JGE #2, goes to  0158
+ 0154	     4317	MOV #1,R7
+ 0156	     3C01	JMP #1, goes to  015A
+ 0158	     4307	MOV #0,R7
+ 015A	     4746	MOV.B R7,R6
+ 015C	     9324	CMP #2,R4
+ 015E	     3802	JL #2, goes to  0164
+ 0160	     4317	MOV #1,R7
+ 0162	     3C01	JMP #1, goes to  0166
+ 0164	     4307	MOV #0,R7
+ 0166	     4746	MOV.B R7,R6
+ 0168	     9034	CMP #3,R4
+ 016A	     0003
+ 016C	     2002	JNE #2, goes to  0172
+ 016E	     4317	MOV #1,R7
+ 0170	     3C01	JMP #1, goes to  0174
+ 0172	     4307	MOV #0,R7
+ 0174	     4746	MOV.B R7,R6
+ 0176	     9334	CMP #-1,R4
+ 0178	     3402	JGE #2, goes to  017E
+ 017A	     4317	MOV #1,R7
+ 017C	     3C01	JMP #1, goes to  0180
+ 017E	     4307	MOV #0,R7
+ 0180	     4746	MOV.B R7,R6
+ 0182	     4037	MOV #-2,R7
+ 0184	     FFFE
+ 0186	     9407	CMP R4,R7
+ 0188	     3802	JL #2, goes to  018E
+ 018A	     4317	MOV #1,R7
+ 018C	     3C01	JMP #1, goes to  0190
+ 018E	     4307	MOV #0,R7
+ 0190	     4746	MOV.B R7,R6
+ 0192	     9034	CMP #-3,R4
+ 0194	     FFFD
+ 0196	     2402	JEQ #2, goes to  019C
+ 0198	     4317	MOV #1,R7
+ 019A	     3C01	JMP #1, goes to  019E
+ 019C	     4307	MOV #0,R7
+ 019E	     4746	MOV.B R7,R6
+ 01A0	     9314	CMP #1,R4
+ 01A2	     3402	JGE #2, goes to  01A8
+ 01A4	     4317	MOV #1,R7
+ 01A6	     3C01	JMP #1, goes to  01AA
+ 01A8	     4307	MOV #0,R7
+ 01AA	     4746	MOV.B R7,R6
+ 01AC	     4327	MOV #2,R7
+ 01AE	     9407	CMP R4,R7
+ 01B0	     3802	JL #2, goes to  01B6
+ 01B2	     4317	MOV #1,R7
+ 01B4	     3C01	JMP #1, goes to  01B8
+ 01B6	     4307	MOV #0,R7
+ 01B8	     4746	MOV.B R7,R6
+ 01BA	     4037	MOV #3,R7
+ 01BC	     0003
+ 01BE	     9407	CMP R4,R7
+ 01C0	     2002	JNE #2, goes to  01C6
+ 01C2	     4317	MOV #1,R7
+ 01C4	     3C01	JMP #1, goes to  01C8
+ 01C6	     4307	MOV #0,R7
+ 01C8	     4746	MOV.B R7,R6
+ 01CA	     4337	MOV #-1,R7
+ 01CC	     9407	CMP R4,R7
+ 01CE	     3402	JGE #2, goes to  01D4
+ 01D0	     4317	MOV #1,R7
+ 01D2	     3C01	JMP #1, goes to  01D6
+ 01D4	     4307	MOV #0,R7
+ 01D6	     4746	MOV.B R7,R6
+ 01D8	     9034	CMP #-2,R4
+ 01DA	     FFFE
+ 01DC	     3802	JL #2, goes to  01E2
+ 01DE	     4317	MOV #1,R7
+ 01E0	     3C01	JMP #1, goes to  01E4
+ 01E2	     4307	MOV #0,R7
+ 01E4	     4746	MOV.B R7,R6
+ 01E6	     4037	MOV #-3,R7
+ 01E8	     FFFD
+ 01EA	     9407	CMP R4,R7
+ 01EC	     2402	JEQ #2, goes to  01F2
+ 01EE	     4317	MOV #1,R7
+ 01F0	     3C01	JMP #1, goes to  01F4
+ 01F2	     4307	MOV #0,R7
+ 01F4	     4746	MOV.B R7,R6
+ 01F6	     9405	CMP R4,R5
+ 01F8	     3402	JGE #2, goes to  01FE
+ 01FA	     4317	MOV #1,R7
+ 01FC	     3C01	JMP #1, goes to  0200
+ 01FE	     4307	MOV #0,R7
+ 0200	     4746	MOV.B R7,R6
+ 0202	     9504	CMP R5,R4
+ 0204	     3802	JL #2, goes to  020A
+ 0206	     4317	MOV #1,R7
+ 0208	     3C01	JMP #1, goes to  020C
+ 020A	     4307	MOV #0,R7
+ 020C	     4746	MOV.B R7,R6
+ 020E	     9504	CMP R5,R4
+ 0210	     2002	JNE #2, goes to  0216
+ 0212	     4317	MOV #1,R7
+ 0214	     3C01	JMP #1, goes to  0218
+ 0216	     4307	MOV #0,R7
+ 0218	     4746	MOV.B R7,R6
+ 021A	     9504	CMP R5,R4
+ 021C	     3402	JGE #2, goes to  0222
+ 021E	     4317	MOV #1,R7
+ 0220	     3C01	JMP #1, goes to  0224
+ 0222	     4307	MOV #0,R7
+ 0224	     4746	MOV.B R7,R6
+ 0226	     9405	CMP R4,R5
+ 0228	     3802	JL #2, goes to  022E
+ 022A	     4317	MOV #1,R7
+ 022C	     3C01	JMP #1, goes to  0230
+ 022E	     4307	MOV #0,R7
+ 0230	     4746	MOV.B R7,R6
+ 0232	     9504	CMP R5,R4
+ 0234	     2402	JEQ #2, goes to  023A
+ 0236	     4317	MOV #1,R7
+ 0238	     3C01	JMP #1, goes to  023C
+ 023A	     4307	MOV #0,R7
+ 023C	     4746	MOV.B R7,R6
+ 023E	     4130	RET
+ 0240	     4130	RET

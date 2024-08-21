@@ -45,7 +45,6 @@ MODULE Arith; (*runtime module implementing arithmetic operations*)
 END Arith.
 
 OMSPTool.DecObj Arith.mpc
-
 decode Arith.mpc
 Arith 82E1081E Flash   128
 imports:

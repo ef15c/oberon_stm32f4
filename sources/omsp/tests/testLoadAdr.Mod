@@ -22,7 +22,7 @@ BEGIN
 END testLoadAdr.
 
 
-OMSPTool.DecObj testLoadAdr.mpc ~
+OMSPTool.DecObj testLoadAdr.mpc
 decode testLoadAdr.mpc
 testLoadAdr D9473902 Flash    64
 imports:

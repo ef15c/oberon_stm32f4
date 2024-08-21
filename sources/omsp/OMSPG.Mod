@@ -186,20 +186,20 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END AssertionChecked;
 
   PROCEDURE GetOffset(x: A.Item): INTEGER;
-    VAR res, ofs, a, i: INTEGER; o!: B.Object;
-  BEGIN o := x(Item).obj; ofs := x.ofs; a := x(Item).a;
-    IF x.ofs >= A.C17 THEN (*global constants with address encoded in offset*) a := ofs - A.C17; ofs := A.C16 END;
-    IF ofs > A.C16 THEN (*strings with index encoded in offset*)
+    VAR res, ofs, a, c, i: INTEGER; o!: B.Object;
+  BEGIN o := x(Item).obj; ofs := x.ofs; a := x(Item).a; c := x(Item).c;
+    IF (c = 0) & (ofs >= A.C17) THEN (*global constants with address encoded in offset*) a := ofs - A.C17; ofs := A.C16 END;
+    IF (c = 0) & (ofs > A.C16) THEN (*global strings with index encoded in offset*)
       a := ofs - A.C16; res := ORD(strdata[a]) + ORD(strdata[a + 1]) * 100H;
       strdata[a] := CHR(mcode.pc MOD 100H); strdata[a + 1] := CHR(mcode.pc DIV 100H)
-    ELSIF ofs = A.C16 THEN
+    ELSIF ofs >= A.C16 THEN
       IF ((x(Item).mode = B.Var) OR (x(Item).mode = B.Const) & (o # NIL) & (o.type.form # B.Proc)) &
-        (x(Item).c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
+        (c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
         WHILE (gvdata[i].adr # -1) & (gvdata[i].adr # a) DO INC(i) END;
         IF gvdata[i].adr = -1 THEN gvdata[i].adr := a; gvdata[i].usedat := 0; gvdata[i+1].adr := -1 END;
         res := gvdata[i].usedat; gvdata[i].usedat := mcode.pc
       ELSE (*Imported variable or other object type*) res := o.usedat; o.usedat := mcode.pc END
-    ELSE res := x.ofs
+    ELSE res := ofs
     END
 
     RETURN res
@@ -828,7 +828,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE distance(x, y: Item; VAR d: INTEGER): BOOLEAN;
     VAR res: BOOLEAN; ox, oy: INTEGER;
   BEGIN res := TRUE;
-    IF (x.obj # NIL) & (x.obj = y.obj) & (x.mode # RegI) & (y.mode # RegI) THEN
+    IF (x.obj # NIL) & (x.obj = y.obj) & (x.mode = y.mode) & ((x.mode # RegI) OR (x.reg = y.reg)) THEN
       IF x.mode = B.Par THEN ox := x.b ELSE ox := x.a END;
       IF y.mode = B.Par THEN oy := y.b ELSE oy := y.a END;
       d := ox - oy
@@ -1106,7 +1106,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Len*(VAR x: Item);
   BEGIN
     IF x.type.len >= 0 THEN
-      free(x); x.mode := B.Const; x.type := B.intType; x.a := x.type.len
+      free(x); x.mode := B.Const; x.a := x.type.len; x.type := B.intType
     ELSE (*open array*)
       IF x.mode IN {B.Var, B.Par} THEN x.mode := B.Var; INC(x.a, WordSize)
       ELSIF x.mode IN {Reg, RegI} THEN x.mode := Reg; INC(x.reg)

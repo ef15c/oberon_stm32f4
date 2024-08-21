@@ -15,7 +15,6 @@ END testIntArith.
 
 
 OMSPTool.DecObj testIntArith.mpc
-
 decode testIntArith.mpc
 testIntArith 1E5C3E2F Flash    78
 imports:

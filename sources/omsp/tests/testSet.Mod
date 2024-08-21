@@ -21,8 +21,7 @@ MODULE testSet;
 END testSet.
 
 
-OMSPTool.DecObj testSet.mpc ~
-
+OMSPTool.DecObj testSet.mpc
 decode testSet.mpc
 testSet 74E7CAC8 Flash   162
 imports:

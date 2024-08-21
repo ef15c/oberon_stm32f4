@@ -6,22 +6,28 @@ MODULE testRecord;
     e: INTEGER
   END;
 
-  PROCEDURE p(VAR r: rec*);
+  PROCEDURE p(VAR r: rec);
   BEGIN
     r.a := 1;
     r.b := 2;
     r.c := r.d;
     r.e := 3
   END p;
-  
+
+  PROCEDURE q(VAR r: rec*);
+  BEGIN
+    r.a := 1;
+    r.b := 2;
+    r.c := r.d;
+    r.e := 3
+  END q;
+
 END testRecord.
 
 
 OMSPTool.DecObj testRecord.mpc
-
-not leaf:
 decode testRecord.mpc
-testRecord E4D72F38 Flash    58
+testRecord E4D72F38 Flash    92
 imports:
 type descriptors
  1F46 FFFF FFFF FFFF
@@ -33,14 +39,14 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0030
+ 0052
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup constants chains
 fixup types chains
-entry =  0030
-code    50
+entry =  0052
+code    84
  0000	     411F	MOV 2(SP),R15
  0002	     0002
  0004	     439F	MOV #1,0(R15)
@@ -65,45 +71,21 @@ code    50
  002A	     0003
  002C	     1F44
  002E	     4130	RET
- 0030	     4130	RET
-
-leaf:
-decode testRecord.mpc
-testRecord E4D72F38 Flash    44
-imports:
-type descriptors
- 1F46 FFFF FFFF FFFF
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 0022
-fixup procedures chains
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
-entry =  0022
-code    36
- 0000	     4394	MOV #1,0(R4)
- 0002	     0000
- 0004	     43A4	MOV #2,2(R4)
- 0006	     0002
- 0008	     4406	MOV R4,R6
- 000A	     5036	ADD #4004,R6
- 000C	     0FA4
- 000E	     4037	MOV #2000,R7
- 0010	     07D0
- 0012	     46B6	MOV @R6+,-4002(R6)
- 0014	     F05E
- 0016	     8317	SUB #1,R7
- 0018	     23FC	JNE #-4, goes to  0012
- 001A	     40B4	MOV #3,8004(R4)
- 001C	     0003
- 001E	     1F44
- 0020	     4130	RET
- 0022	     4130	RET
+ 0030	     4394	MOV #1,0(R4)
+ 0032	     0000
+ 0034	     43A4	MOV #2,2(R4)
+ 0036	     0002
+ 0038	     4406	MOV R4,R6
+ 003A	     5036	ADD #4004,R6
+ 003C	     0FA4
+ 003E	     4037	MOV #2000,R7
+ 0040	     07D0
+ 0042	     46B6	MOV @R6+,-4002(R6)
+ 0044	     F05E
+ 0046	     8317	SUB #1,R7
+ 0048	     23FC	JNE #-4, goes to  0042
+ 004A	     40B4	MOV #3,8004(R4)
+ 004C	     0003
+ 004E	     1F44
+ 0050	     4130	RET
+ 0052	     4130	RET

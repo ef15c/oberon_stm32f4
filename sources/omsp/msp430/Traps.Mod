@@ -27,7 +27,6 @@ MODULE Traps; (*runtime module implementing the trap handlers*)
 END Traps.
 
 OMSPTool.DecObj Traps.mpc
-
 decode Traps.mpc
 Traps 45642D7E Flash    26
 imports:
