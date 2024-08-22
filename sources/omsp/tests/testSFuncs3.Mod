@@ -63,9 +63,9 @@ END testSFuncs3.
 
 OMSPTool.DecObj testSFuncs3.mpc
 decode testSFuncs3.mpc
-testSFuncs3 E31C1F2B Flash   224
+testSFuncs3 E31C1F2B Flash   216
 imports:
-	testSFuncs2 6353DF1C
+	testSFuncs2 E55368AA
 type descriptors
  0006 FFFF FFFF FFFF
 data     6
@@ -76,19 +76,20 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 00CE
+ 00C6
 fixup procedures chains
- 009C     1	 0004
+ 009C     0	 0000
+ 0098     1	 0004
 fixup handlers chains
 fixup data chains
- 00A8     0	 0000
- 0090     1	 0003
- 0098     1	 0002
+ 00A0     0	 0000
+ 008C     1	 0003
+ 0094     1	 0002
 fixup constants chains
- 0086     0	 0008
+ 0082     0	 0008
 fixup types chains
-entry =  00CE
-code   208
+entry =  00C6
+code   200
  0000	     8031	SUB #20,SP
  0002	     0014
  0004	     40B1	MOV #0,18(SP)
@@ -119,77 +120,73 @@ code   208
  0036	     40B1	MOV #0,18(SP)
  0038	     0000
  003A	     0012
- 003C	     400F	MOV PC,R15
- 003E	     803F	SUB #62,R15
- 0040	     003E
- 0042	     4F81	MOV R15,18(SP)
- 0044	     0012
- 0046	     40B1	MOV #0,18(SP)
- 0048	     0000
- 004A	     0012
- 004C	     410F	MOV SP,R15
- 004E	     523F	ADD #8,R15
- 0050	     4F81	MOV R15,18(SP)
+ 003C	     40B1	MOV #0,18(SP)
+ 003E	     0000
+ 0040	     0012
+ 0042	     40B1	MOV #0,18(SP)
+ 0044	     0000
+ 0046	     0012
+ 0048	     410F	MOV SP,R15
+ 004A	     523F	ADD #8,R15
+ 004C	     4F81	MOV R15,18(SP)
+ 004E	     0012
+ 0050	     4181	MOV SP,18(SP)
  0052	     0012
- 0054	     4181	MOV SP,18(SP)
+ 0054	     8391	SUB #1,18(SP)
  0056	     0012
- 0058	     8391	SUB #1,18(SP)
- 005A	     0012
- 005C	     23FD	JNE #-3, goes to  0058
- 005E	     5391	ADD #1,18(SP)
+ 0058	     23FD	JNE #-3, goes to  0054
+ 005A	     5391	ADD #1,18(SP)
+ 005C	     0012
+ 005E	     9381	CMP #0,18(SP)
  0060	     0012
- 0062	     9381	CMP #0,18(SP)
- 0064	     0012
- 0066	     23FB	JNE #-5, goes to  005E
- 0068	     40B1	MOV #6,18(SP)
- 006A	     0006
- 006C	     0012
- 006E	     40B1	MOV #100,6(SP)
- 0070	     0064
- 0072	     0006
- 0074	     4191	MOV 18(SP),16(SP)
- 0076	     0012
- 0078	     0010
- 007A	     5031	ADD #20,SP
- 007C	     0014
- 007E	     4130	RET
- 0080	     8031	SUB #16,SP
- 0082	     0010
- 0084	     4038	MOV #6,R8
- 0086	     0006
- 0088	     4408	MOV R4,R8
- 008A	     4508	MOV R5,R8
- 008C	     4708	MOV R7,R8
- 008E	     403A	MOV #40,R10
- 0090	     0028
- 0092	     532A	ADD #2,R10
- 0094	     4A08	MOV R10,R8
- 0096	     4038	MOV #50,R8
- 0098	     0032
- 009A	     4038	MOV #56,R8
- 009C	     0038
- 009E	     400A	MOV PC,R10
- 00A0	     803A	SUB #160,R10
- 00A2	     00A0
- 00A4	     4A08	MOV R10,R8
- 00A6	     4038	MOV #72,R8
- 00A8	     0048
- 00AA	     410A	MOV SP,R10
- 00AC	     523A	ADD #8,R10
- 00AE	     4A08	MOV R10,R8
- 00B0	     4108	MOV SP,R8
- 00B2	     8318	SUB #1,R8
- 00B4	     23FE	JNE #-2, goes to  00B2
- 00B6	     5318	ADD #1,R8
- 00B8	     9308	CMP #0,R8
- 00BA	     23FD	JNE #-3, goes to  00B6
- 00BC	     4038	MOV #6,R8
- 00BE	     0006
- 00C0	     40B1	MOV #100,6(SP)
- 00C2	     0064
- 00C4	     0006
- 00C6	     4809	MOV R8,R9
- 00C8	     5031	ADD #16,SP
- 00CA	     0010
- 00CC	     4130	RET
- 00CE	     4130	RET
+ 0062	     23FB	JNE #-5, goes to  005A
+ 0064	     40B1	MOV #6,18(SP)
+ 0066	     0006
+ 0068	     0012
+ 006A	     40B1	MOV #100,6(SP)
+ 006C	     0064
+ 006E	     0006
+ 0070	     4191	MOV 18(SP),16(SP)
+ 0072	     0012
+ 0074	     0010
+ 0076	     5031	ADD #20,SP
+ 0078	     0014
+ 007A	     4130	RET
+ 007C	     8031	SUB #16,SP
+ 007E	     0010
+ 0080	     4038	MOV #6,R8
+ 0082	     0006
+ 0084	     4408	MOV R4,R8
+ 0086	     4508	MOV R5,R8
+ 0088	     4708	MOV R7,R8
+ 008A	     403A	MOV #40,R10
+ 008C	     0028
+ 008E	     532A	ADD #2,R10
+ 0090	     4A08	MOV R10,R8
+ 0092	     4038	MOV #50,R8
+ 0094	     0032
+ 0096	     4038	MOV #56,R8
+ 0098	     0038
+ 009A	     4038	MOV #62,R8
+ 009C	     003E
+ 009E	     4038	MOV #68,R8
+ 00A0	     0044
+ 00A2	     410A	MOV SP,R10
+ 00A4	     523A	ADD #8,R10
+ 00A6	     4A08	MOV R10,R8
+ 00A8	     4108	MOV SP,R8
+ 00AA	     8318	SUB #1,R8
+ 00AC	     23FE	JNE #-2, goes to  00AA
+ 00AE	     5318	ADD #1,R8
+ 00B0	     9308	CMP #0,R8
+ 00B2	     23FD	JNE #-3, goes to  00AE
+ 00B4	     4038	MOV #6,R8
+ 00B6	     0006
+ 00B8	     40B1	MOV #100,6(SP)
+ 00BA	     0064
+ 00BC	     0006
+ 00BE	     4809	MOV R8,R9
+ 00C0	     5031	ADD #16,SP
+ 00C2	     0010
+ 00C4	     4130	RET
+ 00C6	     4130	RET

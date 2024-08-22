@@ -234,8 +234,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = B.Const THEN alloc(x);
       IF x.type.form = B.Proc THEN
         IF x.c > 0 THEN S.Mark("not allowed")
-        ELSIF x.c = 0 THEN A.PutDO(mcode, A.MOV, pc, x, A.Word); (*Put address of next statement in RH*)
-          t.ofs := mcode.pc - x.a; A.PutDO(mcode, A.SUB, t, x, A.Word) (*substract offset to compute absolute address*)
         ELSE sva.am := A.Immediate (*imported*); A.PutDO(mcode, A.MOV, sva, x, A.Word)
         END
       ELSE t.ofs := x.a; A.PutDO(mcode, A.MOV, t, x, A.Word)
@@ -304,9 +302,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF x.mode = B.Const THEN
       IF x.type.form = B.Proc THEN
         IF x.c > 0 THEN S.Mark("not allowed")
-        ELSIF x.c = 0 THEN A.PutDO(mcode, A.MOV, pc, rh, A.Word); (*Put address of next statement in RH*)
-          t.ofs := mcode.pc - x.a; A.PutDO(mcode, A.SUB, t, rh, A.Word); (*substract offset to compute absolute address*)
-          A.PutSO(mcode, A.PUSH, rh, A.Word)
         ELSE sva.am := A.Immediate (*imported*); A.PutSO(mcode, A.PUSH, sva, A.Word)
         END
       ELSE t.ofs := x.a; A.PutSO(mcode, A.PUSH, t, bw)
@@ -325,7 +320,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END push;
 
-  PROCEDURE adr(VAR x:Item);
+  PROCEDURE Adr*(VAR x:Item);
     VAR t!: Item;
   BEGIN t.mode := B.Const; t.type := B.intType; t.obj := NIL;
     IF x.mode = B.Var THEN
@@ -341,14 +336,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.a # 0 THEN t.a := x.a; PutDO(A.ADD, t, x) END
     ELSE S.Mark("not addressable")
     END
-  END adr;
+  END Adr;
 
   PROCEDURE loadAdr(VAR x: Item);
-  BEGIN adr(x); load(x)
+  BEGIN Adr(x); load(x)
   END loadAdr;
 
   PROCEDURE pushAdr(VAR x: Item);
-  BEGIN adr(x); push(x)
+  BEGIN Adr(x); push(x)
   END pushAdr;
 
   PROCEDURE loadCond(VAR x: Item);
@@ -1157,14 +1152,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     free(x);
     SetCC(x, A.NE)
   END Bit;
-
-  PROCEDURE Adr*(VAR x: Item);
-  BEGIN
-    IF (x.mode = B.Const) & (x.type.form = B.Proc) THEN
-      IF x.c = 0 THEN load(x) ELSE x.a := A.C16 END
-    ELSE adr(x)
-    END
-  END Adr;
 
   PROCEDURE Condition*(VAR x: Item);
   BEGIN (*x.mode = Const*) SetCC(x, x.a)
