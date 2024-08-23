@@ -1290,7 +1290,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END;
       obj := obj.next
     END;
-    WriteWord(R, 0);
+    WriteWord(R, 0)
   END WriteFixup;
 
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT);
@@ -1331,7 +1331,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     obj := B.topScope.next;
     WHILE obj # NIL DO  (*entries*)
       IF obj.exno # 0 THEN
-        IF (obj.class = B.Const) & (obj.type.form = B.Proc) OR (obj.class = B.Var) THEN WriteWord(R, obj.val)
+        IF (obj.class = B.Const) & (obj.type.form IN {B.Proc, B.Handler}) OR (obj.class = B.Var) THEN WriteWord(R, obj.val)
         ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN WriteWord(R, GetStringAddress(obj.val MOD 10000H))
         ELSIF obj.class = B.Typ THEN
           IF obj.type.form = B.Record THEN WriteWord(R, obj.type.len)

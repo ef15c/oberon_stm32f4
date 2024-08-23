@@ -78,8 +78,10 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     IF SYSTEM.VAL(INTEGER, op) = 4130H THEN Texts.WriteString(W, "RET");
     ELSIF op*SOMSK = SO THEN (*Single-operand (Format II) instructions*)
       t := LSR(SYSTEM.VAL(INTEGER, op), 7) MOD 8; Texts.WriteString(W, mnemo2[t]);
-      IF t IN {0, 2, 4} THEN IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END END;
-      Texts.Write(W, " "); WriteSD(W, c, i, op, b2 MOD 10H)
+      IF t # 6 THEN
+        IF t IN {0, 2, 4} THEN IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END END;
+        Texts.Write(W, " "); WriteSD(W, c, i, op, b2 MOD 10H)
+      END
     ELSIF op*JMPMSK = JMP THEN Texts.WriteString(W, "J"); Texts.WriteString(W, mnemo1[LSR(b1, 2) MOD 8]);
       WritePCOffset(W, i + base, b1 MOD 4*100H + b2);
     ELSE t := b1 DIV 10H;

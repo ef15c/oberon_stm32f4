@@ -102,21 +102,19 @@ vector table
 entries
  000C 0000
 fixup procedures chains
- 0019     0	 0000
 fixup handlers chains
+ 0019     0	 0000
 fixup data chains
 fixup constants chains
 fixup types chains
- 000C    79	 0000
-entry =  0000
-format error
+entry =  000C
 code    46
  0000	     E3D2	XOR.B #1,&33
  0002	     0021
  0004	     50B2	ADD #-15536,&370
  0006	     C350
  0008	     0172
- 000A	     1300	RETI PC
+ 000A	     1300	RETI
  000C	     40B2	MOV #23168,&288
  000E	     5A80
  0010	     0120
