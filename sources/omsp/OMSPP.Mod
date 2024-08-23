@@ -451,6 +451,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         CheckSet(x); CheckReadOnly(x); CheckInt(y); G.Include(pno-2, x, y)
       ELSIF pno = 4 THEN CheckBool(x); G.Assert(x)
       ELSIF pno IN {5, 6, 7, 8} THEN G.Logical(pno-5, x, y)
+      ELSIF pno IN {9, 10} THEN G.LogicalSR(pno-9, x)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 13 THEN G.ClrC
       ELSIF pno = 15 THEN G.ADC(x, y)
@@ -918,7 +919,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym);
     IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt vector routine must be global") END;
       int := TRUE; L := 0;
-      REPEAT S.Get(sym); v[L] := S.ival; INC(L); Check(S.int, "missing vector number"); S.Get(sym) UNTIL sym # S.comma;
+      REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[L] := x.a; INC(L); UNTIL sym # S.comma;
     END;
     IF sym = S.arrow THEN S.Get(sym); nofusedregs := S.ival; Check(S.int, "missing register limit");
     ELSE nofusedregs := -1
@@ -931,7 +932,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END;
       G.ClearPRU; type.size := G.WordSize; proc.type := type; proc.val := -1; proc.lev := level; 
       CheckExport(proc.expo);
-      IF int & ~proc.expo THEN proc.expo := TRUE; S.Mark("add asterisk to export interrupt handler") END;
+      IF int & ~proc.expo THEN proc.expo := TRUE; S.Mark("add asterisk after interrupt handler name") END;
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
       B.OpenScope; INC(level); type.base := B.noType;
       ProcedureType(type, parblksize);  (*formal parameter list*)

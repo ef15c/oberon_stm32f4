@@ -62,7 +62,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     vector: ARRAY 32 OF INTEGER;
     
     relmap, urelmap: ARRAY 4 OF INTEGER;    (*condition codes for relations*)
-    cm1, c0, c1, c2, pc, sp, r4, r15: Item-; (*constant Items set by module initialization code*)
+    cm1, c0, c1, c2, pc, sp, sr, r4, r15: Item-; (*constant Items set by module initialization code*)
     rh: Item;
     curImport: INTEGER;
 
@@ -1088,6 +1088,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END; free(z); free(y); free(x)
   END Copy;
 
+  PROCEDURE LogicalSR*(fct: INTEGER; VAR x: Item);
+    VAR op: BYTE; t!: Item;
+  BEGIN
+    IF fct = 0 THEN op := A.BIC ELSE op := A.BIS END;
+    t := sr; PutDO(op, x, t); free(x)
+  END LogicalSR;
+
   (*In-line code functions*)
 
   PROCEDURE Abs*(VAR x: Item);
@@ -1374,7 +1381,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
 BEGIN A.SetProcs(GetOffset, AllocR, freeR);
   initConst(cm1, -1); initConst(c0, 0); initConst(c1, 1); initConst(c2, 2);
-  initReg(pc, A.PC); initReg(sp, A.SP); initReg(r4, 4); initReg(r15, 15);
+  initReg(pc, A.PC); initReg(sp, A.SP); initReg(sr, A.SR); initReg(r4, 4); initReg(r15, 15);
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; relmap[3] := A.GE;
   urelmap[0] := A.EQ; urelmap[1] := A.NE; urelmap[2] := A.NC; urelmap[3] := A.C;
   B.SetRegRTProcCallback(RegisterRTproc)

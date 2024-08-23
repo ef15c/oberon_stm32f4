@@ -445,5 +445,7 @@ BEGIN
   enter("SIZE", SFunc, intType, 181);
   enter("ADR", SFunc, intType, 171);
   enter("VAL", SFunc, intType, 162);
-  enter("COPY", SProc, noType, 123) (*procedures*)
+  enter("COPY", SProc, noType, 123); (*procedures*)
+  enter("BIC_SR", SProc, noType, 91);
+  enter("BIS_SR", SProc, noType, 101)
 END OMSPB.

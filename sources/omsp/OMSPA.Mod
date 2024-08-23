@@ -197,6 +197,15 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |                   B               |
     | opc/ode / WAd/Dreg| *)
 
+  PROCEDURE Put2(VAR c: ModuleCodeDesc; op, register: BYTE; params: SET);
+  BEGIN
+    IF enabled THEN
+      c.code[c.pc+1] := LSR(op, 1);
+      c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + register;
+      c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
+    END
+  END Put2;
+
   PROCEDURE PutSO*(VAR c: ModuleCodeDesc; op: INTEGER; ds: Item; params: SET);
     VAR emitDSOff: BOOLEAN; spi, t, tds: Item;
   BEGIN (*emit format II instruction*) ASSERT(params = params*Byte);
@@ -211,13 +220,9 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     ELSE ASSERT(op < 100H);
       encSrc(op, tds.reg, tds.am, tds.ofs, emitDSOff, params);
 
-      IF enabled THEN
-        ASSERT(tds.reg < 16);
-        c.code[c.pc+1] := LSR(op, 1);
-        c.code[c.pc]   := LSL(op MOD C1, 7) + ORD(params) + tds.reg;
-        c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2);
-        IF emitDSOff THEN Emit(c, getOfs(ds)) END
-      END
+      ASSERT(tds.reg < 16);
+      Put2(c, op, tds.reg, params);
+      IF emitDSOff THEN Emit(c, getOfs(ds)) END
     END
   END PutSO;
 
@@ -237,6 +242,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   BEGIN
     IF op = RET THEN Put1(c, MOV, SP, PC, IRAm + Rdm + Word)
     ELSIF op = CLRC THEN Put1(c, BIC, CG2, SR, Im + Rdm + Word)
+    ELSIF op = RETI THEN Put2(c, op, 0, {})
     ELSE ASSERT(FALSE)
     END
   END PutNO;
