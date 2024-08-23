@@ -115,9 +115,9 @@ CAPD*               = SYSTEM.VAL(PBYTE, 005BH);
 (*************************************************************
 * Flash Memory
 *************************************************************)
-FCTL1*              = SYSTEM.VAL(PBYTE, 0128H);
-FCTL2*              = SYSTEM.VAL(PBYTE, 012AH);
-FCTL3*              = SYSTEM.VAL(PBYTE, 012CH);
+FCTL1*              = SYSTEM.VAL(PINTEGER, 0128H);
+FCTL2*              = SYSTEM.VAL(PINTEGER, 012AH);
+FCTL3*              = SYSTEM.VAL(PINTEGER, 012CH);
 (************************************************************
 * DIGITAL I/O Port1/2 Pull up / Pull down Resistors
 ************************************************************)
@@ -376,7 +376,7 @@ code     2
 
 OMSPTool.DecSym msp430g2553.sms
 decode msp430g2553.sms
-msp430g2553 A9A7F1F7  1
+msp430g2553 B7A7F8F7  1
    1 C [^6]       1
    1 Z [^6]       2
    1 N [^6]       4
@@ -421,9 +421,9 @@ msp430g2553 A9A7F1F7  1
    1 CACTL1 [^14]      89
    1 CACTL2 [^14]      90
    1 CAPD [^14]      91
-   1 FCTL1 [^14]     296
-   1 FCTL2 [^14]     298
-   1 FCTL3 [^14]     300
+   1 FCTL1 [^7]     296
+   1 FCTL2 [^7]     298
+   1 FCTL3 [^7]     300
    1 P1IN [^14]      32
    1 P1OUT [^14]      33
    1 P1DIR [^14]      34
