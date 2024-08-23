@@ -913,10 +913,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Fixup;
 
   PROCEDURE PrepCall*(VAR x: Item; VAR r, s: LONGINT);
-  BEGIN (*x.type.form = B.Proc*)
-    IF x.mode > B.Par THEN load(x) END ;
+    VAR xr: INTEGER;
+  BEGIN (*x.type.form = B.Proc*) xr := -1;
+    IF x.mode > B.Par THEN load(x); xr := x.r; DEC(RH); ASSERT(xr = RH) END ;
     r := RH; IF RH > 0 THEN OM4A.SaveRegs(mcode, RH, frame); OfsPTOS(r, r, TRUE); RH := 0 END;
-    s := SH; IF SH > 0 THEN OM4A.SaveFPRegs(mcode, SH, frame); OfsPTOS(s, s, TRUE); SH := 0 END
+    s := SH; IF SH > 0 THEN OM4A.SaveFPRegs(mcode, SH, frame); OfsPTOS(s, s, TRUE); SH := 0 END;
+    IF xr >= 0 THEN OM4A.PushRegs(mcode, xr, xr); INC(frame, 4); OfsPTOS(1, 1, TRUE) END;
   END PrepCall;
 
   PROCEDURE Call*(VAR x: Item; r, s: LONGINT);
@@ -936,9 +938,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSE
       IF x.mode <= B.Par THEN load(x); DEC(RH)
-      ELSE IF RH < 8 THEN (*POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + LSL(1, RH))
-        ELSE (*POP T3*) OM4A.Put0(mcode, OM4A.POPT3 + RH*OM4A.C12) END; OfsPTOS(-1, -1, TRUE);
-        DEC(r); DEC(frame, 4)
+      ELSE
+        IF RH < 8 THEN (*POP T1*) OM4A.Put1(mcode, OM4A.POPT1 + LSL(1, RH))
+        ELSE (*POP T3*) OM4A.Put0(mcode, OM4A.POPT3 + RH*OM4A.C12) 
+        END; OfsPTOS(-1, -1, TRUE); DEC(frame, 4)
       END;
       (*No NIL check needed because every even address will cause an usage fault exception
         because only thumb instruction are supported*)

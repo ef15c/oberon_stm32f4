@@ -1,0 +1,99 @@
+MODULE testBug;
+  TYPE ptr = POINTER TO tr;
+    tf = PROCEDURE(pr: ptr): INTEGER;
+    tr = RECORD fp: tf END;
+
+  VAR r: ptr; i: INTEGER;
+
+  PROCEDURE p(f: ptr): INTEGER; RETURN 0 END p;
+
+BEGIN NEW(r); r.fp := p; i := r.fp(r); i := i+i+(r.fp(r))
+END testBug.
+
+OMSPTool.DecObj testBug.mpc
+
+OM4Tool.DecObj testBug.m4c
+decode testBug.m4c
+testBug 74DADAB7   1   236
+imports:
+type descriptors
+ 00000020 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF
+data     8
+strings
+
+code
+commands:
+entries
+ 00000010
+pointer refs
+    20
+fixP =        0
+fixD =      176
+fixT =        0
+entry =       16
+ 00000000	     B401	PUSH R0
+ 00000002	     B500	PUSH LR
+ 00000004	     2000	MOVS R0 #0
+ 00000006	 F85DEB04	LDR LR [ SP ] + 4
+ 0000000A	 F11D0D04	ADDS SP SP #4
+ 0000000E	     4770	BX LR
+ 00000010	     B500	PUSH LR
+ 00000012	 00000009	MOV R0 lower 16-bits base(0)
+ 00000016	 00000014	MOVT R0 higher 16-bits base + 20
+ 0000001A	 10000004	MOV R1 lower 16-bits base(0)
+ 0000001E	 00000000	MOVT R1 higher 16-bits base + 0
+ 00000022	     DF00	SVC #0
+ 00000024	 00000005	MOV R0 lower 16-bits base(0)
+ 00000028	 00000014	MOVT R0 higher 16-bits base + 20
+ 0000002C	     6800	LDR R0 [ R0 + 0]
+ 0000002E	     2800	CMP R0 #0
+ 00000030	     BF08	IT EQ
+ 00000032	 EC0014D4	TrapEQ 4 at pos 205
+ 00000036	 F000F800	BL #0, goes to  0000003A
+ 0000003A	 F1BE013A	SUBS R1 LR #58
+ 0000003E	     6001	STR R1 [ R0 + 0]
+ 00000040	 0000000E	MOV R0 lower 16-bits base(0)
+ 00000044	 00000014	MOVT R0 higher 16-bits base + 20
+ 00000048	     6800	LDR R0 [ R0 + 0]
+ 0000004A	     2800	CMP R0 #0
+ 0000004C	     BF08	IT EQ
+ 0000004E	 EC0015D4	TrapEQ 4 at pos 221
+ 00000052	     6800	LDR R0 [ R0 + 0]
+ 00000054	     B401	PUSH R0
+ 00000056	 0000000B	MOV R0 lower 16-bits base(0)
+ 0000005A	 00000014	MOVT R0 higher 16-bits base + 20
+ 0000005E	     6800	LDR R0 [ R0 + 0]
+ 00000060	     BC02	POP R1
+ 00000062	     4788	BLX R1
+ 00000064	 10000007	MOV R1 lower 16-bits base(0)
+ 00000068	 00000018	MOVT R1 higher 16-bits base + 24
+ 0000006C	     6008	STR R0 [ R1 + 0]
+ 0000006E	 00000005	MOV R0 lower 16-bits base(0)
+ 00000072	 00000018	MOVT R0 higher 16-bits base + 24
+ 00000076	     6800	LDR R0 [ R0 + 0]
+ 00000078	 10000005	MOV R1 lower 16-bits base(0)
+ 0000007C	 00000018	MOVT R1 higher 16-bits base + 24
+ 00000080	     6809	LDR R1 [ R1 + 0]
+ 00000082	     1840	ADDS R0 R0 R1
+ 00000084	 10000006	MOV R1 lower 16-bits base(0)
+ 00000088	 00000014	MOVT R1 higher 16-bits base + 20
+ 0000008C	     6809	LDR R1 [ R1 + 0]
+ 0000008E	     2900	CMP R1 #0
+ 00000090	     BF08	IT EQ
+ 00000092	 EC001704	TrapEQ 4 at pos 240
+ 00000096	     6809	LDR R1 [ R1 + 0]
+ 00000098	     B401	PUSH R0
+ 0000009A	     B402	PUSH R1
+ 0000009C	 0000000C	MOV R0 lower 16-bits base(0)
+ 000000A0	 00000014	MOVT R0 higher 16-bits base + 20
+ 000000A4	     6800	LDR R0 [ R0 + 0]
+ 000000A6	     BC02	POP R1
+ 000000A8	     4788	BLX R1
+ 000000AA	     4601	MOV R1 R0
+ 000000AC	     BC01	POP R0
+ 000000AE	     1840	ADDS R0 R0 R1
+ 000000B0	 1000000A	MOV R1 lower 16-bits base(0)
+ 000000B4	 00000018	MOVT R1 higher 16-bits base + 24
+ 000000B8	     6008	STR R0 [ R1 + 0]
+ 000000BA	 F85DEB04	LDR LR [ SP ] + 4
+ 000000BE	     4770	BX LR
