@@ -95,10 +95,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END RegisterRTproc;
 
-  PROCEDURE OfsPTOS(offset: INTEGER; increment: BOOLEAN);
+  PROCEDURE OfsPTOS(frameofs, returnofs: INTEGER; increment: BOOLEAN);
+    VAR offset: INTEGER;
   BEGIN
-    IF increment THEN INC(offset, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
-      IF offset # frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos THEN
+    IF increment THEN
+      INC(frameofs, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos MOD 10000H);
+      INC(returnofs, frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos DIV 10000H);
+    END; offset := returnofs*10000H + frameofs;
+    IF offset # frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos THEN
       frmOfsSegs.Segs[frmOfsSegs.NofSegs].end := mcode.pc;
       INC(frmOfsSegs.NofSegs); frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos := offset
     END
@@ -610,7 +614,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF AllocUp THEN S.Mark("call not allowed in leaf proc") END;
     IF x.mode > B.Par THEN load(x) END;
     r := RIU; or := x.obj.type.ur*RIU; (*overwritten registers currently in use by the caller*)
-    IF or # {} THEN n := A.PushRegs(mcode, or); INC(frame, WordSize*n); OfsPTOS(n, TRUE) END;
+    IF or # {} THEN n := A.PushRegs(mcode, or); INC(frame, WordSize*n); OfsPTOS(n, n, TRUE) END;
     IF x.obj.type.leaf THEN SetRegisterAllocation;
       IF x.type.base.form # B.NoTyp THEN rh.reg := AllocR() END (*allocate result register*)
     END
@@ -623,7 +627,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
         PutSO(A.CALL, x); free(x)
-      ELSE rh.reg := AllocR(); PutSO(A.POP, rh); OfsPTOS(-1, TRUE); EXCL(r, rh.reg); DEC(frame, WordSize);
+      ELSE rh.reg := AllocR(); PutSO(A.POP, rh); OfsPTOS(-1, -1, TRUE); EXCL(r, rh.reg); DEC(frame, WordSize);
         IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, rh); Trap(A.EQ, 5) END;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
       END;
@@ -633,7 +637,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE (*function*) 
       x.tmp := TRUE; x.mode := Reg; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
       RIU := r; AllocUp := FALSE; RB := 15; INCL(RIU, rr.reg);
-      IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, TRUE) END
+      IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, -n, TRUE) END
     END
   END Call;
 
@@ -994,17 +998,17 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
     VAR t!: Item; regl, regh: BYTE; n: INTEGER;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    OfsPTOS(0, FALSE); frame := 0;
+    OfsPTOS(0, 0, FALSE); frame := 0;
     IF size >= A.C16 THEN S.Mark("local variables size exeeded") END;
 
     IF size # 0 THEN
-      t.ofs := size; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS(size DIV 2, TRUE)
+      t.ofs := size; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS(size DIV WordSize, size DIV WordSize, TRUE)
     END;
 
     IF nofusedregs >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
       IF AllocUp THEN regl := A.CG2 + 1; RL := nofusedregs + regl; regh := RL - 1 ELSE regh :=  15; RL := 15 - nofusedregs; regl := RL + 1 END;
       IF regh > regl THEN
-        n := A.PushRegs(mcode, {regl .. regh}); OfsPTOS(nofusedregs, TRUE) (*save registers before use*)
+        n := A.PushRegs(mcode, {regl .. regh}); INC(frame, nofusedregs*WordSize); OfsPTOS(nofusedregs, nofusedregs, TRUE) (*save registers before use*)
       END
     ELSE IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
     END; VRS := RIU;
@@ -1018,10 +1022,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
     IF nofusedregs >= 0 THEN
       IF AllocUp THEN regl := A.CG2 + 1; RL := nofusedregs + regl; regh := RL - 1 ELSE regh :=  15; RL := 15 - nofusedregs; regl := RL + 1 END;
-      IF regh > regl THEN n := A.PopRegs(mcode, {regl .. regh}); OfsPTOS(-nofusedregs, TRUE) END;
+      IF regh > regl THEN n := A.PopRegs(mcode, {regl .. regh}); DEC(frame, nofusedregs*WordSize); OfsPTOS(-nofusedregs, nofusedregs, TRUE) END;
       IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
     END;
-    IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); OfsPTOS(-size DIV 2, TRUE) END;
+    IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); OfsPTOS(-size DIV WordSize, -size DIV WordSize, TRUE) END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
     IF int THEN A.PutNO(mcode, A.RETI) ELSE A.PutNO(mcode, A.RET) END;
     AllocUp := FALSE; RIU := {}; RB := 15; VRS := RIU
@@ -1173,7 +1177,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SetDataSize;
 
   PROCEDURE Header*;
-  BEGIN entry := mcode.pc; OfsPTOS(0, FALSE); RB := 15
+  BEGIN entry := mcode.pc; OfsPTOS(0, 0, FALSE); RB := 15
   END Header;
 
   PROCEDURE WriteWord(VAR R: Files.Rider; w: INTEGER);
@@ -1281,7 +1285,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       i, sx, suax, nofimps, fixadr, flashSize: LONGINT;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
-  BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, TRUE);
+  BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, -1, TRUE);
     obj := B.topScope.next; nofimps := 0;
     WHILE obj # NIL DO
       IF (obj.class = B.Mod) & (obj.dsc # B.system) THEN INC(nofimps); (*count imports*)
@@ -1346,7 +1350,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF (sx < 255) & (mcode.pos[i] = mcode.pos[i-1]) THEN INC(sx) ELSE Files.WriteByte(R, sx); Files.WriteInt(R, mcode.pos[i - 1]); sx := 1 END
     END; Files.WriteByte(R, sx); Files.WriteInt(R, mcode.pos[mcode.pc DIV 2 - 1]); Files.Register(F);
     (*write word offset with caller top of stack*)
-    OfsPTOS(-1, FALSE); (*close last segment*) B.MakeFileName(name, modid, ".r43"); F := Files.New(name); Files.Set(R, F, 0); 
+    OfsPTOS(-1, -1, FALSE); (*close last segment*) B.MakeFileName(name, modid, ".r43"); F := Files.New(name); Files.Set(R, F, 0); 
     Files.WriteInt(R, frmOfsSegs.NofSegs);
     FOR i := 0 TO frmOfsSegs.NofSegs DO Files.WriteInt(R, frmOfsSegs.Segs[i].end); Files.WriteInt(R, frmOfsSegs.Segs[i].ofsptos) END;
     Files.Register(F)
