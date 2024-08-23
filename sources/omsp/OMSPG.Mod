@@ -162,6 +162,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE S.Mark("reg wild free"); ASSERT(FALSE) END
   END freeR;
 
+  PROCEDURE freeSet(rs: SET);
+    VAR r: INTEGER;
+  BEGIN IF rs # {} THEN
+    FOR r := 0 TO 15 DO IF rs*{r} # {} THEN freeR(r) END END
+    END
+  END freeSet;
+
   PROCEDURE free(VAR x: Item);
   BEGIN IF x.tmp THEN freeR(x.reg); x.tmp := FALSE END
   END free;
@@ -256,12 +263,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       FixLink(x.b); t := c1; A.PutDO(mcode, A.MOV, t, x, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
       A.fix(mcode, pc0, mcode.pc - pc0 - 2); FixLink(x.a); t := c0; A.PutDO(mcode, A.MOV, t, x, A.Word);
       A.fix(mcode, pc1, mcode.pc - pc1 - 2)
-    ELSE ASSERT(FALSE)
+    ELSE S.Mark("bad mode in load"); alloc(x)
     END;
     x.mode := Reg; x.tmp := TRUE; x.am := A.Register; x.ofs := 0
   END load;
 
-  PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba: INTEGER; VAR bw: SET);
+  PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba, bw: SET);
     VAR ti!: Item;
   BEGIN IF (op = A.PUSH) OR (op = A.CALL) THEN dst := FALSE END;
     IF i.type = B.longIntType THEN S.Mark("LONGINT not implemented") END;
@@ -276,7 +283,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       i.am := A.Immediate;
       IF i.type.form = B.Proc THEN i.ofs := A.C16 END;
       IF dst THEN S.Mark("not writable"); i.am := A.Absolute END
-    ELSIF i.mode = B.Par THEN ASSERT(nba = -1); rh.reg := AllocR(); nba := rh.reg;
+    ELSIF i.mode = B.Par THEN rh.reg := AllocR(); INCL(nba, rh.reg);
       ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
       A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
     ELSE load(i)
@@ -284,17 +291,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END setRAO;
 
   PROCEDURE PutDO(op: BYTE; VAR src, dst: Item);
-    VAR bw: SET; nba: INTEGER;
-  BEGIN nba := -1; bw := A.Word; setRAO(op, dst, TRUE, nba, bw); setRAO(op, src, FALSE, nba, bw);
-    A.PutDO(mcode, op, src, dst, bw);
-    IF nba >= 0 THEN freeR(nba) END
+    VAR bw, nba: SET;
+  BEGIN nba := {}; bw := A.Word; setRAO(op, dst, TRUE, nba, bw); setRAO(op, src, FALSE, nba, bw);
+    A.PutDO(mcode, op, src, dst, bw); freeSet(nba)
   END PutDO;
 
   PROCEDURE PutSO(op: INTEGER; VAR sd: Item);
-    VAR bw: SET; nba: INTEGER;
-  BEGIN nba := -1; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
-    A.PutSO(mcode, op, sd, bw);
-    IF nba >= 0 THEN freeR(nba) END
+    VAR bw, nba: SET;
+  BEGIN nba := {}; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
+    A.PutSO(mcode, op, sd, bw); freeSet(nba)
   END PutSO;
 
   PROCEDURE push(VAR x: Item);
@@ -321,6 +326,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
       FixLink(x.b); t := c1; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
       FixLink(x.a); t := c0; A.PutSO(mcode, A.MOV, t, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
+    ELSE S.Mark("bad mode in push")
     END
   END push;
 
@@ -454,7 +460,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.c >= 0 THEN x.a := x.a + y.val
       ELSE loadAdr(x); x.mode := RegI; x.a := y.val
       END
-    ELSIF x.mode = RegI THEN x.a := x.a + y.val
+    ELSIF x.mode = RegI THEN INC(x.a, y.val)
     ELSIF x.mode = B.Par THEN INC(x.b, y.val)
     END
   END Field;
