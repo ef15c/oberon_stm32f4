@@ -7,4 +7,4 @@ OMSPP.Compile testFunc.Mod testFor.Mod testDeRef.Mod testCond.Mod msp430g2553.Mo
 testIntRelat.Mod Arith.Mod/s testIntArith.Mod testInEx.Mod testInc.Mod testIfThen.Mod testLoadAdr.Mod testNeg.Mod
 testParam.Mod testProc.Mod testRecord.Mod testSet.Mod testStore.Mod testString.Mod/s testImportString.Mod
 testStringRelat.Mod testTypTag.Mod testSFuncs.Mod testSFuncs2.Mod testSFuncs3.Mod testSProcs.Mod testArray.Mod
-testExport.Mod testImport.Mod testRepeat.Mod ~
+testExport.Mod testImport.Mod testRepeat.Mod testSelector.Mod msp430g2xx3ta01.Mod testVector.Mod ~

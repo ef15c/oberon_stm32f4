@@ -711,6 +711,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: LONGINT);
     VAR obj!: B.Object; size: LONGINT; nofpar: INTEGER; leaf, inreg: BOOLEAN;
   BEGIN ptype.base := B.noType; size := parblksize; nofpar := 0; ptype.dsc := NIL; leaf := FALSE;
+    ptype.ur := {0..15}; (*all registers can be destroyed for dynamic procedures*)
     IF sym = S.lparen THEN
       S.Get(sym);
       IF sym = S.rparen THEN S.Get(sym)
@@ -918,8 +919,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       v: ARRAY 8 OF BYTE;
   BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym);
     IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt vector routine must be global") END;
-      int := TRUE; L := 0;
+      int := TRUE; L := 0; S.Get(sym); IF sym # S.lparen THEN S.Mark("no (") END;
       REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[L] := x.a; INC(L); UNTIL sym # S.comma;
+      Check(S.rparen, "no )")
     END;
     IF sym = S.arrow THEN S.Get(sym); nofusedregs := S.ival; Check(S.int, "missing register limit");
     ELSE nofusedregs := -1
@@ -972,8 +974,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF type.base.form # B.NoTyp THEN
         S.Mark("function without result"); type.base := B.noType
       END;
-      proc.type.ur := G.PRU;
       G.Return(type.base.form, x, locblksize - parblksize - 2, int, nofusedregs);
+      proc.type.ur := G.PRU;
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE;
       IF sym = S.ident THEN

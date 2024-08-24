@@ -148,7 +148,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     | op /Sreg/dWAs/Dreg| *)
 
   PROCEDURE Put1(VAR c: ModuleCodeDesc; op, src, dst: BYTE; params: SET);
-  BEGIN
+  BEGIN ASSERT((op # MOV) OR (src # dst) OR (params # {}));
     IF enabled THEN
       c.code[c.pc+1] := LSL(op, 4) + src;
       c.code[c.pc] := ORD(params) + dst;
