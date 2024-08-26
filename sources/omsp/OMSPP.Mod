@@ -690,7 +690,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   BEGIN inreg := FALSE;
     IF sym = S.var THEN S.Get(sym); cl := B.Par ELSE cl := B.Var END ;
     IdentList(cl, first); FormalType(tp, 0); rdo := FALSE;
-    IF sym = S.times THEN inreg := TRUE; G.SetRegisterAllocation; S.Get(sym) END;
+    IF sym = S.times THEN inreg := TRUE; G.SetAllocationMode(G.Register); S.Get(sym) END;
     IF (cl = B.Var) & (tp.form >= B.Array) THEN cl := B.Par; rdo := TRUE END ;
     IF (tp.form = B.Array) & (tp.len < 0) OR (tp.form = B.Record) THEN
       parsize := 2*G.WordSize  (*open array or record, needs second word for length or type tag*)
@@ -867,7 +867,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       WHILE sym = S.ident DO inreg := FALSE; onetimeinit := FALSE;
         IdentList(B.Var, first); Type(tp);
         IF sym = S.times THEN
-          IF level # 0 THEN haveinregs := TRUE; inreg := TRUE; G.SetRegisterAllocation
+          IF level # 0 THEN haveinregs := TRUE; inreg := TRUE; G.SetAllocationMode(G.Register)
           ELSE S.Mark("remove asterisk")
           END; S.Get(sym) 
         END;
@@ -916,9 +916,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       x!: G.Item;
       locblksize, parblksize, L: LONGINT;
       int, haveinregs: BOOLEAN; nofusedregs: INTEGER;
+      riu: SET;
       v: ARRAY 8 OF BYTE;
   BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym);
-    IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt vector routine must be global") END;
+    IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt handler must be global") END;
       int := TRUE; L := 0; S.Get(sym); IF sym # S.lparen THEN S.Mark("no (") END;
       REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[L] := x.a; INC(L); UNTIL sym # S.comma;
       Check(S.rparen, "no )")
@@ -932,12 +933,13 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       IF int THEN type.form := B.Handler; WHILE L > 0 DO DEC(L); G.SetVector(v[L], proc) END
       ELSE type.form := B.Proc 
       END;
-      G.ClearPRU; type.size := G.WordSize; proc.type := type; proc.val := -1; proc.lev := level; 
+      G.SetRIU({}); G.SetPRU({}); type.size := G.WordSize; proc.type := type; proc.val := -1; proc.lev := level; 
       CheckExport(proc.expo);
       IF int & ~proc.expo THEN proc.expo := TRUE; S.Mark("add asterisk after interrupt handler name") END;
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
       B.OpenScope; INC(level); type.base := B.noType;
       ProcedureType(type, parblksize);  (*formal parameter list*)
+      IF int & (parblksize # 0) THEN S.Mark("params not allowed in handler") END;
       Check(S.semicolon, "no ;"); locblksize := parblksize + G.WordSize; (*return address is between parameters and local variables*)
       Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
       loc := B.topScope.next; (*fix .val offsets with 0 for last local variable*)
@@ -946,7 +948,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         loc := loc.next
       END;
       IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
-        G.resultRegister(x); G.ClearRIU; L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
+        G.resultRegister(x); L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
         loc := B.topScope.next; L := 0;
         WHILE (loc # NIL) & (L < type.nofpar) DO (*allocate registers to parameters, avoiding the result register*)
           IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
@@ -960,10 +962,13 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
       IF sym = S.procedure THEN
-        L := 0; G.FJump(L);
+        riu := G.RIU; proc.type.ur := G.PRU; L := 0; G.FJump(L);
         REPEAT ProcedureDecl; Check(S.semicolon, "no ;") UNTIL sym # S.procedure;
-        G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next
+        G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next;
+        G.SetRIU(riu); G.SetPRU(proc.type.ur) (*restore current procedure RIU and PRU*)
       END;
+      IF isLeaf THEN G.SetAllocationMode(G.Register) ELSE G.SetAllocationMode(G.Stack) END;
+      IF nofusedregs # -1 THEN G.LimitRegisters(nofusedregs) END;
       G.Enter(locblksize - parblksize - 2, int, nofusedregs);
       IF sym = S.begin THEN S.Get(sym); StatSequence END;
       IF sym = S.return THEN
@@ -1071,7 +1076,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           Texts.OpenScanner(S1, T, beg); Texts.Scan(S1);
           IF S1.class = Texts.Name THEN
             Texts.WriteString(W, S1.s); NEW(T); Texts.Open(T, S1.s);
-            IF T.len > 0 THEN S.Init(T, 0); Module END
+            IF T.len > 0 THEN S.Init(T, 0); Module
+            ELSE Texts.WriteString(W, " not found");
+              Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+            END
           END
         END
       END

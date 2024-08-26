@@ -65,6 +65,21 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     END
   END WriteSD;
 
+  PROCEDURE WriteD(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; op: SET);
+    VAR ct: INTEGER; reg: BYTE;
+  BEGIN reg := ORD(op) MOD 10H;
+    IF op*A.Idm = A.Idm THEN (*indexed*) ct := c[i+1]*100H + c[i]; INC(i, 2);
+      IF reg = A.SR THEN (*absolute*) Texts.Write(W, "&"); Texts.WriteInt(W, ct, 1)
+      ELSE Texts.WriteInt(W, WordToInt(ct), 1); Texts.Write(W, "("); WriteReg(W, reg); Texts.Write(W, ")")
+      END
+    ELSE WriteReg(W, reg)
+    END
+  END WriteD;
+
+  PROCEDURE WriteSize(VAR W: Texts.Writer; op: SET);
+  BEGIN IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END
+  END WriteSize;
+
   PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; base: LONGINT);
     CONST 
       SOMSK = {10..15}; SO = {12}; (*Single operand*)
@@ -79,21 +94,20 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     ELSIF op*SOMSK = SO THEN (*Single-operand (Format II) instructions*)
       t := LSR(SYSTEM.VAL(INTEGER, op), 7) MOD 8; Texts.WriteString(W, mnemo2[t]);
       IF t # 6 THEN
-        IF t IN {0, 2, 4} THEN IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END END;
-        Texts.Write(W, " "); WriteSD(W, c, i, op, b2 MOD 10H)
+        IF t IN {0, 2, 4} THEN WriteSize(W, op) END; Texts.Write(W, " ");
+        WriteSD(W, c, i, op, b2 MOD 10H)
       END
     ELSIF op*JMPMSK = JMP THEN Texts.WriteString(W, "J"); Texts.WriteString(W, mnemo1[LSR(b1, 2) MOD 8]);
-      WritePCOffset(W, i + base, b1 MOD 4*100H + b2);
+      WritePCOffset(W, i + base, b1 MOD 4*100H + b2)
     ELSE t := b1 DIV 10H;
       IF t  IN {4..15} THEN (*Double-operand (format I) instructions*)
-        DEC(t, 4); Texts.WriteString(W, mnemo3[t]);
-        IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END; Texts.Write(W, " ");
-        WriteSD(W, c, i, op, b1 MOD 10H); Texts.Write(W, ",");
-        IF op*A.Idm = A.Idm THEN (*indexed*) ct := c[i+1]*100H + c[i]; INC(i, 2);
-          IF b2 MOD 10H = A.SR THEN (*absolute*) Texts.Write(W, "&"); Texts.WriteInt(W, ct, 1)
-          ELSE Texts.WriteInt(W, WordToInt(ct), 1); Texts.Write(W, "("); WriteReg(W, b2 MOD 10H); Texts.Write(W, ")")
-          END
-        ELSE WriteReg(W, b2 MOD 10H)
+        IF (t = A.MOV) & (b1 MOD 10H = A.SP) & (op*A.IRAm = A.IRAm) THEN (*POP*)
+          Texts.WriteString(W, "POP"); WriteSize(W, op); Texts.Write(W, " ");
+          WriteD(W, c, i, op)
+        ELSE
+          DEC(t, 4); Texts.WriteString(W, mnemo3[t]); WriteSize(W, op); Texts.Write(W, " ");
+          WriteSD(W, c, i, op, b1 MOD 10H); Texts.Write(W, ",");
+          WriteD(W, c, i, op)
         END
       ELSE Texts.WriteString(W, "TODO other format")
       END

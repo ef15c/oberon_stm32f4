@@ -7,6 +7,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   CONST WordSize* = 2;
     maxStrx = 3000; maxGD = 200; maxTD = 160; maxFOS = 1000;
+    Register* = 0; Stack* = 1;
     
     Reg = 10; RegI = 11; Cond = 12; Absol = 13; (*internal item modes*)
 
@@ -54,10 +55,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     strdata: ARRAY maxStrx OF CHAR;
     entry: LONGINT;   (*main entry point*)
     AllocUp: BOOLEAN; (*if true, registers are in allocated in ascending or from R4 to R15, if false in descending order from R15 to R4*)
-    RIU, VRS: SET;      (*in use and variable+parameter register sets*)
+    RIU*, VRS: SET;      (*currently in use and variable + parameter register sets*)
     RB, RL: INTEGER; (*register base and limit*)
     PRU*: SET; (*set of registers used in procedure*)
-    frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
+    frame, vframe: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs + variable and parameter frame offset*)
     traps: ARRAY 8 OF B.Object; arith: ARRAY 4 OF B.Object;
     vector: ARRAY 32 OF INTEGER;
     
@@ -121,21 +122,32 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.FixLink(mcode, L)
   END FixLink;
 
-  PROCEDURE SetRegisterAllocation*;
-  BEGIN IF ~AllocUp THEN AllocUp  := TRUE; (*RIU := {};*) RL := 16;  RB := A.CG2 + 1 END
-  END SetRegisterAllocation;
+  PROCEDURE SetAllocationMode*(mode: INTEGER);
+  BEGIN
+    IF mode = Register THEN AllocUp  := TRUE; RL := 16;  RB := A.CG2 + 1
+    ELSE AllocUp  := FALSE; RL := A.CG2;  RB := 15
+    END
+  END SetAllocationMode;
 
-  PROCEDURE ClearRIU*;
-  BEGIN RIU := {}
-  END ClearRIU;
+  PROCEDURE SetRIU*(iu: SET);
+  BEGIN RIU := iu
+  END SetRIU;
 
-  PROCEDURE ClearPRU*;
-  BEGIN PRU := {}
-  END ClearPRU;
+  PROCEDURE SetPRU*(pr: SET);
+  BEGIN PRU := pr
+  END SetPRU;
 
   PROCEDURE nextR(VAR r: INTEGER);
   BEGIN IF AllocUp THEN INC(r) ELSE DEC(r) END
   END nextR;
+
+  PROCEDURE LimitRegisters*(nofregs: INTEGER);
+    VAR l: INTEGER;
+  BEGIN l := RB;
+    WHILE (l # RL) & (nofregs > 0) DO nextR(l); DEC(nofregs) END; (*skip preserved registers*)
+    WHILE (l # RL) & ~(l IN RIU) DO INCL(RIU, l); nextR(l) END; (*mark other registers as not available*)
+    IF l # RL THEN S.Mark("register stack overflow") END
+  END LimitRegisters;
 
   PROCEDURE allocR*(r: INTEGER);
   BEGIN
@@ -148,7 +160,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF pr # 0FFH THEN RH := pr
     ELSE RH := RB; WHILE (RIU*{RH} # {}) & (RH # RL) DO nextR(RH) END
     END;
-    IF RH = RL THEN S.Mark("register stack overflow"); rh.reg := RB ELSE allocR(RH); rh.reg := RH END
+    IF RH = RL THEN S.Mark("register stack overflow"); RH := 8 END;
+    allocR(RH); rh.reg := RH
 
     RETURN RH
   END AllocRP;
@@ -159,13 +172,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE alloc(VAR x: Item; pr: INTEGER); (*allocate a temporary register to the item*)
   BEGIN
-    IF ~x.tmp OR ~(x.mode IN {Reg, RegI}) THEN x.reg := AllocRP(pr); x.am := A.Register; x.ofs := 0; x.tmp := TRUE END
+    x.reg := AllocRP(pr); x.am := A.Register; x.ofs := 0; x.tmp := TRUE
   END alloc;
 
   PROCEDURE freeR*(r: INTEGER);
   BEGIN
     IF RIU*{r} # {} THEN EXCL(RIU, r)
-    ELSE S.Mark("reg wild free"); ASSERT(FALSE) END
+    ELSE S.Mark("reg wild free") END
   END freeR;
 
   PROCEDURE freeSet(rs: SET);
@@ -187,7 +200,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE CheckRegs*;
   BEGIN IF RIU # VRS THEN S.Mark("Reg Stack"); RIU := VRS END;
     IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;
-    IF frame # 0 THEN S.Mark("frame error"); frame := 0 END
+    IF frame # vframe THEN S.Mark("frame error"); frame := vframe END
   END CheckRegs;
 
   PROCEDURE SetCC(VAR x: Item; n: LONGINT);
@@ -262,7 +275,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF x.mode = B.Par THEN alloc(x, pr); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
       ti.reg := rh.reg; ti.ofs := x.b; A.PutDO(mcode, A.MOV, ti, rh, bw)
     ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; 
-      alloc(x, pr); A.PutDO(mcode, A.MOV, ti, x, bw)
+      IF ~x.tmp OR (pr # 0FFH) & (x.reg # pr) THEN free(x); alloc(x, pr) END;
+      A.PutDO(mcode, A.MOV, ti, x, bw)
     ELSIF x.mode = Reg THEN
       IF ~x.tmp OR (pr # 0FFH) & (x.reg # pr) THEN (*temporary copy needed*)
         x.am := A.Register; t := x; free(x); alloc(x, pr); A.PutDO(mcode, A.MOV, t, x, A.Word) END
@@ -630,9 +644,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     r := RIU; or := x.type.ur*RIU; (*overwritten registers currently in use by the caller*)
     IF or # {} THEN n := A.PushRegs(mcode, or); INC(frame, WordSize*n); OfsPTOS(n, n, TRUE) END;
     IF xr >= 0 THEN n := A.PushRegs(mcode, {xr}); INC(frame, WordSize*n); OfsPTOS(n, n, TRUE) END;
-    IF x.obj.type.leaf THEN SetRegisterAllocation;
+    IF x.obj.type.leaf THEN SetAllocationMode(Register);
       IF x.type.base.form # B.NoTyp THEN resultRegister(rr); rh.reg := AllocRP(rr.reg) END (*allocate result register*)
-    END
+    END;
+    PRU := PRU + (x.type.ur - or);
   END PrepCall;
 
   PROCEDURE Call*(VAR x: Item; r, or: SET; s: LONGINT);
@@ -648,15 +663,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END;
     END;
     IF s # 0 THEN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := s; A.PutDO(mcode, A.ADD, t, sp, A.Word) END;
-    IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := {}; AllocUp := FALSE; RB := 15
+    IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(Stack)
     ELSE (*function*) 
       x.tmp := TRUE; x.mode := Reg; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
-      RIU := r; AllocUp := FALSE; RB := 15; 
+      RIU := r; SetAllocationMode(Stack); 
       IF rr.reg IN RIU THEN x.tmp := FALSE; load(x, 0FFH) (*move result in a free register*)
       ELSE INCL(RIU, rr.reg)
-      END;
-      IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, -n, TRUE) END
+      END
     END;
+    IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, -n, TRUE) END
   END Call;
 
   PROCEDURE AddOp*(op: LONGINT; VAR x, y: Item);   (* x := x +- y *)
@@ -688,7 +703,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE  pau := AllocUp;
         MakeItem(p, arith[0], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); Call(p, r, or, 0);
         free(x0); free(y0); x.reg := p.reg;
-        IF pau THEN SetRegisterAllocation END
+        IF pau THEN SetAllocationMode(Register) END
       END
     END
   END MulOp;
@@ -706,7 +721,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           pau := AllocUp;
           MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); t := c0; load(t, 7); Call(p, r, or, 0);
           free(x0); free(y0); x.reg := p.reg;
-          IF pau THEN SetRegisterAllocation END
+          IF pau THEN SetAllocationMode(Register) END
         END
       END
     ELSE (*op = OM4S.mod*)
@@ -719,7 +734,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           pau := AllocUp;
           MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); t := c1; load(t, 7); Call(p, r, or, 0); x.reg := p.reg;
           free(x0); free(y0); x.reg := p.reg;
-          IF pau THEN SetRegisterAllocation END
+          IF pau THEN SetAllocationMode(Register) END
         END
       END
     END
@@ -761,7 +776,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set function")
       ELSE pau := AllocUp; MakeItem(p, arith[2], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); Call(p, r, or, 0);
         free(x0); free(y0); x.reg := p.reg;
-        IF pau THEN SetRegisterAllocation END
+        IF pau THEN SetAllocationMode(Register) END
       END
     END
   END Set;
@@ -860,7 +875,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN res
   END distance;
 
-  PROCEDURE StoreStruct*(VAR x, y: Item); (* x := y, frame = 0 *)
+  PROCEDURE StoreStruct*(VAR x, y: Item); (* x := y *)
     VAR s, pc0, pc1, d: INTEGER; t!, ti!: Item; oneReg: BOOLEAN;
   BEGIN t.mode := B.Const; t.type := B.intType; t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti := y;
     pc0 := -1;
@@ -872,7 +887,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.type.size = y.type.size THEN t.a := (y.type.size+1) DIV 2; PutDO(A.MOV, t, rh)
           ELSE S.Mark("different length/size, not implemented")
           END
-        ELSE (*y  open array*) ti.reg := A.SP; ti.a := y.a+2; PutDO(A.MOV, ti, rh); s := y.type.base.size;  (*element size*)
+        ELSE (*y  open array*) ti.a := y.a+2; PutDO(A.MOV, ti, rh); s := y.type.base.size;  (*element size*)
           t := c0; PutDO(A.CMP, t, rh); pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*JEQ L0*)
           IF s = 1 THEN t := c1; PutDO(A.ADD, t, rh); PutSO(A.RRA, rh)
           ELSIF s # 2 THEN ASSERT(~ODD(s)); t.ofs := s DIV 2; A.PutDO(mcode, A.MUL, t, rh, A.Word)
@@ -892,12 +907,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE CopyString*(VAR x, y: Item);  (* x := y *) 
      VAR len, pc0: LONGINT; t!,ti!, x1!: Item;
-   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti.am := A.Indexed; ti.obj := NIL;
+   BEGIN t.mode := B.Const; t.type := B.intType; t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti := y;
     loadAdr(x, 0FFH); len := x.type.len;
     IF len >= 0 THEN
       IF len < y.b THEN S.Mark("string too long") END
-    ELSIF traps[3] # NIL THEN t.reg := A.SP; t.ofs := x.a+2; A.PutDO(mcode, A.MOV, t, rh, A.Word); (*open array len, frame = 0*)
-      t.ofs := y.b; A.PutDO(mcode, A.CMP, t, rh, A.Word); Trap(A.L, 3)
+    ELSIF traps[3] # NIL THEN ti.a := x.a+2; PutDO(A.MOV, ti, rh); (*open array len*)
+      t.a := y.b; PutDO(A.CMP, t, rh); Trap(A.L, 3)
     END ;
     loadStringAdr(y, 0FFH);
     (*L0:*) pc0 := mcode.pc; x.am := A.Indexed; x.ofs := 0; y.am := A.IndirectIncr; x1 := x;
@@ -1029,28 +1044,29 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
 
     IF nofusedregs >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
-      IF AllocUp THEN regl := A.CG2 + 1; RL := nofusedregs + regl; regh := RL - 1 ELSE regh :=  15; RL := 15 - nofusedregs; regl := RL + 1 END;
-      IF regh > regl THEN
+      IF AllocUp THEN regl := A.CG2 + 1; regh := nofusedregs + regl - 1 ELSE regh :=  15; regl := 16 - nofusedregs END;
+      IF regh >= regl THEN
         n := A.PushRegs(mcode, {regl .. regh}); INC(frame, nofusedregs*WordSize); OfsPTOS(nofusedregs, nofusedregs, TRUE) (*save registers before use*)
       END
-    ELSE IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
-    END; VRS := RIU;
+    END;
+    VRS := RIU; vframe := frame
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
     VAR t!, rr!: Item; regl, regh: BYTE; n: INTEGER;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    IF form # B.NoTyp THEN resultRegister(rr); x.tmp := TRUE; load(x, rr.reg); free(x);
-(*      IF x.reg # rr.reg THEN PutDO(A.MOV, x, rr) END*)
-    END;
+    IF form # B.NoTyp THEN resultRegister(rr); x.tmp := TRUE; load(x, rr.reg); free(x) END;
     IF nofusedregs >= 0 THEN
-      IF AllocUp THEN regl := A.CG2 + 1; RL := nofusedregs + regl; regh := RL - 1 ELSE regh :=  15; RL := 15 - nofusedregs; regl := RL + 1 END;
-      IF regh > regl THEN n := A.PopRegs(mcode, {regl .. regh}); DEC(frame, nofusedregs*WordSize); OfsPTOS(-nofusedregs, nofusedregs, TRUE) END;
-      IF AllocUp THEN RL := 16 ELSE RL := A.CG2 END
+      IF AllocUp THEN regl := A.CG2 + 1; regh := nofusedregs + regl - 1 ELSE regh :=  15; regl := 16 - nofusedregs; END;
+      IF regh >= regl THEN n := A.PopRegs(mcode, {regl .. regh}); PRU := PRU - {regl .. regh};
+        DEC(frame, nofusedregs*WordSize); OfsPTOS(-nofusedregs, -nofusedregs, TRUE) END;
     END;
     IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); OfsPTOS(-size DIV WordSize, -size DIV WordSize, TRUE) END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
-    IF int THEN A.PutNO(mcode, A.RETI) ELSE A.PutNO(mcode, A.RET) END;
+    IF int THEN A.PutNO(mcode, A.RETI);
+      IF PRU # {} THEN S.Mark("destroyed regs in handler") END
+    ELSE A.PutNO(mcode, A.RET)
+    END;
     AllocUp := FALSE; RIU := {}; RB := 15; VRS := RIU
   END Return;
 
@@ -1058,7 +1074,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Increment*(upordown: LONGINT; VAR x, y: Item);
     VAR op: BYTE; zr: LONGINT;
-  BEGIN (*frame = 0*)
+  BEGIN
     IF upordown = 0 THEN op := A.ADD ELSE op := A.SUB END;
     IF y.type.form = B.NoTyp THEN y.mode := B.Const; y.a := 1; y.tmp := FALSE END;
     PutDO(op, y, x);
@@ -1199,7 +1215,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     FOR i := 0 TO LEN(vector) - 1 DO vector[i] := 0FFFFH END;
     tdx := 0; strx := 0; mstrx := maxStrx; nofstrs := 0; RIU := {};
     rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL; rh.mode := Reg; rh.type := B.intType;
-    AllocUp := FALSE; RL := A.CG2; RB := 15;
+    SetAllocationMode(Stack)
   END Open;
 
   PROCEDURE SetDataSize*(dc: LONGINT);

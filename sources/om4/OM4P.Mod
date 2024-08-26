@@ -1041,7 +1041,10 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
           Texts.OpenScanner(S, T, beg); Texts.Scan(S);
           IF S.class = Texts.Name THEN
             Texts.WriteString(W, S.s); NEW(T); Texts.Open(T, S.s);
-            IF T.len > 0 THEN OM4S.Init(T, 0); Module END
+            IF T.len > 0 THEN OM4S.Init(T, 0); Module
+            ELSE Texts.WriteString(W, " not found");
+              Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+            END
           END
         END
       END

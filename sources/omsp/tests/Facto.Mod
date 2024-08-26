@@ -1,4 +1,4 @@
-Facto;
+MODULE Facto;
   IMPORT Arith;
 
   VAR res: INTEGER;
