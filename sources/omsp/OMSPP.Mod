@@ -948,7 +948,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         loc := loc.next
       END;
       IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
-        G.resultRegister(x); L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
+        G.SetRIU({}); G.resultRegister(x); L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
         loc := B.topScope.next; L := 0;
         WHILE (loc # NIL) & (L < type.nofpar) DO (*allocate registers to parameters, avoiding the result register*)
           IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
