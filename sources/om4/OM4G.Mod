@@ -86,7 +86,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE incR;
   BEGIN
-    IF RH < RL-1 THEN INC(RH) ELSE OM4S.Mark("register stack overflow") END
+    IF RH < RL-1 THEN INC(RH) ELSE OM4S.Mark("register stack overflow"); RH := 8 END
   END incR;
 
   PROCEDURE incS;
@@ -971,15 +971,18 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       OM4A.encMRS(mcode, 0, PSP)
     END;
 
-    IF locblksize - parblksize # 0 THEN
-      OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, r, locblksize - parblksize); OfsPTOS((locblksize - parblksize) DIV 4, 0, TRUE) END;
-
-    IF r > 0 THEN OM4A.PushRegs(mcode, 0, r-1); OfsPTOS(r, 0, TRUE) END;
     IF reglim >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
-      RL := reglim+1; IF reglim >= 4 THEN
+      RL := reglim+1;
+      IF reglim >= 4 THEN
         OM4A.PushRegs(mcode, 4, reglim); OfsPTOS(reglim - 3, 0, TRUE) (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*)
       END
     END;
+
+    IF locblksize - parblksize # 0 THEN (*reserve memory for variables*)
+      OM4A.encDPImm32(mcode, OM4A.SUB, SP, SP, r, locblksize - parblksize); OfsPTOS((locblksize - parblksize) DIV 4, 0, TRUE)
+    END;
+    IF r > 0 THEN OM4A.PushRegs(mcode, 0, r-1); OfsPTOS(r, 0, TRUE) END; (*reserve memory for parameters and initialize them*)
+
     (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, 1, TRUE)
   END Enter;
 
@@ -989,8 +992,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.type.form = B.Real THEN loadFP(x); ELSE load(x) END
     END;
     (*POP T3 LR *) OM4A.encMemImm8PUW(mcode, OM4A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
-    IF reglim >= 0 THEN IF reglim >= 4 THEN OM4A.PopRegs(mcode, 4, reglim); OfsPTOS(3 - reglim, 0, TRUE) END; RL := SP END;
     IF size # 4 THEN OM4A.encDPImm32(mcode, OM4A.ADD, SP, SP, RH, size - 4); OfsPTOS((4 - size) DIV 4, 0, TRUE) END;
+    IF reglim >= 0 THEN IF reglim >= 4 THEN OM4A.PopRegs(mcode, 4, reglim); OfsPTOS(3 - reglim, 0, TRUE) END; RL := SP END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos MOD 10000H # 0 THEN OM4S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
     OM4A.Put1(mcode, OM4A.BX + LR*OM4A.C3); RH := 0; SH := 0;
   END Return;

@@ -40,10 +40,12 @@ Staging Compiler for heavy evolution. BE VERY CAUTIOUS
 System.CopyFiles OM4B.Mod=>OM4B2.Mod OM4G.Mod=>OM4G2.Mod OM4P.Mod=>OM4P2.Mod ~
 <<rename modules and make changes on sources>>
 Net.SendFiles CS OM4B2.Mod OM4G2.Mod OM4P2.Mod ~
+OM4P.Compile OM4B2.Mod OM4G2.Mod OM4P2.Mod ~
+OM4P2.Compile OM4B2.Mod OM4G2.Mod OM4P2.Mod ~
 System.Free OM4P2 OM4G2 OM4Tool OM4D OM4A OM4B2 ~
-OM4P2.Compile testString.Mod/s testImportString.Mod ~
+OM4P2.Compile testBug2.Mod ~
 Install new compiler
 System.CopyFiles OM4B2.Mod=>OM4B.Mod OM4G2.Mod=>OM4G.Mod OM4P2.Mod=>OM4P.Mod ~
 Net.SendFiles CS OM4B.Mod OM4G.Mod OM4P.Mod ~
 <<rename modules with original names>>
-OM4P2.Compile OM4B2.Mod OM4G2.Mod OM4P2.Mod ~
+OM4P2.Compile OM4B.Mod OM4G.Mod OM4P.Mod ~

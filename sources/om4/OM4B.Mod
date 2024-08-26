@@ -437,7 +437,7 @@ BEGIN
   enter("VAL", SFunc, intType, 162);
   enter("REG", SFunc, intType, 151);
   enter("BIT", SFunc, boolType, 142);
-  enter("LDREG", SProc, noType, 142);  (*procedures*)
+  enter("LDREG", SProc, noType, 142); (*procedures*)
   enter("COPY", SProc, noType, 123);
   enter("PUT", SProc, noType, 112);
   enter("GET", SProc, noType, 102);

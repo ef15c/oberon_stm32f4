@@ -7,10 +7,72 @@ MODULE testBug;
 
   PROCEDURE p(f: ptr): INTEGER; RETURN 0 END p;
 
-BEGIN NEW(r); r.fp := p; i := r.fp(r); i := i+i+(r.fp(r))
+BEGIN (*NEW(r);*) r.fp := p; i := r.fp(r); i := i+i+(r.fp(r))
 END testBug.
 
 OMSPTool.DecObj testBug.mpc
+decode testBug.mpc
+testBug 82C6F0D4 Flash    84
+imports:
+type descriptors
+ 0002 FFFF FFFF FFFF
+data     4
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+
+entries
+ 0004 0000
+fixup procedures chains
+ 000A     0	 0000
+fixup handlers chains
+fixup data chains
+ 0038     0	 0000
+ 0048     0	 0002
+fixup constants chains
+fixup types chains
+entry =  0004
+code    76
+ 0000	     430F	MOV #0,R15
+ 0002	     4130	RET
+ 0004	     421F	MOV &0,R15
+ 0006	     0000
+ 0008	     40BF	MOV #0,0(R15)
+ 000A	     0000
+ 000C	     0000
+ 000E	     421F	MOV &6,R15
+ 0010	     0006
+ 0012	     4F2F	MOV @R15,R15
+ 0014	     120F	PUSH R15
+ 0016	     1212	PUSH &16
+ 0018	     0010
+ 001A	     413F	MOV @SP+,R15
+ 001C	     128F	CALL R15
+ 001E	     5321	ADD #2,SP
+ 0020	     4F82	MOV R15,&0
+ 0022	     0000
+ 0024	     421F	MOV &34,R15
+ 0026	     0022
+ 0028	     521F	ADD &38,R15
+ 002A	     0026
+ 002C	     421E	MOV &24,R14
+ 002E	     0018
+ 0030	     4E2E	MOV @R14,R14
+ 0032	     120F	PUSH R15
+ 0034	     120E	PUSH R14
+ 0036	     1212	PUSH &46
+ 0038	     002E
+ 003A	     413E	MOV @SP+,R14
+ 003C	     128E	CALL R14
+ 003E	     5321	ADD #2,SP
+ 0040	     4F0E	MOV R15,R14
+ 0042	     413F	MOV @SP+,R15
+ 0044	     5E0F	ADD R14,R15
+ 0046	     4F82	MOV R15,&42
+ 0048	     002A
+ 004A	     4130	RET
 
 OM4Tool.DecObj testBug.m4c
 decode testBug.m4c
