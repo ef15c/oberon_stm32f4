@@ -178,7 +178,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       p0 := t0.dsc; p1 := t1.dsc;
       WHILE p0 # NIL DO
         IF (p0.class = p1.class) &  (p0.rdo = p1.rdo) &
-          ((p0.type = p1.type) OR
+          ((p0.type = p1.type) & (p0.register = p1.register) OR
           (p0.type.form = B.Array) & (p1.type.form = B.Array) & (p0.type.len = p1.type.len) & (p0.type.base = p1.type.base) OR
           (p0.type.form = B.Proc) & (p1.type.form = B.Proc) & EqualSignatures(p0.type, p1.type))
         THEN p0 := p0.next; p1 := p1.next
@@ -708,6 +708,23 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF adr >= 26 THEN S.Mark("too many parameters") END
   END FPSection;
 
+  PROCEDURE InsertResultRegister(VAR type: B.Type);
+    VAR L: INTEGER; loc!: B.Object; x!: G.Item;
+  BEGIN
+    IF type.leaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
+      G.SetRIU({}); G.resultRegister(x); L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
+        loc := type.dsc; L := 0;
+        WHILE (loc # NIL) & (L < type.nofpar) DO (*allocate registers to parameters, avoiding the result register*)
+          IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
+          loc := loc.next; INC(L)
+        END; G.freeR(x.reg); (*free sesult register*)
+        WHILE loc # NIL DO (*allocate registers to local variables, including the result register*)
+          IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
+          loc := loc.next
+        END
+      END;
+  END InsertResultRegister;
+
   PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: LONGINT);
     VAR obj!: B.Object; size: LONGINT; nofpar: INTEGER; leaf, inreg: BOOLEAN;
   BEGIN ptype.base := B.noType; size := parblksize; nofpar := 0; ptype.dsc := NIL; leaf := FALSE;
@@ -730,7 +747,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       END
     END ;
-    ptype.nofpar := nofpar; ptype.leaf := leaf; isLeaf := leaf; parblksize := size
+    ptype.nofpar := nofpar; ptype.leaf := leaf; ptype.size := size; isLeaf := leaf; parblksize := size
   END ProcedureType;
 
   PROCEDURE FormalType0(VAR typ: B.Type; dim: INTEGER);
@@ -746,8 +763,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       FormalType(typ.base, dim+1)
     ELSIF sym = S.procedure THEN
       S.Get(sym); B.OpenScope;
-      NEW(typ); typ.form := B.Proc; typ.size := G.WordSize; dmy := 0; ProcedureType(typ, dmy);
-      typ.dsc := B.topScope.next; B.CloseScope
+      NEW(typ); typ.form := B.Proc; dmy := 0; ProcedureType(typ, dmy);
+      typ.dsc := B.topScope.next; InsertResultRegister(typ); B.CloseScope
     ELSE S.Mark("identifier expected"); typ := B.noType
     END
   END FormalType0;
@@ -793,8 +810,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END
     ELSIF sym = S.procedure THEN
       S.Get(sym); B.OpenScope;
-      NEW(type); type.form := B.Proc; type.size := G.WordSize; dmy := 0;
-      ProcedureType(type, dmy); type.dsc := B.topScope.next; B.CloseScope
+      NEW(type); type.form := B.Proc; dmy := 0;
+      ProcedureType(type, dmy); type.dsc := B.topScope.next; InsertResultRegister(type); B.CloseScope
     ELSE S.Mark("illegal type")
     END
   END Type0;
@@ -933,9 +950,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       IF int THEN type.form := B.Handler; WHILE L > 0 DO DEC(L); G.SetVector(v[L], proc) END
       ELSE type.form := B.Proc 
       END;
-      G.SetRIU({}); G.SetPRU({}); type.size := G.WordSize; proc.type := type; proc.val := -1; proc.lev := level; 
+      G.SetRIU({}); G.SetPRU({}); proc.type := type; proc.val := -1; proc.lev := level; 
       CheckExport(proc.expo);
-      IF int & ~proc.expo THEN proc.expo := TRUE; S.Mark("add asterisk after interrupt handler name") END;
+      IF int & proc.expo THEN proc.expo := FALSE; S.Mark("remove asterisk") END;
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
       B.OpenScope; INC(level); type.base := B.noType;
       ProcedureType(type, parblksize);  (*formal parameter list*)
@@ -947,20 +964,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF (loc.class IN {B.Var, B.Par}) & (loc.register = 0FFH) THEN loc.val := locblksize - loc.val END;
         loc := loc.next
       END;
-      IF isLeaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
-        G.SetRIU({}); G.resultRegister(x); L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
-        loc := B.topScope.next; L := 0;
-        WHILE (loc # NIL) & (L < type.nofpar) DO (*allocate registers to parameters, avoiding the result register*)
-          IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
-          loc := loc.next; INC(L)
-        END; G.freeR(x.reg); (*free sesult register*)
-        WHILE loc # NIL DO (*allocate registers to local variables, including the result register*)
-          IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
-          loc := loc.next
-        END
-      END;
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
+      InsertResultRegister(type);
+
       IF sym = S.procedure THEN
         riu := G.RIU; proc.type.ur := G.PRU; L := 0; G.FJump(L);
         REPEAT ProcedureDecl; Check(S.semicolon, "no ;") UNTIL sym # S.procedure;

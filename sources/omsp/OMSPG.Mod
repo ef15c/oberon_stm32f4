@@ -1,3 +1,4 @@
+(*TODO: revoir PushRegs/PopRegs pour y introduire les appels à OfsPTOS*)
 MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   C. Schoffit 21.05.24 code generator for MSP430 processor family*)
   IMPORT SYSTEM, Files, A := OMSPA, S := OMSPS, B := OMSPB;
@@ -657,12 +658,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
         PutSO(A.CALL, x); free(x)
-      ELSE rh.reg := AllocR(); PutSO(A.POP, rh); OfsPTOS(-1, -1, TRUE); DEC(frame, WordSize);
+      ELSE rh.reg := AllocR();
+        IF x.type.size = 0 THEN PutSO(A.POP, rh); OfsPTOS(-1, -1, TRUE); DEC(frame, WordSize)
+        ELSE t := sp; t.mode := RegI; t.a := -x.type.size; PutDO(A.MOV, t, rh); INC(s, x.type.size)
+        END;
         IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, rh); Trap(A.EQ, 5) END;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
       END;
     END;
-    IF s # 0 THEN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := s; A.PutDO(mcode, A.ADD, t, sp, A.Word) END;
+    IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr) END;
+    IF (x.mode > B.Par) & (x.type.size # 0) THEN OfsPTOS(-1, -1, TRUE); DEC(frame, WordSize) END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(Stack)
     ELSE (*function*) 
       x.tmp := TRUE; x.mode := Reg; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
