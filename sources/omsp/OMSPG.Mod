@@ -1,4 +1,3 @@
-(*TODO: revoir PushRegs/PopRegs pour y introduire les appels à OfsPTOS*)
 MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   C. Schoffit 21.05.24 code generator for MSP430 processor family*)
   IMPORT SYSTEM, Files, A := OMSPA, S := OMSPS, B := OMSPB;
@@ -109,6 +108,24 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       INC(frmOfsSegs.NofSegs); frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos := offset
     END
   END OfsPTOS;
+
+  PROCEDURE SaveRegs(regs: SET);
+    VAR n: INTEGER;
+  BEGIN
+    IF regs # {} THEN
+      n := A.PushRegs(mcode, regs);
+      INC(frame, n*WordSize); OfsPTOS(n, n, TRUE)
+    END
+  END SaveRegs;
+
+  PROCEDURE RestoreRegs(regs: SET);
+    VAR n: INTEGER;
+  BEGIN
+    IF regs # {} THEN
+      n := A.PopRegs(mcode, regs);
+      DEC(frame, n*WordSize); OfsPTOS(-n, -n, TRUE)
+    END
+  END RestoreRegs;
 
   PROCEDURE EnableCode*(e: BOOLEAN);
   BEGIN A.SetEnabled(e)
@@ -348,9 +365,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF x.mode = Cond THEN
       pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
       FixLink(x.b); t := c1; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
-      FixLink(x.a); t := c0; A.PutSO(mcode, A.MOV, t, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
+      FixLink(x.a); t := c0; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
     ELSE S.Mark("bad mode in push")
-    END
+    END;
+    INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
   END push;
 
   PROCEDURE Adr*(VAR x:Item);
@@ -401,7 +419,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE pushTypTagAdr(T: B.Type);
     VAR sva!: Item;
   BEGIN sva.am := A.Immediate; sva.ofs := A.C16; sva.obj := T.typobj;
-    A.PutSO(mcode, A.PUSH, sva, A.Word)
+    A.PutSO(mcode, A.PUSH, sva, A.Word);
+    INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item; pr: INTEGER);
@@ -413,7 +432,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE pushStringAdr(x: Item);
     VAR x1!: Item;
   BEGIN x1 := x; x1.c := 0; x1.am := A.Immediate; x1.ofs := A.C16+x.a;
-    A.PutSO(mcode, A.PUSH, x1, A.Word)
+    A.PutSO(mcode, A.PUSH, x1, A.Word);
+    INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
   END pushStringAdr;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
@@ -643,31 +663,32 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF AllocUp THEN S.Mark("call not allowed in leaf proc") END;
     IF x.mode > B.Par THEN load(x, 0FFH); xr := x.reg; EXCL(RIU, xr) END;
     r := RIU; or := x.type.ur*RIU; (*overwritten registers currently in use by the caller*)
-    IF or # {} THEN n := A.PushRegs(mcode, or); INC(frame, WordSize*n); OfsPTOS(n, n, TRUE) END;
-    IF xr >= 0 THEN n := A.PushRegs(mcode, {xr}); INC(frame, WordSize*n); OfsPTOS(n, n, TRUE) END;
+    SaveRegs(or);
+    IF xr >= 0 THEN SaveRegs({xr}) END;
     IF x.obj.type.leaf THEN SetAllocationMode(Register);
       IF x.type.base.form # B.NoTyp THEN resultRegister(rr); rh.reg := AllocRP(rr.reg) END (*allocate result register*)
     END;
-    PRU := PRU + (x.type.ur - or);
+    PRU := PRU + (x.type.ur - or)
   END PrepCall;
 
-  PROCEDURE Call*(VAR x: Item; r, or: SET; s: LONGINT);
-    VAR rr!, t!: Item; n: INTEGER;
-  BEGIN (*x.type.form = B.Proc*)
+  PROCEDURE Call*(VAR x: Item; r, or: SET);
+    VAR rr!, t!: Item; n, s: INTEGER;
+  BEGIN (*x.type.form = B.Proc*) s := x.type.size;
     IF x.mode = B.Const THEN PutSO(A.CALL, x)
     ELSE
       IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
         PutSO(A.CALL, x); free(x)
       ELSE rh.reg := AllocR();
-        IF x.type.size = 0 THEN PutSO(A.POP, rh); OfsPTOS(-1, -1, TRUE); DEC(frame, WordSize)
-        ELSE t := sp; t.mode := RegI; t.a := -x.type.size; PutDO(A.MOV, t, rh); INC(s, x.type.size)
+        IF s = 0 THEN PutSO(A.POP, rh); OfsPTOS(-1, -1, TRUE); DEC(frame, WordSize)
+        ELSE t := sp; t.mode := RegI; t.a := -x.type.size; PutDO(A.MOV, t, rh); INC(s, WordSize)
         END;
         IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, rh); Trap(A.EQ, 5) END;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
       END;
     END;
-    IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr) END;
-    IF (x.mode > B.Par) & (x.type.size # 0) THEN OfsPTOS(-1, -1, TRUE); DEC(frame, WordSize) END;
+    IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr);
+      DEC(frame, s); OfsPTOS(-s DIV WordSize, -s DIV WordSize, TRUE)
+    END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(Stack)
     ELSE (*function*) 
       x.tmp := TRUE; x.mode := Reg; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
@@ -676,7 +697,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE INCL(RIU, rr.reg)
       END
     END;
-    IF or # {} THEN n := A.PopRegs(mcode, or); DEC(frame, WordSize*n); OfsPTOS(-n, -n, TRUE) END
+    RestoreRegs(or)
   END Call;
 
   PROCEDURE AddOp*(op: LONGINT; VAR x, y: Item);   (* x := x +- y *)
@@ -706,7 +727,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF arith[0] = NIL THEN S.Mark("import Arith.mul16 function") 
       ELSE  pau := AllocUp;
-        MakeItem(p, arith[0], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); Call(p, r, or, 0);
+        MakeItem(p, arith[0], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); Call(p, r, or);
         free(x0); free(y0); x.reg := p.reg;
         IF pau THEN SetAllocationMode(Register) END
       END
@@ -724,7 +745,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod16 procedure")
         ELSE IF traps[6] # NIL THEN t := c0; PutDO(A.CMP, t, y); Trap(A.NE, 6); free(y) END;
           pau := AllocUp;
-          MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); t := c0; load(t, 7); Call(p, r, or, 0);
+          MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); t := c0; load(t, 7); Call(p, r, or);
           free(x0); free(y0); x.reg := p.reg;
           IF pau THEN SetAllocationMode(Register) END
         END
@@ -737,7 +758,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod procedure")
         ELSE IF traps[6] # NIL THEN t := c0; PutDO(A.CMP, t, y); Trap(A.NE, 6); free(y) END;
           pau := AllocUp;
-          MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); t := c1; load(t, 7); Call(p, r, or, 0); x.reg := p.reg;
+          MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); t := c1; load(t, 7); Call(p, r, or); x.reg := p.reg;
           free(x0); free(y0); x.reg := p.reg;
           IF pau THEN SetAllocationMode(Register) END
         END
@@ -779,7 +800,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF (x.mode = B.Const) & ( y.mode = B.Const) THEN
       IF x.a <= y.a THEN x.a := ORD({x.a .. y.a}) ELSE x.a := 0 END
     ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set function")
-      ELSE pau := AllocUp; MakeItem(p, arith[2], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); Call(p, r, or, 0);
+      ELSE pau := AllocUp; MakeItem(p, arith[2], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); Call(p, r, or);
         free(x0); free(y0); x.reg := p.reg;
         IF pau THEN SetAllocationMode(Register) END
       END
@@ -928,28 +949,29 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   (* Code generation for parameters *)
   
-  PROCEDURE OpenArrayParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
+  PROCEDURE OpenArrayParam*(VAR x: Item; par: B.Object);
     VAR t!, ti!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
     ti.am := A.Indexed; ti.obj := NIL;
-    IF par.register # 0FFH THEN (*in registers*) size := 0; loadAdr(x, par.register); rh.reg := AllocRP(par.register+1);
+    IF par.register # 0FFH THEN (*in registers*) loadAdr(x, par.register); rh.reg := AllocRP(par.register+1);
       IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END
-    ELSE (*in stack*) size := 2*WordSize;
+    ELSE (*in stack*)
       IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
       END;
+      INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
       pushAdr(x)
     END
   END OpenArrayParam;
 
-  PROCEDURE VarParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
+  PROCEDURE VarParam*(VAR x: Item; par: B.Object);
     VAR xmd: INTEGER; t!, ti!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;  t.ofs := x.type.len;
     ti.am := A.Indexed; ti.obj := NIL; xmd := x.mode;
     IF par.register # 0FFH THEN
-      loadAdr(x, par.register); size := 0;
+      loadAdr(x, par.register);
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN rh.reg := AllocRP(par.register+1); (*open array*)
         IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
@@ -960,30 +982,32 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END
       END
     ELSE (*in stack*)
-      size := WordSize;
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*) rh.reg := AllocR();
         IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
-        ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
-        END; INC(size, WordSize)
+        ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
+        END;
+        INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
       ELSIF (par.type.form = B.Record) THEN
-        IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
+        IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word);
+          INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
         ELSE pushTypTagAdr(x.type)
-        END; INC(size, WordSize)
-      END;
+        END
+       END;
       pushAdr(x)
     END
   END VarParam;
 
-  PROCEDURE ValueParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
-  BEGIN IF par.register # 0FFH THEN load(x, par.register); size := 0 ELSE push(x); size := WordSize END
+  PROCEDURE ValueParam*(VAR x: Item; par: B.Object);
+  BEGIN IF par.register # 0FFH THEN load(x, par.register) ELSE push(x) END
   END ValueParam;
 
-  PROCEDURE StringParam*(VAR x: Item; par: B.Object; VAR size: INTEGER);
+  PROCEDURE StringParam*(VAR x: Item; par: B.Object);
     VAR t!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := x.b;
     IF par.register # 0FFH THEN loadStringAdr(x, par.register);
       rh.reg := AllocRP(par.register+1); A.PutDO(mcode, A.MOV, t, rh, A.Word) (*len*)
-    ELSE A.PutSO(mcode, A.PUSH, t, A.Word) (*len*); pushStringAdr(x); size := 2*WordSize
+    ELSE A.PutSO(mcode, A.PUSH, t, A.Word) (*len*);
+      INC(frame, WordSize); OfsPTOS(1, 1, TRUE); pushStringAdr(x)
     END
   END StringParam;
 
@@ -1039,7 +1063,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Fixup;
 
   PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
-    VAR t!: Item; regl, regh: BYTE; n: INTEGER;
+    VAR t!: Item; regl, regh: BYTE;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     OfsPTOS(0, 0, FALSE); frame := 0;
     IF size >= A.C16 THEN S.Mark("local variables size exeeded") END;
@@ -1050,21 +1074,18 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     IF nofusedregs >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
       IF AllocUp THEN regl := A.CG2 + 1; regh := nofusedregs + regl - 1 ELSE regh :=  15; regl := 16 - nofusedregs END;
-      IF regh >= regl THEN
-        n := A.PushRegs(mcode, {regl .. regh}); INC(frame, nofusedregs*WordSize); OfsPTOS(nofusedregs, nofusedregs, TRUE) (*save registers before use*)
-      END
+      IF regh >= regl THEN SaveRegs({regl .. regh}); (*save registers before use*) END
     END;
     VRS := RIU; vframe := frame
   END Enter;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
-    VAR t!, rr!: Item; regl, regh: BYTE; n: INTEGER;
+    VAR t!, rr!: Item; regl, regh: BYTE;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF form # B.NoTyp THEN resultRegister(rr); x.tmp := TRUE; load(x, rr.reg); free(x) END;
     IF nofusedregs >= 0 THEN
       IF AllocUp THEN regl := A.CG2 + 1; regh := nofusedregs + regl - 1 ELSE regh :=  15; regl := 16 - nofusedregs; END;
-      IF regh >= regl THEN n := A.PopRegs(mcode, {regl .. regh}); PRU := PRU - {regl .. regh};
-        DEC(frame, nofusedregs*WordSize); OfsPTOS(-nofusedregs, -nofusedregs, TRUE) END;
+      IF regh >= regl THEN RestoreRegs({regl .. regh}); PRU := PRU - {regl .. regh} END
     END;
     IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); OfsPTOS(-size DIV WordSize, -size DIV WordSize, TRUE) END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;

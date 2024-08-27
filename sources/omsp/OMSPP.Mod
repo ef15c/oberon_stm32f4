@@ -201,44 +201,44 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         OR (t0.form IN {B.Pointer, B.Proc}) & (t1.form = B.NilTyp))
   END CompTypes;
 
-  PROCEDURE Parameter(par: B.Object; VAR size: INTEGER);
+  PROCEDURE Parameter(par: B.Object);
     VAR x!: G.Item; varpar: BOOLEAN;
   BEGIN expression(x);
     IF x.obj # NIL THEN x.rdo := x.obj.rdo END; (*allow updating of VAR parameters*)
     IF par # NIL THEN
       varpar := par.class = B.Par;
       IF CompTypes(par.type, x.type, varpar) THEN
-        IF ~varpar THEN G.ValueParam(x, par, size)
+        IF ~varpar THEN G.ValueParam(x, par)
         ELSE (*par.class = Par*)
           IF ~par.rdo THEN CheckReadOnly(x) END ;
-          G.VarParam(x, par, size)
+          G.VarParam(x, par)
         END
       ELSIF (x.type.form = B.Array) & (par.type.form = B.Array) &
           (x.type.base = par.type.base) & (par.type.len < 0) THEN
         IF ~par.rdo THEN CheckReadOnly(x) END ;
-        G.OpenArrayParam(x, par, size)
+        G.OpenArrayParam(x, par)
       ELSIF (x.type.form = B.String) & varpar & par.rdo & (par.type.form = B.Array) & 
-          (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x, par, size)
-      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par, size)  (*BYTE*)
+          (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x, par)
+      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par)  (*BYTE*)
       ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
-        G.StrToChar(x); G.ValueParam(x, par, size)
+        G.StrToChar(x); G.ValueParam(x, par)
       ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
           (par.type.len >= 0) & (par.type.size = x.type.size) THEN
-        G.VarParam(x, par, size)
+        G.VarParam(x, par)
       ELSE S.Mark("incompatible parameters")
       END
     END
   END Parameter;
 
-  PROCEDURE ParamList(x: G.Item; VAR s: INTEGER);
+  PROCEDURE ParamList(x: G.Item);
     VAR n, size: INTEGER; par!: B.Object;
-  BEGIN par := x.type.dsc; n := 0; s := 0;
+  BEGIN par := x.type.dsc; n := 0;
     IF sym # S.rparen THEN
-      Parameter(par, size); n := 1; INC(s, size);
+      Parameter(par); n := 1;
       WHILE sym <= S.comma DO
         Check(S.comma, "comma?");
         IF par # NIL THEN par := par.next END ;
-        INC(n); Parameter(par, size); INC(s, size);
+        INC(n); Parameter(par)
       END ;
       Check(S.rparen, ") missing")
     ELSE S.Get(sym);
@@ -313,7 +313,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END set; 
 
   PROCEDURE factor(VAR x: G.Item);
-    VAR obj!: B.Object; rx, orx: SET; s: LONGINT;
+    VAR obj!: B.Object; rx, orx: SET;
   BEGIN (*sync*)
     IF (sym < S.char) OR (sym > S.ident) THEN S.Mark("expression expected");
       REPEAT S.Get(sym) UNTIL (sym >= S.char) & (sym <= S.for) OR (sym >= S.then)
@@ -325,10 +325,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF sym = S.lparen THEN
           S.Get(sym);
           IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
-            IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x, s)
-            ELSE G.PrepCall(x, rx, orx); ParamList(x, s); G.Call(x, rx, orx, s); x.type := x.type.base
+            IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x)
+            ELSE G.PrepCall(x, rx, orx); ParamList(x); G.Call(x, rx, orx); x.type := x.type.base
             END;
-          ELSE S.Mark("not a function"); ParamList(x, s)
+          ELSE S.Mark("not a function"); ParamList(x)
           END
         END
       END
@@ -471,7 +471,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR obj!: B.Object;
       orgtype!: B.Type; (*original type of case var*)
       x!, y!, z!, w!: G.Item;
-      L0, L1, s: LONGINT; rx, orx: SET;
+      L0, L1: LONGINT; rx, orx: SET;
 
     PROCEDURE TypeCase(obj: B.Object; VAR x: G.Item);
       VAR typobj!: B.Object;
@@ -520,16 +520,16 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           ELSIF sym = S.lparen THEN (*procedure call*)
             S.Get(sym);
             IF (x.type.form = B.Proc) & (x.type.base.form = B.NoTyp) THEN
-              IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x, s)
-              ELSE G.PrepCall(x, rx, orx); ParamList(x, s); G.Call(x, rx, orx, s)
+              IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x)
+              ELSE G.PrepCall(x, rx, orx); ParamList(x); G.Call(x, rx, orx)
               END;
-            ELSE S.Mark("not a procedure"); ParamList(x, s)
+            ELSE S.Mark("not a procedure"); ParamList(x)
             END
           ELSIF x.type.form = B.Proc THEN (*procedure call without parameters*)
             IF x.type.nofpar > 0 THEN S.Mark("missing parameters") END ;
             IF x.type.base.form = B.NoTyp THEN
               IF isLeaf THEN S.Mark("call not allowed in leaf proc")
-              ELSE G.PrepCall(x, rx, orx); G.Call(x, rx, orx, 0)
+              ELSE G.PrepCall(x, rx, orx); G.Call(x, rx, orx)
               END;
             ELSE S.Mark("not a procedure")
             END
