@@ -344,7 +344,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE push(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
-  BEGIN t := x; t.reg := 0; t.am := A.Immediate;
+  BEGIN INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
+    t := x; t.reg := 0; t.am := A.Immediate;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
     IF x.mode = Reg THEN PutSO(A.PUSH, x)
@@ -367,8 +368,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       FixLink(x.b); t := c1; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
       FixLink(x.a); t := c0; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
     ELSE S.Mark("bad mode in push")
-    END;
-    INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
+    END
   END push;
 
   PROCEDURE Adr*(VAR x:Item);
@@ -419,8 +419,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE pushTypTagAdr(T: B.Type);
     VAR sva!: Item;
   BEGIN sva.am := A.Immediate; sva.ofs := A.C16; sva.obj := T.typobj;
-    A.PutSO(mcode, A.PUSH, sva, A.Word);
-    INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
+    INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
+    A.PutSO(mcode, A.PUSH, sva, A.Word)
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item; pr: INTEGER);
@@ -432,8 +432,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE pushStringAdr(x: Item);
     VAR x1!: Item;
   BEGIN x1 := x; x1.c := 0; x1.am := A.Immediate; x1.ofs := A.C16+x.a;
-    A.PutSO(mcode, A.PUSH, x1, A.Word);
-    INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
+    INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
+    A.PutSO(mcode, A.PUSH, x1, A.Word)
   END pushStringAdr;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
@@ -671,9 +671,23 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     PRU := PRU + (x.type.ur - or)
   END PrepCall;
 
+  PROCEDURE getParSize(typ: B.Type): INTEGER;
+    VAR par!: B.Object; n, size: INTEGER;
+  BEGIN par := typ.dsc; n := typ.nofpar; size := 0;
+    WHILE n > 0 DO IF par.register = 0FFH THEN 
+        IF (par.type.form = B.Array) & (par.type.len < 0) OR (par.type.form = B.Record) THEN INC(size, 2*WordSize)
+        ELSE INC(size, WordSize)
+        END
+      END;
+      par := par.next; DEC(n)
+    END
+
+    RETURN size
+  END getParSize;
+
   PROCEDURE Call*(VAR x: Item; r, or: SET);
     VAR rr!, t!: Item; n, s: INTEGER;
-  BEGIN (*x.type.form = B.Proc*) s := x.type.size;
+  BEGIN (*x.type.form = B.Proc*) s := getParSize(x.type);
     IF x.mode = B.Const THEN PutSO(A.CALL, x)
     ELSE
       IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
@@ -958,10 +972,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END
     ELSE (*in stack*)
+      INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
       IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
       END;
-      INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
       pushAdr(x)
     END
   END OpenArrayParam;
@@ -983,13 +997,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSE (*in stack*)
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*) rh.reg := AllocR();
+        INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
         IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
-        END;
-        INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
+        END
       ELSIF (par.type.form = B.Record) THEN
-        IF xmd = B.Par THEN rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word);
-          INC(frame, WordSize); OfsPTOS(1, 1, TRUE)
+        IF xmd = B.Par THEN INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
+          rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
         END
        END;
@@ -1006,8 +1020,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := x.b;
     IF par.register # 0FFH THEN loadStringAdr(x, par.register);
       rh.reg := AllocRP(par.register+1); A.PutDO(mcode, A.MOV, t, rh, A.Word) (*len*)
-    ELSE A.PutSO(mcode, A.PUSH, t, A.Word) (*len*);
-      INC(frame, WordSize); OfsPTOS(1, 1, TRUE); pushStringAdr(x)
+    ELSE INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
+      A.PutSO(mcode, A.PUSH, t, A.Word) (*len*);
+      pushStringAdr(x)
     END
   END StringParam;
 

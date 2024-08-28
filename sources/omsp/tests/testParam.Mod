@@ -29,7 +29,7 @@ OMSPTool.DecObj testParam.mpc
 decode testParam.mpc
 testParam D5E6C731 Flash   156
 imports:
-	Traps 45642D7E
+	Traps 43622D7C
 type descriptors
 
 data    40
@@ -91,17 +91,17 @@ code   156
  0044	     1213	PUSH #1
  0046	     1230	PUSH #10
  0048	     000A
- 004A	     1211	PUSH 6(SP)
- 004C	     0006
+ 004A	     1211	PUSH 12(SP)
+ 004C	     000C
  004E	     12B0	CALL #0
  0050	     0000
  0052	     5031	ADD #6,SP
  0054	     0006
  0056	     1213	PUSH #1
- 0058	     1211	PUSH 4(SP)
- 005A	     0004
- 005C	     1211	PUSH 2(SP)
- 005E	     0002
+ 0058	     1211	PUSH 8(SP)
+ 005A	     0008
+ 005C	     1211	PUSH 8(SP)
+ 005E	     0008
  0060	     12B0	CALL #80
  0062	     0050
  0064	     5031	ADD #6,SP

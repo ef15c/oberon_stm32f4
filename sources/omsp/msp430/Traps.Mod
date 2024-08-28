@@ -30,7 +30,7 @@ OMSPTool.DecObj Traps.mpc
 decode Traps.mpc
 Traps 45642D7E Flash    26
 imports:
-	msp430g2553 60723399
+	msp430g2553 B7A7F8F7
 type descriptors
 
 data     0
@@ -62,3 +62,10 @@ code    26
  0014	     3FFF	JMP #-1, goes to  0014
  0016	     4130	RET
  0018	     4130	RET
+
+OMSPTool.DecSym Traps.sms
+decode Traps.sms
+Traps 45642D7E  1
+   1 ArrayOutOfRange [0  form = 10  size = 2 [^9] UR 0000()]       1
+   1 TypeGuardFailure [0  form = 10  size = 2 [^9] UR 0000()]       2
+   1 AssertionViolated [0  form = 10  size = 2 [^9] UR 0000()]       3

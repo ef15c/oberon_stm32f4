@@ -117,5 +117,5 @@ testSFuncs2 E55368AA  1
    5 rec [16  form = 13  size = 4 [^9]{  exno = 1  extlev = 0 { b [^4]   2}]()
    2 v1 [^4]     2
    2 r [^16]     3
-   1 p [0  form = 10  size = 2 [^9]( class = 3# [0  form = 12  size = 4 [^3]  len = -1] class = 3# [0  form = 12  size = 4 [^4]  len = -1])]       4
+   1 p [0  form = 10  size = 2 [^9] UR 0000( class = 3# [0  form = 12  size = 4 [^3]  len = -1] class = 3# [0  form = 12  size = 4 [^4]  len = -1])]       4
    1 q [0  form = 10  size = 2 [^9] leaf UR 01F0( class = 3# R6 [0  form = 12  size = 4 [^3]  len = -1] class = 3# R4 [0  form = 12  size = 4 [^4]  len = -1])]       5

@@ -25,7 +25,7 @@ OMSPTool.DecObj testSet.mpc
 decode testSet.mpc
 testSet 74E7CAC8 Flash   162
 imports:
-	Arith 82E1081E
+	Arith 80DF081C
 type descriptors
 
 data     0

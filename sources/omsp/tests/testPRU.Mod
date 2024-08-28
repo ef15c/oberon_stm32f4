@@ -5,7 +5,7 @@ MODULE testPRU;
   BEGIN INC(a)
   END p;
 
-  PROCEDURE*(10)^0 testRU0*;
+  PROCEDURE*(10)^0 testRU0;
   BEGIN p
   END testRU0;
 
@@ -13,7 +13,7 @@ END testPRU.
 
 OMSPTool.DecObj testPRU.mpc
 decode testPRU.mpc
-testPRU 3E932D6A Flash    16
+testPRU 74C8B7C5 Flash    16
 imports:
 type descriptors
 
@@ -25,7 +25,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 000E 0004
+ 000E
 fixup procedures chains
  0008     0	 0000
 fixup handlers chains
@@ -45,6 +45,4 @@ code    16
  000E	     4130	RET
 
 OMSPTool.DecSym testPRU.sms
-decode testPRU.sms
-testPRU 3E932D6A  1
-   1 testRU0 [0  form = 15  size = 2]       4
+testPRU 74C8B7C5  1

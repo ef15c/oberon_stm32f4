@@ -62,7 +62,7 @@ Traps imported:
 decode testAssert.mpc
 testAssert DAE74D27 Flash    78
 imports:
-	Traps 45642D7E
+	Traps 43622D7C
 type descriptors
 
 data     0

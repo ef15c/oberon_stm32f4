@@ -355,7 +355,7 @@ with traps:
 decode testStore.mpc
 testStore E6E3DA2C Flash   764
 imports:
-	Traps 45642D7E
+	Traps 43622D7C
 type descriptors
 
 data    42
@@ -763,4 +763,3 @@ code   764
  02F6	     026A
  02F8	     0000
  02FA	     4130	RET
-

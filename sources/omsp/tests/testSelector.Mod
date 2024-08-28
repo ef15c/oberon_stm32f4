@@ -19,7 +19,7 @@ OMSPTool.DecObj testSelector.mpc
 decode testSelector.mpc
 testSelector 4C4F402A Flash    82
 imports:
-	testExport F14EC58E
+	testExport F14DC58E
 type descriptors
  0004 FFFF FFFF FFFF
 data     4

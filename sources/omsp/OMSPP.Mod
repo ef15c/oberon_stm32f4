@@ -747,7 +747,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       END
     END ;
-    ptype.nofpar := nofpar; ptype.leaf := leaf; ptype.size := size; isLeaf := leaf; parblksize := size
+    ptype.nofpar := nofpar; ptype.leaf := leaf; ptype.size := G.WordSize; isLeaf := leaf; parblksize := size
   END ProcedureType;
 
   PROCEDURE FormalType0(VAR typ: B.Type; dim: INTEGER);

@@ -69,7 +69,7 @@
 MODULE msp430g2xx3ta01;
   IMPORT SYSTEM, M := msp430g2553;
 
-  PROCEDURE*(M.TIMER0_A0_VECTOR) ^0 Timer_A*;
+  PROCEDURE*(M.TIMER0_A0_VECTOR) ^0 Timer_A;
   BEGIN
     XOR(M.P1OUT^, {0}); (* Toggle P1.0 *)
     INC(M.TA0CCR0^, 50000); (* Add Offset to CCR0 *)
@@ -82,14 +82,14 @@ BEGIN
   M.TA0CCR0^ := 50000;
   M.TA0CTL^ := ORD(M.TASSEL_2 + M. MC_2); (* SMCLK, contmode *)
 
-  SYSTEM.BIS_SR(M.LPM0_bits + M. GIE); (* Enter LPM0 w/ interrupt *)
+  SYSTEM.BIS_SR(M.LPM0_bits + M.GIE); (* Enter LPM0 w/ interrupt *)
 END msp430g2xx3ta01.
 
 OMSPTool.DecObj msp430g2xx3ta01.mpc
 decode msp430g2xx3ta01.mpc
-msp430g2xx3ta01 B302B32A Flash    46
+msp430g2xx3ta01 DB3C4C7A Flash    46
 imports:
-	msp430g2553 A9A7F1F7
+	msp430g2553 B7A7F8F7
 type descriptors
 
 data     0
@@ -100,7 +100,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF 0000 FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 000C 0000
+ 000C
 fixup procedures chains
 fixup handlers chains
  0019     0	 0000
@@ -132,8 +132,3 @@ code    46
  0028	     D032	BIS #24,SR
  002A	     0018
  002C	     4130	RET
-
-OMSPTool.DecSym msp430g2xx3ta01.sms
-decode msp430g2xx3ta01.sms
-msp430g2xx3ta01 B302B32A  1
-   1 Timer_A [0  form = 15  size = 2]       0

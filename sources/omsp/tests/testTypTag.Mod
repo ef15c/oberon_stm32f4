@@ -31,7 +31,7 @@ END testTypTag.
 
 OMSPTool.DecObj testTypTag.mpc
 decode testTypTag.mpc
-testTypTag C9E44629 Flash   128
+testTypTag C9E44629 Flash   130
 imports:
 type descriptors
  0002 FFFF FFFF FFFF 0004 0000 FFFF FFFF
@@ -43,19 +43,19 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 006A
+ 006C
 fixup procedures chains
  0054     0	 0000
- 005C     0	 0034
- 006C     0	 0044
+ 005E     0	 0034
+ 006E     0	 0044
 fixup handlers chains
 fixup data chains
 fixup constants chains
  004A     0	 0008
 fixup types chains
  000A     0	 0000
-entry =  006A
-code   112
+entry =  006C
+code   114
  0000	     8321	SUB #2,SP
  0002	     411F	MOV 4(SP),R15
  0004	     0004
@@ -95,20 +95,21 @@ code   112
  0048	     1230	PUSH #22
  004A	     0016
  004C	     410F	MOV SP,R15
- 004E	     532F	ADD #2,R15
+ 004E	     522F	ADD #4,R15
  0050	     120F	PUSH R15
  0052	     12B0	CALL #0
  0054	     0000
  0056	     5221	ADD #4,SP
- 0058	     1221	PUSH @SP
- 005A	     12B0	CALL #0
- 005C	     0000
- 005E	     5321	ADD #2,SP
- 0060	     43D1	MOV.B #1,4(SP)
- 0062	     0004
- 0064	     5031	ADD #6,SP
- 0066	     0006
- 0068	     4130	RET
- 006A	     12B0	CALL #0
- 006C	     0000
- 006E	     4130	RET
+ 0058	     1211	PUSH 2(SP)
+ 005A	     0002
+ 005C	     12B0	CALL #0
+ 005E	     0000
+ 0060	     5321	ADD #2,SP
+ 0062	     43D1	MOV.B #1,4(SP)
+ 0064	     0004
+ 0066	     5031	ADD #6,SP
+ 0068	     0006
+ 006A	     4130	RET
+ 006C	     12B0	CALL #0
+ 006E	     0000
+ 0070	     4130	RET
