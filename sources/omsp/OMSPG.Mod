@@ -893,8 +893,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation of Assignments *)
 
   PROCEDURE StrToChar*(VAR x: Item);
-  BEGIN ASSERT(x.b = 2); x.type := B.charType; x.a := ORD(strdata[x.a]);
-    DEC(strx, 2); INC(mstrx, WordSize); DEC(nofstrs) (*remove string from strdata table*)
+  BEGIN ASSERT(x.b = 2); x.type := B.charType;
+    DEC(strx, WordSize); INC(mstrx, WordSize); DEC(nofstrs); (*remove string from strdata table*)
+    x.a := ORD(strdata[strx])
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
@@ -1146,7 +1147,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Assert; 
   
   PROCEDURE Copy*(VAR x, y, z: Item);
-    VAR pc0, pc1: LONGINT; t!: Item;
+    VAR pc0, pc1: INTEGER; t!: Item;
   BEGIN load(x, 0FFH); load(y, 0FFH);
     pc0 := 0;
     IF z.mode = B.Const THEN
@@ -1155,10 +1156,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF traps[3] # NIL THEN t := c0; PutDO(A.CMP, t, z); Trap(A.L, 3) END;
       pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*JEQ L0*)
     END;
-    pc1 := mcode.pc;
-    x.am := A.IndirectIncr; y.am := A.Indexed; y.ofs := 0; PutDO(A.MOV, x, y);
-    y.am := A.Register; t := c1; PutDO(A.ADD, t, y);
-    PutDO(A.SUB, t, z); A.PutJ(mcode, A.NE, pc1 - mcode.pc - 2); (*BNE L1*)
+    pc1 := mcode.pc; load(x, 0FFH); load(y, 0FFH);
+    x.a := 0; x.am := A.IndirectIncr; y.am := A.Indexed; y.ofs := 0; A.PutDO(mcode, A.MOV, x, y, A.Word);
+    y.am := A.Register; t := c2; A.PutDO(mcode, A.ADD, t, y, A.Word);
+    t := c1; A.PutDO(mcode, A.SUB, t, z, A.Word); A.PutJ(mcode, A.NE, pc1 - mcode.pc - 2); (*BNE L1*)
     IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END; free(z); free(y); free(x)
   END Copy;
 
@@ -1270,19 +1271,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE WriteWord(VAR R: Files.Rider; w: INTEGER);
   BEGIN Files.WriteByte(R, w MOD 100H); Files.WriteByte(R, w DIV 100H MOD 100H);
   END WriteWord;
-
-  PROCEDURE FindPtrs(VAR R: Files.Rider; typ: B.Type; adr: LONGINT);
-    VAR fld!: B.Object; i, s: LONGINT;
-  BEGIN
-    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN WriteWord(R, adr)
-    ELSIF typ.form = B.Record THEN
-      fld := typ.dsc;
-      WHILE fld # NIL DO FindPtrs(R, fld.type, fld.val + adr); fld := fld.next END
-    ELSIF typ.form = B.Array THEN
-      s := typ.base.size;
-      FOR i := 0 TO typ.len-1 DO FindPtrs(R, typ.base, i*s + adr) END
-    END
-  END FindPtrs;
 
   PROCEDURE procFixupCond(obj: B.Object; local:BOOLEAN): BOOLEAN;
     VAR res: BOOLEAN;

@@ -1,6 +1,6 @@
 MODULE testString;
   CONST st* = "salut"; st1* = "hi";
-  VAR s*: ARRAY 10 OF CHAR;
+  VAR s*: ARRAY 10 OF CHAR; c: CHAR;
 
   PROCEDURE p(m: ARRAY OF CHAR);
   BEGIN
@@ -8,17 +8,18 @@ MODULE testString;
 
 BEGIN
   s := "bonjour";
-  p(s); p(st); p("salut"); p("hi")
+  p(s); p(st); p("salut"); p("hi");
+  c := "a"
 END testString.
 
 
 OMSPTool.DecObj testString.mpc
 decode testString.mpc
-testString 6ACDB7DC Flash    98
+testString 6ACDB7DC Flash   104
 imports:
 type descriptors
 
-data    10
+data    12
 strings
 salut|hi||bonjour|
 vector table
@@ -32,13 +33,14 @@ fixup procedures chains
 fixup handlers chains
 fixup data chains
  001C     0	 0000
+ 0052     0	 000A
 fixup constants chains
  0038     0	 0000
  0046     0	 0006
  0008     0	 000A
 fixup types chains
 entry =  0002
-code    80
+code    86
  0000	     4130	RET
  0002	     403F	MOV #0,R15
  0004	     0000
@@ -78,7 +80,10 @@ code    80
  0048	     12B0	CALL #60
  004A	     003C
  004C	     5221	ADD #4,SP
- 004E	     4130	RET
+ 004E	     40F2	MOV.B #97,&0
+ 0050	     0061
+ 0052	     0000
+ 0054	     4130	RET
 
 OMSPTool.DecSym testString.sms
 decode testString.sms
