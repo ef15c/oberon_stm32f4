@@ -701,7 +701,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       INC(nofpar); obj.class := cl; obj.type := tp; obj.rdo := rdo; obj.lev := level; 
       IF inreg THEN obj.register := G.AllocR(); nbregs := parsize DIV G.WordSize;
         WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
-      ELSE obj.register := 0FFH; adr := adr + parsize; obj.val := adr
+      ELSE obj.register := 0FFH; obj.val := adr; INC(adr, parsize)
       END;
       obj := obj.next
     END ;
@@ -903,10 +903,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF inreg THEN obj.register := G.AllocR(); nbregs := tp.size DIV G.WordSize;
             WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
           ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
-            obj.register := 0FFH;
-            IF level = 0 THEN obj.val := varsize; varsize := varsize + tp.size
-            ELSE varsize := varsize + tp.size; obj.val := varsize (*local variables are located above SP*)
-            END;
+            obj.register := 0FFH; obj.val := varsize; INC(varsize, tp.size)
           END;
           IF onetimeinit THEN obj.rdo := TRUE END;
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
@@ -927,11 +924,11 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END Declarations;
 
   PROCEDURE ProcedureDecl;
-    VAR proc!, loc!: B.Object;
+    VAR proc!, loc!, locn!: B.Object;
       type!: B.Type;
       procid: S.Ident;
       x!: G.Item;
-      locblksize, parblksize, L: LONGINT;
+      locblksize, parblksize, parsize, L: LONGINT;
       int, haveinregs: BOOLEAN; nofusedregs: INTEGER;
       riu: SET;
       v: ARRAY 8 OF BYTE;
@@ -958,17 +955,25 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ProcedureType(type, parblksize); (*formal parameter list*)
       IF int & (parblksize # 0) THEN S.Mark("remove params") END;
       Check(S.semicolon, "no ;");
-      (* -frame layout- local variables have positive offsets
-        For regular procedure, parameters have negative offsets, return address has 0 offset.
-        For interrupt handlers, there is no parameters, return address has offset -2, status register has offset 0.
-      *)
-      loc := B.topScope.next; (*fix .val offsets of parameters*)
-      WHILE loc # NIL DO
-        IF (loc.class IN {B.Var, B.Par}) & (loc.register = 0FFH) THEN loc.val := - loc.val - 2 END;
-        loc := loc.next
-      END;
-      locblksize := G.WordSize; (*local variables are located immediately after return address/status register copy*)
+      locblksize := 0; (*local variables are located immediately after return address/status register copy*)
       Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
+
+      (* -frame layout- local variables have negative offsets
+        For regular procedure, parameters have positive offsets, return address has 0 offset.
+        For interrupt handlers, there is no parameters, return address has offset 2, status register has offset 0.
+      *)
+      loc := B.topScope.next; L := 0; (*fix .val offsets of parameters*)
+      WHILE loc # NIL DO (*fix .val offsets of parameters and local variables*)
+        locn := loc.next;
+        IF locn = NIL THEN parsize := parblksize - loc.val ELSE parsize := locn.val - loc.val END;
+        IF (loc.class IN {B.Var, B.Par}) & (loc.register = 0FFH) THEN (*stored in stack*)
+          IF L < type.nofpar THEN (*parameter*) loc.val := parblksize - loc.val - parsize + G.WordSize
+          ELSE (*local variable*) DEC(loc.val, locblksize)
+          END
+        END;
+        loc := locn; INC(L)
+      END;
+
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
       InsertResultRegister(type);
@@ -981,7 +986,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END;
       IF isLeaf THEN G.SetAllocationMode(G.Register) ELSE G.SetAllocationMode(G.Stack) END;
       IF nofusedregs # -1 THEN G.LimitRegisters(nofusedregs) END;
-      G.Enter(locblksize - G.WordSize, int, nofusedregs);
+      G.Enter(locblksize, int, nofusedregs);
       IF sym = S.begin THEN S.Get(sym); StatSequence END;
       IF sym = S.return THEN
         S.Get(sym); expression(x);
@@ -991,7 +996,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF type.base.form # B.NoTyp THEN
         S.Mark("function without result"); type.base := B.noType
       END;
-      G.Return(type.base.form, x, locblksize - G.WordSize, int, nofusedregs);
+      G.Return(type.base.form, x, locblksize, int, nofusedregs);
       proc.type.ur := G.PRU;
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE;
