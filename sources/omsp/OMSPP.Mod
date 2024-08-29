@@ -955,15 +955,20 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       IF int & proc.expo THEN proc.expo := FALSE; S.Mark("remove asterisk") END;
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
       B.OpenScope; INC(level); type.base := B.noType;
-      ProcedureType(type, parblksize);  (*formal parameter list*)
-      IF int & (parblksize # 0) THEN S.Mark("params not allowed in handler") END;
-      Check(S.semicolon, "no ;"); locblksize := parblksize + G.WordSize; (*return address is between parameters and local variables*)
-      Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
-      loc := B.topScope.next; (*fix .val offsets with 0 for last local variable*)
+      ProcedureType(type, parblksize); (*formal parameter list*)
+      IF int & (parblksize # 0) THEN S.Mark("remove params") END;
+      Check(S.semicolon, "no ;");
+      (* -frame layout- local variables have positive offsets
+        For regular procedure, parameters have negative offsets, return address has 0 offset.
+        For interrupt handlers, there is no parameters, return address has offset -2, status register has offset 0.
+      *)
+      loc := B.topScope.next; (*fix .val offsets of parameters*)
       WHILE loc # NIL DO
-        IF (loc.class IN {B.Var, B.Par}) & (loc.register = 0FFH) THEN loc.val := locblksize - loc.val END;
+        IF (loc.class IN {B.Var, B.Par}) & (loc.register = 0FFH) THEN loc.val := - loc.val - 2 END;
         loc := loc.next
       END;
+      locblksize := G.WordSize; (*local variables are located immediately after return address/status register copy*)
+      Declarations(locblksize, haveinregs); IF haveinregs THEN type.leaf := TRUE; isLeaf := TRUE END;
       proc.val := G.Here(); 
       proc.type.dsc := B.topScope.next;
       InsertResultRegister(type);
@@ -976,7 +981,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END;
       IF isLeaf THEN G.SetAllocationMode(G.Register) ELSE G.SetAllocationMode(G.Stack) END;
       IF nofusedregs # -1 THEN G.LimitRegisters(nofusedregs) END;
-      G.Enter(locblksize - parblksize - 2, int, nofusedregs);
+      G.Enter(locblksize - G.WordSize, int, nofusedregs);
       IF sym = S.begin THEN S.Get(sym); StatSequence END;
       IF sym = S.return THEN
         S.Get(sym); expression(x);
@@ -986,7 +991,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF type.base.form # B.NoTyp THEN
         S.Mark("function without result"); type.base := B.noType
       END;
-      G.Return(type.base.form, x, locblksize - parblksize - 2, int, nofusedregs);
+      G.Return(type.base.form, x, locblksize - G.WordSize, int, nofusedregs);
       proc.type.ur := G.PRU;
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE;

@@ -109,12 +109,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END OfsPTOS;
 
+  PROCEDURE adjFrmOfs(size: INTEGER);
+  BEGIN INC(frame, size);
+    OfsPTOS(size DIV WordSize, size DIV WordSize, TRUE)
+  END  adjFrmOfs;
+
   PROCEDURE SaveRegs(regs: SET);
     VAR n: INTEGER;
   BEGIN
     IF regs # {} THEN
-      n := A.PushRegs(mcode, regs);
-      INC(frame, n*WordSize); OfsPTOS(n, n, TRUE)
+      n := A.PushRegs(mcode, regs); adjFrmOfs(n*WordSize)
     END
   END SaveRegs;
 
@@ -122,8 +126,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR n: INTEGER;
   BEGIN
     IF regs # {} THEN
-      n := A.PopRegs(mcode, regs);
-      DEC(frame, n*WordSize); OfsPTOS(-n, -n, TRUE)
+      n := A.PopRegs(mcode, regs); adjFrmOfs(-n*WordSize)
     END
   END RestoreRegs;
 
@@ -344,8 +347,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE push(VAR x: Item);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
-  BEGIN INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
-    t := x; t.reg := 0; t.am := A.Immediate;
+  BEGIN adjFrmOfs(WordSize); t := x; t.reg := 0; t.am := A.Immediate;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
     IF x.mode = Reg THEN PutSO(A.PUSH, x)
@@ -419,8 +421,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE pushTypTagAdr(T: B.Type);
     VAR sva!: Item;
   BEGIN sva.am := A.Immediate; sva.ofs := A.C16; sva.obj := T.typobj;
-    INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
-    A.PutSO(mcode, A.PUSH, sva, A.Word)
+    adjFrmOfs(WordSize); A.PutSO(mcode, A.PUSH, sva, A.Word)
   END pushTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item; pr: INTEGER);
@@ -432,8 +433,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE pushStringAdr(x: Item);
     VAR x1!: Item;
   BEGIN x1 := x; x1.c := 0; x1.am := A.Immediate; x1.ofs := A.C16+x.a;
-    INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
-    A.PutSO(mcode, A.PUSH, x1, A.Word)
+    adjFrmOfs(WordSize); A.PutSO(mcode, A.PUSH, x1, A.Word)
   END pushStringAdr;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
@@ -693,16 +693,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
         PutSO(A.CALL, x); free(x)
       ELSE rh.reg := AllocR();
-        IF s = 0 THEN PutSO(A.POP, rh); OfsPTOS(-1, -1, TRUE); DEC(frame, WordSize)
+        IF s = 0 THEN PutSO(A.POP, rh); adjFrmOfs(-WordSize)
         ELSE t := sp; t.mode := RegI; t.a := -x.type.size; PutDO(A.MOV, t, rh); INC(s, WordSize)
         END;
         IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, rh); Trap(A.EQ, 5) END;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
       END;
     END;
-    IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr);
-      DEC(frame, s); OfsPTOS(-s DIV WordSize, -s DIV WordSize, TRUE)
-    END;
+    IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr); adjFrmOfs(-s) END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(Stack)
     ELSE (*function*) 
       x.tmp := TRUE; x.mode := Reg; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
@@ -972,8 +970,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
       END
-    ELSE (*in stack*)
-      INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
+    ELSE (*in stack*) adjFrmOfs(WordSize);
       IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
       ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
       END;
@@ -998,12 +995,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSE (*in stack*)
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN (*open array*) rh.reg := AllocR();
-        INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
+        adjFrmOfs(WordSize);
         IF t.ofs >= 0 THEN A.PutSO(mcode, A.PUSH, t, A.Word)
         ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         END
       ELSIF (par.type.form = B.Record) THEN
-        IF xmd = B.Par THEN INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
+        IF xmd = B.Par THEN adjFrmOfs(WordSize);
           rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
         END
@@ -1021,8 +1018,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL; t.ofs := x.b;
     IF par.register # 0FFH THEN loadStringAdr(x, par.register);
       rh.reg := AllocRP(par.register+1); A.PutDO(mcode, A.MOV, t, rh, A.Word) (*len*)
-    ELSE INC(frame, WordSize); OfsPTOS(1, 1, TRUE);
-      A.PutSO(mcode, A.PUSH, t, A.Word) (*len*);
+    ELSE adjFrmOfs(WordSize); A.PutSO(mcode, A.PUSH, t, A.Word) (*len*);
       pushStringAdr(x)
     END
   END StringParam;
@@ -1079,14 +1075,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Fixup;
 
   PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
-    VAR t!: Item; regl, regh: BYTE;
-  BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    OfsPTOS(0, 0, FALSE); frame := 0;
-    IF size >= A.C16 THEN S.Mark("local variables size exeeded") END;
+    VAR t!, tsp!: Item; regl, regh: BYTE;
+  BEGIN
+    OfsPTOS(0, 0, FALSE); IF int THEN (*SR copy is on TOS*) OfsPTOS(1, 1, TRUE) END;
+    frame := 0;
 
-    IF size # 0 THEN
-      t.ofs := size; A.PutDO(mcode, A.SUB, t, sp, A.Word); OfsPTOS(size DIV WordSize, size DIV WordSize, TRUE)
-    END;
+    IF size >= A.C16 THEN S.Mark("local variables size exeeded") END;
+    IF size # 0 THEN t := c0; t.a := size; tsp := sp; PutDO(A.SUB, t, tsp); adjFrmOfs(size) END;
 
     IF nofusedregs >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
       IF AllocUp THEN regl := A.CG2 + 1; regh := nofusedregs + regl - 1 ELSE regh :=  15; regl := 16 - nofusedregs END;
@@ -1103,13 +1098,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF AllocUp THEN regl := A.CG2 + 1; regh := nofusedregs + regl - 1 ELSE regh :=  15; regl := 16 - nofusedregs; END;
       IF regh >= regl THEN RestoreRegs({regl .. regh}); PRU := PRU - {regl .. regh} END
     END;
-    IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); OfsPTOS(-size DIV WordSize, -size DIV WordSize, TRUE) END;
-    IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
-    IF int THEN A.PutNO(mcode, A.RETI);
+    IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); adjFrmOfs(-size) END;
+    IF int THEN A.PutNO(mcode, A.RETI); OfsPTOS(-1, -1, TRUE);
       IF PRU # {} THEN S.Mark("destroyed regs in handler") END
     ELSE A.PutNO(mcode, A.RET)
     END;
-    AllocUp := FALSE; RIU := {}; RB := 15; VRS := RIU
+    IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
+    SetAllocationMode(Stack); RIU := {}; VRS := RIU
   END Return;
 
   (* In-line code procedures*)
@@ -1265,7 +1260,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SetDataSize;
 
   PROCEDURE Header*;
-  BEGIN entry := mcode.pc; OfsPTOS(0, 0, FALSE); RB := 15
+  BEGIN entry := mcode.pc; frame := 0; vframe := 0; OfsPTOS(0, 0, FALSE); SetAllocationMode(Stack)
   END Header;
 
   PROCEDURE WriteWord(VAR R: Files.Rider; w: INTEGER);
@@ -1360,7 +1355,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       i, sx, suax, nofimps, fixadr, flashSize: LONGINT;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
-  BEGIN  (*exit code*) A.PutNO(mcode, A.RET); OfsPTOS(-1, -1, TRUE);
+  BEGIN  (*exit code*) A.PutNO(mcode, A.RET);
     obj := B.topScope.next; nofimps := 0;
     WHILE obj # NIL DO
       IF (obj.class = B.Mod) & (obj.dsc # B.system) THEN INC(nofimps); (*count imports*)
