@@ -103,9 +103,80 @@ UCB0TXIFG*          = {3};
 * Basic Clock Module
 ************************************************************)
 DCOCTL*             = SYSTEM.VAL(PBYTE, 0056H);
+MOD0*               = {0};(* Modulation Bit 0 *)
+MOD1*               = {1};(* Modulation Bit 1 *)
+MOD2*               = {2};(* Modulation Bit 2 *)
+MOD3*               = {3};(* Modulation Bit 3 *)
+MOD4*               = {4};(* Modulation Bit 4 *)
+DCO0*               = {5};(* DCO Select Bit 0 *)
+DCO1*               = {6};(* DCO Select Bit 1 *)
+DCO2*               = {7};(* DCO Select Bit 2 *)
+
 BCSCTL1*            = SYSTEM.VAL(PBYTE, 0057H);
+RSEL0*              = {0};(* Range Select Bit 0 *)
+RSEL1*              = {1};(* Range Select Bit 1 *)
+RSEL2*              = {2};(* Range Select Bit 2 *)
+RSEL3*              = {3};(* Range Select Bit 3 *)
+DIVA0*              = {4};(* ACLK Divider 0 *)
+DIVA1*              = {5};(* ACLK Divider 1 *)
+XTS*                = {6};(* LFXTCLK 0:Low Freq. / 1: High Freq. *)
+XT2OFF*             = {7};(* Enable XT2CLK *)
+
+DIVA_0*             = {};(* ACLK Divider 0: /1 *)
+DIVA_1*             = DIVA0;(* ACLK Divider 1: /2 *)
+DIVA_2*             = DIVA1;(* ACLK Divider 2: /4 *)
+DIVA_3*             = DIVA0+DIVA1;(* ACLK Divider 3: /8 *)
+
 BCSCTL2*            = SYSTEM.VAL(PBYTE, 0058H);
+DIVS0*              = {1}(* SMCLK Divider 0 *)
+DIVS1*              = {2}(* SMCLK Divider 1 *)
+SELS*               = {3};(* SMCLK Source Select 0:DCOCLK / 1:XT2CLK/LFXTCLK *)
+DIVM0*              = {4}(* MCLK Divider 0 *)
+DIVM1*              = {5}(* MCLK Divider 1 *)
+SELM0*              = {6}(* MCLK Source Select 0 *)
+SELM1*              = {7}(* MCLK Source Select 1 *)
+
+DIVS_0*             = {};(* SMCLK Divider 0: /1 *)
+DIVS_1*             = DIVS0;(* SMCLK Divider 1: /2 *)
+DIVS_2*             = DIVS1;(* SMCLK Divider 2: /4 *)
+DIVS_3*             = DIVS0+DIVS1;(* SMCLK Divider 3: /8 *)
+
+DIVM_0*             = {};(* MCLK Divider 0: /1 *)
+DIVM_1*             = DIVM0;(* MCLK Divider 1: /2 *)
+DIVM_2*             = DIVM1;(* MCLK Divider 2: /4 *)
+DIVM_3*             = DIVM0+DIVM1;(* MCLK Divider 3: /8 *)
+
+SELM_0*             = {};(* MCLK Source Select 0: DCOCLK *)
+SELM_1*             = SELM0;(* MCLK Source Select 1: DCOCLK *)
+SELM_2*             = SELM1;(* MCLK Source Select 2: XT2CLK/LFXTCLK *)
+SELM_3*             = SELM0+SELM1;(* MCLK Source Select 3: LFXTCLK *)
+
 BCSCTL3*            = SYSTEM.VAL(PBYTE, 0053H);
+
+LFXT1OF*            = {0};(* Low/high Frequency Oscillator Fault Flag *)
+XT2OF*              = {1};(* High frequency oscillator 2 fault flag *)
+XCAP0*              = {2};(* XIN/XOUT Cap 0 *)
+XCAP1*              = {3};(* XIN/XOUT Cap 1 *)
+LFXT1S0*            = {4};(* Mode 0 for LFXT1 (XTS = 0) *)
+LFXT1S1*            = {5};(* Mode 1 for LFXT1 (XTS = 0) *)
+XT2S0*              = {6};(* Mode 0 for XT2 *)
+XT2S1*              = {7};(* Mode 1 for XT2 *)
+
+XCAP_0*             = {};(* XIN/XOUT Cap : 0 pF *)
+XCAP_1*             = XCAP0;(* XIN/XOUT Cap : 6 pF *)
+XCAP_2*             = XCAP1;(* XIN/XOUT Cap : 10 pF *)
+XCAP_3*             = XCAP0+XCAP1;(* XIN/XOUT Cap : 12.5 pF *)
+
+LFXT1S_0*           = {};    (* Mode 0 for LFXT1 : Normal operation *)
+LFXT1S_1*           = LFXT1S0;    (* Mode 1 for LFXT1 : Reserved *)
+LFXT1S_2*           = LFXT1S1;    (* Mode 2 for LFXT1 : VLO *)
+LFXT1S_3*           = LFXT1S0+LFXT1S1;    (* Mode 3 for LFXT1 : Digital input signal *)
+
+XT2S_0*             = {};(* Mode 0 for XT2 : 0.4 - 1 MHz *)
+XT2S_1*             = XT2S0;(* Mode 1 for XT2 : 1 - 4 MHz *)
+XT2S_2*             = XT2S1;(* Mode 2 for XT2 : 2 - 16 MHz *)
+XT2S_3*             = XT2S0+XT2S1;(* Mode 3 for XT2 : Digital input signal *)
+
 (************************************************************
 * Comparator A
 ************************************************************)
@@ -348,253 +419,3 @@ RESET_VECTOR*       = 16+15;                (* 0xFFFE Reset [Highest Priority] *
 ************************************************************)
 
 END msp430g2553.
-
-
-OMSPTool.DecObj msp430g2553.mpc
-decode msp430g2553.mpc
-msp430g2553 B7A7F8F7 Flash     2
-imports:
-type descriptors
-
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 0000
-fixup procedures chains
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
-entry =  0000
-code     2
- 0000	     4130	RET
-
-OMSPTool.DecSym msp430g2553.sms
-decode msp430g2553.sms
-msp430g2553 B7A7F8F7  1
-   1 C [^6]       1
-   1 Z [^6]       2
-   1 N [^6]       4
-   1 V [^6]     256
-   1 GIE [^6]       8
-   1 CPUOFF [^6]      16
-   1 OSCOFF [^6]      32
-   1 SCG0 [^6]      64
-   1 SCG1 [^6]     128
-   1 LPM0_bits [^6]      16
-   1 LPM1_bits [^6]      80
-   1 LPM2_bits [^6]     144
-   1 LPM3_bits [^6]     208
-   1 LPM4_bits [^6]     240
-   1 IE1 [^14]       0
-   1 WDTIE [^6]       1
-   1 OFIE [^6]       2
-   1 NMIIE [^6]      16
-   1 ACCVIE [^6]      32
-   1 IFG1 [^14]       2
-   1 WDTIFG [^6]       1
-   1 OFIFG [^6]       2
-   1 PORIFG [^6]       4
-   1 RSTIFG [^6]       8
-   1 NMIIFG [^6]      16
-   1 IE2 [^14]       1
-   1 UC0IE [^14]       1
-   1 UCA0RXIE [^6]       1
-   1 UCA0TXIE [^6]       2
-   1 UCB0RXIE [^6]       4
-   1 UCB0TXIE [^6]       8
-   1 IFG2 [^14]       3
-   1 UC0IFG [^14]       3
-   1 UCA0RXIFG [^6]       1
-   1 UCA0TXIFG [^6]       2
-   1 UCB0RXIFG [^6]       4
-   1 UCB0TXIFG [^6]       8
-   1 DCOCTL [^14]      86
-   1 BCSCTL1 [^14]      87
-   1 BCSCTL2 [^14]      88
-   1 BCSCTL3 [^14]      83
-   1 CACTL1 [^14]      89
-   1 CACTL2 [^14]      90
-   1 CAPD [^14]      91
-   1 FCTL1 [^7]     296
-   1 FCTL2 [^7]     298
-   1 FCTL3 [^7]     300
-   1 P1IN [^14]      32
-   1 P1OUT [^14]      33
-   1 P1DIR [^14]      34
-   1 P1IFG [^14]      35
-   1 P1IES [^14]      36
-   1 P1IE [^14]      37
-   1 P1SEL [^14]      38
-   1 P1SEL2 [^14]      65
-   1 P1REN [^14]      39
-   1 P2IN [^14]      40
-   1 P2OUT [^14]      41
-   1 P2DIR [^14]      42
-   1 P2IFG [^14]      43
-   1 P2IES [^14]      44
-   1 P2IE [^14]      45
-   1 P2SEL [^14]      46
-   1 P2SEL2 [^14]      66
-   1 P2REN [^14]      47
-   1 P3IN [^14]      24
-   1 P3OUT [^14]      25
-   1 P3DIR [^14]      26
-   1 P3SEL [^14]      27
-   1 P3SEL2 [^14]      67
-   1 P3REN [^14]      16
-   1 TA0IV [^7]     302
-   1 TA0IV_NONE [^4]       0
-   1 TA0IV_TACCR1 [^4]       2
-   1 TA0IV_TACCR2 [^4]       4
-   1 TA0IV_6 [^4]       6
-   1 TA0IV_8 [^4]       8
-   1 TA0IV_TAIFG [^4]      10
-   1 TA0CTL [^7]     352
-   1 TASSEL1 [^6]     512
-   1 TASSEL0 [^6]     256
-   1 ID1 [^6]     128
-   1 ID0 [^6]      64
-   1 MC1 [^6]      32
-   1 MC0 [^6]      16
-   1 TACLR [^6]       4
-   1 TAIE [^6]       2
-   1 TAIFG [^6]       1
-   1 MC_0 [^6]       0
-   1 MC_1 [^6]      16
-   1 MC_2 [^6]      32
-   1 MC_3 [^6]      48
-   1 ID_0 [^6]       0
-   1 ID_1 [^6]      64
-   1 ID_2 [^6]     128
-   1 ID_3 [^6]     192
-   1 TASSEL_0 [^6]       0
-   1 TASSEL_1 [^6]     256
-   1 TASSEL_2 [^6]     512
-   1 TASSEL_3 [^6]     768
-   1 TA0CCTL0 [^7]     354
-   1 TA0CCTL1 [^7]     356
-   1 TA0CCTL2 [^7]     358
-   1 CM1 [^6]   32768
-   1 CM0 [^6]   16384
-   1 CCIS1 [^6]    8192
-   1 CCIS0 [^6]    4096
-   1 SCS [^6]    2048
-   1 SCCI [^6]    1024
-   1 CAP [^6]     512
-   1 OUTMOD2 [^6]     128
-   1 OUTMOD1 [^6]      64
-   1 OUTMOD0 [^6]      32
-   1 CCIE [^6]      16
-   1 CCI [^6]       8
-   1 OUT [^6]       4
-   1 COV [^6]       2
-   1 CCIFG [^6]       1
-   1 OUTMOD_0 [^6]       0
-   1 OUTMOD_1 [^6]      32
-   1 OUTMOD_2 [^6]      64
-   1 OUTMOD_3 [^6]      96
-   1 OUTMOD_4 [^6]     128
-   1 OUTMOD_5 [^6]     160
-   1 OUTMOD_6 [^6]     192
-   1 OUTMOD_7 [^6]     224
-   1 CCIS_0 [^6]       0
-   1 CCIS_1 [^6]    4096
-   1 CCIS_2 [^6]    8192
-   1 CCIS_3 [^6]   12288
-   1 CM_0 [^6]       0
-   1 CM_1 [^6]   16384
-   1 CM_2 [^6]   32768
-   1 CM_3 [^6]   49152
-   1 TA0R [^7]     368
-   1 TA0CCR0 [^7]     370
-   1 TA0CCR1 [^7]     372
-   1 TA0CCR2 [^7]     374
-   1 TA1IV [^7]     286
-   1 TA1CTL [^7]     384
-   1 TA1CCTL0 [^7]     386
-   1 TA1CCTL1 [^7]     388
-   1 TA1CCTL2 [^7]     390
-   1 TA1R [^7]     400
-   1 TA1CCR0 [^7]     402
-   1 TA1CCR1 [^7]     404
-   1 TA1CCR2 [^7]     406
-   1 UCA0CTL0 [^14]      96
-   1 UCA0CTL1 [^14]      97
-   1 UCA0BR0 [^14]      98
-   1 UCA0BR1 [^14]      99
-   1 UCA0MCTL [^14]     100
-   1 UCA0STAT [^14]     101
-   1 UCA0RXBUF [^14]     102
-   1 UCA0TXBUF [^14]     103
-   1 UCA0ABCTL [^14]      93
-   1 UCA0IRTCTL [^14]      94
-   1 UCA0IRRCTL [^14]      95
-   1 UCB0CTL0 [^14]     104
-   1 UCB0CTL1 [^14]     105
-   1 UCB0BR0 [^14]     106
-   1 UCB0BR1 [^14]     107
-   1 UCB0I2CIE [^14]     108
-   1 UCB0STAT [^14]     109
-   1 UCB0RXBUF [^14]     110
-   1 UCB0TXBUF [^14]     111
-   1 UCB0I2COA [^7]     280
-   1 UCB0I2CSA [^7]     282
-   1 WDTCTL [^7]     288
-   1 WDTIS0 [^6]       1
-   1 WDTIS1 [^6]       2
-   1 WDTSSEL [^6]       4
-   1 WDTCNTCL [^6]       8
-   1 WDTTMSEL [^6]      16
-   1 WDTNMI [^6]      32
-   1 WDTNMIES [^6]      64
-   1 WDTHOLD [^6]     128
-   1 WDTPW [^6]   23040
-   1 WDT_MDLY_32 [^6]   23064
-   1 WDT_MDLY_8 [^6]   23065
-   1 WDT_MDLY_0_5 [^6]   23066
-   1 WDT_MDLY_0_064 [^6]   23067
-   1 WDT_ADLY_1000 [^6]   23068
-   1 WDT_ADLY_250 [^6]   23069
-   1 WDT_ADLY_16 [^6]   23070
-   1 WDT_ADLY_1_9 [^6]   23071
-   1 WDT_MRST_32 [^6]   23048
-   1 WDT_MRST_8 [^6]   23049
-   1 WDT_MRST_0_5 [^6]   23050
-   1 WDT_MRST_0_064 [^6]   23051
-   1 WDT_ARST_1000 [^6]   23052
-   1 WDT_ARST_250 [^6]   23053
-   1 WDT_ARST_16 [^6]   23054
-   1 WDT_ARST_1_9 [^6]   23055
-   1 CALDCO_16MHZ [^7]    4344
-   1 CALBC1_16MHZ [^7]    4345
-   1 CALDCO_12MHZ [^7]    4346
-   1 CALBC1_12MHZ [^7]    4347
-   1 CALDCO_8MHZ [^7]    4348
-   1 CALBC1_8MHZ [^7]    4349
-   1 CALDCO_1MHZ [^7]    4350
-   1 CALBC1_1MHZ [^7]    4351
-   1 TLV_CHECKSUM [^7]    4288
-   1 TLV_DCO_30_TAG [^7]    4342
-   1 TLV_DCO_30_LEN [^7]    4343
-   1 TLV_ADC10_1_TAG [^7]    4314
-   1 TLV_ADC10_1_LEN [^7]    4315
-   1 TRAPINT_VECTOR [^4]      16
-   1 PORT1_VECTOR [^4]      18
-   1 PORT2_VECTOR [^4]      19
-   1 ADC10_VECTOR [^4]      21
-   1 USCIAB0TX_VECTOR [^4]      22
-   1 USCIAB0RX_VECTOR [^4]      23
-   1 TIMER0_A1_VECTOR [^4]      24
-   1 TIMER0_A0_VECTOR [^4]      25
-   1 WDT_VECTOR [^4]      26
-   1 COMPARATORA_VECTOR [^4]      27
-   1 TIMER1_A1_VECTOR [^4]      28
-   1 TIMER1_A0_VECTOR [^4]      29
-   1 NMI_VECTOR [^4]      30
-   1 RESET_VECTOR [^4]      31

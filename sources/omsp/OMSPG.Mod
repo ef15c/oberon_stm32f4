@@ -1166,6 +1166,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     t := sr; PutDO(op, x, t); free(x)
   END LogicalSR;
 
+  PROCEDURE LogicalSROnExit*(fct: INTEGER; VAR x: Item);
+    VAR op: BYTE; t!: Item;
+  BEGIN
+    IF fct = 0 THEN op := A.BIC ELSE op := A.BIS END;
+    t.mode := B.Var; t.c := 1; t.a := 0; t.tmp := FALSE; t.rdo := FALSE; PutDO(op, x, t); free(x); free(t)
+  END LogicalSROnExit;
+
   (*In-line code functions*)
 
   PROCEDURE Abs*(VAR x: Item);

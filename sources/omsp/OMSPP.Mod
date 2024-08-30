@@ -22,7 +22,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     modid: S.Ident;
     pbsList: PtrBase;   (*list of names of pointer base types*)
     dummy: B.Object;
-    isLeaf: BOOLEAN;
+    isLeaf, isInt: BOOLEAN;
     W: Texts.Writer;
 
   PROCEDURE Check(s: INTEGER; msg: ARRAY OF CHAR);
@@ -460,6 +460,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF x.type.form IN {B.Int, B.Set} THEN G.Shift(pno-17, x, y) ELSE S.Mark("bad type") END
       ELSIF pno IN {18, 20} THEN (*RLC, RRC*)
         IF x.type.form IN {B.Int, B.Set} THEN G.Rotate(pno-18, x) ELSE S.Mark("bad type") END
+      ELSIF pno IN {21, 22} THEN 
+        IF isInt THEN G.LogicalSROnExit(pno-21, x) ELSE S.Mark("not allowed here") END
       ELSE ASSERT(FALSE)
       END
     ELSE S.Mark("wrong nof parameters")
@@ -937,7 +939,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       int := TRUE; L := 0; S.Get(sym); IF sym # S.lparen THEN S.Mark("no (") END;
       REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[L] := x.a; INC(L); UNTIL sym # S.comma;
       Check(S.rparen, "no )")
-    END;
+    END; isInt := int;
     IF sym = S.arrow THEN S.Get(sym); nofusedregs := S.ival; Check(S.int, "missing register limit");
     ELSE nofusedregs := -1
     END;
@@ -980,7 +982,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         riu := G.RIU; proc.type.ur := G.PRU; L := 0; G.FJump(L);
         REPEAT ProcedureDecl; Check(S.semicolon, "no ;") UNTIL sym # S.procedure;
         G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next;
-        G.SetRIU(riu); G.SetPRU(proc.type.ur) (*restore current procedure RIU and PRU*)
+        G.SetRIU(riu); G.SetPRU(proc.type.ur); (*restore current procedure RIU and PRU*)
+        isInt := int
       END;
       IF isLeaf THEN G.SetAllocationMode(G.Register) ELSE G.SetAllocationMode(G.Stack) END;
       IF nofusedregs # -1 THEN G.LimitRegisters(nofusedregs) END;
@@ -997,7 +1000,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       G.Return(type.base.form, x, locblksize, int, nofusedregs);
       proc.type.ur := G.PRU;
       B.CloseScope; DEC(level); Check(S.end, "no END");
-      isLeaf := FALSE;
+      isLeaf := FALSE; isInt := FALSE;
       IF sym = S.ident THEN
         IF S.id # procid THEN S.Mark("no match") END ;
         S.Get(sym)
@@ -1026,7 +1029,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
   PROCEDURE Module;
     VAR key: LONGINT; oldCol: INTEGER; dmy: BOOLEAN;
-  BEGIN Texts.WriteString(W, "  compiling "); isLeaf := FALSE; S.Get(sym);
+  BEGIN isLeaf := FALSE; isInt := FALSE; Texts.WriteString(W, "  compiling "); S.Get(sym);
     IF sym = S.module THEN S.Get(sym);
       G.Open; dc := 0;
       initmode := FALSE;

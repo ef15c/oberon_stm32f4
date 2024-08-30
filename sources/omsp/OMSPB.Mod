@@ -447,5 +447,7 @@ BEGIN
   enter("VAL", SFunc, intType, 162);
   enter("COPY", SProc, noType, 123); (*procedures*)
   enter("BIC_SR", SProc, noType, 91);
-  enter("BIS_SR", SProc, noType, 101)
+  enter("BIS_SR", SProc, noType, 101);
+  enter("BIC_SR_ON_EXIT", SProc, noType, 211);
+  enter("BIS_SR_ON_EXIT", SProc, noType, 221)
 END OMSPB.
