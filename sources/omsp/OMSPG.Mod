@@ -542,7 +542,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
             A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0; freeR(rh.reg)
           END;
           free(x); x.reg := y.reg; x.mode := RegI; x.tmp := TRUE
-        ELSIF x.mode = B.Par THEN load(y, 0FFH); t.mode := B.Var; t.c := x.c; t.a := x.a + frame; t.tmp := FALSE; t.obj := x.obj; PutDO(A.ADD, t, y); free(t);
+        ELSIF x.mode = B.Par THEN load(y, 0FFH); t.mode := B.Var; 
+          t.c := x.c; t.a := x.a; t.tmp := FALSE; t.obj := x.obj; PutDO(A.ADD, t, y); free(t);
           free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.tmp := TRUE
         ELSIF x.mode = RegI THEN x.mode := Reg; PutDO( A.ADD, x, y);
           free(x); x.mode := RegI; x.reg := y.reg; x.tmp := TRUE
@@ -926,7 +927,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.type.size = y.type.size THEN t.a := (y.type.size+1) DIV 2; PutDO(A.MOV, t, rh)
           ELSE S.Mark("different length/size, not implemented")
           END
-        ELSE (*y  open array*) ti.a := y.a+2; PutDO(A.MOV, ti, rh); s := y.type.base.size;  (*element size*)
+        ELSE (*y  open array*) ti.a := y.a+WordSize; PutDO(A.MOV, ti, rh); s := y.type.base.size;  (*element size*)
           t := c0; PutDO(A.CMP, t, rh); pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*JEQ L0*)
           IF s = 1 THEN t := c1; PutDO(A.ADD, t, rh); PutSO(A.RRA, rh)
           ELSIF s # 2 THEN ASSERT(~ODD(s)); t.ofs := s DIV 2; A.PutDO(mcode, A.MUL, t, rh, A.Word)
@@ -950,7 +951,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     loadAdr(x, 0FFH); len := x.type.len;
     IF len >= 0 THEN
       IF len < y.b THEN S.Mark("string too long") END
-    ELSIF traps[3] # NIL THEN ti.a := x.a+2; PutDO(A.MOV, ti, rh); (*open array len*)
+    ELSIF traps[3] # NIL THEN ti.a := x.a+WordSize; PutDO(A.MOV, ti, rh); (*open array len*)
       t.a := y.b; PutDO(A.CMP, t, rh); Trap(A.L, 3)
     END ;
     loadStringAdr(y, 0FFH);
@@ -986,7 +987,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       loadAdr(x, par.register);
       IF (par.type.form = B.Array) & (par.type.len < 0) THEN rh.reg := AllocRP(par.register+1); (*open array*)
         IF t.ofs >= 0 THEN A.PutDO(mcode, A.MOV, t, rh, A.Word)
-        ELSE ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+        ELSE ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         END
       ELSIF par.type.form = B.Record THEN
         IF xmd = B.Par THEN rh.reg := AllocRP(par.register+1); ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word)
@@ -1001,7 +1002,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END
       ELSIF (par.type.form = B.Record) THEN
         IF xmd = B.Par THEN adjFrmOfs(WordSize);
-          rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+2+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
+          rh.reg := AllocR(); ti.reg := A.SP; ti.ofs := x.a+WordSize+frame; A.PutSO(mcode, A.PUSH, ti, A.Word)
         ELSE pushTypTagAdr(x.type)
         END
        END;

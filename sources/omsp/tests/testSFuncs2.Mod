@@ -60,17 +60,17 @@ entry =  0038
 code   104
  0000	     8031	SUB #12,SP
  0002	     000C
- 0004	     4191	MOV 20(SP),10(SP)
+ 0004	     4191	MOV 20(SP),0(SP)
  0006	     0014
- 0008	     000A
- 000A	     4191	MOV 16(SP),10(SP)
+ 0008	     0000
+ 000A	     4191	MOV 16(SP),0(SP)
  000C	     0010
- 000E	     000A
- 0010	     40B1	MOV #5,10(SP)
+ 000E	     0000
+ 0010	     40B1	MOV #5,0(SP)
  0012	     0005
- 0014	     000A
- 0016	     B2B1	BIT #8,10(SP)
- 0018	     000A
+ 0014	     0000
+ 0016	     B2B1	BIT #8,0(SP)
+ 0018	     0000
  001A	     27FD	JEQ #-3, goes to  0016
  001C	     5031	ADD #12,SP
  001E	     000C
@@ -110,12 +110,3 @@ code   104
  0062	     12B0	CALL #0
  0064	     0000
  0066	     4130	RET
-
-OMSPTool.DecSym testSFuncs2.sms
-decode testSFuncs2.sms
-testSFuncs2 E55368AA  1
-   5 rec [16  form = 13  size = 4 [^9]{  exno = 1  extlev = 0 { b [^4]   2}]()
-   2 v1 [^4]     2
-   2 r [^16]     3
-   1 p [0  form = 10  size = 2 [^9] UR 0000( class = 3# [0  form = 12  size = 4 [^3]  len = -1] class = 3# [0  form = 12  size = 4 [^4]  len = -1])]       4
-   1 q [0  form = 10  size = 2 [^9] leaf UR 01F0( class = 3# R6 [0  form = 12  size = 4 [^3]  len = -1] class = 3# R4 [0  form = 12  size = 4 [^4]  len = -1])]       5

@@ -701,7 +701,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       INC(nofpar); obj.class := cl; obj.type := tp; obj.rdo := rdo; obj.lev := level; 
       IF inreg THEN obj.register := G.AllocR(); nbregs := parsize DIV G.WordSize;
         WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
-      ELSE obj.register := 0FFH; obj.val := adr; INC(adr, parsize)
+      ELSE obj.register := 0FFH; INC(adr, parsize); obj.val := G.WordSize - adr
       END;
       obj := obj.next
     END ;
@@ -924,11 +924,11 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END Declarations;
 
   PROCEDURE ProcedureDecl;
-    VAR proc!, loc!, locn!: B.Object;
+    VAR proc!, loc!: B.Object;
       type!: B.Type;
       procid: S.Ident;
       x!: G.Item;
-      locblksize, parblksize, parsize, L: LONGINT;
+      locblksize, parblksize, L: LONGINT;
       int, haveinregs: BOOLEAN; nofusedregs: INTEGER;
       riu: SET;
       v: ARRAY 8 OF BYTE;
@@ -964,14 +964,12 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       *)
       loc := B.topScope.next; L := 0; (*fix .val offsets of parameters*)
       WHILE loc # NIL DO (*fix .val offsets of parameters and local variables*)
-        locn := loc.next;
-        IF locn = NIL THEN parsize := parblksize - loc.val ELSE parsize := locn.val - loc.val END;
         IF (loc.class IN {B.Var, B.Par}) & (loc.register = 0FFH) THEN (*stored in stack*)
-          IF L < type.nofpar THEN (*parameter*) loc.val := parblksize - loc.val - parsize + G.WordSize
+          IF L < type.nofpar THEN (*parameter*) INC(loc.val, parblksize)
           ELSE (*local variable*) DEC(loc.val, locblksize)
           END
         END;
-        loc := locn; INC(L)
+        loc := loc.next; INC(L)
       END;
 
       proc.val := G.Here(); 

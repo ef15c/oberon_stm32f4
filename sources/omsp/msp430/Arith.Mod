@@ -46,7 +46,7 @@ END Arith.
 
 OMSPTool.DecObj Arith.mpc
 decode Arith.mpc
-Arith 80DF081C Flash   128
+Arith 82E1081E Flash   128
 imports:
 type descriptors
 

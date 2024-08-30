@@ -18,7 +18,7 @@ END testFor.
 
 OMSPTool.DecObj testFor.mpc
 decode testFor.mpc
-testFor 74E5D4BB Flash    90
+testFor 74E5D4BB Flash    86
 imports:
 type descriptors
 
@@ -30,56 +30,54 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0058
+ 0054
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup constants chains
 fixup types chains
-entry =  0058
-code    90
+entry =  0054
+code    86
  0000	     8221	SUB #4,SP
- 0002	     4391	MOV #1,2(SP)
- 0004	     0002
+ 0002	     4391	MOV #1,0(SP)
+ 0004	     0000
  0006	     403F	MOV #10,R15
  0008	     000A
- 000A	     911F	CMP 2(SP),R15
- 000C	     0002
- 000E	     3808	JL #8, goes to  0020
- 0010	     411F	MOV 2(SP),R15
- 0012	     0002
- 0014	     5F0F	ADD R15,R15
- 0016	     4F81	MOV R15,0(SP)
+ 000A	     912F	CMP @SP,R15
+ 000C	     3807	JL #7, goes to  001C
+ 000E	     412F	MOV @SP,R15
+ 0010	     5F0F	ADD R15,R15
+ 0012	     4F81	MOV R15,2(SP)
+ 0014	     0002
+ 0016	     5391	ADD #1,0(SP)
  0018	     0000
- 001A	     5391	ADD #1,2(SP)
- 001C	     0002
- 001E	     3FF3	JMP #-13, goes to  0006
- 0020	     40B1	MOV #10,2(SP)
- 0022	     000A
- 0024	     0002
- 0026	     9391	CMP #1,2(SP)
- 0028	     0002
- 002A	     3803	JL #3, goes to  0032
- 002C	     83A1	SUB #2,2(SP)
- 002E	     0002
- 0030	     3FFA	JMP #-6, goes to  0026
- 0032	     5221	ADD #4,SP
- 0034	     4130	RET
- 0036	     4314	MOV #1,R4
- 0038	     4036	MOV #10,R6
- 003A	     000A
- 003C	     9406	CMP R4,R6
- 003E	     3805	JL #5, goes to  004A
- 0040	     4406	MOV R4,R6
- 0042	     5606	ADD R6,R6
- 0044	     4605	MOV R6,R5
- 0046	     5314	ADD #1,R4
- 0048	     3FF7	JMP #-9, goes to  0038
- 004A	     4034	MOV #10,R4
- 004C	     000A
- 004E	     9314	CMP #1,R4
- 0050	     3802	JL #2, goes to  0056
- 0052	     8324	SUB #2,R4
- 0054	     3FFC	JMP #-4, goes to  004E
- 0056	     4130	RET
- 0058	     4130	RET
+ 001A	     3FF5	JMP #-11, goes to  0006
+ 001C	     40B1	MOV #10,0(SP)
+ 001E	     000A
+ 0020	     0000
+ 0022	     9391	CMP #1,0(SP)
+ 0024	     0000
+ 0026	     3803	JL #3, goes to  002E
+ 0028	     83A1	SUB #2,0(SP)
+ 002A	     0000
+ 002C	     3FFA	JMP #-6, goes to  0022
+ 002E	     5221	ADD #4,SP
+ 0030	     4130	RET
+ 0032	     4314	MOV #1,R4
+ 0034	     4036	MOV #10,R6
+ 0036	     000A
+ 0038	     9406	CMP R4,R6
+ 003A	     3805	JL #5, goes to  0046
+ 003C	     4406	MOV R4,R6
+ 003E	     5606	ADD R6,R6
+ 0040	     4605	MOV R6,R5
+ 0042	     5314	ADD #1,R4
+ 0044	     3FF7	JMP #-9, goes to  0034
+ 0046	     4034	MOV #10,R4
+ 0048	     000A
+ 004A	     9314	CMP #1,R4
+ 004C	     3802	JL #2, goes to  0052
+ 004E	     8324	SUB #2,R4
+ 0050	     3FFC	JMP #-4, goes to  004A
+ 0052	     4130	RET
+ 0054	     4130	RET

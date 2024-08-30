@@ -103,8 +103,8 @@ code   202
  0066	     4315	MOV #1,R5
  0068	     3C01	JMP #1, goes to  006C
  006A	     4305	MOV #0,R5
- 006C	     45C1	MOV.B R5,1(SP)
- 006E	     0001
+ 006C	     45C1	MOV.B R5,0(SP)
+ 006E	     0000
  0070	     5321	ADD #2,SP
  0072	     4130	RET
  0074	     8321	SUB #2,SP
@@ -127,8 +127,8 @@ code   202
  0096	     431F	MOV #1,R15
  0098	     3C01	JMP #1, goes to  009C
  009A	     430F	MOV #0,R15
- 009C	     4FC1	MOV.B R15,1(SP)
- 009E	     0001
+ 009C	     4FC1	MOV.B R15,0(SP)
+ 009E	     0000
  00A0	     5321	ADD #2,SP
  00A2	     4130	RET
  00A4	     1230	PUSH #40

@@ -12,7 +12,7 @@ END testRepeat.
 
 OMSPTool.DecObj testRepeat.mpc ~
 decode testRepeat.mpc
-testRepeat DAE43F27 Flash    64
+testRepeat DAE43F27 Flash    58
 imports:
 type descriptors
 
@@ -24,43 +24,40 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 003E
+ 0038
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup constants chains
 fixup types chains
-entry =  003E
-code    64
+entry =  0038
+code    58
  0000	     8221	SUB #4,SP
  0002	     3FFF	JMP #-1, goes to  0002
- 0004	     40B1	MOV #10,2(SP)
+ 0004	     40B1	MOV #10,0(SP)
  0006	     000A
- 0008	     0002
- 000A	     411F	MOV 2(SP),R15
- 000C	     0002
- 000E	     831F	SUB #1,R15
- 0010	     4F81	MOV R15,2(SP)
- 0012	     0002
- 0014	     9381	CMP #0,2(SP)
- 0016	     0002
- 0018	     23F8	JNE #-8, goes to  000A
- 001A	     9191	CMP 2(SP),2(SP)
- 001C	     0002
- 001E	     0002
- 0020	     23F4	JNE #-12, goes to  000A
- 0022	     40B1	MOV #10,2(SP)
- 0024	     000A
- 0026	     0002
- 0028	     8391	SUB #1,2(SP)
- 002A	     0002
- 002C	     9381	CMP #0,2(SP)
- 002E	     0002
- 0030	     2404	JEQ #4, goes to  003A
- 0032	     9191	CMP 2(SP),2(SP)
- 0034	     0002
- 0036	     0002
- 0038	     23F7	JNE #-9, goes to  0028
- 003A	     5221	ADD #4,SP
- 003C	     4130	RET
- 003E	     4130	RET
+ 0008	     0000
+ 000A	     412F	MOV @SP,R15
+ 000C	     831F	SUB #1,R15
+ 000E	     4F81	MOV R15,0(SP)
+ 0010	     0000
+ 0012	     9381	CMP #0,0(SP)
+ 0014	     0000
+ 0016	     23F9	JNE #-7, goes to  000A
+ 0018	     91A1	CMP @SP,0(SP)
+ 001A	     0000
+ 001C	     23F6	JNE #-10, goes to  000A
+ 001E	     40B1	MOV #10,0(SP)
+ 0020	     000A
+ 0022	     0000
+ 0024	     8391	SUB #1,0(SP)
+ 0026	     0000
+ 0028	     9381	CMP #0,0(SP)
+ 002A	     0000
+ 002C	     2403	JEQ #3, goes to  0034
+ 002E	     91A1	CMP @SP,0(SP)
+ 0030	     0000
+ 0032	     23F8	JNE #-8, goes to  0024
+ 0034	     5221	ADD #4,SP
+ 0036	     4130	RET
+ 0038	     4130	RET

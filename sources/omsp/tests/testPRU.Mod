@@ -43,6 +43,3 @@ code    16
  000A	     4134	POP R4
  000C	     1300	RETI
  000E	     4130	RET
-
-OMSPTool.DecSym testPRU.sms
-testPRU 74C8B7C5  1
