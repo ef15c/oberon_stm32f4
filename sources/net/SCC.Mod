@@ -99,7 +99,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE SubRcv(dst: INTEGER; VAR len: BYTE);
     VAR i, data: INTEGER; dat: BYTE;
-  BEGIN
+  BEGIN LED({2});
     StartCmd(60H); SPIr(len); (*R_RX_PL_WID*)
     SYSTEM.PUT(netSelectOut, 1);
     ASSERT(len MOD 4 = 0);
@@ -140,11 +140,10 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   
   PROCEDURE xmitPayload(VAR timeout: BOOLEAN; flush: BOOLEAN);
     VAR res: INTEGER; status: BYTE;
-  BEGIN SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); Kernel.Delayus(12); SYSTEM.PUT(netEnableOut, 0);
+  BEGIN SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); BSP.Delayus(12); SYSTEM.PUT(netEnableOut, 0);
     REPEAT Delayms(1); SYSTEM.PUT(netSelectOut, 0); SPIr(status); (*NOP*); SYSTEM.PUT(netSelectOut, 1);
       res := status DIV 10H MOD 4
     UNTIL res # 0;
-    LED(status DIV 10H);
     WriteReg1(7, 30H); (*reset TX_DS and/or MAX-RT*)
     IF (res = 1) & flush THEN (*MAX-RT*) StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1) END;
     timeout := (res # 2)
@@ -152,7 +151,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE doSubSend(src, len: INTEGER; VAR timeout: BOOLEAN; flush: BOOLEAN);
     VAR i: INTEGER; x, dat: BYTE;
-  BEGIN
+  BEGIN LED({1});
     ASSERT(len-1 IN {0..SubPacket-1});
     StartCmd(0A0H); (*W_TX_PAYLOAD*)
     FOR i := 0 TO len-1 DO
@@ -301,7 +300,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
           INC(adr, len); SubRcv(adr, len); DEC(n, len)
         END;
         IF (n <= 0) & Rcvd(Wait) THEN INC(adr, len); SubRcv(adr, len); SYSTEM.GET(BSP.CRC_BASE+BSP.CRC_DR, data); (*Check CRC*)
-          IF data = 0 THEN LED(8); rx.hd.valid := (n <= 0) ELSE LED(16); rx.hd.valid := FALSE; ResetRcv END;
+          IF data = 0 THEN rx.hd.valid := (n <= 0) ELSE rx.hd.valid := FALSE; ResetRcv END;
         ELSE ResetRcv  (*discard packet*)
         END
       ELSE WHILE Rcvd(Wait) DO SubRcv(adr, len) END; ResetRcv  (*discard packet*)

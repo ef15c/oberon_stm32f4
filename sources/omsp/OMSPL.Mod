@@ -10,11 +10,13 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         name*: ModuleName;
         next*: Module;
         key, num, size: INTEGER;
-        data, code, imp, ent, ptr: INTEGER  (*addresses*)
+        data, code: INTEGER;  (*addresses*)
+        ent: ARRAY 64 OF INTEGER
      END ;
 
   VAR root: Module;
-    AllocPtr, Start, limit, res: INTEGER;
+    FlashAllocPtr, RAMAllocPtr, Start, limit, res: INTEGER;
+    vector: ARRAY 32 OF INTEGER;
     importing, imported: ModuleName;
     W: Texts.Writer;
 
@@ -34,6 +36,12 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     b1 := val MOD 100H;
     SYSTEM.PUT(adr, b2); SYSTEM.PUT(adr+1, b1)
   END PutWordAt;
+
+  PROCEDURE ReadWord(VAR R: Files.Rider; VAR n: INTEGER);
+    VAR b1, b2: BYTE;
+  BEGIN Files.ReadByte(R, b1); Files.ReadByte(R, b2);
+    n := b1 + b2*100H
+  END ReadWord;
 
   PROCEDURE MakeFileName(VAR FName: ARRAY OF CHAR; name, ext: ARRAY OF CHAR);
     VAR i, j: INTEGER;
@@ -72,14 +80,15 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       res = badfile: corrupted file;
       res = nospace: insufficient space*)
     VAR mod!, impmod!: Module;
-      i, n, key, impkey, mno, nofimps, size: INTEGER;
+      i, n, key, impkey, nofimps, flashSize: INTEGER;
       p, u, v, w: INTEGER;  (*addresses*)
       ch: CHAR;
       body: Command;
-      disp, adr, inst, pno, vno, dest, offset: INTEGER;
+      adr, nadr, inst, pno, vno, dest, offset: INTEGER;
       name1, impname: ModuleName;
       F!: Files.File; R!: Files.Rider;
       import!: ARRAY 16 OF Module;
+      mno, nv: BYTE; vec: ARRAY 32 OF INTEGER;
   BEGIN mod := root; error(noerr, name); nofimps := 0;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
     IF mod = NIL THEN (*link*)
@@ -87,7 +96,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       IF res = noerr THEN F := ThisFile(name) ELSE F := NIL END ;
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key);
-        Files.ReadInt(R, size); importing := name1;
+        Files.ReadInt(R, flashSize); importing := name1;
         Files.ReadString(R, impname);   (*imports*)
         WHILE (impname[0] # 0X) & (res = noerr) DO
           Files.ReadInt(R, impkey);
@@ -98,49 +107,42 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       ELSE error(nofile, name)
       END;
       IF res = noerr THEN
-        IF size < limit - AllocPtr THEN (*allocate*)
-          p := AllocPtr; NEW(mod);
-          AllocPtr := (p + size + 3) DIV 4 * 4; mod.size := AllocPtr - p;
-          IF root = NIL THEN mod.num := 1 ELSE mod.num := root.num + 1 END ;
+        IF flashSize < limit - FlashAllocPtr THEN (*allocate*)
+          p := FlashAllocPtr; NEW(mod);
+          FlashAllocPtr := (p + flashSize + (G.WordSize - 1) ) DIV G.WordSize*G.WordSize; mod.size := FlashAllocPtr - p;
+          IF root = NIL THEN mod.num := 1 ELSE mod.num := root.num + 1 END;
           mod.next := root; root := mod
         ELSE error(nospace, name1)
         END
-      END ;
+      END;
       IF res = noerr THEN (*read file*)
-        INC(p, DescSize); (*allocate descriptor*)
         mod.name := name; 
         i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
-        mod.key := key; mod.refcnt := 0;
-        mod.data := p;  (*data*)
-        Files.ReadInt(R, n);
-        WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*type descriptors*)
-        Files.ReadInt(R, n);
-        WHILE n > 0 DO SYSTEM.PUT(p, 0); INC(p, 4); DEC(n, 4) END ;  (*variable space*)
-        Files.ReadInt(R, n);
-        WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END ;   (*strings*)
+        mod.key := key;
+        Files.ReadInt(R, n); (*size of type descriptors*)
+        WHILE n > 0 DO ReadWord(R, w); PutWordAt(p, w); INC(p, G.WordSize); DEC(n, G.WordSize) END;  (*type descriptors*)
+        Files.ReadInt(R, n); (*size of data*)
+        mod.data := RAMAllocPtr; INC(RAMAllocPtr, n); (*data (never initialized)*)
+        Files.ReadInt(R, n); (*size of strings*)
+        WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END;   (*strings*)
         mod.code := p;  (*program*)
-        Files.ReadInt(R, n); (*In Cortex M4 implementation, program size is counted in bytes*)
-        WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*program code*)
-        mod.imp := p;  (*copy imports*)
-        i := 0;
-        WHILE i < nofimps DO
-          SYSTEM.PUT(p, import[i]); INC(p, 4); INC(i)
-        END ;
-        mod.cmd := p;  (*commands*) Files.Read(R, ch);
-        WHILE ch # 0X DO
-          REPEAT SYSTEM.PUT(p, ch); INC(p); Files.Read(R, ch) UNTIL ch = 0X;
-          REPEAT SYSTEM.PUT(p, 0X); INC(p) UNTIL p MOD 4 = 0;
-          Files.ReadInt(R, n); SYSTEM.PUT(p, n); INC(p, 4); Files.Read(R, ch)
-        END ;
-        REPEAT SYSTEM.PUT(p, 0X); INC(p) UNTIL p MOD 4 = 0;
-        mod.ent := p;  (*entries*)
-        Files.ReadInt(R, n);
-        WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n) END ;
-        mod.ptr := p;  (*pointer references*)
-        Files.ReadInt(R, w);
-        WHILE w >= 0 DO SYSTEM.PUT(p, mod.data + w - Start + VarORG0); INC(p, 4); Files.ReadInt(R, w) END ;
-        SYSTEM.PUT(p, 0); INC(p, 4);
-        Files.ReadInt(R, fixorgP); Files.ReadInt(R, fixorgD); Files.ReadInt(R, fixorgT);
+        Files.ReadInt(R, n); (*In MSP430 implementation, program size is counted in bytes*)
+        WHILE n > 0 DO ReadWord(R, w); PutWordAt(p, w); INC(p, G.WordSize); DEC(n, G.WordSize) END ;  (*program code*)
+        Files.ReadByte(R, nv); (*number of entries in vector table*)
+        FOR i := 0 TO nv - 1 DO ReadWord(R, w); vec[i] := w END; (*module vector table*)
+        ReadWord(R, n); (*number of entries*)
+        FOR i := 0 TO n - 1 DO ReadWord(R, mod.ent[i]) END; (*entries*)
+        ReadWord(R, adr); (*fixup procedures*)
+        WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
+          REPEAT INC(adr, mod.code);
+            IF mno = 0 THEN (*current module*) INC(dest, mod.code) 
+            ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.ent[dest]; INC(dest, impmod.code)
+            END;
+            nadr := GetWordAt(adr); PutWordAt(adr, dest);
+            adr := nadr
+          UNTIL adr # mod.code;
+          ReadWord(R, adr) (*go to next chain*)
+        END;
         Files.ReadInt(R, w); body := SYSTEM.VAL(Modules.Command, mod.code + w - Start + VarORG0);
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END

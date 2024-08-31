@@ -123,13 +123,13 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END ReceiveData;
 
   PROCEDURE reply(msg: INTEGER);
-  BEGIN
-    IF msg = 1 THEN Texts.WriteString(W, " no link")
+  BEGIN LED(msg*2);
+    IF msg = 0 THEN Texts.WriteString(W, " done")
+    ELSIF msg = 1 THEN Texts.WriteString(W, " no link")
     ELSIF msg = 2 THEN Texts.WriteString(W, " no permission")
     ELSIF msg = 3 THEN Texts.WriteString(W, " not done")
     ELSIF msg = 4 THEN Texts.WriteString(W, " not found")
     ELSIF msg = 5 THEN Texts.WriteString(W, " no response")
-    ELSIF msg = 6 THEN Texts.WriteString(W, " time set")
     END ;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END reply;
@@ -321,13 +321,14 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   PROCEDURE GetTime*;
     VAR dt, res, retry: INTEGER;
       S!: Texts.Scanner;
-  BEGIN GetPar1(S);
+  BEGIN Texts.WriteString(W, "setting time");
+     GetPar1(S);
     IF S.class = Texts.Name THEN
       FindPartner(S.s, res);
       IF res = 0 THEN retry := 20;
         REPEAT Send(TRQ, 0, dmy); ReceiveHead(T0); DEC(retry) UNTIL head1.valid OR (retry = 0);
         IF head1.typ = TIM THEN
-          PickQ(dt); Oberon.SetClock(dt); reply(6)
+          PickQ(dt); Oberon.SetClock(dt); reply(0)
         END
       ELSE reply(1)
       END
