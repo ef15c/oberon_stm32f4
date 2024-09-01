@@ -10,7 +10,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         name*: ModuleName;
         next*: Module;
         key, num, size: INTEGER;
-        data, code: INTEGER;  (*addresses*)
+        data, flash: INTEGER;  (*addresses*)
         ent: ARRAY 64 OF INTEGER
      END ;
 
@@ -80,7 +80,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       res = badfile: corrupted file;
       res = nospace: insufficient space*)
     VAR mod!, impmod!: Module;
-      i, n, key, impkey, nofimps, flashSize: INTEGER;
+      i, n, key, impkey, nofimps, flashSize, code: INTEGER;
       p, u, v, w: INTEGER;  (*addresses*)
       ch: CHAR;
       body: Command;
@@ -119,13 +119,14 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         mod.name := name; 
         i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
         mod.key := key;
+        mod.flash := p; (*flash segment*)
         Files.ReadInt(R, n); (*size of type descriptors*)
         WHILE n > 0 DO ReadWord(R, w); PutWordAt(p, w); INC(p, G.WordSize); DEC(n, G.WordSize) END;  (*type descriptors*)
         Files.ReadInt(R, n); (*size of data*)
         mod.data := RAMAllocPtr; INC(RAMAllocPtr, n); (*data (never initialized)*)
         Files.ReadInt(R, n); (*size of strings*)
         WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END;   (*strings*)
-        mod.code := p;  (*program*)
+        code := p;
         Files.ReadInt(R, n); (*In MSP430 implementation, program size is counted in bytes*)
         WHILE n > 0 DO ReadWord(R, w); PutWordAt(p, w); INC(p, G.WordSize); DEC(n, G.WordSize) END ;  (*program code*)
         Files.ReadByte(R, nv); (*number of entries in vector table*)
@@ -134,13 +135,13 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         FOR i := 0 TO n - 1 DO ReadWord(R, mod.ent[i]) END; (*entries*)
         ReadWord(R, adr); (*fixup procedures*)
         WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
-          REPEAT INC(adr, mod.code);
-            IF mno = 0 THEN (*current module*) INC(dest, mod.code) 
-            ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.ent[dest]; INC(dest, impmod.code)
+          REPEAT INC(adr, mod.flash);
+            IF mno = 0 THEN (*current module*) INC(dest, mod.flash) 
+            ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.ent[dest]; INC(dest, impmod.flash)
             END;
-            nadr := GetWordAt(adr); PutWordAt(adr, dest);
+            nadr := code + GetWordAt(adr); PutWordAt(adr, dest);
             adr := nadr
-          UNTIL adr # mod.code;
+          UNTIL adr # mod.flash;
           ReadWord(R, adr) (*go to next chain*)
         END;
         Files.ReadInt(R, w); body := SYSTEM.VAL(Modules.Command, mod.code + w - Start + VarORG0);

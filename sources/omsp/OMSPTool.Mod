@@ -158,12 +158,12 @@ MODULE OMSPTool;  (*NW 18.2.2013
         END ;
       (* Sync(R); *)
         Texts.WriteString(W, "type descriptors"); Texts.WriteLn(W);
-        ReadWord(R, n); n := n DIV 2; i := 0;
+        ReadWord(R, n); size := n; n := n DIV 2; i := 0;
         WHILE i < n DO ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); INC(i) END;
         Texts.WriteLn(W);
         Texts.WriteString(W, "data"); ReadWord(R, data); Texts.WriteInt(W, data, 6); Texts.WriteLn(W);
         Texts.WriteString(W, "strings"); Texts.WriteLn(W);
-        ReadWord(R, n); i := 0;
+        ReadWord(R, n); i := 0; INC(size, n);
         WHILE i < n DO Files.Read(R, ch); IF ch=0X THEN ch := "|" END; Texts.Write(W, ch); INC(i) END ;
         Texts.WriteLn(W);
         (*code*)
@@ -196,10 +196,10 @@ MODULE OMSPTool;  (*NW 18.2.2013
         Texts.WriteString(W, "code");  Texts.WriteInt(W, mcode.pc, 6); Texts.WriteLn(W); 
         i := 0;
         WHILE i < mcode.pc DO
-          TextsEx.WriteHexVLen(W, i, 4, FALSE); Texts.Write(W, 9X); adr := i + 2;
-          D.opcode(W, mcode.code, i, 0); Texts.WriteLn(W);
+          TextsEx.WriteHexVLen(W, size + i, 4, FALSE); Texts.Write(W, 9X); adr := i + 2;
+          D.opcode(W, mcode.code, i, size); Texts.WriteLn(W);
           FOR n := adr TO i - 2 BY 2 DO (*print operation data*)
-            TextsEx.WriteHexVLen(W, n, 4, FALSE); Texts.Write(W, 9X); Texts.WriteString(W, "    ");
+            TextsEx.WriteHexVLen(W, size + n, 4, FALSE); Texts.Write(W, 9X); Texts.WriteString(W, "    ");
             data := mcode.code[n+1]*100H + mcode.code[n];
             TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
           END
