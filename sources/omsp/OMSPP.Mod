@@ -148,7 +148,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
             IF obj # NIL THEN G.Field(x, obj); x.type := obj.type
             ELSE S.Mark("undef")
             END
-          ELSE S.Mark("not a record")
+          ELSE S.Mark("not a record"); S.Get(sym)
           END
         ELSE S.Mark("ident?")
         END
@@ -1116,6 +1116,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP Compiler  10.06.24");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-  NEW(dummy); dummy.class := B.Const; dummy.type := B.intType;
+  NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0
 END OMSPP.

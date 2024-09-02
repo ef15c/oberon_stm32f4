@@ -1,40 +1,41 @@
 MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
   IMPORT SYSTEM, A := OMSPA, G := OMSPG, Files, Texts, Oberon;
-  CONST noerr = 0; nofile = 1; badkey = 3; badfile = 4; nospace = 5;
+  CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5;
 
-  TYPE Module* = POINTER TO ModDesc;
-    Command* = PROCEDURE;
-    ModuleName* = ARRAY 32 OF CHAR;
+  TYPE Module = POINTER TO ModDesc;
+    Command = PROCEDURE;
+    ModuleName = ARRAY 32 OF CHAR;
 
-    ModDesc* = RECORD
-        name*: ModuleName;
-        next*: Module;
+    ModDesc = RECORD
+        name: ModuleName;
+        next: Module;
         key, num, size: INTEGER;
         data, flash: INTEGER;  (*addresses*)
         ent: ARRAY 64 OF INTEGER
-     END ;
+     END;
+
+    Segment = POINTER TO SegmentDesc;
+
+    SegmentDesc = RECORD
+      origin, allocPtr: INTEGER;
+      m: ARRAY 10000H OF BYTE
+    END;
 
   VAR root: Module;
-    FlashAllocPtr, RAMAllocPtr, Start, limit, res: INTEGER;
-    vector: ARRAY 32 OF INTEGER;
+    RAMAllocPtr, Start, limit, res: INTEGER;
+    Flash: Segment; vector: ARRAY 32 OF INTEGER;
     importing, imported: ModuleName;
     W: Texts.Writer;
 
   (* Get unaligned words *)
   PROCEDURE GetWordAt(adr: INTEGER): INTEGER;
-    VAR b1, b2: BYTE;
-  BEGIN
-    SYSTEM.GET(adr, b2); SYSTEM.GET(adr+1, b1);
-    RETURN 0+b2+100H*b1
+    RETURN 0 + Flash.m[adr] + 100H*Flash.m[adr + 1]
   END GetWordAt;
 
   (* Put unaligned words *)
   PROCEDURE PutWordAt(adr, val: INTEGER);
-    VAR b1, b2: BYTE;
-  BEGIN
-    b2 := val MOD 100H; val := val DIV 100H;
-    b1 := val MOD 100H;
-    SYSTEM.PUT(adr, b2); SYSTEM.PUT(adr+1, b1)
+  BEGIN Flash.m[adr] := val MOD 100H; val := val DIV 100H;
+    Flash.m[adr + 1] := val MOD 100H;
   END PutWordAt;
 
   PROCEDURE ReadWord(VAR R: Files.Rider; VAR n: INTEGER);
@@ -72,6 +73,22 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     END
   END Check;
 
+  PROCEDURE fixupFlash(VAR R: Files.Rider; import: ARRAY OF Module; flash, code: INTEGER);
+    VAR adr, dest, nadr: INTEGER; mno: BYTE; impmod!: Module;
+  BEGIN
+    ReadWord(R, adr); (*fixup procedures*)
+    WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
+      IF mno = 0 THEN (*current module*) INC(dest, flash)
+      ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.flash + impmod.ent[dest]
+      END;
+      REPEAT INC(adr, flash);
+        nadr := code + GetWordAt(adr); PutWordAt(adr, dest);
+        adr := nadr
+      UNTIL adr = flash;
+      ReadWord(R, adr) (*go to next chain*)
+    END;
+  END fixupFlash;
+
   PROCEDURE LinkOne(name: ARRAY OF CHAR; VAR newmod: Module);
     (*search module in list; if not found, link module.
       res = noerr: already present or linked;
@@ -81,7 +98,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       res = nospace: insufficient space*)
     VAR mod!, impmod!: Module;
       i, n, key, impkey, nofimps, flashSize, code: INTEGER;
-      p, u, v, w: INTEGER;  (*addresses*)
+      f, u, v, w: INTEGER;  (*addresses*)
       ch: CHAR;
       body: Command;
       adr, nadr, inst, pno, vno, dest, offset: INTEGER;
@@ -107,9 +124,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       ELSE error(nofile, name)
       END;
       IF res = noerr THEN
-        IF flashSize < limit - FlashAllocPtr THEN (*allocate*)
-          p := FlashAllocPtr; NEW(mod);
-          FlashAllocPtr := (p + flashSize + (G.WordSize - 1) ) DIV G.WordSize*G.WordSize; mod.size := FlashAllocPtr - p;
+        IF flashSize < limit - Flash.allocPtr THEN (*allocate*)
+          f := Flash.allocPtr; NEW(mod);
+          Flash.allocPtr := (f + flashSize + (G.WordSize - 1) ) DIV G.WordSize*G.WordSize; mod.size := Flash.allocPtr - f;
           IF root = NIL THEN mod.num := 1 ELSE mod.num := root.num + 1 END;
           mod.next := root; root := mod
         ELSE error(nospace, name1)
@@ -119,32 +136,50 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         mod.name := name; 
         i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
         mod.key := key;
-        mod.flash := p; (*flash segment*)
+        mod.flash := f; (*flash segment*)
         Files.ReadInt(R, n); (*size of type descriptors*)
-        WHILE n > 0 DO ReadWord(R, w); PutWordAt(p, w); INC(p, G.WordSize); DEC(n, G.WordSize) END;  (*type descriptors*)
+        WHILE n > 0 DO ReadWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END;  (*type descriptors*)
         Files.ReadInt(R, n); (*size of data*)
-        mod.data := RAMAllocPtr; INC(RAMAllocPtr, n); (*data (never initialized)*)
+        mod.data := RAMAllocPtr; INC(RAMAllocPtr, n); (*note: data is never initialized*)
         Files.ReadInt(R, n); (*size of strings*)
-        WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END;   (*strings*)
-        code := p;
+        WHILE n > 0 DO Files.Read(R, ch); Flash.m[f] := ORD(ch); INC(f); DEC(n) END;   (*strings*)
+        code := f;
         Files.ReadInt(R, n); (*In MSP430 implementation, program size is counted in bytes*)
-        WHILE n > 0 DO ReadWord(R, w); PutWordAt(p, w); INC(p, G.WordSize); DEC(n, G.WordSize) END ;  (*program code*)
+        WHILE n > 0 DO ReadWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END ;  (*program code*)
         Files.ReadByte(R, nv); (*number of entries in vector table*)
         FOR i := 0 TO nv - 1 DO ReadWord(R, w); vec[i] := w END; (*module vector table*)
         ReadWord(R, n); (*number of entries*)
         FOR i := 0 TO n - 1 DO ReadWord(R, mod.ent[i]) END; (*entries*)
-        ReadWord(R, adr); (*fixup procedures*)
-        WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
-          REPEAT INC(adr, mod.flash);
-            IF mno = 0 THEN (*current module*) INC(dest, mod.flash) 
-            ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.ent[dest]; INC(dest, impmod.flash)
+
+        fixupFlash(R, import, mod.flash, code); (*fixup procedures*)
+
+        ReadWord(R, i); (*fixup handlers*)
+        WHILE i # 0 DO Files.ReadByte(R, mno); ASSERT(mno = 0); ReadWord(R, dest); INC(dest, mod.flash);
+          REPEAT DEC(i, 100H);
+            IF vector[i] # 0FFFFH THEN
+              Texts.WriteString(W, "interrupt vector number"); Texts.WriteInt(W, i, 3); error(duphandler, name1)
             END;
+            vector[i] := dest; i := vec[adr]
+          UNTIL i = 0;
+          ReadWord(R, i) (*go to next chain*)
+        END;
+
+        ReadWord(R, adr); (*fixup data*)
+        WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
+          IF mno = 0 THEN (*current module*) INC(dest, mod.data)
+          ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.data + impmod.ent[dest]
+          END;
+          REPEAT INC(adr, mod.flash);
             nadr := code + GetWordAt(adr); PutWordAt(adr, dest);
             adr := nadr
-          UNTIL adr # mod.flash;
+          UNTIL adr = mod.flash;
           ReadWord(R, adr) (*go to next chain*)
         END;
-        Files.ReadInt(R, w); body := SYSTEM.VAL(Modules.Command, mod.code + w - Start + VarORG0);
+
+        fixupFlash(R, import, mod.flash, code); (*fixup constants*)
+        fixupFlash(R, import, mod.flash, code); (*fixup types*)
+
+        Files.ReadInt(R, w); body := SYSTEM.VAL(Command, mod.flash + w);
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
       END ;

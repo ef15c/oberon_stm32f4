@@ -604,7 +604,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE SetVector*(n: BYTE; VAR h: B.Object);
   BEGIN IF vector[n] # 0FFFFH THEN S.Mark("vect mult def")
-    ELSE vector[n] := h.usedat; h.usedat := n END
+    ELSE vector[n] := h.usedat; h.usedat := n+100H END
   END SetVector;
 
   (* Code generation for Boolean operators *)

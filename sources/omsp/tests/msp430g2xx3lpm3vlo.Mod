@@ -72,7 +72,7 @@ MODULE msp430g2xx3lpm3vlo;
   VAR i: INTEGER;
 
   PROCEDURE* (M.WDT_VECTOR) ^0 watchdog_timer ;
-  BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits); (* Clear LPM3 bits from SR backup *)
+  BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Clear LPM3 bits from SR backup *)
   END watchdog_timer ;
 
 BEGIN
@@ -91,7 +91,7 @@ BEGIN
     BIS(M.P1OUT^, {0}); (* Set P1.0 LED on *)
     i := 10000; REPEAT DEC(i) UNTIL i <= 0; (* Delay *)
     BIC(M.P1OUT^, {0}); (* Reset P1.0 LED off *)
-    SYSTEM.BIS_SR(M.LPM3_bits + M.GIE); (* Enter LPM3 *)
+    SYSTEM.BIS_SR(M.LPM3_bits + M.GIE) (* Enter LPM3 *)
   UNTIL FALSE
 END msp430g2xx3lpm3vlo.
 
@@ -113,7 +113,7 @@ entries
  0008
 fixup procedures chains
 fixup handlers chains
- 001A     0	 0000
+ 011A     0	 0000
 fixup data chains
  0048     0	 0000
 fixup constants chains

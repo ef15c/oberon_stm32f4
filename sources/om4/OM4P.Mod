@@ -149,7 +149,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
             IF obj # NIL THEN G.Field(x, obj); x.type := obj.type
             ELSE OM4S.Mark("undef")
             END
-          ELSE OM4S.Mark("not a record")
+          ELSE OM4S.Mark("not a record"); OM4S.Get(sym)
           END
         ELSE OM4S.Mark("ident?")
         END
@@ -1063,6 +1063,6 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  19/10/2023");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-  NEW(dummy); dummy.class := B.Const; dummy.type := B.intType;
+  NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0
 END OM4P.

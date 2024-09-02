@@ -89,7 +89,7 @@ OMSPTool.DecObj msp430g2xx3ta01.mpc
 decode msp430g2xx3ta01.mpc
 msp430g2xx3ta01 DB3C4C7A Flash    46
 imports:
-	msp430g2553 B7A7F8F7
+	msp430g2553 8CA01B9B
 type descriptors
 
 data     0
@@ -103,7 +103,7 @@ entries
  000C
 fixup procedures chains
 fixup handlers chains
- 0019     0	 0000
+ 0119     0	 0000
 fixup data chains
 fixup constants chains
 fixup types chains

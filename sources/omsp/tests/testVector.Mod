@@ -10,7 +10,7 @@ OMSPTool.DecObj testVector.mpc
 decode testVector.mpc
 testVector E9D73D39 Flash     4
 imports:
-	msp430g2553 B7A7F8F7
+	msp430g2553 8CA01B9B
 type descriptors
 
 data     0
@@ -18,13 +18,13 @@ strings
 
 vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- 0012 FFFF 0013 0000 FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ 0112 FFFF 0113 0000 FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
  0002
 fixup procedures chains
 fixup handlers chains
- 0010     0	 0000
+ 0110     0	 0000
 fixup data chains
 fixup constants chains
 fixup types chains

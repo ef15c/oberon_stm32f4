@@ -119,12 +119,13 @@ MODULE OMSPTool;  (*NW 18.2.2013
   BEGIN Files.WriteByte(R, x)  (* -128 <= x < 128 *)
   END Write;
 
-  PROCEDURE fixup(msg: ARRAY OF CHAR; VAR R: Files.Rider);
+  PROCEDURE fixup(msg: ARRAY OF CHAR; VAR R: Files.Rider; ofs: INTEGER);
     VAR data: INTEGER; mno: BYTE;
   BEGIN
     Texts.WriteString(W, "fixup "); Texts.WriteString(W, msg); Texts.WriteString(W, " chains"); Texts.WriteLn(W);
     ReadWord(R, data);
     WHILE data # 0 DO TextsEx.WriteHexVLen(W, data, 4, FALSE);
+      IF ofs # 0 THEN Texts.Write(W, "("); TextsEx.WriteHexVLen(W, data + ofs, 4, FALSE); Texts.Write(W, ")") END;
       Files.ReadByte(R, mno); Texts.WriteInt(W, mno, 6); Texts.Write(W, 9X);
       ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
       ReadWord(R, data)
@@ -184,11 +185,11 @@ MODULE OMSPTool;  (*NW 18.2.2013
         END ;
         Texts.WriteLn(W);
       (* Sync(R); *)
-      fixup("procedures", R);
-      fixup("handlers", R);
-      fixup("data", R);
-      fixup("constants", R);
-      fixup("types", R);
+      fixup("procedures", R, size);
+      fixup("handlers", R, size);
+      fixup("data", R, size);
+      fixup("constants", R, size);
+      fixup("types", R, 0);
         ReadWord(R, data); Texts.WriteString(W, "entry = "); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
         Files.Read(R, ch);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
@@ -196,10 +197,14 @@ MODULE OMSPTool;  (*NW 18.2.2013
         Texts.WriteString(W, "code");  Texts.WriteInt(W, mcode.pc, 6); Texts.WriteLn(W); 
         i := 0;
         WHILE i < mcode.pc DO
-          TextsEx.WriteHexVLen(W, size + i, 4, FALSE); Texts.Write(W, 9X); adr := i + 2;
-          D.opcode(W, mcode.code, i, size); Texts.WriteLn(W);
+          TextsEx.WriteHexVLen(W, i, 4, FALSE);
+          IF size # 0 THEN Texts.Write(W, "("); TextsEx.WriteHexVLen(W, size + i, 4, FALSE); Texts.Write(W, ")") END;
+          Texts.Write(W, 9X); adr := i + 2;
+          D.opcode(W, mcode.code, i, 0); Texts.WriteLn(W);
           FOR n := adr TO i - 2 BY 2 DO (*print operation data*)
-            TextsEx.WriteHexVLen(W, size + n, 4, FALSE); Texts.Write(W, 9X); Texts.WriteString(W, "    ");
+            TextsEx.WriteHexVLen(W, n, 4, FALSE);
+            IF size # 0 THEN Texts.Write(W, "("); TextsEx.WriteHexVLen(W, size + n, 4, FALSE); Texts.Write(W, ")") END;
+            Texts.Write(W, 9X); Texts.WriteString(W, "    ");
             data := mcode.code[n+1]*100H + mcode.code[n];
             TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
           END
