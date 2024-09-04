@@ -1,13 +1,13 @@
 MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
-  IMPORT Display, Files, Texts, Oberon;
-  CONST CR = 0DX; noerr = 0; badfile = 4;  (*copied from Modules for use as cross development tool*)
+  IMPORT Display, Files, FilesEx, Texts, Oberon;
+  CONST noerr = 0; badfile = 4;  (*copied from Modules for use as cross development tool*)
     fixup = 1;
   TYPE record = RECORD
       t, l: BYTE;
       a: ARRAY 2 OF BYTE;
       d: ARRAY 16 OF BYTE
     END;
-    
+   
     Writer = PROCEDURE(VAR R: Files.Rider; r: record);
 
   VAR res*: INTEGER;
@@ -20,47 +20,23 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     END
   END WriteBinary;
 
-  PROCEDURE WriteHex(VAR R: Files.Rider; x: BYTE);  (*write a byte in 2 digit hex format*)
-    VAR i: INTEGER; y: LONGINT;
-      a: ARRAY 2 OF CHAR;
-  BEGIN i := 0;
-    REPEAT y := x MOD 10H;
-      IF y < 10 THEN a[i] := CHR(y + 30H) ELSE a[i] := CHR(y + 37H) END ;
-      x := x DIV 10H; INC(i)
-    UNTIL i = 2;
-    REPEAT DEC(i); Files.Write(R, a[i]) UNTIL i = 0 ;
-  END WriteHex;
-
-  PROCEDURE WriteHexWord(VAR R: Files.Rider; w: INTEGER);  (*write a word in 8 digit hex format*)
-    VAR i: INTEGER; b: ARRAY 4 OF BYTE;
-  BEGIN
-    FOR i := 0 TO 3 DO b[i] := w MOD 100H; w := w DIV 100H END;
-    FOR i := 3 TO 0 BY -1 DO WriteHex(R, b[i]) END
-  END WriteHexWord;
-  
-  PROCEDURE WriteString(VAR R: Files.Rider; x: ARRAY OF CHAR);  (*write a string without trailing null character*)
-    VAR i: INTEGER;
-  BEGIN i := 0;
-    WHILE x[i] # 0X DO Files.Write(R, x[i]); INC(i) END
-  END WriteString;
-
   PROCEDURE WriteIntelHex(VAR R: Files.Rider; r: record);  (*write a record in Intel HEX file format*)
     VAR cs: BYTE;
       i: INTEGER;
   BEGIN cs := 0; Files.Write(R, ":");
-    WriteHex(R, r.l); WriteHex(R, r.a[0]); WriteHex(R, r.a[1]); WriteHex(R, r.t);
+    FilesEx.WriteHex(R, r.l); FilesEx.WriteHex(R, r.a[0]); FilesEx.WriteHex(R, r.a[1]); FilesEx.WriteHex(R, r.t);
     INC(cs, r.l + r.a[0] + r.a[1] + r.t);
-    FOR i:= 0 TO r.l-1 DO WriteHex(R, r.d[i]); INC(cs, r.d[i]) END;
-    WriteHex(R, 256-cs); Files.Write(R, CR)
+    FOR i:= 0 TO r.l-1 DO FilesEx.WriteHex(R, r.d[i]); INC(cs, r.d[i]) END;
+    FilesEx.WriteHex(R, 256-cs); FilesEx.WriteLn(R)
   END WriteIntelHex;
 
   PROCEDURE WriteAsmLine(VAR R: Files.Rider; r: record);  (*write a record in binary format*)
     VAR i: INTEGER;
   BEGIN
-    IF r.t = 0 THEN WriteString(R, "  .byte ");
-      FOR i:= 0 TO r.l-1 DO IF i # 0 THEN WriteString(R, ", ") END;
-        WriteString(R, "0X"); WriteHex(R, r.d[i]) END
-    END; Files.Write(R, CR)
+    IF r.t = 0 THEN FilesEx.WriteString(R, "  .byte ");
+      FOR i:= 0 TO r.l-1 DO IF i # 0 THEN FilesEx.WriteString(R, ", ") END;
+        FilesEx.WriteString(R, "0X"); FilesEx.WriteHex(R, r.d[i]) END
+    END; FilesEx.WriteLn(R)
   END WriteAsmLine;
 
   PROCEDURE SetAddress(VAR a: ARRAY OF BYTE; ad: INTEGER);
@@ -225,18 +201,18 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
             name := S.s;
             i := 0; WHILE (name[i] # 0X) & (name[i] # ".") DO INC(i) END; name[i] := 0X;
             
-            WriteString(Rg,"  .syntax unified"); Files.Write(Rg, CR);
-            WriteString(Rg,"  .cpu cortex-m4"); Files.Write(Rg, CR);
-            WriteString(Rg,"  .thumb"); Files.Write(Rg, CR);
-            Files.Write(Rg, CR);
-            WriteString(Rg,"  .global "); WriteString(Rg, name); Files.Write(Rg, CR);
-            Files.Write(Rg, CR);
-            WriteString(Rg,"  .thumb_func"); Files.Write(Rg, CR);
-            WriteString(Rg, name); WriteString(Rg, ":"); Files.Write(Rg, CR);
+            FilesEx.WriteString(Rg,"  .syntax unified"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg,"  .cpu cortex-m4"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg,"  .thumb"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg,"  .global "); FilesEx.WriteString(Rg, name); FilesEx.WriteLn(Rg);
+            FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg,"  .thumb_func"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg, name); FilesEx.WriteString(Rg, ":"); FilesEx.WriteLn(Rg);
             
             OutCode(Rf, Rg, WriteAsmLine, 0, codelen, entry, res);
-            WriteString(Rg,"  // End of file."); Files.Write(Rg, CR);
-            
+            FilesEx.WriteString(Rg,"  // End of file."); FilesEx.WriteLn(Rg);
+        
             IF res = noerr THEN
               Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
               Texts.WriteString(W, "  done"); Files.Register(g)
@@ -272,24 +248,24 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
             name := S.s;
             i := 0; WHILE (name[i] # 0X) & (name[i] # ".") DO INC(i) END; name[i] := 0X;
             
-            WriteString(Rg, "  .syntax unified"); Files.Write(Rg, CR);
-            WriteString(Rg, "  .cpu cortex-m4"); Files.Write(Rg, CR);
-            WriteString(Rg, "  .thumb"); Files.Write(Rg, CR);
-            Files.Write(Rg, CR);
-            WriteString(Rg, "  .section .SDRamFunc,"); Files.Write(Rg, 22X);
-            WriteString(Rg, "ax"); Files.Write(Rg, 22X); WriteString(Rg, ",%progbits");
-            Files.Write(Rg, CR); Files.Write(Rg, CR);
-            WriteString(Rg,"  .global "); WriteString(Rg, name); Files.Write(Rg, CR);
-            WriteString(Rg,"  .thumb_func"); Files.Write(Rg, CR);
-            WriteString(Rg, name); WriteString(Rg, ":"); Files.Write(Rg, CR);
-            Files.Write(Rg, CR);
-            
+            FilesEx.WriteString(Rg, "  .syntax unified"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg, "  .cpu cortex-m4"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg, "  .thumb"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg, "  .section .SDRamFunc,"); Files.Write(Rg, 22X);
+            FilesEx.WriteString(Rg, "ax"); Files.Write(Rg, 22X); FilesEx.WriteString(Rg, ",%progbits");
+            FilesEx.WriteLn(Rg); FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg,"  .global "); FilesEx.WriteString(Rg, name); FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg,"  .thumb_func"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteString(Rg, name); FilesEx.WriteString(Rg, ":"); FilesEx.WriteLn(Rg);
+            FilesEx.WriteLn(Rg);
+
             i := 0; Files.ReadByte(Rf, b);
             WHILE ~Rf.eof DO
-              IF i MOD 16 = 0 THEN Files.Write(Rg, CR); WriteString(Rg, "  .byte") ELSE Files.Write(Rg, ",") END;
-              WriteString(Rg,"  0x"); WriteHex(Rg, b); INC(i); Files.ReadByte(Rf, b);
-            END; Files.Write(Rg, CR); 
-            Files.Write(Rg, CR); WriteString(Rg,"  // End of pre-linked file."); Files.Write(Rg, CR);
+              IF i MOD 16 = 0 THEN FilesEx.WriteLn(Rg); FilesEx.WriteString(Rg, "  .byte") ELSE Files.Write(Rg, ",") END;
+              FilesEx.WriteString(Rg,"  0x"); FilesEx.WriteHex(Rg, b); INC(i); Files.ReadByte(Rf, b);
+            END; FilesEx.WriteLn(Rg); 
+            FilesEx.WriteLn(Rg); FilesEx.WriteString(Rg,"  // End of pre-linked file."); FilesEx.WriteLn(Rg);
             
             Texts.WriteInt(W, i, 6); Texts.WriteString(W, "  done"); Files.Register(g)
           ELSE Texts.WriteString(W, "  input file empty")

@@ -1,9 +1,9 @@
 MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
-  IMPORT SYSTEM, A := OMSPA, G := OMSPG, Files, Texts, Oberon;
-  CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5;
+  IMPORT SYSTEM, Modules, A := OMSPA, G := OMSPG, Files, Texts, Oberon;
+  CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7;
+    RAMOrigin = 200H; FlashEnd = 10000H;
 
   TYPE Module = POINTER TO ModDesc;
-    Command = PROCEDURE;
     ModuleName = ARRAY 32 OF CHAR;
 
     ModDesc = RECORD
@@ -18,11 +18,11 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
 
     SegmentDesc = RECORD
       origin, allocPtr: INTEGER;
-      m: ARRAY 10000H OF BYTE
+      m: ARRAY FlashEnd OF BYTE
     END;
 
-  VAR root: Module;
-    RAMAllocPtr, Start, limit, res: INTEGER;
+  VAR first: Module;
+    RAMAllocPtr, RAMLimit, limit, res: INTEGER;
     Flash: Segment; vector: ARRAY 32 OF INTEGER;
     importing, imported: ModuleName;
     W: Texts.Writer;
@@ -73,18 +73,19 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     END
   END Check;
 
-  PROCEDURE fixupFlash(VAR R: Files.Rider; import: ARRAY OF Module; flash, code: INTEGER);
+  (*destbase: start address of the destination, relative to Flash.origin
+     fixbase: start address of the elements to be fixed, relative to Flash.origin*)
+  PROCEDURE fixupFlash(VAR R: Files.Rider; import: ARRAY OF Module; destbase, fixbase: INTEGER);
     VAR adr, dest, nadr: INTEGER; mno: BYTE; impmod!: Module;
   BEGIN
     ReadWord(R, adr); (*fixup procedures*)
     WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
-      IF mno = 0 THEN (*current module*) INC(dest, flash)
+      IF mno = 0 THEN (*current module*) INC(dest, destbase)
       ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.flash + impmod.ent[dest]
-      END;
-      REPEAT INC(adr, flash);
-        nadr := code + GetWordAt(adr); PutWordAt(adr, dest);
-        adr := nadr
-      UNTIL adr = flash;
+      END; INC(dest, Flash.origin);
+      REPEAT INC(adr, fixbase);
+        nadr := GetWordAt(adr); PutWordAt(adr, dest); adr := nadr
+      UNTIL nadr = 0;
       ReadWord(R, adr) (*go to next chain*)
     END;
   END fixupFlash;
@@ -96,18 +97,17 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       res = badkey: key conflict;
       res = badfile: corrupted file;
       res = nospace: insufficient space*)
-    VAR mod!, impmod!: Module;
+    VAR mod!, prev!, impmod!: Module;
       i, n, key, impkey, nofimps, flashSize, code: INTEGER;
-      f, u, v, w: INTEGER;  (*addresses*)
+      f, w: INTEGER;  (*addresses*)
       ch: CHAR;
-      body: Command;
-      adr, nadr, inst, pno, vno, dest, offset: INTEGER;
+      adr, nadr, dest: INTEGER;
       name1, impname: ModuleName;
       F!: Files.File; R!: Files.Rider;
       import!: ARRAY 16 OF Module;
       mno, nv: BYTE; vec: ARRAY 32 OF INTEGER;
-  BEGIN mod := root; error(noerr, name); nofimps := 0;
-    WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
+  BEGIN mod := first; prev := NIL; error(noerr, name); nofimps := 0;
+    WHILE (mod # NIL) & (name # mod.name) DO prev := mod; mod := mod.next END ;
     IF mod = NIL THEN (*link*)
       Check(name);
       IF res = noerr THEN F := ThisFile(name) ELSE F := NIL END ;
@@ -127,8 +127,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         IF flashSize < limit - Flash.allocPtr THEN (*allocate*)
           f := Flash.allocPtr; NEW(mod);
           Flash.allocPtr := (f + flashSize + (G.WordSize - 1) ) DIV G.WordSize*G.WordSize; mod.size := Flash.allocPtr - f;
-          IF root = NIL THEN mod.num := 1 ELSE mod.num := root.num + 1 END;
-          mod.next := root; root := mod
+          IF prev = NIL THEN mod.num := 1; first := mod ELSE mod.num := prev.num + 1; prev.next := mod END;
+          mod.next := NIL
         ELSE error(nospace, name1)
         END
       END;
@@ -141,6 +141,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         WHILE n > 0 DO ReadWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END;  (*type descriptors*)
         Files.ReadInt(R, n); (*size of data*)
         mod.data := RAMAllocPtr; INC(RAMAllocPtr, n); (*note: data is never initialized*)
+        IF RAMAllocPtr >= RAMLimit THEN error(nospace, name1) END
+      END;
+      IF res = noerr THEN (*continue reading*)
         Files.ReadInt(R, n); (*size of strings*)
         WHILE n > 0 DO Files.Read(R, ch); Flash.m[f] := ORD(ch); INC(f); DEC(n) END;   (*strings*)
         code := f;
@@ -150,6 +153,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         FOR i := 0 TO nv - 1 DO ReadWord(R, w); vec[i] := w END; (*module vector table*)
         ReadWord(R, n); (*number of entries*)
         FOR i := 0 TO n - 1 DO ReadWord(R, mod.ent[i]) END; (*entries*)
+        IF GetWordAt(mod.flash + mod.ent[0]) = 4130H THEN (*module init is empty*)
+          DEC(Flash.allocPtr, 2); PutWordAt(mod.flash + mod.ent[0], -1) (*mark init address as invalid*)
+        END;
 
         fixupFlash(R, import, mod.flash, code); (*fixup procedures*)
 
@@ -168,7 +174,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
           IF mno = 0 THEN (*current module*) INC(dest, mod.data)
           ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.data + impmod.ent[dest]
-          END;
+          END; INC(dest, RAMOrigin);
           REPEAT INC(adr, mod.flash);
             nadr := code + GetWordAt(adr); PutWordAt(adr, dest);
             adr := nadr
@@ -177,150 +183,86 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         END;
 
         fixupFlash(R, import, mod.flash, code); (*fixup constants*)
-        fixupFlash(R, import, mod.flash, code); (*fixup types*)
+        fixupFlash(R, import, mod.flash, mod.flash); (*fixup types*)
 
-        Files.ReadInt(R, w); body := SYSTEM.VAL(Command, mod.flash + w);
+        Files.ReadInt(R, w);
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
       END ;
-      IF res = noerr THEN (*fixup of BL*)
-        adr := mod.code + fixorgP;
-        WHILE adr # mod.code DO
-          inst := GetWordAt(adr);
-          inst := thumbSwap(inst); (*Put bytes in the right order*)
-          mno := inst DIV 10000000H MOD 10H;
-          pno := inst DIV 100000H MOD 100H;
-          disp := inst MOD 100000H*2;
-          SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
-          SYSTEM.GET(impmod.ent + pno*4, dest); dest := dest + impmod.code;
-          (*dest contains the address of the called procedure relative to Start*)
-          offset := dest - adr - 4; (* Offset in bytes *)
-          PutWordAt(adr, thumbSwap(OM4A.BL + OM4A.formatEvenImm25(offset)));
-          adr := adr - disp
-        END ;
-        (*fixup of MOV/MOVT*)
-        adr := mod.code + fixorgD;
-        WHILE adr # mod.code DO
-          inst := GetWordAt(adr);
-          inst := thumbSwap(inst); (*Put bytes in the right order*)
-          pno := inst DIV 10000000H MOD 10H; (*destination register*)
-          mno := inst DIV 1000000H MOD 10H;
-          disp := inst MOD 1000000H*2;
-          inst := GetWordAt(adr+4);
-          inst := thumbSwap(inst); (*Put bytes in the right order*)
-          IF mno = 0 THEN (*global*)
-            dest := mod.data + inst MOD 1000000H - Start + VarORG0
-          ELSE (*import*)  vno := inst MOD 100H;
-            SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
-            SYSTEM.GET(impmod.ent + vno*4, offset);
-            IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 - Start + VarORG0 (*thumb execution state*)
-            ELSE dest := impmod.data + offset - Start + VarORG0 END
-          END;
-          PutWordAt(adr, thumbSwap(OM4A.MOVIT3 + OM4A.formatImm16(pno, dest MOD 10000H)));
-          PutWordAt(adr+4, thumbSwap(OM4A.MOVT + OM4A.formatImm16(pno, dest DIV 10000H MOD 10000H)));
-          adr := adr - disp
-        END ;
-        (*fixup of type descriptors*)
-        (* TODO : à revérifier après avoir fini de décortiquer le format .bin *)
-        adr := mod.data + fixorgT*4;
-        WHILE adr # mod.data DO
-          SYSTEM.GET(adr, inst);
-          mno := inst DIV C24 MOD C4;
-          vno := inst DIV C12 MOD C12;
-          disp := inst MOD C12;
-          IF mno = 0 THEN (*global*) inst := mod.data - Start + VarORG0 + vno
-          ELSE (*import*)
-            SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
-            SYSTEM.GET(impmod.ent + vno*4, offset);
-            inst := impmod.data - Start + VarORG0 + offset
-          END ;
-          SYSTEM.PUT(adr, inst); adr := adr - disp*4
-        END ;
-        SYSTEM.PUT(Start, body) (*module initialization body*)
-      ELSIF res >= badkey THEN importing := name;
-        WHILE nofimps > 0 DO DEC(nofimps); DEC(import[nofimps].refcnt) END
-      END
-    END ;
+      IF res >= badkey THEN importing := name END
+    END;
     newmod := mod
   END LinkOne;
 
-  PROCEDURE Link*;  (*link multiple object files together and create a single boot file M.bin from them*)
-    VAR i, x: INTEGER;
+  PROCEDURE Link*;  (*link multiple object files together and create a single MSP430 TI-TXT file M.txt from them*)
+    VAR i, x, vecsize, isrtrap: INTEGER;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
-      M!, p!: Modules.Module;
-      name: Modules.ModuleName;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
-    IF S.class = Texts.Name THEN
-      root := NIL; Start := Modules.AllocPtr; AllocPtr :=  Start + ModAdr; i := Start;
-      WHILE i < AllocPtr DO SYSTEM.PUT(i, 0); INC(i, 4) END ;
+      M!, p!: Module;
+      name: ModuleName;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := noerr;
+    Flash := SYSTEM.VAL(Segment, Modules.AllocPtr); 
+    IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE res := nopar END;
+    IF S.class = Texts.Int THEN  limit := S.i - vecsize; Flash.origin := FlashEnd - S.i; Flash.allocPtr := 0; Texts.Scan(S) ELSE res := nopar END;
+    IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
+    IF (res = noerr) & (S.class = Texts.Name) THEN first := NIL; 
       REPEAT LinkOne(S.s, M); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
-      IF res = noerr THEN p := root; Texts.WriteString(W, "  linking");
+      IF res = noerr THEN Texts.WriteString(W, "  linking");
+        (*prolog*) vector[31] := Flash.allocPtr; p := first;
+        (*MOV RAMLimit, SP*) PutWordAt(Flash.allocPtr, 4031H); INC(Flash.allocPtr, 2); PutWordAt(Flash.allocPtr, RAMLimit); INC(Flash.allocPtr, 2);
         WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
-          M := p; p := p.next;
-          IF p # NIL THEN M.next := SYSTEM.VAL(Modules.Module, SYSTEM.VAL(INTEGER, p) - Start + VarORG0) END ;
-          M.data := M.data - Start + VarORG0;
-          M.code := M.code - Start + VarORG0;
-          i := M.imp;
-          WHILE i < M.cmd DO SYSTEM.GET(i, x); SYSTEM.PUT(i, x - Start + VarORG0); INC(i, 4) END ;
-          M.imp := M.imp - Start + VarORG0;
-          M.cmd := M.cmd - Start + VarORG0;
-          M.ent := M.ent - Start + VarORG0;
-          M.ptr := M.ptr - Start + VarORG0
-        END ;
-        SYSTEM.GET(Start, x);  (*address of initialization body of the top module relative to Start*)
-        SYSTEM.PUT(Start, thumbSwap(OM4A.BT4 + OM4A.formatEvenImm25(x - 4 - VarORG0)));  (*branch instruction to the initialization body of the top module*)
-        SYSTEM.PUT(Start + DestAdr, VarORG0);  (*destination address of the prelinked, executable binary*)
-        SYSTEM.PUT(Start + MemAdr, MemLim);  (*limit of available memory, typically overwritten by the boot loader*)
-        SYSTEM.PUT(Start + AllocAdr, AllocPtr - Start + VarORG0);  (*address of the end of the module space loaded*)
-        SYSTEM.PUT(Start + RootAdr, SYSTEM.VAL(INTEGER, root) - Start + VarORG0);  (*current root of the links of loaded modules*)
-        SYSTEM.PUT(Start + StackAdr, stackOrg);  (*current limit of the module area, typically overwritten by the boot loader*)
-        SYSTEM.PUT(Start + HeapOrgAdr, HeapOrg);  (*start of heeap area*)
-        MakeFileName(name, S.s, ".bin"); F := Files.New(name); Files.Set(R, F, 0); i := Start;
-        WHILE i < AllocPtr DO SYSTEM.GET(i, x); Files.WriteInt(R, x); INC(i, 4) END ;
-        Texts.WriteHex(W, AllocPtr - Start + VarORG0); Files.Register(F)
-      ELSE
+          IF p.ent[0] >= 0 THEN (*init code present*)
+            (*CALL Flash.origin + p.flash + p.ent[0]*);
+            PutWordAt(Flash.allocPtr, 12B0H); INC(Flash.allocPtr, 2); PutWordAt(Flash.allocPtr, Flash.origin + p.flash + p.ent[0]); INC(Flash.allocPtr, 2)
+          END;
+          p := p.next
+        END
+      END;
+      IF M.ent[0] >= 0 THEN
+        MakeFileName(name, S.s, ".txt"); F := Files.New(name); Files.Set(R, F, 0);
+
+        i := 32 - vecsize DIV 2; isrtrap := -1; (*install default ISR trap if required*)
+        REPEAT
+          IF vector[i] = 0FFFFH THEN (*isrtrap is needed*)
+            isrtrap := Flash.allocPtr; PutWordAt(Flash.allocPtr, 0D032H); INC(Flash.allocPtr, 2); PutWordAt(Flash.allocPtr, 0010H); INC(Flash.allocPtr, 2);
+            PutWordAt(Flash.allocPtr, 3FFDH); INC(Flash.allocPtr, 2); 
+          END;
+          INC(i)
+        UNTIL (i >= 31) OR (isrtrap > 0);
+
+        (*write TI-TXT file*)
+        i := 0; Files.Write(R, "@"); FilesEx.WriteHexHalfWord(R, Flash.origin); FilesEx.WriteLn(R); (*code*)
+        WHILE i < Flash.allocPtr DO
+          FilesEx.WriteHex(R, Flash.m[i]); Files.Write(R, " "); INC(i);
+          IF i MOD 16 = 0 THEN FilesEx.WriteLn(R) END
+        END;
+        IF i MOD 16 # 0 THEN FilesEx.WriteLn(R) END;
+
+        i := 0; x := 32 - vecsize DIV 2; Files.Write(R, "@"); FilesEx.WriteHexHalfWord(R, FlashEnd - x*2); FilesEx.WriteLn(R); (*vector table*)
+        WHILE x < 32 DO IF vector[x] = 0FFFFH THEN vector[x] := isrtrap END;
+          FilesEx.WriteHex(R, vector[x] MOD 100H); FilesEx.WriteHex(R, vector[x] DIV 100H MOD 100H); INC(i,2);
+          IF i MOD 16 = 0 THEN FilesEx.WriteLn(R) END;
+          INC(x)
+        END;
+        IF i MOD 16 # 0 THEN FilesEx.WriteLn(R) END;
+        Files.Write(R, "q"); FilesEx.WriteLn(R);
+        Files.Register(F)
+      ELSE error(noinit, M.name);
         Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
         IF res = nofile THEN Texts.WriteString(W, " module not found")
-        ELSIF res = badversion THEN Texts.WriteString(W, " bad version")
+        ELSIF res = duphandler THEN Texts.WriteString(W, " duplicate interrupt handler")
         ELSIF res = badkey THEN Texts.WriteString(W, " imports ");
           Texts.WriteString(W, imported); Texts.WriteString(W, " with bad key")
         ELSIF res = badfile THEN Texts.WriteString(W, " corrupted obj file")
         ELSIF res = nospace THEN Texts.WriteString(W, " insufficient space")
+        ELSIF res = noinit THEN Texts.WriteString(W, " top module init code missing")
         END
       END
-    ELSE Texts.WriteString(W, "Usage: OM4L.Link [module...] topmodule")
-    END ;
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); root := NIL
+    ELSE Texts.WriteString(W, "Usage: OMSPL.Link VectorTableSize FlashSize RAMSize [module...] topmodule")
+    END;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END Link;
 
-  PROCEDURE Load*;  (*load prelinked boot file M.bin onto the boot area of the local disk*)
-    VAR i, secno: LONGINT; b: BYTE;
-      F!: Files.File; R!: Files.Rider;
-      S!: Texts.Scanner;
-      buf: ARRAY Kernel.SectorLength OF BYTE;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
-    IF S.class = Texts.Name THEN
-      Texts.WriteString(W, "  loading "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
-      IF (F # NIL) & (Files.Length(F) <= 63488) THEN Texts.WriteString(W, " onto boot area"); Texts.WriteInt(W, Files.Length(F), 7);
-        secno := BootSec; i := 0; Files.Set(R, F, 0); Files.ReadByte(R, b); res := noerr;
-        WHILE ~R.eof DO buf[i] := b; INC(i);
-          IF i = Kernel.SectorLength THEN Kernel.PutSector(secno*29, buf); INC(secno); i := 0 END ;
-          Files.ReadByte(R, b)
-        END ;
-        IF i > 0 THEN
-          WHILE i < Kernel.SectorLength DO buf[i] := 0; INC(i) END ;
-          Kernel.PutSector(secno*29, buf)
-        END
-      ELSE Texts.WriteString(W, " not found or too big")
-      END
-    ELSE Texts.WriteString(W, "Usage: OM4L.Load M.bin")
-    END ;
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
-  END Load;
-
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.20 / CS 14/12/2023");
-  Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); 
-  limit := Kernel.heapOrg; (*The end of the module space is the beginning of the heap*)
-  IF limit = 0 THEN limit := Kernel.stackOrg - Kernel.stackSize END; (*Hack if ran by RISC-5 machine*)
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP linker  AP 6.8.20 / CS 31.08.2024");
+  Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
 END OMSPL.
