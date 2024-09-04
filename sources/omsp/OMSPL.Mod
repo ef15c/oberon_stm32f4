@@ -1,5 +1,5 @@
 MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
-  IMPORT SYSTEM, Modules, A := OMSPA, G := OMSPG, Files, Texts, Oberon;
+  IMPORT SYSTEM, Modules, A := OMSPA, G := OMSPG, Files, FilesEx, Texts, TextsEx, Oberon;
   CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7;
     RAMOrigin = 200H; FlashEnd = 10000H;
 
@@ -38,12 +38,6 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     Flash.m[adr + 1] := val MOD 100H;
   END PutWordAt;
 
-  PROCEDURE ReadWord(VAR R: Files.Rider; VAR n: INTEGER);
-    VAR b1, b2: BYTE;
-  BEGIN Files.ReadByte(R, b1); Files.ReadByte(R, b2);
-    n := b1 + b2*100H
-  END ReadWord;
-
   PROCEDURE MakeFileName(VAR FName: ARRAY OF CHAR; name, ext: ARRAY OF CHAR);
     VAR i, j: INTEGER;
   BEGIN i := 0; j := 0;  (*assume name suffix less than 4 characters*)
@@ -55,7 +49,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
   PROCEDURE ThisFile(name: ARRAY OF CHAR): Files.File;
     VAR F!: Files.File;
       filename: ModuleName;
-  BEGIN MakeFileName(filename, name, ".mpc"); F := Files.Old(filename); RETURN F
+  BEGIN MakeFileName(filename, name, ".mpc"); F := Files.Old(filename)
+    RETURN F
   END ThisFile;
 
   PROCEDURE error(n: INTEGER; name: ARRAY OF CHAR);
@@ -78,15 +73,15 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
   PROCEDURE fixupFlash(VAR R: Files.Rider; import: ARRAY OF Module; destbase, fixbase: INTEGER);
     VAR adr, dest, nadr: INTEGER; mno: BYTE; impmod!: Module;
   BEGIN
-    ReadWord(R, adr); (*fixup procedures*)
-    WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
+    FilesEx.ReadHalfWord(R, adr); (*fixup procedures*)
+    WHILE adr # 0 DO Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, dest);
       IF mno = 0 THEN (*current module*) INC(dest, destbase)
       ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.flash + impmod.ent[dest]
       END; INC(dest, Flash.origin);
       REPEAT INC(adr, fixbase);
         nadr := GetWordAt(adr); PutWordAt(adr, dest); adr := nadr
       UNTIL nadr = 0;
-      ReadWord(R, adr) (*go to next chain*)
+      FilesEx.ReadHalfWord(R, adr) (*go to next chain*)
     END;
   END fixupFlash;
 
@@ -113,13 +108,15 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       IF res = noerr THEN F := ThisFile(name) ELSE F := NIL END ;
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key);
-        Files.ReadInt(R, flashSize); importing := name1;
+        FilesEx.ReadHalfWord(R, flashSize); importing := name1;
         Files.ReadString(R, impname);   (*imports*)
         WHILE (impname[0] # 0X) & (res = noerr) DO
           Files.ReadInt(R, impkey);
-          LinkOne(impname, impmod); import[nofimps] := impmod; importing := name1;
-          IF (res = noerr)  & (impmod.key # impkey) THEN error(badkey, name1); imported := impname END;
-          Files.ReadString(R, impname)
+          LinkOne(impname, impmod); import[nofimps] := impmod;
+          IF res = noerr THEN importing := name1;
+            IF impmod.key # impkey THEN error(badkey, name1); imported := impname END;
+            Files.ReadString(R, impname)
+          END
         END
       ELSE error(nofile, name)
       END;
@@ -137,41 +134,41 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
         mod.key := key;
         mod.flash := f; (*flash segment*)
-        Files.ReadInt(R, n); (*size of type descriptors*)
-        WHILE n > 0 DO ReadWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END;  (*type descriptors*)
-        Files.ReadInt(R, n); (*size of data*)
+        FilesEx.ReadHalfWord(R, n); (*size of type descriptors*)
+        WHILE n > 0 DO FilesEx.ReadHalfWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END;  (*type descriptors*)
+        FilesEx.ReadHalfWord(R, n); (*size of data*)
         mod.data := RAMAllocPtr; INC(RAMAllocPtr, n); (*note: data is never initialized*)
         IF RAMAllocPtr >= RAMLimit THEN error(nospace, name1) END
       END;
       IF res = noerr THEN (*continue reading*)
-        Files.ReadInt(R, n); (*size of strings*)
+        FilesEx.ReadHalfWord(R, n); (*size of strings*)
         WHILE n > 0 DO Files.Read(R, ch); Flash.m[f] := ORD(ch); INC(f); DEC(n) END;   (*strings*)
         code := f;
-        Files.ReadInt(R, n); (*In MSP430 implementation, program size is counted in bytes*)
-        WHILE n > 0 DO ReadWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END ;  (*program code*)
+        FilesEx.ReadHalfWord(R, n); (*In MSP430 implementation, program size is counted in bytes*)
+        WHILE n > 0 DO FilesEx.ReadHalfWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END ;  (*program code*)
         Files.ReadByte(R, nv); (*number of entries in vector table*)
-        FOR i := 0 TO nv - 1 DO ReadWord(R, w); vec[i] := w END; (*module vector table*)
-        ReadWord(R, n); (*number of entries*)
-        FOR i := 0 TO n - 1 DO ReadWord(R, mod.ent[i]) END; (*entries*)
+        FOR i := 0 TO nv - 1 DO FilesEx.ReadHalfWord(R, w); vec[i] := w END; (*module vector table*)
+        FilesEx.ReadHalfWord(R, n); (*number of entries*)
+        FOR i := 0 TO n - 1 DO FilesEx.ReadHalfWord(R, mod.ent[i]) END; (*entries*)
         IF GetWordAt(mod.flash + mod.ent[0]) = 4130H THEN (*module init is empty*)
           DEC(Flash.allocPtr, 2); PutWordAt(mod.flash + mod.ent[0], -1) (*mark init address as invalid*)
         END;
 
         fixupFlash(R, import, mod.flash, code); (*fixup procedures*)
 
-        ReadWord(R, i); (*fixup handlers*)
-        WHILE i # 0 DO Files.ReadByte(R, mno); ASSERT(mno = 0); ReadWord(R, dest); INC(dest, mod.flash);
+        FilesEx.ReadHalfWord(R, i); (*fixup handlers*)
+        WHILE i # 0 DO Files.ReadByte(R, mno); ASSERT(mno = 0); FilesEx.ReadHalfWord(R, dest); INC(dest, mod.flash);
           REPEAT DEC(i, 100H);
             IF vector[i] # 0FFFFH THEN
               Texts.WriteString(W, "interrupt vector number"); Texts.WriteInt(W, i, 3); error(duphandler, name1)
             END;
-            vector[i] := dest; i := vec[adr]
+            vector[i] := dest; i := vec[i]
           UNTIL i = 0;
-          ReadWord(R, i) (*go to next chain*)
+          FilesEx.ReadHalfWord(R, i) (*go to next chain*)
         END;
 
-        ReadWord(R, adr); (*fixup data*)
-        WHILE adr # 0 DO Files.ReadByte(R, mno); ReadWord(R, dest);
+        FilesEx.ReadHalfWord(R, adr); (*fixup data*)
+        WHILE adr # 0 DO Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, dest);
           IF mno = 0 THEN (*current module*) INC(dest, mod.data)
           ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.data + impmod.ent[dest]
           END; INC(dest, RAMOrigin);
@@ -179,13 +176,13 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
             nadr := code + GetWordAt(adr); PutWordAt(adr, dest);
             adr := nadr
           UNTIL adr = mod.flash;
-          ReadWord(R, adr) (*go to next chain*)
+          FilesEx.ReadHalfWord(R, adr) (*go to next chain*)
         END;
 
         fixupFlash(R, import, mod.flash, code); (*fixup constants*)
         fixupFlash(R, import, mod.flash, mod.flash); (*fixup types*)
 
-        Files.ReadInt(R, w);
+        FilesEx.ReadHalfWord(R, w);
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
       END ;
@@ -201,7 +198,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       M!, p!: Module;
       name: ModuleName;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := noerr;
-    Flash := SYSTEM.VAL(Segment, Modules.AllocPtr); 
+    Flash := SYSTEM.VAL(Segment, Modules.AllocPtr); FOR i := 0 TO 31 DO vector[i] := 0FFFFH END;
     IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE res := nopar END;
     IF S.class = Texts.Int THEN  limit := S.i - vecsize; Flash.origin := FlashEnd - S.i; Flash.allocPtr := 0; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
@@ -218,7 +215,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
           p := p.next
         END
       END;
-      IF M.ent[0] >= 0 THEN
+      IF (res = noerr) & (M.ent[0] < 0) THEN error(noinit, M.name) END;
+      IF res = noerr THEN
         MakeFileName(name, S.s, ".txt"); F := Files.New(name); Files.Set(R, F, 0);
 
         i := 32 - vecsize DIV 2; isrtrap := -1; (*install default ISR trap if required*)
@@ -240,14 +238,15 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
 
         i := 0; x := 32 - vecsize DIV 2; Files.Write(R, "@"); FilesEx.WriteHexHalfWord(R, FlashEnd - x*2); FilesEx.WriteLn(R); (*vector table*)
         WHILE x < 32 DO IF vector[x] = 0FFFFH THEN vector[x] := isrtrap END;
-          FilesEx.WriteHex(R, vector[x] MOD 100H); FilesEx.WriteHex(R, vector[x] DIV 100H MOD 100H); INC(i,2);
-          IF i MOD 16 = 0 THEN FilesEx.WriteLn(R) END;
+          FilesEx.WriteHex(R, (Flash.origin + vector[x]) MOD 100H); Files.Write(R, " ");
+          FilesEx.WriteHex(R, (Flash.origin + vector[x]) DIV 100H MOD 100H); Files.Write(R, " ");
+          INC(i,2); IF i MOD 16 = 0 THEN FilesEx.WriteLn(R) END;
           INC(x)
         END;
         IF i MOD 16 # 0 THEN FilesEx.WriteLn(R) END;
         Files.Write(R, "q"); FilesEx.WriteLn(R);
         Files.Register(F)
-      ELSE error(noinit, M.name);
+      ELSE
         Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
         IF res = nofile THEN Texts.WriteString(W, " module not found")
         ELSIF res = duphandler THEN Texts.WriteString(W, " duplicate interrupt handler")

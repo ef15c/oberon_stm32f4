@@ -10,3 +10,7 @@ testStringRelat.Mod testTypTag.Mod testSFuncs.Mod testSFuncs2.Mod/s testSFuncs3.
 testExport.Mod/s testImport.Mod testRepeat.Mod testSelector.Mod msp430g2xx3ta01.Mod testVector.Mod 
 Facto.Mod testPRU.Mod/s testFunc2.Mod testFrame.Mod testVarParam.Mod testSProcs2.Mod msp430g2xx3lpm3vlo.Mod
 testRecStr.Mod ISRTrap.Mod ~
+
+Linking
+
+OMSPL.Link 32 4000H 200H msp430g2xx3lpm3vlo ~ Edit.Open msp430g2xx3lpm3vlo.txt
