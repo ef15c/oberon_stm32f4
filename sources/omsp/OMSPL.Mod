@@ -171,7 +171,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         WHILE adr # 0 DO Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, dest);
           IF mno = 0 THEN (*current module*) INC(dest, mod.data)
           ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.data + impmod.ent[dest]
-          END; INC(dest, RAMOrigin);
+          END;
           REPEAT INC(adr, mod.flash);
             nadr := code + GetWordAt(adr); PutWordAt(adr, dest);
             adr := nadr
