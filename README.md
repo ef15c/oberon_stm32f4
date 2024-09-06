@@ -4,7 +4,7 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
   
 This is the first release of the MSP430 toolchain. The compiler, the test modules and several examples are located in omsp folder. See omsp/README.md  
   
-There is also several bugs fixed in the OM4 compiler.  
+There are also several bugs fixed in the OM4 compiler.  
   
 The files names suffixed by M4 have been renamed to the original names.
 
