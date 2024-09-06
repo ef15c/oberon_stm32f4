@@ -1,8 +1,8 @@
 MODULE testInitImp;
-  IMPORT testInit;
+  IMPORT M := msp430g2553, testInit;
 
  VAR i: INTEGER;
-BEGIN
+BEGIN M.WDTCTL^ := ORD(M.WDTPW + M.WDTHOLD); (* Stop WDT *)
   REPEAT testInit.toggleP10;
     i := 50000; REPEAT DEC(i) UNTIL i = 0
   UNTIL FALSE
@@ -10,8 +10,9 @@ END testInitImp.
 
 OMSPTool.DecObj testInitImp.mpc
 decode testInitImp.mpc
-testInitImp E94D4107 Flash    24
+testInitImp E94D4107 Flash    30
 imports:
+	msp430g2553 8CA01B9B
 	testInit FB808D89
 type descriptors
 
@@ -25,23 +26,26 @@ vector table
 entries
  0000
 fixup procedures chains
- 0002     1	 0001
+ 0008     2	 0001
 fixup handlers chains
 fixup data chains
- 0010     0	 0000
+ 0016     0	 0000
 fixup constants chains
 fixup types chains
 entry =  0000
-code    24
- 0000	     12B0	CALL #0
- 0002	     0000
- 0004	     40B2	MOV #-15536,&0
- 0006	     C350
+code    30
+ 0000	     40B2	MOV #23168,&288
+ 0002	     5A80
+ 0004	     0120
+ 0006	     12B0	CALL #0
  0008	     0000
- 000A	     8392	SUB #1,&8
- 000C	     0008
- 000E	     9382	CMP #0,&12
- 0010	     000C
- 0012	     23FB	JNE #-5, goes to  000A
- 0014	     3FF5	JMP #-11, goes to  0000
- 0016	     4130	RET
+ 000A	     40B2	MOV #-15536,&0
+ 000C	     C350
+ 000E	     0000
+ 0010	     8392	SUB #1,&14
+ 0012	     000E
+ 0014	     9382	CMP #0,&18
+ 0016	     0012
+ 0018	     23FB	JNE #-5, goes to  0010
+ 001A	     3FF5	JMP #-11, goes to  0006
+ 001C	     4130	RET

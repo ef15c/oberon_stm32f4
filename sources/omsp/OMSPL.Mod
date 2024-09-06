@@ -112,7 +112,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         Files.ReadString(R, impname);   (*imports*)
         WHILE (impname[0] # 0X) & (res = noerr) DO
           Files.ReadInt(R, impkey);
-          LinkOne(impname, impmod); import[nofimps] := impmod;
+          LinkOne(impname, impmod); import[nofimps] := impmod; INC(nofimps);
           IF res = noerr THEN importing := name1;
             IF impmod.key # impkey THEN error(badkey, name1); imported := impname END;
             Files.ReadString(R, impname)
