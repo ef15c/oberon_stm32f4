@@ -393,7 +393,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     VAR logV!, toolV!: Viewers.Viewer;
       menu!, main!: Display.Frame;
       X, Y: INTEGER;
-  BEGIN Texts.WriteString(W, "Oberon V5  NW 14.4.2013"); EndLine;
+  BEGIN Texts.WriteString(W, "Oberon V5  NW 14.4.2013 / CS 06.09.24"); EndLine;
     Oberon.AllocateSystemViewer(0, X, Y);
     menu := TextFrames.NewMenu("System.Log", LogMenu);
     main := TextFrames.NewText(Oberon.Log, 0);
