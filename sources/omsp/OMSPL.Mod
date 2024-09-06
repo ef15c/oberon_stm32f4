@@ -172,10 +172,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
           IF mno = 0 THEN (*current module*) INC(dest, mod.data)
           ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.data + impmod.ent[dest]
           END;
-          REPEAT INC(adr, mod.flash);
-            nadr := code + GetWordAt(adr); PutWordAt(adr, dest);
-            adr := nadr
-          UNTIL adr = mod.flash;
+          REPEAT INC(adr, code);
+            nadr := GetWordAt(adr); PutWordAt(adr, dest); adr := nadr
+          UNTIL adr = 0;
           FilesEx.ReadHalfWord(R, adr) (*go to next chain*)
         END;
 
@@ -245,7 +244,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         END;
         IF i MOD 16 # 0 THEN FilesEx.WriteLn(R) END;
         Files.Write(R, "q"); FilesEx.WriteLn(R);
-        Files.Register(F)
+        Files.Register(F);
+        Texts.WriteInt(W, RAMLimit - RAMAllocPtr, 5); Texts.WriteString(W, " bytes available for stack")
       ELSE
         Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
         IF res = nofile THEN Texts.WriteString(W, " module not found")

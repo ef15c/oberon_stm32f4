@@ -438,6 +438,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
+  PROCEDURE MakeTypTagAdr(VAR x: Item; T: B.Type);
+  BEGIN x.mode := B.Const; x.type := B.intType; x.a := A.C16; x.rdo := TRUE; x.obj := T.typobj; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
+  END MakeTypTagAdr;
+
   PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: LONGINT);
   BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
@@ -593,8 +597,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSE S.Mark("error in TypeTest")
           END; PutDO(A.MOV, t, rh); free(x);
           t := rh; t.mode := RegI; t.a := T.nofpar*2; pt := t; pt.mode := Reg; pt.rdo := FALSE; PutDO(A.MOV, t, pt);
-          tt.reg := loadTypTagAdr(T, 0FFH) (*tag of T*); tt.mode := Reg; PutDO(A.CMP, pt, tt);
-          freeR(pt.reg); freeR(tt.reg);
+          MakeTypTagAdr(tt, T); (*tt.reg := loadTypTagAdr(T, 0FFH) (*tag of T*); tt.mode := Reg;*) PutDO(A.CMP, tt, pt);
+          freeR(pt.reg); free(tt);
           IF isguard THEN Trap(A.NE, 2) ELSE SetCC(x, A.EQ) END;
         ELSE S.Mark("pointer not allowed")
         END

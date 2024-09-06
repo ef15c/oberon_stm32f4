@@ -9,11 +9,12 @@ MODULE testFrame;
   BEGIN p(a, b, c)
   END q;
 
+BEGIN q
 END testFrame.
 
 OMSPTool.DecObj testFrame.mpc
 decode testFrame.mpc
-testFrame E1D5D81F Flash    38
+testFrame E1D5D81F Flash    42
 imports:
 type descriptors
 
@@ -28,12 +29,13 @@ entries
  0024
 fixup procedures chains
  001A     0	 0000
+ 0026     0	 0002
 fixup handlers chains
 fixup data chains
 fixup constants chains
 fixup types chains
 entry =  0024
-code    38
+code    42
  0000	     4130	RET
  0002	     8031	SUB #14,SP
  0004	     000E
@@ -52,4 +54,6 @@ code    38
  001E	     5031	ADD #14,SP
  0020	     000E
  0022	     4130	RET
- 0024	     4130	RET
+ 0024	     12B0	CALL #0
+ 0026	     0000
+ 0028	     4130	RET
