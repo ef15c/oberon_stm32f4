@@ -1,17 +1,15 @@
 # oberon_stm32f4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 6 released!</b><br>
-* Oberon MSP430 compiler:<br>
-Work in progress: parser and generator are under testing. Instruction generator and disassembler are tested OK.
-See osmp/README.md for information about MSP430 specific extensions.
-* Minor fixes on OM4 compiler.
-* Introduction of one time initialized global variables in OM4 and OMSP compilers:<br>
-  Global variables whose type is followed by an hypen sign are now read only, except in the initialization block of the module.
-* Kernel.Coalesce fix
-* StackTrace fix (requires recompilation of modules)
-* Improved mouse management
+<b>Version 7 released!</b><br>
+  
+This is the first release of the MSP430 toolchain. The compiler, the test modules and several examples are located in omsp folder. See omsp/README.md  
+  
+There is also several bugs fixed in the OM4 compiler.  
+  
+The files names suffixed by M4 have been renamed to the original names.
+
 <br>
-QWERTY keyboard can be activated by middle clicking on the text "OM4P.Compile InputM4Qwerty.Mod ~"<br>
+QWERTY keyboard can be activated by middle clicking on the text "OM4P.Compile InputQwerty.Mod ~"<br>
 displayed in yellow in the middle of the System.Tool window. Restart the system to load the updated Input module.<br>
 <br>
 
