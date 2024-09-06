@@ -14,3 +14,8 @@ testRecStr.Mod ISRTrap.Mod ~
 Linking
 
 OMSPL.Link 32 4000H 200H msp430g2xx3lpm3vlo ~ Edit.Open msp430g2xx3lpm3vlo.txt
+OMSPL.Link 32 4000H 200H msp430g2xx3ta01 ~ Edit.Open msp430g2xx3ta01.txt
+OMSPL.Link 32 4000H 200H testFrame ~ Edit.Open testFrame.txt
+OMSPL.Link 32 4000H 200H testTypTag ~ Edit.Open testTypTag.txt
+OMSPL.Link 32 4000H 200H testString ~ Edit.Open testString.txt
+OMSPL.Link 32 4000H 200H testImportString ~ Edit.Open testImportString.txt
