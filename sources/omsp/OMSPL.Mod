@@ -21,7 +21,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       m: ARRAY FlashEnd OF BYTE
     END;
 
-  VAR first: Module;
+  VAR first, last: Module;
     RAMAllocPtr, RAMLimit, limit, res: INTEGER;
     Flash: Segment; vector: ARRAY 32 OF INTEGER;
     importing, imported: ModuleName;
@@ -92,7 +92,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       res = badkey: key conflict;
       res = badfile: corrupted file;
       res = nospace: insufficient space*)
-    VAR mod!, prev!, impmod!: Module;
+    VAR mod!, impmod!: Module;
       i, n, key, impkey, nofimps, flashSize, code: INTEGER;
       f, w: INTEGER;  (*addresses*)
       ch: CHAR;
@@ -101,8 +101,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       F!: Files.File; R!: Files.Rider;
       import!: ARRAY 16 OF Module;
       mno, nv: BYTE; vec: ARRAY 32 OF INTEGER;
-  BEGIN mod := first; prev := NIL; error(noerr, name); nofimps := 0;
-    WHILE (mod # NIL) & (name # mod.name) DO prev := mod; mod := mod.next END ;
+  BEGIN mod := first; error(noerr, name); nofimps := 0;
+    WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
     IF mod = NIL THEN (*link*)
       Check(name);
       IF res = noerr THEN F := ThisFile(name) ELSE F := NIL END ;
@@ -124,8 +124,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         IF flashSize < limit - Flash.allocPtr THEN (*allocate*)
           f := Flash.allocPtr; NEW(mod);
           Flash.allocPtr := (f + flashSize + (G.WordSize - 1) ) DIV G.WordSize*G.WordSize; mod.size := Flash.allocPtr - f;
-          IF prev = NIL THEN mod.num := 1; first := mod ELSE mod.num := prev.num + 1; prev.next := mod END;
-          mod.next := NIL
+          IF first = NIL THEN mod.num := 1; first := mod ELSE mod.num := last.num + 1; last.next := mod END;
+          last := mod; mod.next := NIL
         ELSE error(nospace, name1)
         END
       END;
@@ -151,7 +151,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         FilesEx.ReadHalfWord(R, n); (*number of entries*)
         FOR i := 0 TO n - 1 DO FilesEx.ReadHalfWord(R, mod.ent[i]) END; (*entries*)
         IF GetWordAt(mod.flash + mod.ent[0]) = 4130H THEN (*module init is empty*)
-          DEC(Flash.allocPtr, 2); PutWordAt(mod.flash + mod.ent[0], -1) (*mark init address as invalid*)
+          DEC(Flash.allocPtr, 2); mod.ent[0] := -1 (*mark init address as invalid*)
         END;
 
         fixupFlash(R, import, mod.flash, code); (*fixup procedures*)
@@ -201,7 +201,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE res := nopar END;
     IF S.class = Texts.Int THEN  limit := S.i - vecsize; Flash.origin := FlashEnd - S.i; Flash.allocPtr := 0; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
-    IF (res = noerr) & (S.class = Texts.Name) THEN first := NIL; 
+    IF (res = noerr) & (S.class = Texts.Name) THEN first := NIL; last := NIL;
       REPEAT LinkOne(S.s, M); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
       IF res = noerr THEN Texts.WriteString(W, "  linking");
         (*prolog*) vector[31] := Flash.allocPtr; p := first;

@@ -9,7 +9,7 @@ testParam.Mod testProc.Mod testRecord.Mod testSet.Mod testStore.Mod testString.M
 testStringRelat.Mod testTypTag.Mod testSFuncs.Mod testSFuncs2.Mod/s testSFuncs3.Mod testSProcs.Mod testArray.Mod
 testExport.Mod/s testImport.Mod testRepeat.Mod testSelector.Mod msp430g2xx3ta01.Mod testVector.Mod 
 Facto.Mod testPRU.Mod/s testFunc2.Mod testFrame.Mod testVarParam.Mod testSProcs2.Mod msp430g2xx3lpm3vlo.Mod
-testRecStr.Mod ISRTrap.Mod ~
+testRecStr.Mod ISRTrap.Mod testInit.Mod testInitImp.Mod ~
 
 Linking
 
@@ -19,3 +19,4 @@ OMSPL.Link 32 4000H 200H testFrame ~ Edit.Open testFrame.txt
 OMSPL.Link 32 4000H 200H testTypTag ~ Edit.Open testTypTag.txt
 OMSPL.Link 32 4000H 200H testString ~ Edit.Open testString.txt
 OMSPL.Link 32 4000H 200H testImportString ~ Edit.Open testImportString.txt
+OMSPL.Link 32 4000H 200H testInitImp ~ Edit.Open testInitImp.txt

@@ -21,7 +21,7 @@ MPU or default memory map
 en mode handler si R0 conient une adresse SDRAM.
 
 Possibilité pour implémenter le mécanisme Trap : générer une instruction illégale
-pour un coprocesseur non extistant, c'est à dire ni 10 ni 11
+pour un coprocesseur non existant, c'est à dire ni 10 ni 11
 
 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
  1  1  1     1  1                                |  coproc | 
