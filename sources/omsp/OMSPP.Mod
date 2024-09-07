@@ -514,6 +514,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
             ELSIF (x.type.form = B.Array) & (x.type.base.form = B.Char) & (y.type.form = B.String) THEN
               G.CopyString(x, y)
             ELSIF (x.type.form = B.Int) & (y.type.form = B.Int) THEN G.Store(x, y)  (*BYTE*)
+            ELSIF (x.type.form = B.Set) & (y.type.form = B.Set) THEN G.Store(x, y)  (*byte SET*)
             ELSIF (x.type.form = B.Char) & (y.type.form = B.String) & (y.b = 2) THEN
               G.StrToChar(y); G.Store(x, y)
             ELSE S.Mark("illegal assignment")

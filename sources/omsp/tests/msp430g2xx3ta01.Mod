@@ -76,11 +76,11 @@ MODULE msp430g2xx3ta01;
   END Timer_A;
  
 BEGIN
-  M.WDTCTL^ := ORD(M.WDTPW + M.WDTHOLD); (* Stop WDT *)
+  M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (* Stop WDT *)
   BIS(M.P1DIR^, {0}); (* P1.0 output *)
-  M.TA0CCTL0^ := ORD(M.CCIE); (* CCR0 interrupt enabled *)
+  M.TA0CCTL0^ := M.CCIE; (* CCR0 interrupt enabled *)
   M.TA0CCR0^ := 50000;
-  M.TA0CTL^ := ORD(M.TASSEL_2 + M. MC_2); (* SMCLK, contmode *)
+  M.TA0CTL^ := M.TASSEL_2 + M. MC_2; (* SMCLK, contmode *)
 
   SYSTEM.BIS_SR(M.LPM0_bits + M.GIE); (* Enter LPM0 w/ interrupt *)
 END msp430g2xx3ta01.

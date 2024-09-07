@@ -2,7 +2,7 @@ MODULE testInitImp;
   IMPORT M := msp430g2553, testInit;
 
  VAR i: INTEGER;
-BEGIN M.WDTCTL^ := ORD(M.WDTPW + M.WDTHOLD); (* Stop WDT *)
+BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (* Stop WDT *)
   REPEAT testInit.toggleP10;
     i := 50000; REPEAT DEC(i) UNTIL i = 0
   UNTIL FALSE
@@ -12,7 +12,7 @@ OMSPTool.DecObj testInitImp.mpc
 decode testInitImp.mpc
 testInitImp E94D4107 Flash    30
 imports:
-	msp430g2553 8CA01B9B
+	msp430g2553 D739B001
 	testInit FB808D89
 type descriptors
 

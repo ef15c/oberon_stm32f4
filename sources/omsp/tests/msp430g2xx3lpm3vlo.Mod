@@ -78,14 +78,14 @@ MODULE msp430g2xx3lpm3vlo;
 BEGIN
   BIS(M.BCSCTL1^, M.DIVA_1); (* ACLK/2 *)
   BIS(M.BCSCTL3^, M.LFXT1S_2); (* ACLK = VLO *)
-  M.WDTCTL^ := ORD(M.WDT_ADLY_1000); (* Interval timer *)
+  M.WDTCTL^ := M.WDT_ADLY_1000; (* Interval timer *)
   BIS(M.IE1^, M.WDTIE); (* Enable WDT interrupt *)
-  M.P1DIR^ := 0FFH; (* All P1.x outputs *)
-  M.P1OUT^ := 0; (* All P1.x reset *)
-  M.P2DIR^ := 0FFH; (* All P2.x outputs *)
-  M.P2OUT^ := 0; (* All P2.x reset *)
-  M.P3DIR^ := 0FFH; (* All P3.x outputs *)
-  M.P3OUT^ := 0; (* All P3.x reset *)
+  M.P1DIR^ := {0..7}; (* All P1.x outputs *)
+  M.P1OUT^ := {}; (* All P1.x reset *)
+  M.P2DIR^ := {0..7}; (* All P2.x outputs *)
+  M.P2OUT^ := {}; (* All P2.x reset *)
+  M.P3DIR^ := {0..7}; (* All P3.x outputs *)
+  M.P3OUT^ := {}; (* All P3.x reset *)
   
   REPEAT 
     BIS(M.P1OUT^, {0}); (* Set P1.0 LED on *)

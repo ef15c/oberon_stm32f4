@@ -17,6 +17,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; LongInt* = 5; Set* = 6;
       Pointer* = 7; NilTyp* = 8; NoTyp* = 9; Proc* = 10;
       String* = 11; Array* = 12; Record* = 13; PointerToByte* = 14; Handler* = 15;
+      ByteSet* = 16; PointerToSet* = 17; PointerToByteSet* = 18;
+      LastForm = PointerToByteSet;
       
   TYPE Object* = POINTER TO ObjDesc;
     Module* = POINTER TO ModDesc;
@@ -67,8 +69,9 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     RegRTProcCallback* = PROCEDURE(p: Object);
 
   VAR topScope*, universe, system*: Object;
-    byteType*, boolType*, charType*: Type;
-    intType*, longIntType*, setType*, nilType*, noType*, strType*, ptrByteType*, ptrIntType*: Type;
+    byteType*, boolType*, charType*, byteSetType*: Type;
+    intType*, longIntType*, setType*, nilType*, noType*, strType*: Type;
+    ptrByteType*, ptrIntType*, ptrByteSetType*,ptrSetType*: Type;
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
     regRTProc: RegRTProcCallback;
@@ -325,7 +328,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       obj!, obj0!: Object;
       filename: S.Ident;
       F!, F1!: Files.File; R!, R1!: Files.Rider;
-  BEGIN Ref := Handler + 1; MakeFileName(filename, modid, ".sms");
+  BEGIN Ref := LastForm + 1; MakeFileName(filename, modid, ".sms");
     F := Files.New(filename); Files.Set(R, F, 0);
     Files.WriteInt(R, 0); (*placeholder*)
     Files.WriteInt(R, 0); (*placeholder for key to be inserted at the end*)
@@ -355,7 +358,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       obj := obj.next
     END ;
     REPEAT Write(R, 0) UNTIL Files.Length(F) MOD 4 = 0;
-    FOR Ref := Handler + 1 TO maxTypTab-1 DO typtab[Ref] := NIL END ;
+    FOR Ref := LastForm + 1 TO maxTypTab-1 DO typtab[Ref] := NIL END ;
     Files.Set(R, F, 0); sum := 0; Files.ReadInt(R, x);  (* compute key (checksum) *)
     WHILE ~R.eof DO sum := sum + x; Files.ReadInt(R, x) END ;
     F1 := Files.Old(filename); (*sum is new key*)
@@ -394,6 +397,7 @@ BEGIN
   byteType := type(Byte, Int, 1);
   boolType := type(Bool, Bool, 1);
   charType := type(Char, Char,1);
+  byteSetType := type(ByteSet, Set, 1);
   intType := type(Int, Int, 2);
   longIntType := type(LongInt, Int, 4);
   setType := type(Set, Set, 2);
@@ -402,6 +406,8 @@ BEGIN
   strType := type(String, String, 4);
   ptrByteType := type2(PointerToByte, Pointer, 2, byteType);
   ptrIntType := type2(Pointer, Pointer, 2, intType);
+  ptrByteSetType := type2(PointerToByteSet, Pointer, 2, byteSetType);
+  ptrSetType := type2(PointerToSet, Pointer, 2, setType);
     
   (*initialize universe with data types and in-line procedures;
     BIC, BIS, XOR, AND, ADC, SBC, CLRC, RLA, RLC, RRA, RRC, COND, CMP are not in language definition*)
@@ -436,6 +442,8 @@ BEGIN
   enter("INTEGER", Typ, intType, 0);
   enter("PBYTE", Typ, ptrByteType, 0);
   enter("PINTEGER", Typ, ptrIntType, 0);
+  enter("PBYTESET", Typ, ptrByteSetType, 0);
+  enter("PSET", Typ, ptrSetType, 0);
 
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
 

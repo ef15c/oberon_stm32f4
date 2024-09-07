@@ -8,7 +8,7 @@ MODULE Traps; (*runtime module implementing the trap handlers*)
   IMPORT M := msp430g2553;
 
   PROCEDURE ArrayOutOfRange*;
-   BEGIN M.P1OUT^ := ORD({2}); (*turn all LEDs off except LED 2*)
+   BEGIN M.P1OUT^ := {2}; (*turn all LEDs off except LED 2*)
     REPEAT UNTIL FALSE
   END ArrayOutOfRange;
 
@@ -30,7 +30,7 @@ OMSPTool.DecObj Traps.mpc
 decode Traps.mpc
 Traps 45642D7E Flash    26
 imports:
-	msp430g2553 B7A7F8F7
+	msp430g2553 D739B001
 type descriptors
 
 data     0
