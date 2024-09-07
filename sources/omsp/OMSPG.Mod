@@ -1243,12 +1243,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SBC;
 
   PROCEDURE Bit*(VAR x, y: Item);
-    VAR t!: Item;
-  BEGIN t.obj := NIL; t.mode := B.Const; t.type := B.intType; t.tmp := FALSE;
-    IF y.mode = B.Const THEN t.a:= LSL(1, y.a); PutDO(A.BIT, t, x)
-    ELSE t := c1; Rla(t, y); PutDO(A.BIT, t, x)
-    END;
-    free(x);
+  BEGIN PutDO(A.BIT, y, x); free(x);
     SetCC(x, A.NE)
   END Bit;
 
