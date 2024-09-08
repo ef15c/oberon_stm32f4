@@ -72,27 +72,27 @@ LPM4_bits*          = SCG1+SCG0+OSCOFF+CPUOFF;
 (************************************************************
 * SPECIAL FUNCTION REGISTER ADDRESSES + CONTROL BITS
 ************************************************************)
-IE1*                = SYSTEM.VAL(PBYTESET, 0000H);
+IE1*                = SYSTEM.VAL(PBYTESET, 0000H); (* Interrupt Enable 1 *)
 WDTIE*              = {0}; (* Watchdog Interrupt Enable *)
 OFIE*               = {1}; (* Osc. Fault  Interrupt Enable *)
 NMIIE*              = {4}; (* NMI Interrupt Enable *)
 ACCVIE*             = {5}; (* Flash Access Violation Interrupt Enable *)
 
-IFG1*               = SYSTEM.VAL(PBYTESET, 0002H);
+IFG1*               = SYSTEM.VAL(PBYTESET, 0002H); (* Interrupt Flag 1 *)
 WDTIFG*             = {0}; (* Watchdog Interrupt Flag *)
 OFIFG*              = {1}; (* Osc. Fault Interrupt Flag *)
 PORIFG*             = {2}; (* Power On Interrupt Flag *)
 RSTIFG*             = {3}; (* Reset Interrupt Flag *)
 NMIIFG*             = {4}; (* NMI Interrupt Flag *)
 
-IE2*                = SYSTEM.VAL(PBYTESET, 0001H);
+IE2*                = SYSTEM.VAL(PBYTESET, 0001H); (* Interrupt Enable 2 *)
 UC0IE*              = IE2;
 UCA0RXIE*           = {0};
 UCA0TXIE*           = {1};
 UCB0RXIE*           = {2};
 UCB0TXIE*           = {3};
 
-IFG2*               = SYSTEM.VAL(PBYTESET, 0003H);
+IFG2*               = SYSTEM.VAL(PBYTESET, 0003H); (* Interrupt Flag 2 *)
 UC0IFG*             = IFG2;
 UCA0RXIFG*          = {0};
 UCA0TXIFG*          = {1};
@@ -100,9 +100,117 @@ UCB0RXIFG*          = {2};
 UCB0TXIFG*          = {3};
 
 (************************************************************
+* ADC10
+************************************************************)
+ADC10DTC0*          = SYSTEM.VAL(PBYTESET, 0048H); (* ADC10 Data Transfer Control 0 *)
+ADC10FETCH*         = {0}; (* This bit should normally be reset *)
+ADC10B1*            = {1}; (* ADC10 block one *)
+ADC10CT*            = {2}; (* ADC10 continuous transfer *)
+ADC10TB*            = {3}; (* ADC10 two-block mode *)
+
+ADC10DTC1*          = SYSTEM.VAL(PBYTE, 0049H); (* ADC10 Data Transfer Control 1 *)
+ADC10DISABLE*       = 0;
+
+ADC10AE0*           = SYSTEM.VAL(PBYTESET, 004AH); (* ADC10 Analog Enable 0 *)
+
+ADC10CTL0*          = SYSTEM.VAL(PSET, 01B0H); (* ADC10 Control 0 *)
+ADC10SC*            = {0};  (* ADC10 Start Conversion *)
+ENC*                = {1};  (* ADC10 Enable Conversion *)
+ADC10IFG*           = {2};  (* ADC10 Interrupt Flag *)
+ADC10IE*            = {3};  (* ADC10 Interrupt Enalbe *)
+ADC10ON*            = {4};  (* ADC10 On/Enable *)
+REFON*              = {5};  (* ADC10 Reference on *)
+REF2_5V*            = {6};  (* ADC10 Ref 0:1.5V / 1:2.5V *)
+MSC*                = {7};  (* ADC10 Multiple SampleConversion *)
+REFBURST*           = {8};  (* ADC10 Reference Burst Mode *)
+REFOUT*             = {9};  (* ADC10 Enalbe output of Ref. *)
+ADC10SR*            = {10}; (* ADC10 Sampling Rate 0:200ksps / 1:50ksps *)
+ADC10SHT0*          = {11}; (* ADC10 Sample Hold Select Bit: 0 *)
+ADC10SHT1*          = {12}; (* ADC10 Sample Hold Select Bit: 1 *)
+SREF0*              = {13}; (* ADC10 Reference Select Bit: 0 *)
+SREF1*              = {14}; (* ADC10 Reference Select Bit: 1 *)
+SREF2*              = {15}; (* ADC10 Reference Select Bit: 2 *)
+
+ADC10SHT_0*         = {};                  (* 4 x ADC10CLKs *)
+ADC10SHT_1*         = ADC10SHT0;           (* 8 x ADC10CLKs *)
+ADC10SHT_2*         = ADC10SHT1;           (* 16 x ADC10CLKs *)
+ADC10SHT_3*         = ADC10SHT0+ADC10SHT1; (* 64 x ADC10CLKs *)
+
+SREF_0*             = {};                (* VR+ = AVCC and VR- = AVSS *)
+SREF_1*             = SREF0;             (* VR+ = VREF+ and VR- = AVSS *)
+SREF_2*             = SREF1;             (* VR+ = VEREF+ and VR- = AVSS *)
+SREF_3*             = SREF0+SREF1;       (* VR+ = VEREF+ and VR- = AVSS *)
+SREF_4*             = SREF2;             (* VR+ = AVCC and VR- = VREF-/VEREF- *)
+SREF_5*             = SREF0+SREF2;       (* VR+ = VREF+ and VR- = VREF-/VEREF- *)
+SREF_6*             = SREF1+SREF2;       (* VR+ = VEREF+ and VR- = VREF-/VEREF- *)
+SREF_7*             = SREF0+SREF1+SREF2; (* VR+ = VEREF+ and VR- = VREF-/VEREF- *)
+
+ADC10CTL1*          = SYSTEM.VAL(PSET, 01B2H); (* ADC10 Control 1 *)
+ADC10BUSY*          = {0};  (* ADC10 BUSY *)
+CONSEQ0*            = {1};  (* ADC10 Conversion Sequence Select 0 *)
+CONSEQ1*            = {2};  (* ADC10 Conversion Sequence Select 1 *)
+ADC10SSEL0*         = {3};  (* ADC10 Clock Source Select Bit: 0 *)
+ADC10SSEL1*         = {4};  (* ADC10 Clock Source Select Bit: 1 *)
+ADC10DIV0*          = {5};  (* ADC10 Clock Divider Select Bit: 0 *)
+ADC10DIV1*          = {6};  (* ADC10 Clock Divider Select Bit: 1 *)
+ADC10DIV2*          = {7};  (* ADC10 Clock Divider Select Bit: 2 *)
+ISSH*               = {8};  (* ADC10 Invert Sample Hold Signal *)
+ADC10DF*            = {9};  (* ADC10 Data Format 0:binary 1:2's complement *)
+SHS0*               = {10}; (* ADC10 Sample/Hold Source Bit: 0 *)
+SHS1*               = {11}; (* ADC10 Sample/Hold Source Bit: 1 *)
+INCH0*              = {12}; (* ADC10 Input Channel Select Bit: 0 *)
+INCH1*              = {13}; (* ADC10 Input Channel Select Bit: 1 *)
+INCH2*              = {14}; (* ADC10 Input Channel Select Bit: 2 *)
+INCH3*              = {15}; (* ADC10 Input Channel Select Bit: 3 *)
+
+CONSEQ_0*           = {};              (* Single channel single conversion *)
+CONSEQ_1*           = CONSEQ0;         (* Sequence of channels *)
+CONSEQ_2*           = CONSEQ1;         (* Repeat single channel *)
+CONSEQ_3*           = CONSEQ0+CONSEQ1; (* Repeat sequence of channels *)
+
+ADC10SSEL_0*        = {};                    (* ADC10OSC *)
+ADC10SSEL_1*        = ADC10SSEL0;            (* ACLK *)
+ADC10SSEL_2*        = ADC10SSEL1;            (* MCLK *)
+ADC10SSEL_3*        = ADC10SSEL0+ADC10SSEL1; (* SMCLK *)
+
+ADC10DIV_0*         = {};                            (* ADC10 Clock Divider Select 0 *)
+ADC10DIV_1*         = ADC10DIV0;                     (* ADC10 Clock Divider Select 1 *)
+ADC10DIV_2*         = ADC10DIV1;                     (* ADC10 Clock Divider Select 2 *)
+ADC10DIV_3*         = ADC10DIV0+ADC10DIV1;           (* ADC10 Clock Divider Select 3 *)
+ADC10DIV_4*         = ADC10DIV2;                     (* ADC10 Clock Divider Select 4 *)
+ADC10DIV_5*         = ADC10DIV0+ADC10DIV2;           (* ADC10 Clock Divider Select 5 *)
+ADC10DIV_6*         = ADC10DIV1+ADC10DIV2;           (* ADC10 Clock Divider Select 6 *)
+ADC10DIV_7*         = ADC10DIV0+ADC10DIV1+ADC10DIV2; (* ADC10 Clock Divider Select 7 *)
+
+SHS_0*              = {};        (* ADC10SC *)
+SHS_1*              = SHS0;      (* TA3 OUT1 *)
+SHS_2*              = SHS1;      (* TA3 OUT0 *)
+SHS_3*              = SHS0+SHS1; (* TA3 OUT2 *)
+
+INCH_0*             = {};                      (* Selects Channel 0 *)
+INCH_1*             = INCH0;                  (* Selects Channel 1 *)
+INCH_2*             = INCH1;                   (* Selects Channel 2 *)
+INCH_3*             = INCH0+INCH1;             (* Selects Channel 3 *)
+INCH_4*             = INCH2;                   (* Selects Channel 4 *)
+INCH_5*             = INCH0+INCH2;             (* Selects Channel 5 *)
+INCH_6*             = INCH1+INCH2;             (* Selects Channel 6 *)
+INCH_7*             = INCH0+INCH1+INCH2;       (* Selects Channel 7 *)
+INCH_8*             = INCH3;                   (* Selects Channel 8 *)
+INCH_9*             = INCH0+INCH3;             (* Selects Channel 9 *)
+INCH_10*            = INCH1;                   (* Selects Channel 10 *)
+INCH_11*            = INCH0+INCH1+INCH3;       (* Selects Channel 11 *)
+INCH_12*            = INCH2+INCH3;             (* Selects Channel 12 *)
+INCH_13*            = INCH0+INCH2+INCH3;       (* Selects Channel 13 *)
+INCH_14*            = INCH1+INCH2+INCH3;       (* Selects Channel 14 *)
+INCH_15*            = INCH0+INCH1+INCH2+INCH3; (* Selects Channel 15 *)
+
+ADC10MEM*              = SYSTEM.VAL(PINTEGER, 01B4H); (* ADC10 Memory *)
+ADC10SA*               = SYSTEM.VAL(PINTEGER, 01BCH); (* ADC10 Data Transfer Start Address *)
+
+(************************************************************
 * Basic Clock Module
 ************************************************************)
-DCOCTL*             = SYSTEM.VAL(PBYTESET, 0056H);
+DCOCTL*             = SYSTEM.VAL(PBYTESET, 0056H); (* DCO Clock Frequency Control *)
 MOD0*               = {0}; (* Modulation Bit 0 *)
 MOD1*               = {1}; (* Modulation Bit 1 *)
 MOD2*               = {2}; (* Modulation Bit 2 *)
@@ -112,7 +220,7 @@ DCO0*               = {5}; (* DCO Select Bit 0 *)
 DCO1*               = {6}; (* DCO Select Bit 1 *)
 DCO2*               = {7}; (* DCO Select Bit 2 *)
 
-BCSCTL1*            = SYSTEM.VAL(PBYTESET, 0057H);
+BCSCTL1*            = SYSTEM.VAL(PBYTESET, 0057H); (* Basic Clock System Control 1 *)
 RSEL0*              = {0}; (* Range Select Bit 0 *)
 RSEL1*              = {1}; (* Range Select Bit 1 *)
 RSEL2*              = {2}; (* Range Select Bit 2 *)
@@ -127,7 +235,7 @@ DIVA_1*             = DIVA0;       (* ACLK Divider 1: /2 *)
 DIVA_2*             = DIVA1;       (* ACLK Divider 2: /4 *)
 DIVA_3*             = DIVA0+DIVA1; (* ACLK Divider 3: /8 *)
 
-BCSCTL2*            = SYSTEM.VAL(PBYTESET, 0058H);
+BCSCTL2*            = SYSTEM.VAL(PBYTESET, 0058H); (* Basic Clock System Control 2 *)
 DIVS0*              = {1}; (* SMCLK Divider 0 *)
 DIVS1*              = {2}; (* SMCLK Divider 1 *)
 SELS*               = {3}; (* SMCLK Source Select 0:DCOCLK / 1:XT2CLK/LFXTCLK *)
@@ -151,7 +259,7 @@ SELM_1*             = SELM0;       (* MCLK Source Select 1: DCOCLK *)
 SELM_2*             = SELM1;       (* MCLK Source Select 2: XT2CLK/LFXTCLK *)
 SELM_3*             = SELM0+SELM1; (* MCLK Source Select 3: LFXTCLK *)
 
-BCSCTL3*            = SYSTEM.VAL(PBYTESET, 0053H);
+BCSCTL3*            = SYSTEM.VAL(PBYTESET, 0053H); (* Basic Clock System Control 3 *)
 LFXT1OF*            = {0}; (* Low/high Frequency Oscillator Fault Flag *)
 XT2OF*              = {1}; (* High frequency oscillator 2 fault flag *)
 XCAP0*              = {2}; (* XIN/XOUT Cap 0 *)
@@ -179,7 +287,7 @@ XT2S_3*             = XT2S0+XT2S1; (* Mode 3 for XT2 : Digital input signal *)
 (************************************************************
 * Comparator A
 ************************************************************)
-CACTL1*             = SYSTEM.VAL(PBYTESET, 0059H);
+CACTL1*             = SYSTEM.VAL(PBYTESET, 0059H); (* Comparator A Control 1 *)
 CAIFG*              = {0};         (* Comp. A Interrupt Flag *)
 CAIE*               = {1};         (* Comp. A Interrupt Enable *)
 CAIES*              = {2};         (* Comp. A Int. Edge Select: 0:rising / 1:falling *)
@@ -194,7 +302,7 @@ CAREF_1*            = CAREF0;        (* Comp. A Int. Ref. Select 1 : 0.25*Vcc *)
 CAREF_2*            = CAREF1;        (* Comp. A Int. Ref. Select 2 : 0.5*Vcc *)
 CAREF_3*            = CAREF0+CAREF1; (* Comp. A Int. Ref. Select 3 : Vt*)
 
-CACTL2*             = SYSTEM.VAL(PBYTESET, 005AH);
+CACTL2*             = SYSTEM.VAL(PBYTESET, 005AH); (* Comparator A Control 2 *)
 CAOUT*              = {0};           (* Comp. A Output *)
 CAF*                = {1};           (* Comp. A Enable Output Filter *)
 P2CA0*              = {2};           (* Comp. A +Terminal Multiplexer *)
@@ -204,7 +312,7 @@ P2CA3*              = {5};           (* Comp. A -Terminal Multiplexer *)
 P2CA4*              = {6};           (* Comp. A +Terminal Multiplexer *)
 CASHORT*            = {7};           (* Comp. A Short + and - Terminals *)
 
-CAPD*               = SYSTEM.VAL(PBYTESET, 005BH);
+CAPD*               = SYSTEM.VAL(PBYTESET, 005BH); (* Comparator A Port Disable *)
 (*************************************************************
 * Flash Memory
 *************************************************************)

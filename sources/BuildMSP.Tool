@@ -3,7 +3,7 @@ OM4P.Compile OMSPS.Mod/s OMSPB.Mod/s OMSPA.Mod/s OMSPG.Mod/s OMSPP.Mod/s
  OMSPD.Mod/s OMSPTool.Mod/s OMSPL.Mod/s ~
 
 MSP430 specific code
-OMSPP.Compile msp430g2553.Mod Traps.Mod/s Arith.Mod/s ~
+OMSPP.Compile msp430g2553.Mod/s Traps.Mod/s Arith.Mod/s ~
 
 Test programs
 OMSPP.Compile testFunc.Mod testFor.Mod testDeRef.Mod testCond.Mod testAssert.Mod
@@ -21,10 +21,15 @@ OMSPL.Link 32 4000H 200H testImportString ~ Edit.Open testImportString.txt
 OMSPL.Link 32 4000H 200H testInitImp ~ Edit.Open testInitImp.txt
 
 Texas Instruments examples
-OMSPP.Compile msp430g2x13ca01.Mod msp430g2x13ca02.Mod msp430g2x13ca03.Mod msp430g2xx3ta01.Mod msp430g2xx3lpm3vlo.Mod ~
+OMSPP.Compile msp430g2x13ca01.Mod msp430g2x13ca02.Mod msp430g2x13ca03.Mod
+ msp430g2x33adc1001.Mod
+ msp430g2xx3ta01.Mod msp430g2xx3lpm3vlo.Mod ~
 
 OMSPL.Link 32 4000H 200H msp430g2x13ca01 ~
 OMSPL.Link 32 4000H 200H msp430g2x13ca02 ~
 OMSPL.Link 32 4000H 200H msp430g2x13ca03 ~
+
+OMSPL.Link 32 4000H 200H msp430g2x33adc1001 ~
+
 OMSPL.Link 32 4000H 200H msp430g2xx3ta01 ~
 OMSPL.Link 32 4000H 200H msp430g2xx3lpm3vlo ~
