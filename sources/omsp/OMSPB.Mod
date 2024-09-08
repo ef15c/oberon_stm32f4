@@ -1,6 +1,6 @@
 MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   C. Schoffit 19.05.2 for Texas Instruments MSP430 Family*)
-  IMPORT Files, S := OMSPS;
+  IMPORT Files, CRC32, S := OMSPS;
   (*Definition of data types Object and Type, which together form the data structure
     called "symbol table". Contains procedures for creation of Objects, and for search:
     NewObj, this, thisimport, thisfield (and OpenScope, CloseScope).
@@ -359,8 +359,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     END ;
     REPEAT Write(R, 0) UNTIL Files.Length(F) MOD 4 = 0;
     FOR Ref := LastForm + 1 TO maxTypTab-1 DO typtab[Ref] := NIL END ;
-    Files.Set(R, F, 0); sum := 0; Files.ReadInt(R, x);  (* compute key (checksum) *)
-    WHILE ~R.eof DO sum := sum + x; Files.ReadInt(R, x) END ;
+    Files.Set(R, F, 0); CRC32.reset; Files.ReadInt(R, x);  (* compute key (checksum) *)
+    WHILE ~R.eof DO CRC32.write(x); Files.ReadInt(R, x) END; sum := CRC32.read();
     F1 := Files.Old(filename); (*sum is new key*)
     IF F1 # NIL THEN Files.Set(R1, F1, 4); Files.ReadInt(R1, oldkey) ELSE oldkey := sum+1 END ;
     IF sum # oldkey THEN

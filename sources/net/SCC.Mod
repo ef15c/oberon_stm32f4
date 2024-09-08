@@ -1,6 +1,6 @@
 MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.12.13
   CS 21/01/2024*)
-  IMPORT SYSTEM, BSP, Kernel, Texts, TextsEx;
+  IMPORT SYSTEM, BSP, Kernel, CRC32, Texts, TextsEx;
 
   CONST
     (*nRF24L01+ CSN and CE pins*)
@@ -111,7 +111,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       END;
       SYSTEM.PUT(netSelectOut, 1);
       FOR i := 0 TO len-4 BY 4 DO (*Compute CRC*)
-        SYSTEM.GET(dst+i, data); SYSTEM.PUT(BSP.CRC_BASE + BSP.CRC_DR, data)
+        SYSTEM.GET(dst+i, data); CRC32.write(data)
       END
     ELSE len := 0
     END;
@@ -166,7 +166,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     doSubSend(src, SubPacket, timeout, TRUE);
     IF ~timeout THEN 
       FOR i := 0 TO SubPacket-4 BY 4 DO (*Compute CRC*)
-        SYSTEM.GET(src+i, data); SYSTEM.PUT(BSP.CRC_BASE + BSP.CRC_DR, data)
+        SYSTEM.GET(src+i, data); CRC32.write(data)
       END
     END
   END SubSnd;
@@ -260,7 +260,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     VAR len, i, off: INTEGER; timeout: BOOLEAN; 
     payload: ARRAY SubPacket OF BYTE;
   BEGIN PowerUp; REPEAT Flush UNTIL ~Rcvd(0);
-    head.valid := TRUE; SYSTEM.PUT(BSP.crcReset, 1); (*Reset STM32 CRC Unit*)
+    head.valid := TRUE; CRC32.reset;
     SYSTEM.COPY(SYSTEM.ADR(head), SYSTEM.ADR(payload), HdrSize DIV 4);
     i := HdrSize; off := 0; len := head.len;
     WHILE (len > 0) & (i < SubPacket) DO payload[i] := dat[off]; INC(i); INC(off); DEC(len) END;
@@ -272,7 +272,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
       SubSnd(SYSTEM.ADR(payload), timeout);
     END;
     IF ~timeout THEN
-      SYSTEM.GET(BSP.CRC_BASE + BSP.CRC_DR, off); SYSTEM.PUT(SYSTEM.ADR(payload), off); (*send CRC*)
+      SYSTEM.PUT(SYSTEM.ADR(payload), CRC32.read()); (*send CRC*)
       i := 4; WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
       SubSnd(SYSTEM.ADR(payload), timeout)
     END;
@@ -291,7 +291,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   PROCEDURE ReceiveHead*(VAR head: Header);  (*actually, recv whole packet*)
     VAR adr, data, n: INTEGER; len: BYTE;
   BEGIN PowerUp;
-    head.valid := FALSE; SYSTEM.PUT(BSP.crcReset, 1); (*Reset STM32 CRC Unit*)
+    head.valid := FALSE; CRC32.reset;
     IF Rcvd(Wait) THEN
       ResetRcv; adr := SYSTEM.ADR(rx); SubRcv(adr, len);
       n := rx.hd.len + HdrSize - len;
@@ -299,8 +299,8 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
         WHILE (n > 0) & Rcvd(Wait) DO
           INC(adr, len); SubRcv(adr, len); DEC(n, len)
         END;
-        IF (n <= 0) & Rcvd(Wait) THEN INC(adr, len); SubRcv(adr, len); SYSTEM.GET(BSP.CRC_BASE+BSP.CRC_DR, data); (*Check CRC*)
-          IF data = 0 THEN rx.hd.valid := (n <= 0) ELSE rx.hd.valid := FALSE; ResetRcv END;
+        IF (n <= 0) & Rcvd(Wait) THEN INC(adr, len); SubRcv(adr, len);
+          IF CRC32.read() = 0 THEN (*CRC OK*) rx.hd.valid := (n <= 0) ELSE rx.hd.valid := FALSE; ResetRcv END;
         ELSE ResetRcv  (*discard packet*)
         END
       ELSE WHILE Rcvd(Wait) DO SubRcv(adr, len) END; ResetRcv  (*discard packet*)
@@ -333,5 +333,5 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     Texts.WriteLn(W)
   END ShowRxPacket;
 
-BEGIN BSP.InitNRF24L01P; BSP.InitCRC; SYSTEM.PUT(spiEnable, TRUE)
+BEGIN BSP.InitNRF24L01P; SYSTEM.PUT(spiEnable, TRUE)
 END SCC.
