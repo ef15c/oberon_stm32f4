@@ -197,7 +197,7 @@ INCH_6*             = INCH1+INCH2;             (* Selects Channel 6 *)
 INCH_7*             = INCH0+INCH1+INCH2;       (* Selects Channel 7 *)
 INCH_8*             = INCH3;                   (* Selects Channel 8 *)
 INCH_9*             = INCH0+INCH3;             (* Selects Channel 9 *)
-INCH_10*            = INCH1;                   (* Selects Channel 10 *)
+INCH_10*            = INCH1+INCH3;                   (* Selects Channel 10 *)
 INCH_11*            = INCH0+INCH1+INCH3;       (* Selects Channel 11 *)
 INCH_12*            = INCH2+INCH3;             (* Selects Channel 12 *)
 INCH_13*            = INCH0+INCH2+INCH3;       (* Selects Channel 13 *)
@@ -550,9 +550,8 @@ RESET_VECTOR*       = 16+15;                (* 0xFFFE Reset [Highest Priority] *
 END msp430g2553.
 
 OMSPTool.DecSym msp430g2553.sms
-OMSPTool 10.06.24
 decode msp430g2553.sms
-msp430g2553 D739B001  1
+msp430g2553 8250CA0E  1
    1 C [^6]       1
    1 Z [^6]       2
    1 N [^6]       4
@@ -590,6 +589,98 @@ msp430g2553 D739B001  1
    1 UCA0TXIFG [^6]       2
    1 UCB0RXIFG [^6]       4
    1 UCB0TXIFG [^6]       8
+   1 ADC10DTC0 [^18]      72
+   1 ADC10FETCH [^6]       1
+   1 ADC10B1 [^6]       2
+   1 ADC10CT [^6]       4
+   1 ADC10TB [^6]       8
+   1 ADC10DTC1 [^14]      73
+   1 ADC10DISABLE [^4]       0
+   1 ADC10AE0 [^18]      74
+   1 ADC10CTL0 [^17]     432
+   1 ADC10SC [^6]       1
+   1 ENC [^6]       2
+   1 ADC10IFG [^6]       4
+   1 ADC10IE [^6]       8
+   1 ADC10ON [^6]      16
+   1 REFON [^6]      32
+   1 REF2_5V [^6]      64
+   1 MSC [^6]     128
+   1 REFBURST [^6]     256
+   1 REFOUT [^6]     512
+   1 ADC10SR [^6]    1024
+   1 ADC10SHT0 [^6]    2048
+   1 ADC10SHT1 [^6]    4096
+   1 SREF0 [^6]    8192
+   1 SREF1 [^6]   16384
+   1 SREF2 [^6]   32768
+   1 ADC10SHT_0 [^6]       0
+   1 ADC10SHT_1 [^6]    2048
+   1 ADC10SHT_2 [^6]    4096
+   1 ADC10SHT_3 [^6]    6144
+   1 SREF_0 [^6]       0
+   1 SREF_1 [^6]    8192
+   1 SREF_2 [^6]   16384
+   1 SREF_3 [^6]   24576
+   1 SREF_4 [^6]   32768
+   1 SREF_5 [^6]   40960
+   1 SREF_6 [^6]   49152
+   1 SREF_7 [^6]   57344
+   1 ADC10CTL1 [^17]     434
+   1 ADC10BUSY [^6]       1
+   1 CONSEQ0 [^6]       2
+   1 CONSEQ1 [^6]       4
+   1 ADC10SSEL0 [^6]       8
+   1 ADC10SSEL1 [^6]      16
+   1 ADC10DIV0 [^6]      32
+   1 ADC10DIV1 [^6]      64
+   1 ADC10DIV2 [^6]     128
+   1 ISSH [^6]     256
+   1 ADC10DF [^6]     512
+   1 SHS0 [^6]    1024
+   1 SHS1 [^6]    2048
+   1 INCH0 [^6]    4096
+   1 INCH1 [^6]    8192
+   1 INCH2 [^6]   16384
+   1 INCH3 [^6]   32768
+   1 CONSEQ_0 [^6]       0
+   1 CONSEQ_1 [^6]       2
+   1 CONSEQ_2 [^6]       4
+   1 CONSEQ_3 [^6]       6
+   1 ADC10SSEL_0 [^6]       0
+   1 ADC10SSEL_1 [^6]       8
+   1 ADC10SSEL_2 [^6]      16
+   1 ADC10SSEL_3 [^6]      24
+   1 ADC10DIV_0 [^6]       0
+   1 ADC10DIV_1 [^6]      32
+   1 ADC10DIV_2 [^6]      64
+   1 ADC10DIV_3 [^6]      96
+   1 ADC10DIV_4 [^6]     128
+   1 ADC10DIV_5 [^6]     160
+   1 ADC10DIV_6 [^6]     192
+   1 ADC10DIV_7 [^6]     224
+   1 SHS_0 [^6]       0
+   1 SHS_1 [^6]    1024
+   1 SHS_2 [^6]    2048
+   1 SHS_3 [^6]    3072
+   1 INCH_0 [^6]       0
+   1 INCH_1 [^6]    4096
+   1 INCH_2 [^6]    8192
+   1 INCH_3 [^6]   12288
+   1 INCH_4 [^6]   16384
+   1 INCH_5 [^6]   20480
+   1 INCH_6 [^6]   24576
+   1 INCH_7 [^6]   28672
+   1 INCH_8 [^6]   32768
+   1 INCH_9 [^6]   36864
+   1 INCH_10 [^6]   40960
+   1 INCH_11 [^6]   45056
+   1 INCH_12 [^6]   49152
+   1 INCH_13 [^6]   53248
+   1 INCH_14 [^6]   57344
+   1 INCH_15 [^6]   61440
+   1 ADC10MEM [^7]     436
+   1 ADC10SA [^7]     444
    1 DCOCTL [^18]      86
    1 MOD0 [^6]       1
    1 MOD1 [^6]       2
@@ -853,3 +944,4 @@ msp430g2553 D739B001  1
    1 TIMER1_A0_VECTOR [^4]      29
    1 NMI_VECTOR [^4]      30
    1 RESET_VECTOR [^4]      31
+
