@@ -26,14 +26,14 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 003C
+ 0040
 fixup procedures chains
 fixup handlers chains
 fixup data chains
 fixup constants chains
 fixup types chains
-entry =  003C
-code    62
+entry =  0040
+code    66
  0000	     8031	SUB #6,SP
  0002	     0006
  0004	     9381	CMP #0,2(SP)
@@ -53,15 +53,17 @@ code    62
  0020	     430F	MOV #0,R15
  0022	     4FC1	MOV.B R15,4(SP)
  0024	     0004
- 0026	     41D1	MOV.B 4(SP),2(SP)
+ 0026	     415F	MOV.B 4(SP),R15
  0028	     0004
- 002A	     0002
- 002C	     41E1	MOV.B @SP,5(SP)
- 002E	     0005
- 0030	     41D1	MOV.B 5(SP),0(SP)
- 0032	     0005
- 0034	     0000
- 0036	     5031	ADD #6,SP
- 0038	     0006
- 003A	     4130	RET
- 003C	     4130	RET
+ 002A	     4F81	MOV R15,2(SP)
+ 002C	     0002
+ 002E	     41E1	MOV.B @SP,5(SP)
+ 0030	     0005
+ 0032	     415F	MOV.B 5(SP),R15
+ 0034	     0005
+ 0036	     4F81	MOV R15,0(SP)
+ 0038	     0000
+ 003A	     5031	ADD #6,SP
+ 003C	     0006
+ 003E	     4130	RET
+ 0040	     4130	RET

@@ -10,10 +10,10 @@ END testInitImp.
 
 OMSPTool.DecObj testInitImp.mpc
 decode testInitImp.mpc
-testInitImp E94D4107 Flash    30
+testInitImp 0106A11F Flash    30
 imports:
-	msp430g2553 D739B001
-	testInit FB808D89
+	msp430g2553 8250CA0E
+	testInit BBBED741
 type descriptors
 
 data     2

@@ -27,8 +27,8 @@ MODULE Arith; (*runtime module implementing arithmetic operations*)
         IF SYSTEM.CMP(r, y, C) THEN DEC(r, y) END; (*if current remainder > divisor, subtract*)
         RLC(q) (*set quotient bit (from carry) and advance loop bit*)
       UNTIL SYSTEM.COND(C);
-      IF BIT(neg, 0) THEN XOR(q, -1); INC(q, 1) (*negate quotient*) END;
-      IF BIT(neg, 1) THEN XOR(r, -1); INC(r, 1) (*negate remainder*) END;
+      IF BIT(neg, {0}) THEN XOR(q, -1); INC(q, 1) (*negate quotient*) END;
+      IF BIT(neg, {1}) THEN XOR(r, -1); INC(r, 1) (*negate remainder*) END;
       IF op = 1 THEN q := r (*return remainder instead of quotien*) END
 
       RETURN q
@@ -46,7 +46,7 @@ END Arith.
 
 OMSPTool.DecObj Arith.mpc
 decode Arith.mpc
-Arith 82E1081E Flash   128
+Arith BDF2CFB8 Flash   128
 imports:
 type descriptors
 

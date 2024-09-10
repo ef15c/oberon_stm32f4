@@ -22,7 +22,7 @@ END testExport.
 
 OMSPTool.DecObj testExport.mpc
 decode testExport.mpc
-testExport F14DC58E Flash    58
+testExport 266A3416 Flash    58
 imports:
 type descriptors
  0004 FFFF FFFF FFFF
@@ -75,9 +75,9 @@ code    50
 
 OMSPTool.DecSym testExport.sms
 decode testExport.sms
-testExport F14DC58E  1
-   5 rec [16  form = 13  size = 4 [^9]{  exno = 1  extlev = 0 { y [^4]   2 x [^4]   0}]()
+testExport 266A3416  1
+   5 rec [19  form = 13  size = 4 [^9]{  exno = 1  extlev = 0 { y [^4]   2 x [^4]   0}]()
    2 l [^4]     2
    2 p1 [0  form = 10  size = 2 [^9] UR FFFF()]     3
-   2 v [^16]     4
+   2 v [^19]     4
    1 p [0  form = 10  size = 2 [^9] UR 0000()]       5

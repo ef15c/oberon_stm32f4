@@ -33,7 +33,7 @@ END testSFuncs2.
 
 OMSPTool.DecObj testSFuncs2.mpc
 decode testSFuncs2.mpc
-testSFuncs2 E55665AA Flash   124
+testSFuncs2 DD62831C Flash   124
 imports:
 type descriptors
  0004 FFFF FFFF FFFF

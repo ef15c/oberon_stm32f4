@@ -25,7 +25,7 @@ END testCond.
 
 OMSPTool.DecObj testCond.mpc
 decode testCond.mpc
-testCond D8E1D5B7 Flash   202
+testCond 8EF83DE3 Flash   202
 imports:
 type descriptors
 

@@ -51,7 +51,7 @@ END testIntRelat.
 
 OMSPTool.DecObj testIntRelat.mpc
 decode testIntRelat.mpc
-testIntRelat 3B494122 Flash   562
+testIntRelat ACB66DBF Flash   562
 imports:
 type descriptors
 

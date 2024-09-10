@@ -9,9 +9,9 @@ END ISRTrap.
 
 OMSPTool.DecObj ISRTrap.mpc
 decode ISRTrap.mpc
-ISRTrap 54C2B4BC Flash    10
+ISRTrap 03D019F4 Flash    10
 imports:
-	msp430g2553 8CA01B9B
+	msp430g2553 8250CA0E
 type descriptors
 
 data     0

@@ -1,5 +1,4 @@
 MODULE testAssert;
-  IMPORT Traps;
 
   PROCEDURE p;
     VAR a,b: INTEGER;
@@ -16,7 +15,7 @@ OMSPTool.DecObj testAssert.mpc
 
 Traps not imported:
 decode testAssert.mpc
-testAssert DAE74D27 Flash     8
+testAssert 49ED7A7C Flash     8
 imports:
 type descriptors
 
@@ -59,9 +58,9 @@ OMSPTool.DecObj testAssert.mpc
 
 Traps imported:
 decode testAssert.mpc
-testAssert DAE74D27 Flash    78
+testAssert 49ED7A7C Flash    78
 imports:
-	Traps 45642D7E
+	Traps 37B3757C
 type descriptors
 
 data     0

@@ -8,7 +8,7 @@ END testSProcs2.
 
 OMSPTool.DecObj testSProcs2.mpc
 decode testSProcs2.mpc
-testSProcs2 E418292B Flash    24
+testSProcs2 C77404D3 Flash    24
 imports:
 type descriptors
 

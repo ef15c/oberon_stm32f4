@@ -20,9 +20,9 @@ END testImport.
 
 OMSPTool.DecObj testImport.mpc
 decode testImport.mpc
-testImport E4E4472F Flash    64
+testImport CF624B57 Flash    64
 imports:
-	testExport F14DC58E
+	testExport 266A3416
 type descriptors
  0006 0000 FFFF FFFF
 data     4

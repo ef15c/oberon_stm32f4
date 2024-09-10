@@ -19,7 +19,7 @@ END testFunc.
 
 OMSPTool.DecObj testFunc.mpc
 decode testFunc.mpc
-testFunc D7E1DBBA Flash    56
+testFunc 38F4692B Flash    56
 imports:
 type descriptors
 

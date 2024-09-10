@@ -8,9 +8,9 @@ END testVector.
 
 OMSPTool.DecObj testVector.mpc
 decode testVector.mpc
-testVector E9D73D39 Flash     4
+testVector 8C26D391 Flash     4
 imports:
-	msp430g2553 8CA01B9B
+	msp430g2553 8250CA0E
 type descriptors
 
 data     0

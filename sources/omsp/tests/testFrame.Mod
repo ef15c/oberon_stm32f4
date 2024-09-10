@@ -14,7 +14,7 @@ END testFrame.
 
 OMSPTool.DecObj testFrame.mpc
 decode testFrame.mpc
-testFrame E1D5D81F Flash    42
+testFrame 8358FFF7 Flash    42
 imports:
 type descriptors
 

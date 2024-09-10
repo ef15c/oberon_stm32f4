@@ -10,9 +10,9 @@ END testInit.
 
 OMSPTool.DecObj testInit.mpc
 decode testInit.mpc
-testInit FB808D89 Flash    12
+testInit BBBED741 Flash    12
 imports:
-	msp430g2553 8CA01B9B
+	msp430g2553 8250CA0E
 type descriptors
 
 data     0
@@ -40,5 +40,5 @@ code    12
 
 OMSPTool.DecSym testInit.sms
 decode testInit.sms
-testInit FB808D89  1
+testInit BBBED741  1
    1 toggleP10 [0  form = 10  size = 2 [^9] UR 0000()]       1

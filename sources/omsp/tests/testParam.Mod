@@ -26,6 +26,7 @@ END testParam.
 
 
 OMSPTool.DecObj testParam.mpc 
+decode testParam.mpc
 testParam 8614713B Flash   156
 imports:
 	Traps 37B3757C

@@ -14,7 +14,7 @@ END testVarParam.
 
 OMSPTool.DecObj testVarParam.mpc
 decode testVarParam.mpc
-testVarParam 32473A2B Flash    34
+testVarParam 50756D5E Flash    34
 imports:
 type descriptors
 

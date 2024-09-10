@@ -16,9 +16,9 @@ END Facto.
 
 OMSPTool.DecObj Facto.mpc
 decode Facto.mpc
-Facto 81625F1C Flash    66
+Facto BEC114C3 Flash    66
 imports:
-	Arith 82E1081E
+	Arith BDF2CFB8
 type descriptors
 
 data     2

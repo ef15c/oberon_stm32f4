@@ -15,7 +15,7 @@ END testString.
 
 OMSPTool.DecObj testString.mpc
 decode testString.mpc
-testString 6ACDB7DC Flash   104
+testString 14B437F3 Flash   104
 imports:
 type descriptors
 
@@ -87,7 +87,7 @@ code    86
 
 OMSPTool.DecSym testString.sms
 decode testString.sms
-testString 6ACDB7DC  1
+testString 14B437F3  1
    1 st [^11]     6       1
    1 st1 [^11]     3       2
    2 s [0  form = 12  size = 10 [^3]  len = 10]     3

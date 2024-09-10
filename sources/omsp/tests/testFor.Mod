@@ -18,7 +18,7 @@ END testFor.
 
 OMSPTool.DecObj testFor.mpc
 decode testFor.mpc
-testFor 74E5D4BB Flash    86
+testFor 16D8ACA3 Flash    86
 imports:
 type descriptors
 

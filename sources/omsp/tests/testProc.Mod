@@ -12,7 +12,7 @@ END testProc.
 
 OMSPTool.DecObj testProc.mpc
 decode testProc.mpc
-testProc D7E2D8C4 Flash     8
+testProc 074761C7 Flash     8
 imports:
 type descriptors
 

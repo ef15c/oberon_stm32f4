@@ -6,7 +6,7 @@ END testIfThen.
 
 OMSPTool.DecObj testIfThen.mpc
 decode testIfThen.mpc
-testIfThen DDC83A22 Flash    18
+testIfThen C10C56CC Flash    18
 imports:
 type descriptors
 

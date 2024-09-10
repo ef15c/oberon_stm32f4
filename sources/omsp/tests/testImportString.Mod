@@ -9,9 +9,9 @@ END testImportString.
 
 OMSPTool.DecObj testImportString.mpc
 decode testImportString.mpc
-testImportString BFA5B1A1 Flash    22
+testImportString 1FAD3538 Flash    22
 imports:
-	testString 6ACDB7DC
+	testString 14B437F3
 type descriptors
 
 data    10

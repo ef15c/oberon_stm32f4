@@ -12,7 +12,7 @@ END testRepeat.
 
 OMSPTool.DecObj testRepeat.mpc ~
 decode testRepeat.mpc
-testRepeat DAE43F27 Flash    58
+testRepeat 34BBBDE1 Flash    58
 imports:
 type descriptors
 

@@ -19,7 +19,7 @@ MODULE testInEx;
 
 OMSPTool.DecObj testInEx.mpc
 decode testInEx.mpc
-testInEx ECB8D4BD Flash    98
+testInEx 3FD5DD17 Flash    98
 imports:
 type descriptors
 

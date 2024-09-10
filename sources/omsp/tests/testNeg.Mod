@@ -14,7 +14,7 @@ END testNeg.
 
 OMSPTool.DecObj testNeg.mpc
 decode testNeg.mpc
-testNeg 74DACAC3 Flash    28
+testNeg 2898F8BB Flash    28
 imports:
 type descriptors
 

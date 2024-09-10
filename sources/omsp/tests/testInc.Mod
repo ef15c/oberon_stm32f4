@@ -36,7 +36,7 @@ END testInc.
 
 OMSPTool.DecObj testInc.mpc
 decode testInc.mpc
-testInc 74D6D3BE Flash   262
+testInc 1EDF1214 Flash   262
 imports:
 type descriptors
 
