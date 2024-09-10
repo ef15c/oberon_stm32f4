@@ -30,7 +30,7 @@ OMSPTool.DecObj testStore.mpc
 
 no traps:
 decode testStore.mpc
-testStore E6E3DA2C Flash   528
+testStore 18785DE6 Flash   528
 imports:
 type descriptors
 
@@ -353,9 +353,9 @@ END testStore.
 
 with traps:
 decode testStore.mpc
-testStore E6E3DA2C Flash   764
+testStore 18785DE6 Flash   764
 imports:
-	Traps 45642D7E
+	Traps 37B3757C
 type descriptors
 
 data    42

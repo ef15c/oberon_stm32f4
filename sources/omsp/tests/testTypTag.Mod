@@ -31,7 +31,7 @@ END testTypTag.
 
 OMSPTool.DecObj testTypTag.mpc
 decode testTypTag.mpc
-testTypTag C9E44629 Flash   128
+testTypTag 3F04311C Flash   128
 imports:
 type descriptors
  0002 FFFF FFFF FFFF 0004 0000 FFFF FFFF

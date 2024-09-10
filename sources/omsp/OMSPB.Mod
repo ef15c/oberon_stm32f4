@@ -14,7 +14,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       SProc* = 6; SFunc* = 7; Mod* = 8;
 
     (* form values*)
-      Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; LongInt* = 5; Set* = 6;
+      Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; Set* = 6;
       Pointer* = 7; NilTyp* = 8; NoTyp* = 9; Proc* = 10;
       String* = 11; Array* = 12; Record* = 13; PointerToByte* = 14; Handler* = 15;
       ByteSet* = 16; PointerToSet* = 17; PointerToByteSet* = 18;
@@ -70,7 +70,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
   VAR topScope*, universe, system*: Object;
     byteType*, boolType*, charType*, byteSetType*: Type;
-    intType*, longIntType*, setType*, nilType*, noType*, strType*: Type;
+    intType*, setType*, nilType*, noType*, strType*: Type;
     ptrByteType*, ptrIntType*, ptrByteSetType*,ptrSetType*: Type;
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
@@ -399,7 +399,6 @@ BEGIN
   charType := type(Char, Char,1);
   byteSetType := type(ByteSet, Set, 1);
   intType := type(Int, Int, 2);
-  longIntType := type(LongInt, Int, 4);
   setType := type(Set, Set, 2);
   nilType := type(NilTyp, NilTyp, 2);
   noType := type(NoTyp, NoTyp, 2);
@@ -418,27 +417,26 @@ BEGIN
   enter("CHR", SFunc, charType, 51);
   enter("LEN", SFunc, intType, 61);
   enter("BIT", SFunc, boolType, 142);
-  enter("ASSERT", SProc, noType, 41); (*procedures*)
-  enter("INC", SProc, noType, 1);
+  enter("INC", SProc, noType, 1); (*procedures*)
   enter("DEC", SProc, noType, 11);
   enter("INCL", SProc, noType, 22);
   enter("EXCL", SProc, noType, 32);
+  enter("ASSERT", SProc, noType, 41);
   enter("BIC", SProc, noType, 52);
   enter("BIS", SProc, noType, 62);
   enter("XOR", SProc, noType, 72);
-  enter("AND", SProc, noType, 82);
+  enter("AND", SProc, noType, 82); (*91, 101 and 123 are in SYSTEM pseudo-module*)
   enter("CLRC", SProc, noType, 130);
   enter("ADC", SProc, intType, 152);
   enter("SBC", SProc, intType, 162);
   enter("RLA", SProc, intType, 172);
   enter("RLC", SProc, intType, 181);
   enter("RRA", SProc, intType, 192);
-  enter("RRC", SProc, intType, 201);
+  enter("RRC", SProc, intType, 201); (*211 and 221 are in SYSTEM pseudo-module*)
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);
   enter("CHAR", Typ, charType, 0);
-  enter("LONGINT", Typ, longIntType, 0);
   enter("INTEGER", Typ, intType, 0);
   enter("PBYTE", Typ, ptrByteType, 0);
   enter("PINTEGER", Typ, ptrIntType, 0);
@@ -453,9 +451,9 @@ BEGIN
   enter("SIZE", SFunc, intType, 181);
   enter("ADR", SFunc, intType, 171);
   enter("VAL", SFunc, intType, 162);
-  enter("COPY", SProc, noType, 123); (*procedures*)
-  enter("BIC_SR", SProc, noType, 91);
+  enter("BIC_SR", SProc, noType, 91); (*procedures*)
   enter("BIS_SR", SProc, noType, 101);
+  enter("COPY", SProc, noType, 123);
   enter("BIC_SR_ON_EXIT", SProc, noType, 211);
   enter("BIS_SR_ON_EXIT", SProc, noType, 221)
 END OMSPB.
