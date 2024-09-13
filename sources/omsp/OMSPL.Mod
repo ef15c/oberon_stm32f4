@@ -245,7 +245,10 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         IF i MOD 16 # 0 THEN FilesEx.WriteLn(R) END;
         Files.Write(R, "q"); FilesEx.WriteLn(R);
         Files.Register(F);
-        Texts.WriteInt(W, RAMLimit - RAMAllocPtr, 5); Texts.WriteString(W, " bytes available for stack")
+        Texts.WriteString(W, ", flash"); Texts.WriteInt(W, Flash.allocPtr, 5);
+        Texts.WriteString(W, ", data"); Texts.WriteInt(W, RAMAllocPtr - RAMOrigin, 5);
+        Texts.WriteString(W, ", stack"); Texts.WriteInt(W, RAMLimit - RAMAllocPtr, 5);
+        Texts.WriteString(W, " bytes")
       ELSE
         Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
         IF res = nofile THEN Texts.WriteString(W, " module not found")
