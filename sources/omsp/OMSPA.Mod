@@ -148,7 +148,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     | op /Sreg/dWAs/Dreg| *)
 
   PROCEDURE Put1(VAR c: ModuleCodeDesc; op, src, dst: BYTE; params: SET);
-  BEGIN ASSERT((op # MOV) OR (src # dst) OR (params # {}));
+  BEGIN
     IF enabled THEN
       c.code[c.pc+1] := LSL(op, 4) + src;
       c.code[c.pc] := ORD(params) + dst;
@@ -179,7 +179,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     ELSE ASSERT(op < 10H);
       encSrc(op, ts.reg, ts.am, ts.ofs, emitSOff, params);
 
-      IF d.am = Register THEN ASSERT(d.reg # CG2); params := params + Rdm
+      IF d.am = Register THEN params := params + Rdm
       ELSIF td.am = Indexed THEN ASSERT(~(td.reg IN {PC, SR, CG2})); params := params + Idm; emitDOff := TRUE
       ELSIF td.am = Symbolic THEN td.reg := PC; params := params + Idm; emitDOff := TRUE
       ELSIF td.am = Absolute THEN td.reg := SR; params := params + Idm; emitDOff := TRUE

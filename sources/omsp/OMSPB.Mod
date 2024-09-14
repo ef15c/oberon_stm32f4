@@ -427,6 +427,7 @@ BEGIN
   enter("XOR", SProc, noType, 72);
   enter("AND", SProc, noType, 82); (*91, 101 and 123 are in SYSTEM pseudo-module*)
   enter("CLRC", SProc, noType, 130);
+  enter("NOP", SProc, noType, 140);
   enter("ADC", SProc, intType, 152);
   enter("SBC", SProc, intType, 162);
   enter("RLA", SProc, intType, 172);

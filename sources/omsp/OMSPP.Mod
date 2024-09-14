@@ -454,6 +454,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {9, 10} THEN G.LogicalSR(pno-9, x)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 13 THEN G.ClrC
+      ELSIF pno = 14 THEN G.Nop
       ELSIF pno = 15 THEN G.ADC(x, y)
       ELSIF pno = 16 THEN G.SBC(x, y)
       ELSIF pno IN {17, 19} THEN (*RLA, RRA*) CheckInt(y);
