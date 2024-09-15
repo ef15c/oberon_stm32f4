@@ -301,6 +301,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF x.mode = Reg THEN
       IF ~x.tmp OR (pr # 0FFH) & (x.reg # pr) THEN (*temporary copy needed*)
         x.am := A.Register; t := x; free(x); alloc(x, pr); A.PutDO(mcode, A.MOV, t, x, A.Word) END
+    ELSIF x.mode = Absol THEN alloc(x, pr); t.am := A.Absolute; t.ofs := x.a; A.PutDO(mcode, A.MOV, t, x, bw)
     ELSIF x.mode = Cond THEN alloc(x, pr);
       pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
       FixLink(x.b); t := c1; A.PutDO(mcode, A.MOV, t, x, A.Word); pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
@@ -370,6 +371,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
       ti.reg := rh.reg; ti.ofs := x.b; A.PutSO(mcode, A.PUSH, ti, bw)
     ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutSO(mcode, A.PUSH, ti, bw)
+    ELSIF x.mode = Absol THEN t.am := A.Absolute; t.ofs := x.a; A.PutSO(mcode, A.PUSH, t, bw)
     ELSIF x.mode = Cond THEN
       pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
       FixLink(x.b); t := c1; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
@@ -1181,7 +1183,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR op: BYTE; t!: Item;
   BEGIN
     IF fct = 0 THEN op := A.BIC ELSE op := A.BIS END;
-    t.mode := B.Var; t.c := 1; t.a := 0; t.tmp := FALSE; t.rdo := FALSE; PutDO(op, x, t); free(x); free(t)
+    t.mode := B.Var; t.c := 1; t.type := B.intType; t.a := 0; t.tmp := FALSE; t.rdo := FALSE; PutDO(op, x, t); free(x); free(t)
   END LogicalSROnExit;
 
   (*In-line code functions*)
@@ -1245,15 +1247,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Logical;
 
   PROCEDURE ADC*(VAR x, y: Item);
-  BEGIN PutDO(A.ADDC, y, x); free(y)
+  BEGIN PutDO(A.ADDC, y, x); free(y); free(x)
   END ADC;
 
   PROCEDURE SBC*(VAR x, y: Item);
-  BEGIN PutDO(A.SUBC, y, x); free(y)
+  BEGIN PutDO(A.SUBC, y, x); free(y); free(x)
   END SBC;
 
   PROCEDURE Bit*(VAR x, y: Item);
-  BEGIN PutDO(A.BIT, y, x); free(x);
+  BEGIN PutDO(A.BIT, y, x); free(y); free(x);
     SetCC(x, A.NE)
   END Bit;
 
