@@ -3,7 +3,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   IMPORT Modules, Input, Display, Viewers, Fonts, Texts, Oberon, MenuViewers;
 
   CONST replace* = 0; insert* = 1; delete* = 2; unmark* = 3; (*message id*)
-    BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX; LEFTARROW = 81X; RIGHTARROW = 8DX;
+    BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX; LEFTARROW = 81X; RIGHTARROW = 8DX; UPARROW = 8FX; DOWNARROW = 90X;
     FrameColor = Display.midgrey;
 
   TYPE Line = POINTER TO LineDesc;
@@ -613,7 +613,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   END Call;
 
   PROCEDURE Write* (F: Frame; ch: CHAR; fnt: Fonts.Font; col, voff: INTEGER);
-    VAR buf!: Texts.Buffer;
+    VAR buf!: Texts.Buffer; loc!: Location;
   BEGIN (*F.hasCar*)
     IF ch = BS THEN  (*backspace*)
       IF F.carloc.pos > F.org THEN
@@ -624,6 +624,10 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     ELSIF ch = LEFTARROW THEN
       IF F.carloc.pos > F.org THEN FlipCaret(F); SetCaret(F, F.carloc.pos - 1) END
     ELSIF ch = RIGHTARROW THEN FlipCaret(F); SetCaret(F, F.carloc.pos + 1)
+    ELSIF ch = UPARROW THEN LocatePos(F, F.carloc.pos, loc); LocateChar(F, loc.x, loc.y + asr, loc);
+      IF loc.pos >= F.org THEN FlipCaret(F); SetCaret(F, loc.pos) END
+    ELSIF ch = DOWNARROW THEN LocatePos(F, F.carloc.pos, loc); LocateChar(F, loc.x, loc.y - asr, loc);
+      FlipCaret(F); SetCaret(F, loc.pos)
     ELSIF ch = 3X THEN (*ctrl-c  copy*)
       IF F.hasSel THEN
         NEW(TBuf); Texts.OpenBuf(TBuf); Texts.Save(F.text, F.selbeg.pos, F.selend.pos, TBuf)
