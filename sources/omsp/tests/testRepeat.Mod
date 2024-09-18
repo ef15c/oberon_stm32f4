@@ -24,7 +24,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0038
+ c 0038
 fixup procedures chains
 fixup handlers chains
 fixup data chains
@@ -33,7 +33,7 @@ fixup types chains
 entry =  0038
 code    58
  0000	     8221	SUB #4,SP
- 0002	     3FFF	JMP #-1, goes to  0002
+ 0002	     3FFF	JMP $, goes to  0002
  0004	     40B1	MOV #10,0(SP)
  0006	     000A
  0008	     0000
@@ -43,10 +43,10 @@ code    58
  0010	     0000
  0012	     9381	CMP #0,0(SP)
  0014	     0000
- 0016	     23F9	JNE #-7, goes to  000A
+ 0016	     23F9	JNE $-12, goes to  000A
  0018	     91A1	CMP @SP,0(SP)
  001A	     0000
- 001C	     23F6	JNE #-10, goes to  000A
+ 001C	     23F6	JNE $-18, goes to  000A
  001E	     40B1	MOV #10,0(SP)
  0020	     000A
  0022	     0000
@@ -54,10 +54,10 @@ code    58
  0026	     0000
  0028	     9381	CMP #0,0(SP)
  002A	     0000
- 002C	     2403	JEQ #3, goes to  0034
+ 002C	     2403	JEQ $+8, goes to  0034
  002E	     91A1	CMP @SP,0(SP)
  0030	     0000
- 0032	     23F8	JNE #-8, goes to  0024
+ 0032	     23F8	JNE $-14, goes to  0024
  0034	     5221	ADD #4,SP
  0036	     4130	RET
  0038	     4130	RET

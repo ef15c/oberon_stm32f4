@@ -36,5 +36,5 @@ code    18
  0008	     4EBE	MOV @R14+,18(R14)
  000A	     0012
  000C	     831F	SUB #1,R15
- 000E	     23FC	JNE #-4, goes to  0008
+ 000E	     23FC	JNE $-6, goes to  0008
  0010	     4130	RET

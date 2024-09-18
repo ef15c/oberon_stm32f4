@@ -18,9 +18,12 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
   END WriteReg;
  
   PROCEDURE WritePCOffset(VAR W: Texts.Writer; at: LONGINT; ofs: LONGINT);
-  BEGIN IF ofs >= 200H THEN DEC(ofs, 400H) END;
-    Texts.WriteString(W, " #"); Texts.WriteInt(W, ofs, 1);
-    Texts.WriteString(W, ", goes to "); TextsEx.WriteHexVLen(W, at + 2*ofs, 4, FALSE);
+    VAR ofsb: INTEGER;
+  BEGIN IF ofs >= 200H THEN DEC(ofs, 400H) END; ofs := 2*ofs; ofsb := ofs + 2;
+    Texts.WriteString(W, " $");
+    IF ofsb > 0 THEN Texts.Write(W, "+") END;
+    IF ofsb # 0 THEN Texts.WriteInt(W, ofsb, 1) END;
+    Texts.WriteString(W, ", goes to "); TextsEx.WriteHexVLen(W, at + ofs, 4, FALSE);
   END WritePCOffset;
 
   PROCEDURE WordToInt(x : INTEGER): INTEGER;
