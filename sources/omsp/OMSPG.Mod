@@ -922,6 +922,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF y.mode = B.Par THEN oy := y.b ELSE oy := y.a END;
       d := ox - oy
     ELSIF (x.mode = B.Var) & (y.mode = B.Var) & (x.obj.lev >= 0) & (x.obj.lev = y.obj.lev) THEN d := x.a - y.a
+    ELSIF (x.mode = B.Const) & (y.mode = B.Const) & (x.a >= A.C17) & (y.a >= A.C17) THEN d := x.a - y.a
     ELSE res := FALSE
     END
 
@@ -951,7 +952,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE S.Mark("inadmissible assignment")
       END;
       (*L1*) pc1 := mcode.pc; x.am := A.Indexed; x.ofs := d; y.am := A.IndirectIncr;
-      A.PutDO(mcode, A.MOV, y, x, A.Word); t := c2; IF ~oneReg THEN PutDO(A.ADD, t, x) END;
+      A.PutDO(mcode, A.MOV, y, x, A.Word); IF ~oneReg THEN t := c2; PutDO(A.ADD, t, x) END;
       t := c1; PutDO(A.SUB, t, rh); A.PutJ(mcode, A.NE, pc1 - mcode.pc -2); (*BNE L1*)
       (*L0:*) IF pc0 # -1 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END;
       freeR(rh.reg); free(y); free(x)
@@ -1155,19 +1156,21 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Assert; 
   
-  PROCEDURE Copy*(VAR x, y, z: Item);
-    VAR pc0, pc1: INTEGER; t!: Item;
-  BEGIN load(x, 0FFH); load(y, 0FFH);
-    pc0 := 0;
+  PROCEDURE Copy*(VAR x, y, z: Item); (*y := x*)
+    VAR pc0, pc1, d: INTEGER; t!: Item; oneReg: BOOLEAN;
+  BEGIN pc0 := 0;
     IF z.mode = B.Const THEN
       IF z.a > 0 THEN load(z, 0FFH) ELSE S.Mark("bad count") END
     ELSE load(z, 0FFH);
       IF traps[3] # NIL THEN t := c0; PutDO(A.CMP, t, z); Trap(A.L, 3) END;
       pc0 := mcode.pc; A.PutJ(mcode, A.EQ, 0); (*JEQ L0*)
     END;
-    pc1 := mcode.pc; load(x, 0FFH); load(y, 0FFH);
-    x.a := 0; x.am := A.IndirectIncr; y.am := A.Indexed; y.ofs := 0; A.PutDO(mcode, A.MOV, x, y, A.Word);
-    y.am := A.Register; t := c2; A.PutDO(mcode, A.ADD, t, y, A.Word);
+    oneReg := distance(y, x, d);
+    load(x, 0FFH);
+    IF oneReg THEN free(y); y.reg := x.reg; y.tmp := FALSE; DEC(d, WordSize);
+    ELSE load(y, 0FFH); d := 0 END;
+    pc1 := mcode.pc; x.a := 0; x.am := A.IndirectIncr; y.am := A.Indexed; y.ofs := d; A.PutDO(mcode, A.MOV, x, y, A.Word);
+    y.am := A.Register; IF ~oneReg THEN t := c2; A.PutDO(mcode, A.ADD, t, y, A.Word) END;
     t := c1; A.PutDO(mcode, A.SUB, t, z, A.Word); A.PutJ(mcode, A.NE, pc1 - mcode.pc - 2); (*BNE L1*)
     IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END; free(z); free(y); free(x)
   END Copy;
@@ -1376,7 +1379,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     WriteWord(R, 0)
   END WriteFixup;
 
-  PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT);
+  PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT; codeseg: BYTE);
     VAR obj!, obj2!: B.Object;
       i, sx, suax, nofimps, fixadr, flashSize: LONGINT;
       name: S.Ident;
@@ -1392,7 +1395,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     flashSize := tdx*WordSize + strx + mcode.pc;
     
     B.MakeFileName(name, modid, ".mpc"); (*write code file*)
-    F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key);
+    F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.WriteByte(R, codeseg);
     WriteWord(R, flashSize);
     obj := B.topScope.next;
     WHILE (obj # NIL) & (obj.class = B.Mod) DO  (*imports*)
@@ -1410,14 +1413,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
     Files.WriteByte(R, LEN(vector));  (*Vectors table*)
     FOR i := 0 TO LEN(vector) - 1 DO WriteWord(R, vector[i]) END;
-    WriteWord(R, nofent); WriteWord(R, tdx * WordSize + strx + entry);
+    WriteWord(R, nofent); Files.Write(R, "c"); (*code segment*) WriteWord(R, entry);
     obj := B.topScope.next;
     WHILE obj # NIL DO  (*entries*)
       IF obj.exno # 0 THEN
-        IF (obj.class = B.Const) & (obj.type.form IN {B.Proc, B.Handler}) THEN WriteWord(R, tdx * WordSize + strx + obj.val)
-        ELSIF obj.class = B.Var THEN WriteWord(R, obj.val)
-        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN WriteWord(R, GetStringAddress(obj.val MOD 10000H))
-        ELSIF obj.class = B.Typ THEN
+        IF (obj.class = B.Const) & (obj.type.form IN {B.Proc, B.Handler}) THEN Files.Write(R, "c"); (*code section*) WriteWord(R, obj.val)
+        ELSIF obj.class = B.Var THEN Files.Write(R, "d"); (*data section*) WriteWord(R, obj.val)
+        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN Files.Write(R, "k"); (*const section (string)*)
+          WriteWord(R, GetStringAddress(obj.val MOD 10000H))
+        ELSIF obj.class = B.Typ THEN Files.Write(R, "k"); (*const sesction (tag)*)
           IF obj.type.form = B.Record THEN WriteWord(R, obj.type.len)
           ELSIF (obj.type.form = B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
             WriteWord(R,  obj.type.base.len)

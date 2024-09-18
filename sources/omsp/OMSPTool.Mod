@@ -119,13 +119,12 @@ MODULE OMSPTool;  (*NW 18.2.2013
   BEGIN Files.WriteByte(R, x)  (* -128 <= x < 128 *)
   END Write;
 
-  PROCEDURE fixup(msg: ARRAY OF CHAR; VAR R: Files.Rider; ofs: INTEGER);
+  PROCEDURE fixup(msg: ARRAY OF CHAR; VAR R: Files.Rider);
     VAR data: INTEGER; mno: BYTE;
   BEGIN
     Texts.WriteString(W, "fixup "); Texts.WriteString(W, msg); Texts.WriteString(W, " chains"); Texts.WriteLn(W);
     ReadWord(R, data);
     WHILE data # 0 DO TextsEx.WriteHexVLen(W, data, 4, FALSE);
-      IF ofs # 0 THEN Texts.Write(W, "("); TextsEx.WriteHexVLen(W, data + ofs, 4, FALSE); Texts.Write(W, ")") END;
       Files.ReadByte(R, mno); Texts.WriteInt(W, mno, 6); Texts.Write(W, 9X);
       ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
       ReadWord(R, data)
@@ -147,9 +146,10 @@ MODULE OMSPTool;  (*NW 18.2.2013
       IF F # NIL THEN
         NEW(mcode);
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
-        Files.ReadInt(R, key); Texts.WriteHex(W, key);
+        Files.ReadInt(R, key); Texts.WriteHex(W, key); Files.ReadByte(R, bl);
         ReadWord(R, size); Texts.WriteString(W, " Flash"); Texts.WriteInt(W, size, 6);
         Texts.WriteLn(W);
+        IF bl = 1 THEN Texts.WriteString(W, "code executed from RAM"); Texts.WriteLn(W); END;
         Texts.Append(Oberon.Log, W.buf); ASSERT(size < 100000);
         Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
         WHILE name[0] # 0X DO
@@ -181,15 +181,15 @@ MODULE OMSPTool;  (*NW 18.2.2013
         Texts.WriteString(W, "entries"); Texts.WriteLn(W);
         ReadWord(R, n); i := 0;
         WHILE i < n DO
-          ReadWord(R, adr); TextsEx.WriteHexVLen(W, adr, 4, FALSE); INC(i)
+          Files.Read(R, ch); ReadWord(R, adr); Texts.Write(W, " "); Texts.Write(W, ch); TextsEx.WriteHexVLen(W, adr, 4, FALSE); INC(i)
         END ;
         Texts.WriteLn(W);
       (* Sync(R); *)
-      fixup("procedures", R, size);
-      fixup("handlers", R, size);
-      fixup("data", R, size);
-      fixup("constants", R, size);
-      fixup("types", R, 0);
+      fixup("procedures", R);
+      fixup("handlers", R);
+      fixup("data", R);
+      fixup("constants", R);
+      fixup("types", R);
         ReadWord(R, data); Texts.WriteString(W, "entry = "); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
         Files.Read(R, ch);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
@@ -198,12 +198,10 @@ MODULE OMSPTool;  (*NW 18.2.2013
         i := 0;
         WHILE i < mcode.pc DO
           TextsEx.WriteHexVLen(W, i, 4, FALSE);
-          IF size # 0 THEN Texts.Write(W, "("); TextsEx.WriteHexVLen(W, size + i, 4, FALSE); Texts.Write(W, ")") END;
-          Texts.Write(W, 9X); adr := i + 2;
+           Texts.Write(W, 9X); adr := i + 2;
           D.opcode(W, mcode.code, i, 0); Texts.WriteLn(W);
           FOR n := adr TO i - 2 BY 2 DO (*print operation data*)
             TextsEx.WriteHexVLen(W, n, 4, FALSE);
-            IF size # 0 THEN Texts.Write(W, "("); TextsEx.WriteHexVLen(W, size + n, 4, FALSE); Texts.Write(W, ")") END;
             Texts.Write(W, 9X); Texts.WriteString(W, "    ");
             data := mcode.code[n+1]*100H + mcode.code[n];
             TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)

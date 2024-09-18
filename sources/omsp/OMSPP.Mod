@@ -23,6 +23,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     pbsList: PtrBase;   (*list of names of pointer base types*)
     dummy: B.Object;
     isLeaf, isInt: BOOLEAN;
+    codeseg: BYTE; (*module code will be exected from flash(0) or RAM(1)*)
     W: Texts.Writer;
 
   PROCEDURE Check(s: INTEGER; msg: ARRAY OF CHAR);
@@ -1033,6 +1034,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR key: LONGINT; oldCol: INTEGER; dmy: BOOLEAN;
   BEGIN isLeaf := FALSE; isInt := FALSE; Texts.WriteString(W, "  compiling "); S.Get(sym);
     IF sym = S.module THEN S.Get(sym);
+      IF sym = S.times THEN codeseg := 1 (*execute from RAM*); Texts.Write(W, "*"); S.Get(sym)
+      ELSE codeseg := 0 (*execute from Flash*) END;
       G.Open; dc := 0;
       initmode := FALSE;
       B.Init; B.OpenScope;
@@ -1063,7 +1066,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         B.Export(modid, newSF, key);
         IF newSF THEN Texts.WriteString(W, " new symbol file") END
       END;
-      IF S.errcnt = 0 THEN G.Close(modid, key, exno);
+      IF S.errcnt = 0 THEN G.Close(modid, key, exno, codeseg);
         Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key)
       ELSE Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol 
       END;

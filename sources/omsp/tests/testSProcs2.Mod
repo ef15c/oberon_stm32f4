@@ -8,7 +8,7 @@ END testSProcs2.
 
 OMSPTool.DecObj testSProcs2.mpc
 decode testSProcs2.mpc
-testSProcs2 C77404D3 Flash    24
+testSProcs2 C77404D3 Flash    18
 imports:
 type descriptors
 
@@ -20,25 +20,21 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0000
+ c 0000
 fixup procedures chains
 fixup handlers chains
 fixup data chains
- 0002     0	 0000
- 0006     0	 0014
+ 0006     0	 0000
 fixup constants chains
 fixup types chains
 entry =  0000
-code    24
- 0000	     403F	MOV #0,R15
- 0002	     0000
+code    18
+ 0000	     403F	MOV #10,R15
+ 0002	     000A
  0004	     403E	MOV #0,R14
  0006	     0000
- 0008	     403D	MOV #10,R13
- 000A	     000A
- 000C	     4FBE	MOV @R15+,0(R14)
- 000E	     0000
- 0010	     532E	ADD #2,R14
- 0012	     831D	SUB #1,R13
- 0014	     23FB	JNE #-5, goes to  000C
- 0016	     4130	RET
+ 0008	     4EBE	MOV @R14+,18(R14)
+ 000A	     0012
+ 000C	     831F	SUB #1,R15
+ 000E	     23FC	JNE #-4, goes to  0008
+ 0010	     4130	RET
