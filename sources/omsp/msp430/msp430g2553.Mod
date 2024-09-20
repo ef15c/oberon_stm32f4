@@ -316,43 +316,76 @@ CAPD*               = SYSTEM.VAL(PBYTESET, 005BH); (* Comparator A Port Disable 
 (*************************************************************
 * Flash Memory
 *************************************************************)
-FCTL1*              = SYSTEM.VAL(PSET, 0128H);
-FCTL2*              = SYSTEM.VAL(PSET, 012AH);
-FCTL3*              = SYSTEM.VAL(PSET, 012CH);
+FRKEY*              = SYSTEM.VAL(SET, 9600H);  (* Flash key returned by read *)
+FWKEY*              = SYSTEM.VAL(SET, 0A500H); (* Flash key for write *)
+FXKEY*              = SYSTEM.VAL(SET, 3300H);  (* for use with XOR instruction *)
+
+FCTL1*              = SYSTEM.VAL(PSET, 0128H); (* FLASH Control 1 *)
+ERASE*              = {1};           (* Enable bit for Flash segment erase *)
+MERAS*              = {2};           (* Enable bit for Flash mass erase *)
+WRT*                = {6};           (* Enable bit for Flash write *)
+BLKWRT*             = {7};           (* Enable bit for Flash segment write *)
+SEGWRT*             = {7};           (* old definition, enable bit for Flash segment write *)
+
+FCTL2*              = SYSTEM.VAL(PSET, 012AH); (* FLASH Control 2 *)
+FN0*                = {0};            (* Divide Flash clock by 1 to 64 using FN0 to FN5 according to: *)
+FN1*                = {1};            (*  32*FN5 + 16*FN4 + 8*FN3 + 4*FN2 + 2*FN1 + FN0 + 1 *)
+FN2*                = {2};
+FN3*                = {3};
+FN4*                = {4};
+FN5*                = {5};
+FSSEL0*             = {6};            (* Flash clock select 0, to distinguish from USART SSELx *)
+FSSEL1*             = {7};            (* Flash clock select 1 *)
+
+FSSEL_0*            = {};             (* Flash clock select: 0 - ACLK *)
+FSSEL_1*            = FSSEL0;         (* Flash clock select: 1 - MCLK *)
+FSSEL_2*            = FSSEL1;         (* Flash clock select: 2 - SMCLK *)
+FSSEL_3*            = FSSEL0+FSSEL1;  (* Flash clock select: 3 - SMCLK *)
+
+FCTL3*              = SYSTEM.VAL(PSET, 012CH); (* FLASH Control 3 *)
+BUSY*               = {0};            (* Flash busy: 1 *)
+KEYV*               = {1};            (* Flash Key violation flag *)
+ACCVIFG*            = {2};            (* Flash Access violation flag *)
+WAIT*               = {3};            (* Wait flag for segment write *)
+LOCK*               = {4};            (* Lock bit: 1 - Flash is locked (read only) *)
+EMEX*               = {5};            (* Flash Emergency Exit *)
+LOCKA*              = {6};            (* Segment A Lock bit: read = 1 - Segment is locked (read only) *)
+FAIL*               = {7};            (* Last Program or Erase failed *)
+
 (************************************************************
 * DIGITAL I/O Port1/2 Pull up / Pull down Resistors
 ************************************************************)
-P1IN*               = SYSTEM.VAL(PBYTESET, 0020H);
-P1OUT*              = SYSTEM.VAL(PBYTESET, 0021H);
-P1DIR*              = SYSTEM.VAL(PBYTESET, 0022H);
-P1IFG*              = SYSTEM.VAL(PBYTESET, 0023H);
-P1IES*              = SYSTEM.VAL(PBYTESET, 0024H);
-P1IE*               = SYSTEM.VAL(PBYTESET, 0025H);
-P1SEL*              = SYSTEM.VAL(PBYTESET, 0026H);
-P1SEL2*             = SYSTEM.VAL(PBYTESET, 0041H);
-P1REN*              = SYSTEM.VAL(PBYTESET, 0027H);
-P2IN*               = SYSTEM.VAL(PBYTESET, 0028H);
-P2OUT*              = SYSTEM.VAL(PBYTESET, 0029H);
-P2DIR*              = SYSTEM.VAL(PBYTESET, 002AH);
-P2IFG*              = SYSTEM.VAL(PBYTESET, 002BH);
-P2IES*              = SYSTEM.VAL(PBYTESET, 002CH);
-P2IE*               = SYSTEM.VAL(PBYTESET, 002DH);
-P2SEL*              = SYSTEM.VAL(PBYTESET, 002EH);
-P2SEL2*             = SYSTEM.VAL(PBYTESET, 0042H);
-P2REN*              = SYSTEM.VAL(PBYTESET, 002FH);
+P1IN*               = SYSTEM.VAL(PBYTESET, 0020H); (* Port 1 Input *)
+P1OUT*              = SYSTEM.VAL(PBYTESET, 0021H); (* Port 1 Output *)
+P1DIR*              = SYSTEM.VAL(PBYTESET, 0022H); (* Port 1 Direction *)
+P1IFG*              = SYSTEM.VAL(PBYTESET, 0023H); (* Port 1 Interrupt Flag *)
+P1IES*              = SYSTEM.VAL(PBYTESET, 0024H); (* Port 1 Interrupt Edge Select *)
+P1IE*               = SYSTEM.VAL(PBYTESET, 0025H); (* Port 1 Interrupt Enable *)
+P1SEL*              = SYSTEM.VAL(PBYTESET, 0026H); (* Port 1 Selection *)
+P1SEL2*             = SYSTEM.VAL(PBYTESET, 0041H); (* Port 1 Selection 2 *)
+P1REN*              = SYSTEM.VAL(PBYTESET, 0027H); (* Port 1 Resistor Enable *)
+P2IN*               = SYSTEM.VAL(PBYTESET, 0028H); (* Port 2 Input *)
+P2OUT*              = SYSTEM.VAL(PBYTESET, 0029H); (* Port 2 Output *)
+P2DIR*              = SYSTEM.VAL(PBYTESET, 002AH); (* Port 2 Direction *)
+P2IFG*              = SYSTEM.VAL(PBYTESET, 002BH); (* Port 2 Interrupt Flag *)
+P2IES*              = SYSTEM.VAL(PBYTESET, 002CH); (* Port 2 Interrupt Edge Select *)
+P2IE*               = SYSTEM.VAL(PBYTESET, 002DH); (* Port 2 Interrupt Enable *)
+P2SEL*              = SYSTEM.VAL(PBYTESET, 002EH); (* Port 2 Selection *)
+P2SEL2*             = SYSTEM.VAL(PBYTESET, 0042H); (* Port 2 Selection 2 *)
+P2REN*              = SYSTEM.VAL(PBYTESET, 002FH); (* Port 2 Resistor Enable *)
 (************************************************************
 * DIGITAL I/O Port3 Pull up / Pull down Resistors
 ************************************************************)
-P3IN*               = SYSTEM.VAL(PBYTESET, 0018H);
-P3OUT*              = SYSTEM.VAL(PBYTESET, 0019H);
-P3DIR*              = SYSTEM.VAL(PBYTESET, 001AH);
-P3SEL*              = SYSTEM.VAL(PBYTESET, 001BH);
-P3SEL2*             = SYSTEM.VAL(PBYTESET, 0043H);
-P3REN*              = SYSTEM.VAL(PBYTESET, 0010H);
+P3IN*               = SYSTEM.VAL(PBYTESET, 0018H); (* Port 3 Input *)
+P3OUT*              = SYSTEM.VAL(PBYTESET, 0019H); (* Port 3 Output *)
+P3DIR*              = SYSTEM.VAL(PBYTESET, 001AH); (* Port 3 Direction *)
+P3SEL*              = SYSTEM.VAL(PBYTESET, 001BH); (* Port 3 Selection *)
+P3SEL2*             = SYSTEM.VAL(PBYTESET, 0043H); (* Port 3 Selection 2 *)
+P3REN*              = SYSTEM.VAL(PBYTESET, 0010H); (* Port 3 Resistor Enable *)
 (************************************************************
 * Timer0_A3
 ************************************************************)
-TA0IV*              = SYSTEM.VAL(PSET, 012EH);
+TA0IV*              = SYSTEM.VAL(PSET, 012EH); (* Timer0_A3 Interrupt Vector Word *)
 TA0IV_NONE*         = 00H; (* No Interrupt pending *)
 TA0IV_TACCR1*       = 02H; (* TA0CCR1_CCIFG *)
 TA0IV_TACCR2*       = 04H; (* TA0CCR2_CCIFG *)
@@ -360,7 +393,7 @@ TA0IV_6*            = 06H; (* Reserved *)
 TA0IV_8*            = 08H; (* Reserved *)
 TA0IV_TAIFG*        = 0AH; (* TA0IFG *)
 
-TA0CTL*             = SYSTEM.VAL(PSET, 0160H);
+TA0CTL*             = SYSTEM.VAL(PSET, 0160H); (* Timer0_A3 Control *)
 TASSEL1*            = {9}; (* Timer A clock source select 1 *)
 TASSEL0*            = {8}; (* Timer A clock source select 0 *)
 ID1*                = {7}; (* Timer A clock input divider 1 *)
@@ -386,9 +419,9 @@ TASSEL_1*           = TASSEL0;         (* Timer A clock source select: 1 - ACLK 
 TASSEL_2*           = TASSEL1;         (* Timer A clock source select: 2 - SMCLK *)
 TASSEL_3*           = TASSEL0+TASSEL1; (* Timer A clock source select: 3 - INCLK *)
 
-TA0CCTL0*           = SYSTEM.VAL(PSET, 0162H);
-TA0CCTL1*           = SYSTEM.VAL(PSET, 0164H);
-TA0CCTL2*           = SYSTEM.VAL(PSET, 0166H);
+TA0CCTL0*           = SYSTEM.VAL(PSET, 0162H); (* Timer0_A3 Capture/Compare Control 0 *)
+TA0CCTL1*           = SYSTEM.VAL(PSET, 0164H); (* Timer0_A3 Capture/Compare Control 1 *)
+TA0CCTL2*           = SYSTEM.VAL(PSET, 0166H); (* Timer0_A3 Capture/Compare Control 2 *)
 CM1*                = {15}; (* Capture mode 1 *)
 CM0*                = {14}; (* Capture mode 0 *)
 CCIS1*              = {13}; (* Capture input select 1 *)
@@ -422,23 +455,23 @@ CM_1*               = CM0;     (* Capture mode: 1 - pos. edge *)
 CM_2*               = CM1;     (* Capture mode: 1 - neg. edge *)
 CM_3*               = CM0+CM1; (* Capture mode: 1 - both edges *)
 
-TA0R*               = SYSTEM.VAL(PINTEGER, 0170H);
-TA0CCR0*            = SYSTEM.VAL(PINTEGER, 0172H);
-TA0CCR1*            = SYSTEM.VAL(PINTEGER, 0174H);
-TA0CCR2*            = SYSTEM.VAL(PINTEGER, 0176H);
+TA0R*               = SYSTEM.VAL(PINTEGER, 0170H); (* Timer0_A3 Counter Register *)
+TA0CCR0*            = SYSTEM.VAL(PINTEGER, 0172H); (* Timer0_A3 Capture/Compare 0 *)
+TA0CCR1*            = SYSTEM.VAL(PINTEGER, 0174H); (* Timer0_A3 Capture/Compare 1 *)
+TA0CCR2*            = SYSTEM.VAL(PINTEGER, 0176H); (* Timer0_A3 Capture/Compare 2 *)
 
 (************************************************************
 * Timer1_A3
 ************************************************************)
-TA1IV*              = SYSTEM.VAL(PSET, 011EH);
-TA1CTL*             = SYSTEM.VAL(PSET, 0180H);
-TA1CCTL0*           = SYSTEM.VAL(PSET, 0182H);
-TA1CCTL1*           = SYSTEM.VAL(PSET, 0184H);
-TA1CCTL2*           = SYSTEM.VAL(PSET, 0186H);
-TA1R*               = SYSTEM.VAL(PINTEGER, 0190H);
-TA1CCR0*            = SYSTEM.VAL(PINTEGER, 0192H);
-TA1CCR1*            = SYSTEM.VAL(PINTEGER, 0194H);
-TA1CCR2*            = SYSTEM.VAL(PINTEGER, 0196H);
+TA1IV*              = SYSTEM.VAL(PSET, 011EH);     (* Timer1_A3 Interrupt Vector Word *)
+TA1CTL*             = SYSTEM.VAL(PSET, 0180H);     (* Timer1_A3 Control *)
+TA1CCTL0*           = SYSTEM.VAL(PSET, 0182H);     (* Timer1_A3 Capture/Compare Control 0 *)
+TA1CCTL1*           = SYSTEM.VAL(PSET, 0184H);     (* Timer1_A3 Capture/Compare Control 1 *)
+TA1CCTL2*           = SYSTEM.VAL(PSET, 0186H);     (* Timer1_A3 Capture/Compare Control 2 *)
+TA1R*               = SYSTEM.VAL(PINTEGER, 0190H); (* Timer1_A3 Counter Register *)
+TA1CCR0*            = SYSTEM.VAL(PINTEGER, 0192H); (* Timer1_A3 Capture/Compare 0 *)
+TA1CCR1*            = SYSTEM.VAL(PINTEGER, 0194H); (* Timer1_A3 Capture/Compare 1 *)
+TA1CCR2*            = SYSTEM.VAL(PINTEGER, 0196H); (* Timer1_A3 Capture/Compare 2 *)
 (************************************************************
 * USCI
 ************************************************************)
@@ -510,14 +543,14 @@ WDT_ARST_1_9*       = (WDTPW+WDTCNTCL+WDTSSEL+WDTIS1+WDTIS0); (* 1.9ms   " *)
 (************************************************************
 * Calibration Data in Info Mem
 ************************************************************)
-CALDCO_16MHZ*       = SYSTEM.VAL(PINTEGER, 10F8H);
-CALBC1_16MHZ*       = SYSTEM.VAL(PINTEGER, 10F9H);
-CALDCO_12MHZ*       = SYSTEM.VAL(PINTEGER, 10FAH);
-CALBC1_12MHZ*       = SYSTEM.VAL(PINTEGER, 10FBH);
-CALDCO_8MHZ*        = SYSTEM.VAL(PINTEGER, 10FCH);
-CALBC1_8MHZ*        = SYSTEM.VAL(PINTEGER, 10FDH);
-CALDCO_1MHZ*        = SYSTEM.VAL(PINTEGER, 10FEH);
-CALBC1_1MHZ*        = SYSTEM.VAL(PINTEGER, 10FFH);
+CALDCO_16MHZ*       = SYSTEM.VAL(PBYTESET, 10F8H);
+CALBC1_16MHZ*       = SYSTEM.VAL(PBYTESET, 10F9H);
+CALDCO_12MHZ*       = SYSTEM.VAL(PBYTESET, 10FAH);
+CALBC1_12MHZ*       = SYSTEM.VAL(PBYTESET, 10FBH);
+CALDCO_8MHZ*        = SYSTEM.VAL(PBYTESET, 10FCH);
+CALBC1_8MHZ*        = SYSTEM.VAL(PBYTESET, 10FDH);
+CALDCO_1MHZ*        = SYSTEM.VAL(PBYTESET, 10FEH);
+CALBC1_1MHZ*        = SYSTEM.VAL(PBYTESET, 10FFH);
 (************************************************************
 * Calibration Data in Info Mem
 ************************************************************)
@@ -551,7 +584,7 @@ END msp430g2553.
 
 OMSPTool.DecSym msp430g2553.sms
 decode msp430g2553.sms
-msp430g2553 8250CA0E  1
+msp430g2553 A54A24F2  1
    1 C [^6]       1
    1 Z [^6]       2
    1 N [^6]       4
@@ -767,9 +800,37 @@ msp430g2553 8250CA0E  1
    1 P2CA4 [^6]      64
    1 CASHORT [^6]     128
    1 CAPD [^18]      91
+   1 FRKEY [^6]   38400
+   1 FWKEY [^6]   42240
+   1 FXKEY [^6]   13056
    1 FCTL1 [^17]     296
+   1 ERASE [^6]       2
+   1 MERAS [^6]       4
+   1 WRT [^6]      64
+   1 BLKWRT [^6]     128
+   1 SEGWRT [^6]     128
    1 FCTL2 [^17]     298
+   1 FN0 [^6]       1
+   1 FN1 [^6]       2
+   1 FN2 [^6]       4
+   1 FN3 [^6]       8
+   1 FN4 [^6]      16
+   1 FN5 [^6]      32
+   1 FSSEL0 [^6]      64
+   1 FSSEL1 [^6]     128
+   1 FSSEL_0 [^6]       0
+   1 FSSEL_1 [^6]      64
+   1 FSSEL_2 [^6]     128
+   1 FSSEL_3 [^6]     192
    1 FCTL3 [^17]     300
+   1 BUSY [^6]       1
+   1 KEYV [^6]       2
+   1 ACCVIFG [^6]       4
+   1 WAIT [^6]       8
+   1 LOCK [^6]      16
+   1 EMEX [^6]      32
+   1 LOCKA [^6]      64
+   1 FAIL [^6]     128
    1 P1IN [^18]      32
    1 P1OUT [^18]      33
    1 P1DIR [^18]      34
@@ -917,14 +978,14 @@ msp430g2553 8250CA0E  1
    1 WDT_ARST_250 [^6]   23053
    1 WDT_ARST_16 [^6]   23054
    1 WDT_ARST_1_9 [^6]   23055
-   1 CALDCO_16MHZ [^7]    4344
-   1 CALBC1_16MHZ [^7]    4345
-   1 CALDCO_12MHZ [^7]    4346
-   1 CALBC1_12MHZ [^7]    4347
-   1 CALDCO_8MHZ [^7]    4348
-   1 CALBC1_8MHZ [^7]    4349
-   1 CALDCO_1MHZ [^7]    4350
-   1 CALBC1_1MHZ [^7]    4351
+   1 CALDCO_16MHZ [^18]    4344
+   1 CALBC1_16MHZ [^18]    4345
+   1 CALDCO_12MHZ [^18]    4346
+   1 CALBC1_12MHZ [^18]    4347
+   1 CALDCO_8MHZ [^18]    4348
+   1 CALBC1_8MHZ [^18]    4349
+   1 CALDCO_1MHZ [^18]    4350
+   1 CALBC1_1MHZ [^18]    4351
    1 TLV_CHECKSUM [^7]    4288
    1 TLV_DCO_30_TAG [^7]    4342
    1 TLV_DCO_30_LEN [^7]    4343
@@ -944,4 +1005,3 @@ msp430g2553 8250CA0E  1
    1 TIMER1_A0_VECTOR [^4]      29
    1 NMI_VECTOR [^4]      30
    1 RESET_VECTOR [^4]      31
-

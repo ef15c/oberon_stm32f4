@@ -221,6 +221,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF (x.type.form = B.String) & varpar & par.rdo & (par.type.form = B.Array) & 
           (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x, par)
       ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par)  (*BYTE*)
+      ELSIF ~varpar & (par.type.form = B.Set) & (x.type.form = B.Set) THEN G.ValueParam(x, par)  (*byte SET*)
       ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
         G.StrToChar(x); G.ValueParam(x, par)
       ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
@@ -413,6 +414,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF (yf = B.Char) & (xf = B.String) & (x.b = 2) THEN
         G.StrToChar(x); G.IntRelation(rel, x, y)
       ELSIF (xf = B.Int) & (yf = B.Int) THEN G.IntRelation(rel,  x, y)  (*BYTE*)
+      ELSIF (xf = B.Set) & (yf = B.Set) THEN
+        IF rel <= S.neq THEN G.IntRelation(rel, x, y) ELSE S.Mark("only = or #") END (*byte SET*)
       ELSE S.Mark("illegal comparison")
       END;
       x.type := B.boolType
