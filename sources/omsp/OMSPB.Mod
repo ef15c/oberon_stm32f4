@@ -435,6 +435,7 @@ BEGIN
   enter("RRA", SProc, intType, 192);
   enter("RRC", SProc, intType, 201); (*211 and 221 are in SYSTEM pseudo-module*)
   enter("SET", Typ, setType, 0);   (*types*)
+  enter("BYTESET", Typ, byteSetType, 0);
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);
   enter("CHAR", Typ, charType, 0);
