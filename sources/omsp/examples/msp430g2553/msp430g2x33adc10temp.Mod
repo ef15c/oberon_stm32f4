@@ -108,7 +108,7 @@ BEGIN
     temp = M.ADC10MEM;
     IntDegC = ((temp - 673) * 423) / 1024; *)
     m.SetLongInt(IntDegCh, IntDegCl, M.ADC10MEM^);
-    m.SubLongInt(IntDegCh, IntDegCl, 673); m.MulLongInt(IntDegCh, IntDegCh, 423); m.ASRLongInt(IntDegCh, IntDegCl, 10);
+    m.SubLongInt(IntDegCh, IntDegCl, 673); m.MulLongInt(IntDegCh, IntDegCl, 423); m.ASRLongInt(IntDegCh, IntDegCl, 10);
 
     NOP (* SET BREAKPOINT HERE *)
   UNTIL FALSE

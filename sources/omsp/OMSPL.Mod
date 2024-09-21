@@ -217,7 +217,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     IF (res = noerr) & (S.class = Texts.Name) THEN first := NIL; last := NIL;
       REPEAT LinkOne(S.s, M); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
       IF res = noerr THEN Texts.WriteString(W, "  linking");
-        (*prolog*) vector[31] := Flash.allocPtr; p := first;
+        (*prolog*) vector[31] := Flash.origin + Flash.allocPtr; p := first;
         (*MOV RAMLimit, SP*) EmitWord(4031H); EmitWord(RAMLimit);
         WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
           IF p.codeseg = 1 THEN (*module executed from RAM*) Texts.Write(W, "*");
@@ -238,7 +238,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
 
         i := 32 - vecsize DIV 2; isrtrap := -1; (*install default ISR trap if required*)
         REPEAT
-          IF vector[i] = 0FFFFH THEN (*isrtrap is needed*) isrtrap := Flash.allocPtr; EmitWord(0D032H); EmitWord( 0010H); EmitWord(3FFDH) END;
+          IF vector[i] = 0FFFFH THEN (*isrtrap is needed*) isrtrap := Flash.origin + Flash.allocPtr;
+            EmitWord(0D032H); EmitWord( 0010H); EmitWord(3FFDH) END;
           INC(i)
         UNTIL (i >= 31) OR (isrtrap > 0);
 
@@ -252,8 +253,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
 
         i := 0; x := 32 - vecsize DIV 2; Files.Write(R, "@"); FilesEx.WriteHexHalfWord(R, FlashEnd - x*2); FilesEx.WriteLn(R); (*vector table*)
         WHILE x < 32 DO IF vector[x] = 0FFFFH THEN vector[x] := isrtrap END;
-          FilesEx.WriteHex(R, (Flash.origin + vector[x]) MOD 100H); Files.Write(R, " ");
-          FilesEx.WriteHex(R, (Flash.origin + vector[x]) DIV 100H MOD 100H); Files.Write(R, " ");
+          FilesEx.WriteHex(R, vector[x] MOD 100H); Files.Write(R, " ");
+          FilesEx.WriteHex(R, vector[x] DIV 100H MOD 100H); Files.Write(R, " ");
           INC(i,2); IF i MOD 16 = 0 THEN FilesEx.WriteLn(R) END;
           INC(x)
         END;
