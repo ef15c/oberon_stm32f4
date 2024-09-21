@@ -168,7 +168,7 @@ OMSPTool.DecObj msp430g2xx3dcoflashcal.mpc
 decode msp430g2xx3dcoflashcal.mpc
 msp430g2xx3dcoflashcal 61060AFE Flash   512
 imports:
-	msp430g2553 A54A24F2
+	msp430g2553 AFE820A5
 type descriptors
 
 data    14
@@ -198,8 +198,8 @@ code   512
  0006	     D0F2	BIS.B #48,&87
  0008	     0030
  000A	     0057
- 000C	     40B2	MOV #20992,&354
- 000E	     5200
+ 000C	     40B2	MOV #20736,&354
+ 000E	     5100
  0010	     0162
  0012	     40B2	MOV #548,&352
  0014	     0224

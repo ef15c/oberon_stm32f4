@@ -428,7 +428,7 @@ CCIS1*              = {13}; (* Capture input select 1 *)
 CCIS0*              = {12}; (* Capture input select 0 *)
 SCS*                = {11}; (* Capture sychronize *)
 SCCI*               = {10}; (* Latched capture signal (read) *)
-CAP*                = {9};  (* Capture mode: 1 /Compare mode : 0 *)
+CAP*                = {8};  (* Capture mode: 1 /Compare mode : 0 *)
 OUTMOD2*            = {7};  (* Output mode 2 *)
 OUTMOD1*            = {6};  (* Output mode 1 *)
 OUTMOD0*            = {5};  (* Output mode 0 *)
@@ -584,7 +584,7 @@ END msp430g2553.
 
 OMSPTool.DecSym msp430g2553.sms
 decode msp430g2553.sms
-msp430g2553 A54A24F2  1
+msp430g2553 AFE820A5  1
    1 C [^6]       1
    1 Z [^6]       2
    1 N [^6]       4
@@ -893,7 +893,7 @@ msp430g2553 A54A24F2  1
    1 CCIS0 [^6]    4096
    1 SCS [^6]    2048
    1 SCCI [^6]    1024
-   1 CAP [^6]     512
+   1 CAP [^6]     256
    1 OUTMOD2 [^6]     128
    1 OUTMOD1 [^6]      64
    1 OUTMOD0 [^6]      32

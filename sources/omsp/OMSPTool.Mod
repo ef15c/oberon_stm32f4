@@ -22,7 +22,8 @@ MODULE OMSPTool;  (*NW 18.2.2013
       ref, class, form, readonly: INTEGER;
       name, modname: ARRAY 32 OF CHAR;
   BEGIN Read(R, ref); Texts.Write(W, " "); Texts.Write(W, "[");
-    IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1); IF -ref <= B.String THEN form := -ref END
+    IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1);
+      IF -ref IN {B.Array, B.Record} THEN form := 0 ELSE form := -ref END
     ELSE Texts.WriteInt(W, ref, 1);
       Read(R, form); Texts.WriteString(W, "  form = "); Texts.WriteInt(W, form, 1);
       Files.ReadNum(R, size); Texts.WriteString(W, "  size = "); Texts.WriteInt(W, size, 1);

@@ -10,7 +10,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       name: ModuleName;
       next: Module;
       key, num, size: INTEGER;
-      data, const, codeexe, codesto, codesize: INTEGER;  (*addresses*)
+      data, conststo, codeexe, codesto, codesize: INTEGER;  (*addresses*)
       codeseg: BYTE;
       ent: ARRAY 64 OF INTEGER
     END;
@@ -99,7 +99,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       res = nospace: insufficient space*)
     VAR mod!, impmod!: Module;
       i, n, key, impkey, nofimps, flashSize: INTEGER;
-      f, w, destbase: INTEGER;  (*addresses*)
+      f, w: INTEGER;  (*addresses*)
       ch: CHAR;
       adr, nadr, dest: INTEGER;
       name1, impname: ModuleName;
@@ -138,7 +138,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         mod.name := name;
         i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
         mod.key := key; mod.codeseg := codeseg;
-        mod.const := f; (*flash segment*)
+        mod.conststo := f; (*const section storage address*)
         FilesEx.ReadHalfWord(R, n); (*size of type descriptors*)
         WHILE n > 0 DO FilesEx.ReadHalfWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END;  (*type descriptors*)
         FilesEx.ReadHalfWord(R, n); (*size of data*)
@@ -150,8 +150,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         WHILE n > 0 DO Files.Read(R, ch); Flash.m[f] := ORD(ch); INC(f); DEC(n) END;   (*strings*)
         FilesEx.ReadHalfWord(R, n); (*In MSP430 implementation, program size is counted in bytes*)
         mod.codesto := f; mod.codesize := n;
-        IF codeseg = 1 THEN mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, n); destbase := mod.data 
-        ELSE mod.codeexe := Flash.origin + f; destbase := mod.const END;
+        IF codeseg = 1 THEN mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, n)
+        ELSE mod.codeexe := Flash.origin + f END;
         WHILE n > 0 DO FilesEx.ReadHalfWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END ;  (*program code*)
         Files.ReadByte(R, nv); (*number of entries in vector table*)
         FOR i := 0 TO nv - 1 DO FilesEx.ReadHalfWord(R, w); vec[i] := w END; (*module vector table*)
@@ -159,13 +159,13 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         FOR i := 0 TO n - 1 DO Files.Read(R, ch); FilesEx.ReadHalfWord(R, w); (*entries*)
           IF ch = "c" THEN (*code*) INC(w, mod.codeexe)
           ELSIF ch = "d" THEN (*data*) INC(w, mod.data)
-          ELSE ASSERT(ch = "k"); (*constant*) INC(w, mod.const)
+          ELSE ASSERT(ch = "k"); (*constant*) INC(w, Flash.origin + mod.conststo)
           END; mod.ent[i] := w
         END;
-        fixupFlash(R, import, destbase, mod.codesto); (*fixup procedures*)
+        fixupFlash(R, import, mod.codeexe, mod.codesto); (*fixup procedures*)
 
         FilesEx.ReadHalfWord(R, i); (*fixup handlers*)
-        WHILE i # 0 DO Files.ReadByte(R, mno); ASSERT(mno = 0); FilesEx.ReadHalfWord(R, dest); INC(dest, destbase);
+        WHILE i # 0 DO Files.ReadByte(R, mno); ASSERT(mno = 0); FilesEx.ReadHalfWord(R, dest); INC(dest, mod.codeexe);
           REPEAT DEC(i, 100H);
             IF vector[i] # 0FFFFH THEN
               Texts.WriteString(W, "interrupt vector number"); Texts.WriteInt(W, i, 3); error(duphandler, name1)
@@ -186,8 +186,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
           FilesEx.ReadHalfWord(R, adr) (*go to next chain*)
         END;
 
-        fixupFlash(R, import, destbase, mod.codesto); (*fixup constants*)
-        fixupFlash(R, import, mod.const, mod.const); (*fixup types*)
+        fixupFlash(R, import, Flash.origin + mod.conststo, mod.codesto); (*fixup constants*)
+        fixupFlash(R, import, Flash.origin + mod.conststo, mod.conststo); (*fixup types*)
 
         FilesEx.ReadHalfWord(R, w);
         IF GetWordAt(mod.codesto + w) = 4130H THEN (*module init is empty*)
