@@ -43,26 +43,21 @@
  *
  * --/COPYRIGHT--*/
 //******************************************************************************
-//  MSP430G2xx3 Demo - LFXT1 Oscillator Fault Detection
+//  MSP430G2xx3 Demo - Basic Clock, Configure RST/NMI as NMI
 //
-//  Description: System runs normally in LPM3 with WDT timer clocked by
-//  32kHz ACLK with a 1x4 second interrupt. P1.0 is normally pulsed every
-//  second inside WDT interrupt. If an LFXT1 oscillator fault occurs,
-//  NMI is requested forcing exit from LPM3. P1.0 is toggled rapidly by software
-//  as long as LFXT1 oscillator fault is present. Assumed only LFXT1 as NMI
-//  source - code does not check for other NMI sources.
-//  ACLK = LFXT1 = 32768, MCLK = SMCLK = Default DCO
+//  Description: Configure RST/NMI as NMI, hi/lo edge. Flash P1.0  inside of
+//  NMI_ISR if NMI occurs. General enable interrupt in status register does
+//  not need to be set for NMI. NMIIE does need to be reset, as NMI_ISR
+//  automatically clears NMI enable to prevent unintentional stack overflow
+//  that could result from, bounce or uncontrolled NMI's.
+//  ACLK = n/a, MCLK = SMCLK = DCO ~ 800k
 //
-//  //*External watch crystal on XIN XOUT is required for ACLK*//	
-//
-//
-//           MSP430G2xx3
-//         ---------------
-//     /|\|            XIN|-
-//      | |               | 32kHz
-//      --|RST        XOUT|-
-//        |               |
-//        |           P1.0|-->LED
+//               MSP430G2xx3
+//            -----------------
+//        /|\|              XIN|-
+//         | |                 |
+//         --|RST          XOUT|-
+//           |                 |
 //
 //  D. Dang
 //  Texas Instruments Inc.
@@ -70,36 +65,24 @@
 //  C. Schoffit 25.09.24, built with Oberon MSP430 compiler
 //******************************************************************************)
 
-MODULE msp430g2xx3LFxtalnmi;
+MODULE msp430g2xx3nmi;
   IMPORT SYSTEM, M := msp430g2553;
 
-  VAR i: INTEGER;
-
-  PROCEDURE* (M.WDT_VECTOR) ^0 watchdog_timer;
-  BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Clear LPM3 bits from 0(SP) *)
-  END watchdog_timer;
-
   PROCEDURE* (M.NMI_VECTOR) ^0 nmi_;
+    VAR i: INTEGER;
   BEGIN
-    REPEAT BIC(M.IFG1^, M.OFIFG); (* Clear OSCFault flag *)
-      FOR i := 0FFFH TO 1 BY -1 DO END; (* Time for flag to set *)
-      XOR(M.P1OUT^, {0}) (* Toggle P1.0 using exclusive-OR *)
-    UNTIL ~BIT(M.IFG1^, M.OFIFG); (* OSCFault flag still set? *)
-    BIS(M.IE1^, M.OFIE); (* Enable Osc Fault *)
+    BIS(M.P1OUT^, {0}); (* Set P1.0 LED on *)
+    i := 20000; REPEAT DEC(i) UNTIL i = 0; (* Delay *)
+    BIC(M.P1OUT^, {0}); (* Clear P1.0 LED off *)
+    BIC(M.IFG1^, M.NMIIFG); (* Reclear NMI flag in case bounce *)
+    BIS(M.IE1^, M.NMIIE); (* Enable NMI *)
   END nmi_;
 
 BEGIN
-  M.WDTCTL^ := M.WDT_ADLY_1000; (* WDT 1s interval timer *)
-  M.BCSCTL3^ := M.XCAP_2;
-  BIS(M.IE1^, M.WDTIE); (* Enable WDT interrupt *)
-  M.P1DIR^ := {0..7}; (* All P1.x outputs *)
-  M.P1OUT^ := {}; (* All P1.x reset *)
-  M.P2DIR^ := {0..7}; (* All P2.x outputs *)
-  M.P2OUT^ := {}; (* All P2.x reset *)
-  (* An immedate Osc Fault will occur next *)
-  BIS(M.IE1^, M.OFIE); (* Enable Osc Fault *)
+  M.WDTCTL^ := M.WDTPW + M.WDTHOLD + M.WDTNMI + M.WDTNMIES; (* WDT off NMI hi/lo *)
+  BIS(M.P1DIR^, {0}); (* Set P1.0 to output direction *)
+  BIC(M.P1OUT^, {0}); (* Clear P1.0 LED off *)
+  BIS(M.IE1^, M.NMIIE); (* Enable NMI *)
 
-  REPEAT XOR(M.P1OUT^, {0}); (* Toggle P1.0 using exclusive-OR *)
-    SYSTEM.BIS_SR(M.LPM3_bits + M.GIE); (* Enter LPM3 w/interrupt *)
-  UNTIL FALSE
-END msp430g2xx3LFxtalnmi.
+  SYSTEM.BIS_SR(M.LPM0_bits) (* Enter LPM0 *)
+END msp430g2xx3nmi.
