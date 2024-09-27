@@ -385,7 +385,7 @@ P3REN*              = SYSTEM.VAL(PBYTESET, 0010H); (* Port 3 Resistor Enable *)
 (************************************************************
 * Timer0_A3
 ************************************************************)
-TA0IV*              = SYSTEM.VAL(PSET, 012EH); (* Timer0_A3 Interrupt Vector Word *)
+TA0IV*              = SYSTEM.VAL(PINTEGER, 012EH); (* Timer0_A3 Interrupt Vector Word *)
 TA0IV_NONE*         = 00H; (* No Interrupt pending *)
 TA0IV_TACCR1*       = 02H; (* TA0CCR1_CCIFG *)
 TA0IV_TACCR2*       = 04H; (* TA0CCR2_CCIFG *)
@@ -584,7 +584,7 @@ END msp430g2553.
 
 OMSPTool.DecSym msp430g2553.sms
 decode msp430g2553.sms
-msp430g2553 AFE820A5  1
+msp430g2553 5DB9B2F5  1
    1 C [^6]       1
    1 Z [^6]       2
    1 N [^6]       4
@@ -855,7 +855,7 @@ msp430g2553 AFE820A5  1
    1 P3SEL [^18]      27
    1 P3SEL2 [^18]      67
    1 P3REN [^18]      16
-   1 TA0IV [^17]     302
+   1 TA0IV [^7]     302
    1 TA0IV_NONE [^4]       0
    1 TA0IV_TACCR1 [^4]       2
    1 TA0IV_TACCR2 [^4]       4

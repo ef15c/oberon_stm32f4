@@ -22,7 +22,7 @@ OM4P.Compile SCC.Mod/s Net.Mod/s ~
 OM4P.Compile RS232.Mod/s ~
 
 Command for generation of tools
-OM4P.Compile Tools.Mod/s ~
+OM4P.Compile Tools.Mod/s HeapTool.Mod ~
 
 Commands for generation of graphic system
 OM4P.Compile Graphics.Mod/s GraphicFrames.Mod/s Draw.Mod Rectangles.Mod/s Curves.Mod/s
