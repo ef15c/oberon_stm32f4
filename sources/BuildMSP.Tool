@@ -16,6 +16,7 @@ OMSPL.Link 32 4000H 200H testFrame ~ OMSPL.Link 32 4000H 200H testTypTag ~ OMSPL
 OMSPL.Link 32 4000H 200H testImportString ~ OMSPL.Link 32 4000H 200H testInitImp ~ OMSPL.Link 32 4000H 200H testRAMcode ~
 
 Texas Instruments examples
+Compilation
 OMSPP.Compile msp430g2x13ca01.Mod msp430g2x13ca02.Mod msp430g2x13ca03.Mod ~
 
 OMSPP.Compile msp430g2x33adc1001.Mod msp430g2x33adc1002.Mod msp430g2x33adc1003.Mod msp430g2x33adc1004.Mod  msp430g2x33adc1005.Mod msp430g2x33adc1006.Mod
@@ -27,8 +28,10 @@ OMSPP.Compile msp430g2xx31.Mod msp430g2xx31vlo.Mod msp430g2xx3clks.Mod msp430g2x
 
 OMSPP.Compile msp430g2xx3P101.Mod msp430g2xx3P102.Mod msp430g2xx3P103.Mod msp430g2xx3P104.Mod ~
 
-OMSPP.Compile msp430g2xx3ta01.Mod msp430g2xx3ta02.Mod msp430g2xx3ta03.Mod msp430g2xx3ta04.Mod ~
+OMSPP.Compile msp430g2xx3ta01.Mod msp430g2xx3ta02.Mod msp430g2xx3ta03.Mod msp430g2xx3ta04.Mod msp430g2xx3ta05.Mod msp430g2xx3ta06.Mod
+ msp430g2xx3ta07.Mod msp430g2xx3ta08.Mod ~
 
+Link
 OMSPL.Link 32 4000H 200H msp430g2x13ca01 ~ OMSPL.Link 32 4000H 200H msp430g2x13ca02 ~
 OMSPL.Link 32 4000H 200H msp430g2x13ca03 ~
 
@@ -48,4 +51,5 @@ OMSPL.Link 32 4000H 200H msp430g2xx3P101 ~ OMSPL.Link 32 4000H 200H msp430g2xx3P
 OMSPL.Link 32 4000H 200H msp430g2xx3P104 ~
 
 OMSPL.Link 32 4000H 200H msp430g2xx3ta01 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta02 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta03 ~
-OMSPL.Link 32 4000H 200H msp430g2xx3ta04 ~
+OMSPL.Link 32 4000H 200H msp430g2xx3ta04 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta05 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta06 ~
+OMSPL.Link 32 4000H 200H msp430g2xx3ta07 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta08 ~
