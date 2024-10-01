@@ -1,6 +1,6 @@
 # oberon_stm32f4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 7 released!</b><br>
+<b>Version 8 released!</b><br>
   
 This is the second release of the MSP430 toolchain. 50 Texas code examples were ported to Oberon. See sources/omsp/examples/msp430g2553.  
   
