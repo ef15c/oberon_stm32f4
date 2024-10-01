@@ -2,11 +2,9 @@
 Portage of Oberon system to stm32f429i-disco board<br><br>
 <b>Version 7 released!</b><br>
   
-This is the first release of the MSP430 toolchain. The compiler, the test modules and several examples are located in omsp folder. See omsp/README.md  
+This is the second release of the MSP430 toolchain. 50 Texas code examples were ported to Oberon. See sources/omsp/examples/msp430g2553.  
   
-There are also several bugs fixed in the OM4 compiler.  
-  
-The files names suffixed by M4 have been renamed to the original names.
+![OberonMSP430compiler](https://github.com/user-attachments/assets/6926baf1-dc6c-406c-8f0f-f2973136a3e1)
 
 <br>
 QWERTY keyboard can be activated by middle clicking on the text "OM4P.Compile InputQwerty.Mod ~"<br>
