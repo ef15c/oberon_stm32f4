@@ -451,8 +451,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END MakeTypTagAdr;
 
   PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: LONGINT);
-  BEGIN IF (val >= A.C16) OR (val < -A.C15) THEN S.Mark("out of range") END;
-    x.mode := B.Const; x.type := typ; x.a := val; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
+  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
 
   PROCEDURE GetStringAddress(usedat: INTEGER): INTEGER;
@@ -1332,12 +1331,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN res
   END typFixupCond;
 
-  PROCEDURE procFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
+(*  PROCEDURE procFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
   BEGIN WriteWord(R, obj.usedat); Files.WriteByte(R, -obj.lev); (*module number*)
-    IF obj.lev = 0 THEN (*local object relative address*) WriteWord(R, tdx * WordSize + strx + obj.val)
+    IF obj.lev = 0 THEN (*local object relative address*) WriteWord(R, obj.val)
     ELSE (*imported object number*) WriteWord(R, obj.val)
     END
-  END procFixupAction;
+  END procFixupAction;*)
 
   PROCEDURE objFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
   BEGIN WriteWord(R, obj.usedat); Files.WriteByte(R, -obj.lev); (*module number*)
@@ -1430,8 +1429,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END ;
       obj := obj.next
     END ;
-    WriteFixup(R, procFixupCond, procFixupAction); (*procedures fixup data*)
-    WriteFixup(R, handlerFixupCond, procFixupAction); (*interrupt handlers fixup data*)
+    WriteFixup(R, procFixupCond, objFixupAction); (*procedures fixup data*)
+    WriteFixup(R, handlerFixupCond, objFixupAction); (*interrupt handlers fixup data*)
     i := 0; WHILE gvdata[i].adr # -1 DO WriteWord(R, gvdata[i].usedat); Files.WriteByte(R, 0); WriteWord(R, gvdata[i].adr); INC(i) END; (*global variables fixup data*)
     WriteFixup(R, varFixupCond, objFixupAction); (*variable fixup data*)
     (*local strings fixup data*)
@@ -1443,7 +1442,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
     WriteFixup(R, constFixupCond, constFixupAction); (*fixup data for references to constants in code*)
     WriteFixup(R, typFixupCond, typFixupAction); (*fixup data for type extension*)
-    WriteWord(R, tdx * WordSize + strx + entry);
+    WriteWord(R, entry);
     Files.Write(R, "O"); Files.Register(F);
     (*write object addresses to source position mapping in .o43 file*)
     B.MakeFileName(name, modid, ".o43"); F := Files.New(name); Files.Set(R, F, 0); WriteWord(R, mcode.pc DIV 2); sx := 1;

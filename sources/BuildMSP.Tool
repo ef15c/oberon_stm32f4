@@ -30,7 +30,8 @@ OMSPP.Compile msp430g2xx3P101.Mod msp430g2xx3P102.Mod msp430g2xx3P103.Mod msp430
 
 OMSPP.Compile msp430g2xx3ta01.Mod msp430g2xx3ta02.Mod msp430g2xx3ta03.Mod msp430g2xx3ta04.Mod msp430g2xx3ta05.Mod msp430g2xx3ta06.Mod
  msp430g2xx3ta07.Mod msp430g2xx3ta08.Mod msp430g2xx3ta10.Mod msp430g2xx3ta11.Mod msp430g2xx3ta13.Mod msp430g2xx3ta14.Mod
- msp430g2xx3ta16.Mod msp430g2xx3ta17.Mod msp430g2xx3ta19.Mod msp430g2xx3ta20.Mod  msp430g2xx3ta21.Mod ~
+ msp430g2xx3ta16.Mod msp430g2xx3ta17.Mod msp430g2xx3ta19.Mod msp430g2xx3ta20.Mod  msp430g2xx3ta21.Mod msp430g2xx3tauart2400.Mod
+msp430g2xx3tauart9600.Mod ~
 
 Link
 OMSPL.Link 32 4000H 200H msp430g2x13ca01 ~ OMSPL.Link 32 4000H 200H msp430g2x13ca02 ~
@@ -56,4 +57,5 @@ OMSPL.Link 32 4000H 200H msp430g2xx3ta04 ~ OMSPL.Link 32 4000H 200H msp430g2xx3t
 OMSPL.Link 32 4000H 200H msp430g2xx3ta07 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta08 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta10 ~
 OMSPL.Link 32 4000H 200H msp430g2xx3ta11 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta13 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta14 ~
 OMSPL.Link 32 4000H 200H msp430g2xx3ta16 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta17 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta19 ~
-OMSPL.Link 32 4000H 200H msp430g2xx3ta20 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta21 ~
+OMSPL.Link 32 4000H 200H msp430g2xx3ta20 ~ OMSPL.Link 32 4000H 200H msp430g2xx3ta21 ~ OMSPL.Link 32 4000H 200H msp430g2xx3tauart2400 ~
+OMSPL.Link 32 4000H 200H msp430g2xx3tauart9600 ~
