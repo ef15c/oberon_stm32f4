@@ -475,27 +475,169 @@ TA1CCR2*            = SYSTEM.VAL(PINTEGER, 0196H); (* Timer1_A3 Capture/Compare 
 (************************************************************
 * USCI
 ************************************************************)
-UCA0CTL0*           = SYSTEM.VAL(PBYTESET, 0060H);
-UCA0CTL1*           = SYSTEM.VAL(PBYTESET, 0061H);
-UCA0BR0*            = SYSTEM.VAL(PBYTESET, 0062H);
-UCA0BR1*            = SYSTEM.VAL(PBYTESET, 0063H);
+UCA0CTL0*           = SYSTEM.VAL(PBYTESET, 0060H); (* USCI A0 Control Register 0 *)
+(* UART-Mode Bits *)
+UCPEN*              = {7}; (* Async. Mode: Parity enable *)
+UCPAR*              = {6}; (* Async. Mode: Parity     0:odd / 1:even *)
+UCMSB*              = {5}; (* Async. Mode: MSB first  0:LSB / 1:MSB *)
+UC7BIT*             = {4}; (* Async. Mode: Data Bits  0:8-bits / 1:7-bits *)
+UCSPB*              = {3}; (* Async. Mode: Stop Bits  0:one / 1: two *)
+UCMODE1*            = {2}; (* Async. Mode: USCI Mode 1 *)
+UCMODE0*            = {1}; (* Async. Mode: USCI Mode 0 *)
+UCSYNC *            = {0}; (* Sync-Mode  0:UART-Mode / 1:SPI-Mode *)
+(* SPI-Mode Bits *)
+UCCKPH*             = {7}; (* Sync. Mode: Clock Phase *)
+UCCKPL*             = {6}; (* Sync. Mode: Clock Polarity *)
+UCMST*              = {3}; (* Sync. Mode: Master Select *)
+
+UCMODE_0*           = {};              (* Sync. Mode: USCI Mode: 0 *)
+UCMODE_1*           = UCMODE0;         (* Sync. Mode: USCI Mode: 1 *)
+UCMODE_2*           = UCMODE1;         (* Sync. Mode: USCI Mode: 2 *)
+UCMODE_3*           = UCMODE0+UCMODE1; (* Sync. Mode: USCI Mode: 3 *)
+
+UCA0CTL1*           = SYSTEM.VAL(PBYTESET, 0061H); 
+(* UART-Mode Bits *)
+UCSSEL1*            = {7}; (* USCI 0 Clock Source Select 1 *)
+UCSSEL0*            = {6}; (* USCI 0 Clock Source Select 0 *)
+UCRXEIE*            = {5}; (* RX Error interrupt enable *)
+UCBRKIE*            = {4}; (* Break interrupt enable *)
+UCDORM*             = {3}; (* Dormant (Sleep) Mode *)
+UCTXADDR*           = {2}; (* Send next Data as Address *)
+UCTXBRK*            = {1}; (* Send next Data as Break *)
+UCSWRST*            = {0}; (* USCI Software Reset *)
+
+(* SPI-Mode Bits *)
+(*res                 {1..5} reserved *)
+
+UCSSEL_0*           = {};              (* USCI 0 Clock Source: 0 *)
+UCSSEL_1*           = UCSSEL0;         (* USCI 0 Clock Source: 1 *)
+UCSSEL_2*           = UCSSEL1;         (* USCI 0 Clock Source: 2 *)
+UCSSEL_3*           = UCSSEL0+UCSSEL1; (* USCI 0 Clock Source: 3 *)
+
+UCA0BR0*            = SYSTEM.VAL(PBYTE, 0062H);
+UCA0BR1*            = SYSTEM.VAL(PBYTE, 0063H);
 UCA0MCTL*           = SYSTEM.VAL(PBYTESET, 0064H);
+UCBRF3*             = {7}; (* USCI First Stage Modulation Select 3 *)
+UCBRF2*             = {6}; (* USCI First Stage Modulation Select 2 *)
+UCBRF1*             = {5}; (* USCI First Stage Modulation Select 1 *)
+UCBRF0*             = {4}; (* USCI First Stage Modulation Select 0 *)
+UCBRS2*             = {3}; (* USCI Second Stage Modulation Select 2 *)
+UCBRS1*             = {2}; (* USCI Second Stage Modulation Select 1 *)
+UCBRS0*             = {1}; (* USCI Second Stage Modulation Select 0 *)
+UCOS16*             = {0}; (* USCI 16-times Oversampling enable *)
+
+UCBRF_0*            = {};                          (* USCI First Stage Modulation: 0 *)
+UCBRF_1*            = UCBRF0;                      (* USCI First Stage Modulation: 1 *)
+UCBRF_2*            = UCBRF1;                      (* USCI First Stage Modulation: 2 *)
+UCBRF_3*            = UCBRF0+UCBRF1;               (* USCI First Stage Modulation: 3 *)
+UCBRF_4*            = UCBRF2;                      (* USCI First Stage Modulation: 4 *)
+UCBRF_5*            = UCBRF0+UCBRF2;               (* USCI First Stage Modulation: 5 *)
+UCBRF_6*            = UCBRF1+UCBRF2;               (* USCI First Stage Modulation: 6 *)
+UCBRF_7*            = UCBRF0+UCBRF1+UCBRF2;        (* USCI First Stage Modulation: 7 *)
+UCBRF_8*            = UCBRF3;                      (* USCI First Stage Modulation: 8 *)
+UCBRF_9*            = UCBRF0+UCBRF3;               (* USCI First Stage Modulation: 9 *)
+UCBRF_10*           = UCBRF1+UCBRF3;               (* USCI First Stage Modulation: A *)
+UCBRF_11*           = UCBRF0+UCBRF1+UCBRF3;        (* USCI First Stage Modulation: B *)
+UCBRF_12*           = UCBRF2+UCBRF3;               (* USCI First Stage Modulation: C *)
+UCBRF_13*           = UCBRF0+UCBRF2+UCBRF3;        (* USCI First Stage Modulation: D *)
+UCBRF_14*           = UCBRF1+UCBRF2+UCBRF3;        (* USCI First Stage Modulation: E *)
+UCBRF_15*           = UCBRF0+UCBRF1+UCBRF2+UCBRF3; (* USCI First Stage Modulation: F *)
+
+UCBRS_0*            = {};                   (* USCI Second Stage Modulation: 0 *)
+UCBRS_1*            = UCBRS0;               (* USCI Second Stage Modulation: 1 *)
+UCBRS_2*            = UCBRS1;               (* USCI Second Stage Modulation: 2 *)
+UCBRS_3*            = UCBRS0+UCBRS1;        (* USCI Second Stage Modulation: 3 *)
+UCBRS_4*            = UCBRS2;               (* USCI Second Stage Modulation: 4 *)
+UCBRS_5*            = UCBRS0+UCBRS2;        (* USCI Second Stage Modulation: 5 *)
+UCBRS_6*            = UCBRS1+UCBRS2;        (* USCI Second Stage Modulation: 6 *)
+UCBRS_7*            = UCBRS0+UCBRS1+UCBRS2; (* USCI Second Stage Modulation: 7 *)
+
 UCA0STAT*           = SYSTEM.VAL(PBYTESET, 0065H);
-UCA0RXBUF*          = SYSTEM.VAL(PBYTESET, 0066H);
-UCA0TXBUF*          = SYSTEM.VAL(PBYTESET, 0067H);
+(* UART-Mode Bits *)
+UCLISTEN*           = {7}; (* USCI Listen mode *)
+UCFE*               = {6}; (* USCI Frame Error Flag *)
+UCOE*               = {5}; (* USCI Overrun Error Flag *)
+UCPE*               = {4}; (* USCI Parity Error Flag *)
+UCBRK*              = {3}; (* USCI Break received *)
+UCRXERR*            = {2}; (* USCI RX Error Flag *)
+UCADDR *            = {1}; (* USCI Address received Flag *)
+UCBUSY *            = {0}; (* USCI Busy Flag *)
+
+UCIDLE *            = {1}; (* USCI Idle line detected Flag *)
+
+UCA0RXBUF*          = SYSTEM.VAL(PBYTE, 0066H);
+UCA0TXBUF*          = SYSTEM.VAL(PBYTE, 0067H);
 UCA0ABCTL*          = SYSTEM.VAL(PBYTESET, 005DH);
+(*res               {6..7} reserved *)
+UCDELIM1*           = {5}; (* Break Sync Delimiter 1 *)
+UCDELIM0*           = {4}; (* Break Sync Delimiter 0 *)
+UCSTOE *            = {3}; (* Sync-Field Timeout error *)
+UCBTOE *            = {2}; (* Break Timeout error *)
+(*res               {1} reserved *)
+UCABDEN*            = {0}; (* Auto Baud Rate detect enable *)
+
 UCA0IRTCTL*         = SYSTEM.VAL(PBYTESET, 005EH);
+UCIRTXPL5*          = {7}; (* IRDA Transmit Pulse Length 5 *)
+UCIRTXPL4*          = {6}; (* IRDA Transmit Pulse Length 4 *)
+UCIRTXPL3*          = {5}; (* IRDA Transmit Pulse Length 3 *)
+UCIRTXPL2*          = {4}; (* IRDA Transmit Pulse Length 2 *)
+UCIRTXPL1*          = {3}; (* IRDA Transmit Pulse Length 1 *)
+UCIRTXPL0*          = {2}; (* IRDA Transmit Pulse Length 0 *)
+UCIRTXCLK*          = {1}; (* IRDA Transmit Pulse Clock Select *)
+UCIREN*             = {0}; (* IRDA Encoder/Decoder enable *)
+
 UCA0IRRCTL*         = SYSTEM.VAL(PBYTESET, 005FH);
+UCIRRXFL5*          = {7}; (* IRDA Receive Filter Length 5 *)
+UCIRRXFL4*          = {6}; (* IRDA Receive Filter Length 4 *)
+UCIRRXFL3*          = {5}; (* IRDA Receive Filter Length 3 *)
+UCIRRXFL2*          = {4}; (* IRDA Receive Filter Length 2 *)
+UCIRRXFL1*          = {3}; (* IRDA Receive Filter Length 1 *)
+UCIRRXFL0*          = {2}; (* IRDA Receive Filter Length 0 *)
+UCIRRXPL*           = {1}; (* IRDA Receive Input Polarity *)
+UCIRRXFE*           = {0}; (* IRDA Receive Filter enable *)
+
 UCB0CTL0*           = SYSTEM.VAL(PBYTESET, 0068H);
+(* I2C-Mode Bits *)
+UCA10*              = {7}; (* 10-bit Address Mode *)
+UCSLA10*            = {6}; (* 10-bit Slave Address Mode *)
+UCMM*               = {5}; (* Multi-Master Environment *)
+(*res                 {4}  reserved *)
+
 UCB0CTL1*           = SYSTEM.VAL(PBYTESET, 0069H);
-UCB0BR0*            = SYSTEM.VAL(PBYTESET, 006AH);
-UCB0BR1*            = SYSTEM.VAL(PBYTESET, 006BH);
+(* I2C-Mode Bits *)
+(*res                 {5}  reserved *)
+UCTR*               = {4}; (* Transmit/Receive Select/Flag *)
+UCTXNACK*           = {3}; (* Transmit NACK *)
+UCTXSTP*            = {2}; (* Transmit STOP *)
+UCTXSTT*            = {1}; (* Transmit START *)
+
+UCB0BR0*            = SYSTEM.VAL(PBYTE, 006AH);
+UCB0BR1*            = SYSTEM.VAL(PBYTE, 006BH);
 UCB0I2CIE*          = SYSTEM.VAL(PBYTESET, 006CH);
+(*res               {4..7} reserved *)
+UCNACKIE*           = {3}; (* NACK Condition interrupt enable *)
+UCSTPIE*            = {2}; (* STOP Condition interrupt enable *)
+UCSTTIE*            = {1}; (* START Condition interrupt enable *)
+UCALIE *            = {0}; (* Arbitration Lost interrupt enable *)
+
 UCB0STAT*           = SYSTEM.VAL(PBYTESET, 006DH);
-UCB0RXBUF*          = SYSTEM.VAL(PBYTESET, 006EH);
-UCB0TXBUF*          = SYSTEM.VAL(PBYTESET, 006FH);
-UCB0I2COA*          = SYSTEM.VAL(PINTEGER, 0118H);
+(* I2C-Mode Bits *)
+(*res                 {7}  reserved *)
+UCSCLLOW*           = {6}; (* SCL low *)
+UCGC*               = {5}; (* General Call address received Flag *)
+UCBBUSY*            = {4}; (* Bus Busy Flag *)
+UCNACKIFG*          = {3}; (* NAK Condition interrupt Flag *)
+UCSTPIFG*           = {2}; (* STOP Condition interrupt Flag *)
+UCSTTIFG*           = {1}; (* START Condition interrupt Flag *)
+UCALIFG*            = {0}; (* Arbitration Lost interrupt Flag *)
+
+UCB0RXBUF*          = SYSTEM.VAL(PBYTE, 006EH);
+UCB0TXBUF*          = SYSTEM.VAL(PBYTE, 006FH);
+UCB0I2COA*          = SYSTEM.VAL(PSET, 0118H);
+UCGCEN*             = {15}; (* I2C General Call enable *)
+
 UCB0I2CSA*          = SYSTEM.VAL(PINTEGER, 011AH);
+
 (************************************************************
 * WATCHDOG TIMER
 ************************************************************)
@@ -584,7 +726,7 @@ END msp430g2553.
 
 OMSPTool.DecSym msp430g2553.sms
 decode msp430g2553.sms
-msp430g2553 5DB9B2F5  1
+msp430g2553 F10488DC  1
    1 C [^6]       1
    1 Z [^6]       2
    1 N [^6]       4
@@ -932,25 +1074,133 @@ msp430g2553 5DB9B2F5  1
    1 TA1CCR1 [^7]     404
    1 TA1CCR2 [^7]     406
    1 UCA0CTL0 [^18]      96
+   1 UCPEN [^6]     128
+   1 UCPAR [^6]      64
+   1 UCMSB [^6]      32
+   1 UC7BIT [^6]      16
+   1 UCSPB [^6]       8
+   1 UCMODE1 [^6]       4
+   1 UCMODE0 [^6]       2
+   1 UCSYNC [^6]       1
+   1 UCCKPH [^6]     128
+   1 UCCKPL [^6]      64
+   1 UCMST [^6]       8
+   1 UCMODE_0 [^6]       0
+   1 UCMODE_1 [^6]       2
+   1 UCMODE_2 [^6]       4
+   1 UCMODE_3 [^6]       6
    1 UCA0CTL1 [^18]      97
-   1 UCA0BR0 [^18]      98
-   1 UCA0BR1 [^18]      99
+   1 UCSSEL1 [^6]     128
+   1 UCSSEL0 [^6]      64
+   1 UCRXEIE [^6]      32
+   1 UCBRKIE [^6]      16
+   1 UCDORM [^6]       8
+   1 UCTXADDR [^6]       4
+   1 UCTXBRK [^6]       2
+   1 UCSWRST [^6]       1
+   1 UCSSEL_0 [^6]       0
+   1 UCSSEL_1 [^6]      64
+   1 UCSSEL_2 [^6]     128
+   1 UCSSEL_3 [^6]     192
+   1 UCA0BR0 [^14]      98
+   1 UCA0BR1 [^14]      99
    1 UCA0MCTL [^18]     100
+   1 UCBRF3 [^6]     128
+   1 UCBRF2 [^6]      64
+   1 UCBRF1 [^6]      32
+   1 UCBRF0 [^6]      16
+   1 UCBRS2 [^6]       8
+   1 UCBRS1 [^6]       4
+   1 UCBRS0 [^6]       2
+   1 UCOS16 [^6]       1
+   1 UCBRF_0 [^6]       0
+   1 UCBRF_1 [^6]      16
+   1 UCBRF_2 [^6]      32
+   1 UCBRF_3 [^6]      48
+   1 UCBRF_4 [^6]      64
+   1 UCBRF_5 [^6]      80
+   1 UCBRF_6 [^6]      96
+   1 UCBRF_7 [^6]     112
+   1 UCBRF_8 [^6]     128
+   1 UCBRF_9 [^6]     144
+   1 UCBRF_10 [^6]     160
+   1 UCBRF_11 [^6]     176
+   1 UCBRF_12 [^6]     192
+   1 UCBRF_13 [^6]     208
+   1 UCBRF_14 [^6]     224
+   1 UCBRF_15 [^6]     240
+   1 UCBRS_0 [^6]       0
+   1 UCBRS_1 [^6]       2
+   1 UCBRS_2 [^6]       4
+   1 UCBRS_3 [^6]       6
+   1 UCBRS_4 [^6]       8
+   1 UCBRS_5 [^6]      10
+   1 UCBRS_6 [^6]      12
+   1 UCBRS_7 [^6]      14
    1 UCA0STAT [^18]     101
-   1 UCA0RXBUF [^18]     102
-   1 UCA0TXBUF [^18]     103
+   1 UCLISTEN [^6]     128
+   1 UCFE [^6]      64
+   1 UCOE [^6]      32
+   1 UCPE [^6]      16
+   1 UCBRK [^6]       8
+   1 UCRXERR [^6]       4
+   1 UCADDR [^6]       2
+   1 UCBUSY [^6]       1
+   1 UCIDLE [^6]       2
+   1 UCA0RXBUF [^14]     102
+   1 UCA0TXBUF [^14]     103
    1 UCA0ABCTL [^18]      93
+   1 UCDELIM1 [^6]      32
+   1 UCDELIM0 [^6]      16
+   1 UCSTOE [^6]       8
+   1 UCBTOE [^6]       4
+   1 UCABDEN [^6]       1
    1 UCA0IRTCTL [^18]      94
+   1 UCIRTXPL5 [^6]     128
+   1 UCIRTXPL4 [^6]      64
+   1 UCIRTXPL3 [^6]      32
+   1 UCIRTXPL2 [^6]      16
+   1 UCIRTXPL1 [^6]       8
+   1 UCIRTXPL0 [^6]       4
+   1 UCIRTXCLK [^6]       2
+   1 UCIREN [^6]       1
    1 UCA0IRRCTL [^18]      95
+   1 UCIRRXFL5 [^6]     128
+   1 UCIRRXFL4 [^6]      64
+   1 UCIRRXFL3 [^6]      32
+   1 UCIRRXFL2 [^6]      16
+   1 UCIRRXFL1 [^6]       8
+   1 UCIRRXFL0 [^6]       4
+   1 UCIRRXPL [^6]       2
+   1 UCIRRXFE [^6]       1
    1 UCB0CTL0 [^18]     104
+   1 UCA10 [^6]     128
+   1 UCSLA10 [^6]      64
+   1 UCMM [^6]      32
    1 UCB0CTL1 [^18]     105
-   1 UCB0BR0 [^18]     106
-   1 UCB0BR1 [^18]     107
+   1 UCTR [^6]      16
+   1 UCTXNACK [^6]       8
+   1 UCTXSTP [^6]       4
+   1 UCTXSTT [^6]       2
+   1 UCB0BR0 [^14]     106
+   1 UCB0BR1 [^14]     107
    1 UCB0I2CIE [^18]     108
+   1 UCNACKIE [^6]       8
+   1 UCSTPIE [^6]       4
+   1 UCSTTIE [^6]       2
+   1 UCALIE [^6]       1
    1 UCB0STAT [^18]     109
-   1 UCB0RXBUF [^18]     110
-   1 UCB0TXBUF [^18]     111
-   1 UCB0I2COA [^7]     280
+   1 UCSCLLOW [^6]      64
+   1 UCGC [^6]      32
+   1 UCBBUSY [^6]      16
+   1 UCNACKIFG [^6]       8
+   1 UCSTPIFG [^6]       4
+   1 UCSTTIFG [^6]       2
+   1 UCALIFG [^6]       1
+   1 UCB0RXBUF [^14]     110
+   1 UCB0TXBUF [^14]     111
+   1 UCB0I2COA [^17]     280
+   1 UCGCEN [^6]   32768
    1 UCB0I2CSA [^7]     282
    1 WDTCTL [^17]     288
    1 WDTIS0 [^6]       1

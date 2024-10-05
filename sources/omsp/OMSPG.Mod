@@ -1331,13 +1331,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN res
   END typFixupCond;
 
-(*  PROCEDURE procFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
-  BEGIN WriteWord(R, obj.usedat); Files.WriteByte(R, -obj.lev); (*module number*)
-    IF obj.lev = 0 THEN (*local object relative address*) WriteWord(R, obj.val)
-    ELSE (*imported object number*) WriteWord(R, obj.val)
-    END
-  END procFixupAction;*)
-
   PROCEDURE objFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
   BEGIN WriteWord(R, obj.usedat); Files.WriteByte(R, -obj.lev); (*module number*)
     WriteWord(R, obj.val) (*local object relative address or imported object number*)
