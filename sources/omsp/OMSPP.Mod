@@ -946,8 +946,11 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[L] := x.a; INC(L); UNTIL sym # S.comma;
       Check(S.rparen, "no )")
     END; isInt := int;
-    IF sym = S.arrow THEN S.Get(sym); nofusedregs := S.ival; Check(S.int, "missing register limit");
-    ELSE nofusedregs := -1
+    IF sym = S.arrow THEN S.Get(sym);
+      IF sym = S.minus THEN S.Get(sym); nofusedregs := -S.ival
+      ELSE nofusedregs := S.ival
+      END; Check(S.int, "missing register limit");
+    ELSE nofusedregs := 0
     END;
     IF sym = S.ident THEN
       S.CopyId(procid); S.Get(sym); B.NewObj(proc, S.id, B.Const);

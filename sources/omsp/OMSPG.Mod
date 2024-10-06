@@ -1097,10 +1097,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF size >= A.C16 THEN S.Mark("local variables size exeeded") END;
     IF size # 0 THEN t := c0; t.a := size; tsp := sp; PutDO(A.SUB, t, tsp); adjFrmOfs(size) END;
 
-    IF nofusedregs >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
-      IF AllocUp THEN regl := A.CG2 + 1; regh := nofusedregs + regl - 1 ELSE regh :=  15; regl := 16 - nofusedregs END;
-      IF regh >= regl THEN SaveRegs({regl .. regh}); (*save registers before use*) END
+    (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
+    IF nofusedregs >= 0 THEN regh :=  15; regl := 16 - nofusedregs 
+    ELSE regl := A.CG2 + 1; regh := -nofusedregs + regl - 1
     END;
+    IF regh >= regl THEN SaveRegs({regl .. regh}); (*save registers before use*) END;
     VRS := RIU; vframe := frame
   END Enter;
 
@@ -1108,10 +1109,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!, rr!: Item; regl, regh: BYTE;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF form # B.NoTyp THEN resultRegister(rr); x.tmp := TRUE; load(x, rr.reg); free(x) END;
-    IF nofusedregs >= 0 THEN
-      IF AllocUp THEN regl := A.CG2 + 1; regh := nofusedregs + regl - 1 ELSE regh :=  15; regl := 16 - nofusedregs; END;
-      IF regh >= regl THEN RestoreRegs({regl .. regh}); PRU := PRU - {regl .. regh} END
+
+    IF nofusedregs >= 0 THEN regh :=  15; regl := 16 - nofusedregs
+    ELSE regl := A.CG2 + 1; regh := -nofusedregs + regl - 1
     END;
+    IF regh >= regl THEN RestoreRegs({regl .. regh}); PRU := PRU - {regl .. regh} END;
     IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); adjFrmOfs(-size) END;
     IF int THEN A.PutNO(mcode, A.RETI); OfsPTOS(-1, -1, TRUE);
       IF PRU # {} THEN S.Mark("destroyed regs in handler") END
