@@ -995,7 +995,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         isInt := int
       END;
       IF isLeaf THEN G.SetAllocationMode(G.Register) ELSE G.SetAllocationMode(G.Stack) END;
-      IF nofusedregs # -1 THEN G.LimitRegisters(nofusedregs) END;
+      IF int THEN G.LimitRegisters(nofusedregs) END;
       G.Enter(locblksize, int, nofusedregs);
       IF sym = S.begin THEN S.Get(sym); StatSequence END;
       IF sym = S.return THEN

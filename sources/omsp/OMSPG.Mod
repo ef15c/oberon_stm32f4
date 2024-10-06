@@ -163,11 +163,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END nextR;
 
   PROCEDURE LimitRegisters*(nofregs: INTEGER);
-    VAR l: INTEGER;
-  BEGIN l := RB;
-    WHILE (l # RL) & (nofregs > 0) DO nextR(l); DEC(nofregs) END; (*skip preserved registers*)
-    WHILE (l # RL) & ~(l IN RIU) DO INCL(RIU, l); nextR(l) END; (*mark other registers as not available*)
-    IF l # RL THEN S.Mark("register stack overflow") END
+    VAR regl, regh: BYTE;
+  BEGIN IF (nofregs < -12) OR (nofregs > 12) THEN S.Mark("register stack overflow") ; nofregs := 12 END;
+    IF nofregs >= 0 THEN regh :=  15; regl := 16 - nofregs 
+    ELSE regl := A.CG2 + 1; regh := -nofregs + regl - 1
+    END; RIU := {0..16} - {regl..regh} (*mark non saved registers as not available*)
   END LimitRegisters;
 
   PROCEDURE allocR*(r: INTEGER);
