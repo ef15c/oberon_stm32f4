@@ -85,9 +85,9 @@ MODULE msp430g2xx3uscia0spi09;
   (* Test for valid RX and TX character *)
   PROCEDURE* (M.USCIAB0RX_VECTOR) ^-1 USCIA0RX_ISR;
   BEGIN REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (* USCI_A0 TX buffer ready? *)
-    IF M.UCA0RXBUF^ # SLV_Data THEN (* Test for correct character RX'd *)
-      BIS(M.P1OUT^, {0}); (* If incorrect, light LED *)
-    ELSE BIC(M.P1OUT^, {0}); (* If correct, clear LED *)
+    IF M.UCA0RXBUF^ = SLV_Data THEN (* Test for correct character RX'd *)
+      BIS(M.P1OUT^, {0}); (* If correct, light LED *)
+    ELSE BIC(M.P1OUT^, {0}); (* If incorrect, clear LED *)
     END;
 
     INC(MST_Data); (* Increment master value *)
@@ -159,7 +159,7 @@ code   152
  0008	     92D2	CMP.B &0,&102
  000A	     0000
  000C	     0066
- 000E	     2403	JEQ $+8, goes to  0016
+ 000E	     2003	JNE $+8, goes to  0016
  0010	     D3D2	BIS.B #1,&33
  0012	     0021
  0014	     3C02	JMP $+6, goes to  001A
