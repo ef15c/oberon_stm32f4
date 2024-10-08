@@ -53,6 +53,11 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF x.type.form # B.Int THEN S.Mark("not Integer"); x.type := B.intType END
   END CheckInt;
 
+  PROCEDURE CheckString(VAR x: G.Item);
+  BEGIN
+    IF x.type.form # B.String THEN S.Mark("not String"); x.type := B.strType END
+  END CheckString;
+
   PROCEDURE CheckPointerToInt(VAR x: G.Item);
   BEGIN
     IF (x.type.form # B.Pointer) OR ~(x.type.base.form IN {B.Byte, B.Int}) THEN S.Mark("not pointer to int"); x.type := B.ptrIntType END
@@ -134,9 +139,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     WHILE (sym = S.lbrak) OR (sym = S.period) OR (sym = S.arrow)
         OR (sym = S.lparen) & (x.type.form IN {B.Record, B.Pointer}) DO
       IF sym = S.lbrak THEN
-        REPEAT S.Get(sym); expression(y);
-          IF x.type.form = B.Array THEN
-            CheckInt(y); G.Index(x, y); x.type := x.type.base
+        REPEAT S.Get(sym); expression(y); CheckInt(y); 
+          IF x.type.form = B.Array THEN G.Index(x, y); x.type := x.type.base
+          ELSIF x.type.form = B.String THEN G.Index(x, y); x.type := B.charType
           ELSE S.Mark("not an array")
           END
         UNTIL sym # S.comma;
@@ -268,7 +273,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
       ELSIF fct = 6 THEN (*LEN*)
-          IF x.type.form = B.Array THEN G.Len(x) ELSE S.Mark("not an array") END
+          IF x.type.form IN {B.Array, B.String} THEN G.Len(x) ELSE S.Mark("not an array") END
       ELSIF fct = 14 THEN (*BIT*) G.Bit(x, y)
       ELSIF fct = 16 THEN (*VAL*)
         IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; x := y
@@ -380,6 +385,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       op := sym; S.Get(sym);
       IF op = S.or THEN G.Or1(x); CheckBool(x); term(y); CheckBool(y); G.Or2(x, y)
       ELSIF x.type.form = B.Int THEN term(y); CheckInt(y); G.AddOp(op, x, y)
+      ELSIF x.type.form = B.String THEN term(y);
+        IF y.type.form IN {B.String, B.Char} THEN G.StringOp(op, x, y) ELSE S.Mark("not String nor Char") END
       ELSE CheckSet(x); term(y); CheckSet(y); G.SetOp(op, x, y)
       END
     END

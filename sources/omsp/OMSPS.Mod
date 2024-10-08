@@ -13,7 +13,7 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   
   CONST IdLen* = 32;
     NKW = 34;  (*nof keywords*)
-    maxExp = 38; stringBufSize = 256;
+    maxExp = 38; stringBufSize* = 256;
   
     (*lexical symbols*)
     null = 0; times* = 1; rdiv* = 2; div* = 3; mod* = 4;

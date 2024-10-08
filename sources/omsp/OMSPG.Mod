@@ -164,7 +164,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE LimitRegisters*(nofregs: INTEGER);
     VAR regl, regh: BYTE;
-  BEGIN IF (nofregs < -12) OR (nofregs > 12) THEN S.Mark("register stack overflow") ; nofregs := 12 END;
+  BEGIN IF (nofregs < -12) OR (nofregs > 12) THEN S.Mark("register stack overflow"); nofregs := 12 END;
     IF nofregs >= 0 THEN regh :=  15; regl := 16 - nofregs 
     ELSE regl := A.CG2 + 1; regh := -nofregs + regl - 1
     END; RIU := {0..16} - {regl..regh} (*mark non saved registers as not available*)
@@ -465,31 +465,49 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN adr
   END GetStringAddress;
 
-  PROCEDURE stringFound(VAR usedat: INTEGER): BOOLEAN; (*if the string exists in table, return TRUE with the position in parameter pos*)
+  PROCEDURE stringFound(str: ARRAY OF CHAR; VAR usedat: INTEGER): BOOLEAN;
+   (*if the string exists in table, return TRUE with the position in parameter pos*)
     VAR found: BOOLEAN; i, pos: INTEGER;
   BEGIN found := FALSE;
     pos := 0; usedat := maxStrx;
     WHILE ~found & (pos < strx) DO DEC(usedat, WordSize);
-      i := 0; WHILE (S.str[i] # 0X) & (S.str[i] = strdata[pos + i]) DO INC(i) END;
-      IF S.str[i] = strdata[pos + i] THEN found := TRUE ELSE WHILE strdata[pos + i] # 0X DO INC(i) END END;
+      i := 0; WHILE (str[i] # 0X) & (str[i] = strdata[pos + i]) DO INC(i) END;
+      IF str[i] = strdata[pos + i] THEN found := TRUE ELSE WHILE strdata[pos + i] # 0X DO INC(i) END END;
       INC(pos, i + 1); WHILE pos MOD WordSize # 0 DO INC(pos) END
     END
 
     RETURN found
   END stringFound;
 
-  PROCEDURE MakeStringItem*(VAR x: Item); (*copies string from OMSPS-buffer to OMSPG-string array*)
-    VAR i, len: LONGINT;
-  BEGIN len := S.slen; x.mode := B.Const; x.type := B.strType; x.b := len; x.c := 0 (*global string*); x.rdo := TRUE;
+  PROCEDURE stringPut(VAR x: Item; str: ARRAY OF CHAR; len: INTEGER);
+    VAR i: INTEGER;
+  BEGIN x.mode := B.Const; x.type := B.strType; x.b := len; x.c := 0 (*global string*); x.rdo := TRUE;
     x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
-    IF ~stringFound(x.a) THEN
+    IF ~stringFound(str, x.a) THEN
       IF strx + len  + WordSize < mstrx THEN
         FOR i := 1 TO WordSize DO DEC(mstrx); strdata[mstrx] := 0X END; (*reserve room for usage tracking data*); x.a := mstrx;
-        i := 0; WHILE len > 0 DO strdata[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END;
+        i := 0; WHILE len > 0 DO strdata[strx] := str[i]; INC(strx); INC(i); DEC(len) END;
         WHILE strx MOD WordSize # 0 DO strdata[strx] := 0X; INC(strx) END; INC(nofstrs)
       ELSE S.Mark("too many strings")
       END
     END
+  END stringPut;
+
+  PROCEDURE stringPop(x: Item; VAR xs: ARRAY OF CHAR);
+    VAR sx, sxno, i: INTEGER;
+  BEGIN sxno := (maxStrx - x.a) DIV WordSize - 1; sx := 0;
+    WHILE sxno > 0 DO
+      WHILE strdata[sx] # 0X DO INC(sx) END; REPEAT INC(sx) UNTIL sx MOD WordSize = 0; (*skip current string*)
+      DEC(sxno)
+    END;
+    IF (x.a = mstrx) & (ORD(strdata[mstrx]) + ORD(strdata[mstrx + 1])*100H = 0) THEN (*string can be removed from table*)
+      strx := sx; INC(mstrx, 2)
+    END;
+    i := 0; DEC(sx); REPEAT INC(sx); xs[i] := strdata[sx]; INC(i) UNTIL strdata[sx] = 0X (*copy string in dest*)
+  END stringPop;
+
+  PROCEDURE MakeStringItem*(VAR x: Item); (*copies string from OMSPS-buffer to OMSPG-string array*)
+  BEGIN stringPut(x, S.str, S.slen)
   END MakeStringItem;
 
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: LONGINT);
@@ -523,18 +541,18 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
     VAR s, lim: LONGINT; t!, sva!: Item;
   BEGIN sva := x; sva.ofs := A.C16;
-    s := x.type.base.size;
+    IF x.type.form = B.String THEN s := 1; lim := x.b
+    ELSE s := x.type.base.size; lim := x.type.len END;
     IF s = 0 THEN S.Mark("Invalid array item size")
     ELSE
-      lim := x.type.len;
       IF (y.mode = B.Const) & ((traps[1] = NIL) OR (lim >= 0)) THEN
         IF (y.a < 0) OR (lim >= 0) & (y.a >= lim) THEN S.Mark("bad index") END ;
-        IF (x.mode # B.Var) OR (x.c >= 0) OR (y.a = 0) THEN
+        IF (x.type.form # B.String) & ((x.mode # B.Var) OR (x.c >= 0) OR (y.a = 0)) THEN
           IF x.mode IN {B.Var, RegI} THEN INC(x.a, y.a * s)
           ELSIF x.mode = B.Par THEN x.b := y.a * s + x.b
           END
-        ELSE x.am := A.Immediate; x.ofs := A.C16; x.reg := 0; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, x, rh, A.Word);
-          x.reg := rh.reg; x.mode := RegI; x.a := y.a * s; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
+        ELSE loadAdr(x, 0FFH) (*x.am := A.Immediate; x.ofs := A.C16; x.reg := 0; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, x, rh, A.Word);
+          x.reg := rh.reg; x.mode := RegI; x.a := y.a * s; x.am := A.Register; x.ofs := 0; x.tmp := TRUE *)
         END
       ELSE
         IF traps[1] # NIL THEN  (*check array bounds*)
@@ -548,10 +566,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           Trap(A.C, 1) (*MSP430 inverts the carry with SUB and CMP instructions*)
         END;
         IF s # 1 THEN t.mode := B.Const; t.type := B.intType; t.a := s; PutDO(A.MUL, t, y) END;
-        IF x.mode = B.Var THEN load(y, 0FFH);
+        IF (x.mode = B.Var) OR (x.type.form = B.String) THEN load(y, 0FFH);
           IF x.c > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
-          ELSE sva.am := A.Immediate; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
-            A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0; freeR(rh.reg)
+          ELSE Adr(x); PutDO(A.ADD, x, y); x.a := 0
+            (*sva.am := A.Immediate; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
+            A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0; freeR(rh.reg)*)
           END;
           free(x); x.reg := y.reg; x.mode := RegI; x.tmp := TRUE
         ELSIF x.mode = B.Par THEN load(y, 0FFH); t.mode := B.Var; 
@@ -811,6 +830,19 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Rra*(VAR x, y: Item); (* x := RRA(x, y)*)
   BEGIN shift(A.RRA, x, y)
   END Rra;
+
+  (* Code generation for sring operators *)
+  PROCEDURE StringOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
+    VAR xs, ys: ARRAY S.stringBufSize OF CHAR; ix, iy: INTEGER;
+  BEGIN
+    IF (x.mode = B.Const) & (y.mode = B.Const) THEN
+      IF y.type.form = B.String THEN stringPop(y, ys) ELSE ys[0] := CHR(y.a); ys[1] := 0X END; stringPop(x, xs);
+      ix := 0; WHILE xs[ix] # 0X DO INC(ix) END;
+      iy := -1; REPEAT INC(iy); xs[ix] := ys[iy]; INC(ix) UNTIL ys[iy] = 0X; (* xs = xs + ys *)
+      stringPut(x, xs, ix)
+    ELSE S.Mark("const expected")
+    END
+  END StringOp;   
 
   (* Code generation for set operators *)
 
@@ -1212,8 +1244,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Len*(VAR x: Item);
   BEGIN
-    IF x.type.len >= 0 THEN
-      free(x); x.mode := B.Const; x.a := x.type.len; x.type := B.intType
+    IF x.type.form = B.String THEN free(x); x.mode := B.Const; x.a := x.b; x.type := B.intType
+    ELSIF x.type.len >= 0 THEN free(x); x.mode := B.Const; x.a := x.type.len; x.type := B.intType
     ELSE (*open array*)
       IF x.mode IN {B.Var, B.Par} THEN x.mode := B.Var; INC(x.a, WordSize)
       ELSIF x.mode IN {Reg, RegI} THEN x.mode := Reg; INC(x.reg)
