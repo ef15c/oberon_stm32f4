@@ -539,8 +539,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Field;
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
-    VAR s, lim: LONGINT; t!, sva!: Item;
-  BEGIN sva := x; sva.ofs := A.C16;
+    VAR s, lim: LONGINT; t!: Item; typ!: B.Type;
+  BEGIN
     IF x.type.form = B.String THEN s := 1; lim := x.b
     ELSE s := x.type.base.size; lim := x.type.len END;
     IF s = 0 THEN S.Mark("Invalid array item size")
@@ -566,13 +566,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           Trap(A.C, 1) (*MSP430 inverts the carry with SUB and CMP instructions*)
         END;
         IF s # 1 THEN t.mode := B.Const; t.type := B.intType; t.a := s; PutDO(A.MUL, t, y) END;
-        IF (x.mode = B.Var) OR (x.type.form = B.String) THEN load(y, 0FFH);
+        IF (x.mode = B.Var) OR (x.type.form = B.String) THEN load(y, 0FFH); y.type := B.intType; typ := x.type;
           IF x.c > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
           ELSE Adr(x); PutDO(A.ADD, x, y); x.a := 0
-            (*sva.am := A.Immediate; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sva, rh, A.Word); 
-            A.PutDO(mcode, A.ADD, rh, y, A.Word); x.a := 0; freeR(rh.reg)*)
           END;
-          free(x); x.reg := y.reg; x.mode := RegI; x.tmp := TRUE
+          free(x); x.reg := y.reg; x.mode := RegI; x.tmp := TRUE; x.type := typ
         ELSIF x.mode = B.Par THEN load(y, 0FFH); t.mode := B.Var; 
           t.c := x.c; t.a := x.a; t.tmp := FALSE; t.obj := x.obj; t.type := B.intType; PutDO(A.ADD, t, y); free(t);
           free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.tmp := TRUE
