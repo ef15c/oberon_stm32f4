@@ -1260,6 +1260,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN A.PutDO(mcode, A.MOV, c0, cg2, A.Word)
   END Nop;
 
+  PROCEDURE Swpb*(VAR x:Item);
+  BEGIN PutSO(A.SWPB, x)
+  END Swpb;
+
   PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item); (*x := x op y*)
     VAR op: LONGINT;
   BEGIN IF (x.mode = B.Const) & (y.mode = B.Const) THEN

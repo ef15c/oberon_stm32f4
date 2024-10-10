@@ -474,6 +474,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF x.type.form IN {B.Int, B.Set} THEN G.Rotate(pno-18, x) ELSE S.Mark("bad type") END
       ELSIF pno IN {21, 22} THEN 
         IF isInt THEN G.LogicalSROnExit(pno-21, x) ELSE S.Mark("not allowed here") END
+      ELSIF pno = 23 THEN CheckInt(x); G.Swpb(x)
       ELSE ASSERT(FALSE)
       END
     ELSE S.Mark("wrong nof parameters")
