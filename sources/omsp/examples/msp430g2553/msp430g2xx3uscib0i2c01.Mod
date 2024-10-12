@@ -43,12 +43,12 @@
  *
  * --/COPYRIGHT--*/
 //******************************************************************************
-//  MSP430G2xx3 Demo - USCI_B0 I2C Master to TMP100, Set P1.0 if Temp > 28C
+//  MSP430G2xx3 Demo - USCI_B0 I2C Master to TMP100, Set P1.0 if Temp > 27C
 //
 //  Description: I2C interface to TMP100 temperature sensor in 9-bit mode.
 //  Timer_A CCR0 interrupt is used to wake up and read the two bytes of
 //  the TMP100 temperature register every 62ms. If the temperature is greater
-//  than 28C, P1.0 is set, else reset. CPU is operated in LPM0. I2C speed
+//  than 27C, P1.0 is set, else reset. CPU is operated in LPM0. I2C speed
 //  is ~100kHz.
 //  ACLK = n/a, MCLK = SMCLK = TACLK = BRCLK = default DCO = ~1.2MHz
 //
@@ -108,7 +108,7 @@ BEGIN
     SYSTEM.BIS_SR(M.CPUOFF + M.GIE); (* Enter LPM0, enable interrupts *)
     (* Remain in LPM0 until all data is RX'd *)
 
-    IF RxWord < 1D00H THEN (* >28°C? *)
+    IF RxWord < 1B00H THEN (* >27C? *)
      BIC( M.P1OUT^, {0}) (* No, P1.0 = 0 *)
     ELSE BIS(M.P1OUT^, {0}) (* Yes, P1.0 = 1 *)
     END;
@@ -219,8 +219,8 @@ code   182
  0088	     0069
  008A	     D032	BIS #24,SR
  008C	     0018
- 008E	     90B2	CMP #7424,&50
- 0090	     1D00
+ 008E	     90B2	CMP #6912,&50
+ 0090	     1B00
  0092	     0032
  0094	     3403	JGE $+8, goes to  009C
  0096	     C3D2	BIC.B #1,&33
