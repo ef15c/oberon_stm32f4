@@ -174,8 +174,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
             freeR(t.reg)
           END
         END
-      ELSE (*todo multiplication*) ASSERT(FALSE)
       END
+    ELSIF op IN {DIv, MOd} THEN S.Mark("not implemented")
     ELSE ASSERT(op < 10H);
       encSrc(op, ts.reg, ts.am, ts.ofs, emitSOff, params);
 
