@@ -74,23 +74,38 @@ MODULE msp430g2xx3uscib0i2c06;
 
   VAR TXData, TXByteCtr: BYTE;
 
+  (* for USCI29 silicon erratum *)
+  PROCEDURE* (M.TRAPINT_VECTOR) ^ 0 TRAPINT_ISR;
+  END TRAPINT_ISR;
+
+  PROCEDURE* (M.USCIAB0RX_VECTOR) ^0 I2C_STATE_ISR;
+  BEGIN
+    IF BIT(M.UCB0STAT^, M.UCNACKIFG) THEN (* check NAK flag *)
+      BIS(M.UCB0CTL1^, M.UCTXSTP); (* I2C stop transaction *)
+      BIC(M.UCB0STAT^, M.UCNACKIFG); (* clear NAK flag *)
+      SYSTEM.BIC_SR_ON_EXIT(M.CPUOFF)
+    END
+  END I2C_STATE_ISR;
+
   (*------------------------------------------------------------------------------
     The USCIAB0TX_ISR is structured such that it can be used to transmit any
     number of bytes by pre-loading TXByteCtr with the byte count.
     ------------------------------------------------------------------------------*)
   PROCEDURE* (M.USCIAB0TX_VECTOR) ^0 USCIAB0TX_ISR;
-  BEGIN
+  BEGIN BIS(M.P1OUT^, {0});
     IF TXByteCtr # 0 THEN (* Check TX byte counter *)
       M.UCB0TXBUF^ := TXData; (* Load TX buffer *)
       DEC(TXByteCtr); (* Decrement TX byte counter *)
     ELSE BIS(M.UCB0CTL1^, M.UCTXSTP); (* I2C stop condition *)
       BIC(M.IFG2^, M.UCB0TXIFG); (* Clear USCI_B0 TX int flag *)
       SYSTEM.BIC_SR_ON_EXIT(M.CPUOFF) (* Exit LPM0 *)
-    END
+    END;
+    BIC(M.P1OUT^, {0})
   END USCIAB0TX_ISR;
 
 BEGIN
   M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (* Stop WDT *)
+  M.P1DIR^ := {0};
   BIS(M.P1SEL^, {6, 7}); (* Assign I2C pins to USCI_B0 *)
   BIS(M.P1SEL2^, {6, 7}); (* Assign I2C pins to USCI_B0 *)
   BIS(M.UCB0CTL1^, M.UCSWRST); (* Enable SW reset *)
@@ -101,6 +116,7 @@ BEGIN
   M.UCB0I2CSA^ := 48H; (* Slave Address is 048h *)
   BIC(M.UCB0CTL1^, M.UCSWRST); (* Clear SW reset, resume operation *)
   BIS(M.IE2^, M.UCB0TXIE); (* Enable TX interrupt *)
+  BIS(M.UCB0I2CIE^, M.UCNACKIE); (* enable NACK interrupt *)
 
   TXData := 0; (* Holds TX data *)
 

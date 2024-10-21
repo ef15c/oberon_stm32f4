@@ -554,7 +554,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     PG12     ------> LTDC_B4*)
     configureGPIO(GPIOA, maskA_1b, maskA_2b, maskA_4bl, maskA_4bh,
       LSL(AF_MODE, 3*2) + LSL(AF_MODE, 4*2) + LSL(AF_MODE, 6*2) + LSL(AF_MODE, 11*2) + LSL(AF_MODE, 12*2), (*PA3, 4, 6, 11 and 12 in AF_Mode*)
-      LSL(HIGH_SPEED, 3*2) + LSL(LOW_SPEED, 4*2) + LSL(HIGH_SPEED, 6*2) + LSL(HIGH_SPEED, 11*2) + LSL(HIGH_SPEED, 12*2), (*PA3, 6, 11 and 12 in high speed*)
+      LSL(HIGH_SPEED, 3*2) + LSL(HIGH_SPEED, 4*2) + LSL(HIGH_SPEED, 6*2) + LSL(HIGH_SPEED, 11*2) + LSL(HIGH_SPEED, 12*2), (*PA3, 6, 11 and 12 in high speed*)
       {}, (*push-pull*) {}, (*no pullup nor pulldown*)
       LSL(SYSTEM.VAL(SET, 14), 3*4) + LSL(SYSTEM.VAL(SET, 14), 4*4) + LSL(SYSTEM.VAL(SET, 14), 6*4), (*PA3, 4 and 6 in AF14*)
       LSL(SYSTEM.VAL(SET, 14), 11 MOD 8*4) + LSL(SYSTEM.VAL(SET, 14), 12 MOD 8*4)); (*PA 11 and 12 in AF14*)
