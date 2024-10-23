@@ -274,7 +274,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
       ELSIF fct = 6 THEN (*LEN*)
           IF x.type.form IN {B.Array, B.String} THEN G.Len(x) ELSE S.Mark("not an array") END
-      ELSIF fct = 14 THEN (*BIT*) G.Bit(x, y)
+      ELSIF fct = 14 THEN (*BIT*)
+        IF (x.type.form IN {B.Int, B.Set}) & (y.type.form IN {B.Int, B.Set}) THEN G.Bit(x, y) ELSE S.Mark("bad type") END
       ELSIF fct = 16 THEN (*VAL*)
         IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; x := y
         ELSE S.Mark("casting not allowed")
