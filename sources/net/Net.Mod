@@ -318,21 +318,23 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     END
   END SendMsg;
 
-  PROCEDURE GetTime*;
+  PROCEDURE doGetTime*(partner: ARRAY OF CHAR);
     VAR dt, res, retry: INTEGER;
-      S!: Texts.Scanner;
   BEGIN Texts.WriteString(W, "setting time");
-     GetPar1(S);
-    IF S.class = Texts.Name THEN
-      FindPartner(S.s, res);
-      IF res = 0 THEN retry := 20;
-        REPEAT Send(TRQ, 0, dmy); ReceiveHead(T0); DEC(retry) UNTIL head1.valid OR (retry = 0);
-        IF head1.typ = TIM THEN
-          PickQ(dt); Oberon.SetClock(dt); reply(0)
-        END
-      ELSE reply(1)
+    FindPartner(partner, res);
+    IF res = 0 THEN retry := 10;
+      REPEAT Send(TRQ, 0, dmy); ReceiveHead(T0); DEC(retry) UNTIL head1.valid OR (retry = 0);
+      IF head1.typ = TIM THEN
+        PickQ(dt); Oberon.SetClock(dt); reply(0)
       END
+    ELSE reply(1)
     END
+  END doGetTime;
+
+  PROCEDURE GetTime*;
+    VAR S!: Texts.Scanner;
+  BEGIN GetPar1(S);
+    IF S.class = Texts.Name THEN doGetTime(S.s) END
   END GetTime;
 
   PROCEDURE StartServer*;
@@ -360,6 +362,14 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   BEGIN protected := TRUE
   END WProtect;
 
+  PROCEDURE doReset*(channel: BYTE; name: ARRAY OF CHAR);
+  BEGIN
+    SCC.Start(channel, name);
+    Texts.WriteString(W, " Client set as "); Texts.WriteString(W, name);
+    Texts.WriteString(W, " on channel "); Texts.WriteInt(W, channel, 1);
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END doReset;
+
   PROCEDURE Reset*;
     VAR S!: Texts.Scanner;
       end: LONGINT;
@@ -368,10 +378,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     IF S.class = Texts.Int THEN
       channel := S.i; GetPar(S, end);
       IF (Texts.Pos(S) < end) & (S.class = Texts.Name) THEN
-        SCC.Start(channel, S.s);
-        Texts.WriteString(W, " Client set as "); Texts.WriteString(W, S.s);
-        Texts.WriteString(W, " on channel "); Texts.WriteInt(W, channel, 1);
-        Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+        doReset(channel, S.s)
       END
     END
   END Reset;

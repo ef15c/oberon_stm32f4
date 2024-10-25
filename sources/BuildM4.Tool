@@ -11,7 +11,7 @@ OM4L.Load Modules.bin ~
 
 Commands for generation of outer core
 OM4P.Compile PS2.Mod/s InputAzerty.Mod/s Display.Mod/s Viewers.Mod/s Fonts.Mod/s Texts.Mod/s 
-  Oberon.Mod/s MenuViewers.Mod/s TextFrames.Mod/s System.Mod/s Edit.Mod/s ~
+  Oberon.Mod/s MenuViewers.Mod/s TextFrames.Mod/s System.Mod/s Edit.Mod/s OnStartup.Mod ~
 
 Commands for generation of the compiler
 OM4P.Compile TextsEx.Mod/s CRC32.Mod/s FilesEx.Mod/s OM4S.Mod/s OM4B.Mod/s OM4A.Mod/s OM4G.Mod/s OM4P.Mod/s

@@ -460,8 +460,6 @@ BEGIN User[0] := 0X;
 
   ActCnt := 0; CurTask := NewTask(GC, 1000); Install(CurTask);
 
-  Modules.Load("System", Mod); Mod := NIL;
-
   (*Initialize PS/2 devices*)
   installPS2IrqHandlers;
 
@@ -478,6 +476,8 @@ BEGIN User[0] := 0X;
   ps2[1].data_In := BSP.PS2DATA2In; ps2[1].data_Out := BSP.PS2DATA2Out;
   ps2[1].keyboardLED := BSP.LD3Out; ps2[1].mouseLED := BSP.LD4Out;
   PS2.InitDevice(ps2[1]);
+
+  Modules.Load("System", Mod); Modules.Load("OnStartup", Mod); Mod := NIL;
 
   Loop
 END Oberon.
