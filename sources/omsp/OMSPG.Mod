@@ -167,7 +167,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN IF (nofregs < -12) OR (nofregs > 12) THEN S.Mark("register stack overflow"); nofregs := 12 END;
     IF nofregs >= 0 THEN regh :=  15; regl := 16 - nofregs 
     ELSE regl := A.CG2 + 1; regh := -nofregs + regl - 1
-    END; RIU := {0..16} - {regl..regh} (*mark non saved registers as not available*)
+    END; RIU :=  RIU + ({0..15} - {regl..regh}) (*mark non saved registers as not available*)
   END LimitRegisters;
 
   PROCEDURE allocR*(r: INTEGER);

@@ -139,7 +139,7 @@ BEGIN
     NOP; (* For debugger *)
     (* On exiting LPM0 *)
     IF Count = 0 THEN XOR(M.P1OUT^, {1}); (* toggle P1.1 LED for hearbeat *) END; INC(Count);
-    IF  BIT(M.TA0CCTL1, M.COV) (* Check for Capture Overflow *) THEN REPEAT UNTIL FALSE END; (* Loop Forever *)
+    IF  BIT(M.TA0CCTL1^, M.COV) (* Check for Capture Overflow *) THEN REPEAT UNTIL FALSE END; (* Loop Forever *)
     Period := REdge2 - REdge1; (* Calculate Period *)
     ON_Period := FEdge - REdge1; (* On period *)
     (* DutyCycle = ((unsigned long)ON_Period*100/Period); *)
