@@ -63,7 +63,7 @@ MODULE msp430g2xx3uscib0i2csm;
 
     MasterType2 = "F4192B";
     MasterType1 = "" + 8X + 9X;
-    MasterType0 = ($11$);
+    MasterType0 = ($0B$);
 
     IDLE_MODE = 0;
     NACK_MODE = 1;
@@ -320,7 +320,7 @@ type descriptors
 
 data    56
 strings
-F4192B||	|||
+F4192B||	|||
 vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  0000 FFFF FFFF FFFF FFFF FFFF 0000 0000 FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
