@@ -1,9 +1,12 @@
-# oberon_stm32f4
+# Oberon STM32F4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 8 released!</b><br>
+<b>Version 9 released!</b><br>
   
-This is the second release of the MSP430 toolchain. 50 code examples were ported to Oberon. See sources/omsp/examples/msp430g2553.  
-  
+This is the third release of the MSP430 toolchain. 32 examples have been added.  
+
+In addition in this release; it is now easy to launch user actions immediatele after system startup.
+Put your code in the initialization section on the OnStartup module and compile it.
+
 ![OberonMSP430compiler](https://github.com/user-attachments/assets/6926baf1-dc6c-406c-8f0f-f2973136a3e1)
 
 <br>
