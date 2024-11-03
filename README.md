@@ -5,7 +5,7 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 This is the third release of the MSP430 toolchain. 32 examples have been added.  
 
 With this release; it is now easy to launch user actions immediately after system startup.
-Put your code in the initialization section on the OnStartup module and compile it.
+Put your code in the initialization section of the OnStartup module and compile it.
 
 ![OberonMSP430compiler](https://github.com/user-attachments/assets/6926baf1-dc6c-406c-8f0f-f2973136a3e1)
 
