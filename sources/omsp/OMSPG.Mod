@@ -325,7 +325,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF i.mode = Absol THEN  i.am := A.Absolute; i.ofs := i.a
     ELSIF i.mode = B.Const THEN i.ofs := i.a; i.reg := 0;
       i.am := A.Immediate;
-      IF i.type.form = B.Proc THEN i.ofs := A.C16 END;
+      IF (i.type.form = B.Proc) & (i.c <= 0) THEN i.ofs := A.C16 END;
       IF dst THEN S.Mark("not writable"); i.am := A.Absolute END
     ELSIF i.mode = B.Par THEN rh.reg := AllocR(); INCL(nba, rh.reg);
       ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
@@ -391,7 +391,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF x.mode = B.Par THEN x.mode := B.Var;
       IF x.b # 0 THEN t.a := x.b; PutDO(A.ADD, t, x) END
     ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN INC(x.a, A.C16) (*encode string index in constant value*)
-    ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) THEN x.a := A.C16 (*use runtime proc address*)
+    ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) & (x.c <= 0) THEN x.a := A.C16 (*use runtime proc address*)
     ELSIF x.mode = RegI THEN x.mode := Reg;
       IF x.a # 0 THEN t.a := x.a; PutDO(A.ADD, t, x) END
     ELSE S.Mark("not addressable")
@@ -447,11 +447,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
   PROCEDURE MakeTypTagAdr(VAR x: Item; T: B.Type);
-  BEGIN x.mode := B.Const; x.type := B.intType; x.a := A.C16; x.rdo := TRUE; x.obj := T.typobj; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
+  BEGIN x.mode := B.Const; x.type := B.intType; x.a := A.C16; x.c := 0;
+    x.rdo := TRUE; x.obj := T.typobj; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeTypTagAdr;
 
   PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: LONGINT);
-  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
+  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.c := 0;
+    x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
 
   PROCEDURE GetStringAddress(usedat: INTEGER): INTEGER;
@@ -481,8 +483,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE stringPut(VAR x: Item; str: ARRAY OF CHAR; len: INTEGER);
     VAR i: INTEGER;
-  BEGIN x.mode := B.Const; x.type := B.strType; x.b := len; x.c := 0 (*global string*); x.rdo := TRUE;
-    x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
+  BEGIN x.mode := B.Const; x.type := B.strType; x.b := len; x.c := 0 (*global string*);
+    x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF ~stringFound(str, x.a) THEN
       IF strx + len  + WordSize < mstrx THEN
         FOR i := 1 TO WordSize DO DEC(mstrx); strdata[mstrx] := 0X END; (*reserve room for usage tracking data*); x.a := mstrx;
@@ -1300,6 +1302,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Condition*(VAR x: Item);
   BEGIN (*x.mode = Const*) SetCC(x, x.a)
   END Condition;
+
+  PROCEDURE Val*(VAR x: Item; t: B.Type);
+  BEGIN (*if x is integer constant, set x.c to 1 indication that address is known at compile time*)
+    IF (t.form = B.Proc) THEN
+      IF (x.mode = B.Const) & (x.type.form IN {B.Int, B.Pointer}) THEN x.c := 1 ELSE S.Mark("not allowed") END
+    END
+  END Val;
 
   PROCEDURE Open*;
     VAR i: INTEGER;

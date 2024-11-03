@@ -3,7 +3,7 @@ OM4P.Compile OMSPS.Mod/s OMSPB.Mod/s OMSPA.Mod/s OMSPG.Mod/s OMSPP.Mod/s
  OMSPD.Mod/s OMSPTool.Mod/s OMSPL.Mod/s ~
 
 MSP430 specific code
-OMSPP.Compile msp430g2553.Mod/s Traps.Mod/s Arith.Mod/s MultiPrecisionArith.Mod/s ~
+OMSPP.Compile msp430g2553.Mod/s Traps.Mod/s Arith.Mod/s MultiPrecisionArith.Mod/s Types.Mod/s ~
 
 Test programs
 OMSPP.Compile testFunc.Mod testFor.Mod testDeRef.Mod testCond.Mod testAssert.Mod testIntRelat.Mod testIntArith.Mod testInEx.Mod testInc.Mod testIfThen.Mod
@@ -40,9 +40,9 @@ OMSPP.Compile msp430g2xx3uscia0irda01.Mod msp430g2xx3uscia0spi09.Mod msp430g2xx3
 OMSPP.Compile msp430g2xx3uscib0i2c01.Mod msp430g2xx3uscib0i2c02.Mod msp430g2xx3uscib0i2c03.Mod msp430g2xx3uscib0i2c04.Mod
 msp430g2xx3uscib0i2c05.Mod msp430g2xx3uscib0i2c06.Mod msp430g2xx3uscib0i2c07.Mod msp430g2xx3uscib0i2c08.Mod msp430g2xx3uscib0i2c09.Mod
 msp430g2xx3uscib0i2c10.Mod msp430g2xx3uscib0i2c11.Mod msp430g2xx3uscib0i2c12.Mod msp430g2xx3uscib0i2c13.Mod msp430g2xx3uscib0i2csm.Mod
-msp430g2xx3uscib0i2csc.Mod msp430g2xx3usciuarttrcv.Mod ~
+msp430g2xx3uscib0i2css.Mod msp430g2xx3usciuarttrcv.Mod ~
 
-OMSPP.Compile msp430g2xx3wdt01.Mod msp430g2xx3wdt02.Mod ~
+OMSPP.Compile msp430g2xx3wdt01.Mod msp430g2xx3wdt02.Mod msp430g2xx3wdt04.Mod msp430g2xx3wdt05.Mod ~
 
 Link
 OMSPL.Link 32 4000H 200H msp430g2x13ca01 ~ OMSPL.Link 32 4000H 200H msp430g2x13ca02 ~
@@ -86,3 +86,4 @@ OMSPL.Link 32 4000H 200H msp430g2xx3uscib0i2c11 ~ OMSPL.Link 32 4000H 200H msp43
 OMSPL.Link 32 4000H 200H msp430g2xx3uscib0i2c13 ~ OMSPL.Link 32 4000H 200H msp430g2xx3uscib0i2csm ~
 OMSPL.Link 32 4000H 200H msp430g2xx3uscib0i2css ~ OMSPL.Link 32 4000H 200H msp430g2xx3usciuarttrcv ~
 OMSPL.Link 32 4000H 200H msp430g2xx3wdt01 ~ OMSPL.Link 32 4000H 200H msp430g2xx3wdt02 ~
+OMSPL.Link 32 4000H 200H msp430g2xx3wdt04 ~ OMSPL.Link 32 4000H 200H msp430g2xx3wdt05 ~
