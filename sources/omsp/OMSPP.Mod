@@ -726,13 +726,15 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END FPSection;
 
   PROCEDURE InsertResultRegister(VAR type: B.Type);
-    VAR L: INTEGER; loc!: B.Object; x!: G.Item;
+    VAR L, dummy: INTEGER; loc!: B.Object; x!: G.Item; tp!: B.Type;
   BEGIN
     IF type.leaf & (type.base.form # B.NoTyp) THEN (*make room for the returned value*)
       G.SetRIU({}); G.resultRegister(x); L := G.AllocR(); ASSERT(L = x.reg); (*reserve result register*)
         loc := type.dsc; L := 0;
         WHILE (loc # NIL) & (L < type.nofpar) DO (*allocate registers to parameters, avoiding the result register*)
-          IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR() END; (*allocate next free register to param or variable*)
+          IF (loc.class IN {B.Var, B.Par}) & (loc.register # 0FFH) THEN loc.register := G.AllocR(); (*allocate next free register to param or variable*)
+            tp := loc.type; IF (tp.form = B.Array) & (tp.len < 0) OR (tp.form = B.Record) THEN dummy := G.AllocR() END; (*allocate extra register*)
+          END;
           loc := loc.next; INC(L)
         END; G.freeR(x.reg); (*free sesult register*)
         WHILE loc # NIL DO (*allocate registers to local variables, including the result register*)
@@ -868,9 +870,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         B.NewObj(obj, id, B.Const); obj.expo := expo;
         IF x.mode = B.Const THEN
           IF x.type.form = B.String THEN ASSERT(x.a < 10000H); ASSERT(x.b < 10000H); IF obj.expo THEN obj.exno := exno; INC(exno) END;
-            obj.lev := x.c; obj.val := x.a MOD 10000H + x.b*10000H; (*for string constants, encode address and length in obj.val*)
+            obj.val := x.a MOD 10000H + x.b*10000H; (*for string constants, encode address and length in obj.val*)
           ELSE obj.val := x.a
-          END; obj.type := x.type
+          END; obj.type := x.type; obj.lev := x.c
         ELSE S.Mark("expression not constant"); obj.type := B.intType
         END;
         Check(S.semicolon, "; missing")
