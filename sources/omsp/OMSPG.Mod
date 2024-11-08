@@ -198,7 +198,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE freeR*(r: INTEGER);
   BEGIN
-    IF RIU*{r} # {} THEN EXCL(RIU, r)
+    IF r IN RIU THEN EXCL(RIU, r)
     ELSE S.Mark("reg wild free") END
   END freeR;
 
@@ -315,7 +315,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba, bw: SET);
     VAR ti!: Item;
   BEGIN IF (op = A.PUSH) OR (op = A.CALL) THEN dst := FALSE END;
-    IF ~((dst OR (i.type.size = 2) OR (bw = A.Byte))) THEN S.Mark("move byte to int"); ASSERT(FALSE) END;
+    IF ~((dst OR (i.type.size = 2) OR (bw = A.Byte))) THEN S.Mark("move byte to int") END;
     IF i.type.size = 1 THEN bw := A.Byte END;
     IF dst & i.rdo & ((i.mode = B.Const) OR (op # A.CMP) & (op # A.BIT)) THEN load(i, 0FFH)
     ELSIF i.mode = B.Var THEN
@@ -1140,7 +1140,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
     VAR t!, rr!: Item; regl, regh: BYTE;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
-    IF form # B.NoTyp THEN resultRegister(rr); x.tmp := TRUE; load(x, rr.reg); free(x) END;
+    IF form # B.NoTyp THEN resultRegister(rr); x.tmp := TRUE; IF rr.reg IN RIU THEN freeR(rr.reg) END;
+      load(x, rr.reg); IF x.reg IN RIU THEN free(x) END
+    END;
 
     IF nofusedregs >= 0 THEN regh :=  15; regl := 16 - nofusedregs
     ELSE regl := A.CG2 + 1; regh := -nofusedregs + regl - 1
