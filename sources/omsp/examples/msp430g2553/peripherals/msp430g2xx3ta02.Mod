@@ -69,7 +69,7 @@ MODULE msp430g2xx3ta02;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* Timer A0 interrupt service routine *)
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 Timer_A;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) Timer_A;
   BEGIN XOR(M.P1OUT^, {0}) (* Toggle P1.0 *)
   END Timer_A;
 

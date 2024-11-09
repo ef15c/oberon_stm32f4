@@ -76,12 +76,12 @@ MODULE msp430g2xx3uscia0u69600;
 
   VAR i: INTEGER;
 
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^1 USCI0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {15} USCI0TX_ISR;
   BEGIN  M.UCA0TXBUF^ := ORD(string1[i]); INC(i); (* TX next character *)
     IF i = LEN(string1) - 1 THEN (* TX over ? *) BIC(M.IE2^, M.UCA0TXIE) END (* Disable USCI_A0 TX interrupt *)
   END USCI0TX_ISR;
 
-  PROCEDURE* (M.USCIAB0RX_VECTOR) ^1 USCI0RX_ISR;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) {15} USCI0RX_ISR;
   BEGIN
     IF M.UCA0RXBUF^ = ORD("u") THEN (* 'u' received? *)
       i := 0;

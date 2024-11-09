@@ -76,7 +76,7 @@ MODULE msp430g2x33adc1013;
   VAR samples: ARRAY nofSamples OF INTEGER;
 
   (* ADC10 interrupt service routine *)
-  PROCEDURE* (M.ADC10_VECTOR) ^0 ADC10_ISR;
+  PROCEDURE* (M.ADC10_VECTOR) ADC10_ISR;
   BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits); (* Clear LPM3 bits from 0(SP) *)
   END ADC10_ISR;
 

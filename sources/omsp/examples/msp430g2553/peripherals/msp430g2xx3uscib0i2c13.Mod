@@ -83,7 +83,7 @@ MODULE msp430g2xx3uscib0i2c13;
     RX: BOOLEAN;
 
   (* for USCI29 silicon erratum *)
-  PROCEDURE* (M.TRAPINT_VECTOR) ^0 TRAPINT_ISR;
+  PROCEDURE* (M.TRAPINT_VECTOR) TRAPINT_ISR;
   END TRAPINT_ISR;
 
   (*------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ MODULE msp430g2xx3uscib0i2c13;
    I2C master. PTxData points to the next byte to be transmitted, and TXByteCtr
    keeps track of the number of bytes transmitted.
   ------------------------------------------------------------------------------*)
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^1 USCIAB0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {15} USCIAB0TX_ISR;
   BEGIN
     IF ~RX  THEN M.UCB0TXBUF^ := SLV_Data; INC(SLV_Data); (* Transmit data at address PTxData *)
       INC(TXByteCtr) (* Increment TX byte counter *)
@@ -111,7 +111,7 @@ MODULE msp430g2xx3uscib0i2c13;
    only exit in case of a (re-)start or stop condition when actual data
    was transmitted.
   ------------------------------------------------------------------------------*)
-  PROCEDURE* (M.USCIAB0RX_VECTOR) ^0 USCIAB0RX_ISR;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) USCIAB0RX_ISR;
   BEGIN
     IF ~RX & (TXByteCtr # 0)  THEN (* Check TX byte counter *) (*shoudn't it be TXByteCtr = NUM_BYTES-1 according to the comment? *)
       SYSTEM.BIC_SR_ON_EXIT(M.CPUOFF) (* Exit LPM0 if data was transmitted *)

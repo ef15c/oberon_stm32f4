@@ -76,14 +76,14 @@ MODULE msp430g2xx3uscib0i2c09;
     RxBuffer: ARRAY 128 OF BYTE; (* Allocate 128 byte of RAM *)
 
   (* for USCI29 silicon erratum *)
-  PROCEDURE* (M.TRAPINT_VECTOR) ^ 0 TRAPINT_ISR;
+  PROCEDURE* (M.TRAPINT_VECTOR) TRAPINT_ISR;
   END TRAPINT_ISR;
 
   (*------------------------------------------------------------------------------
    The USCI_B0 data ISR is used to move received data from the I2C master
    to the MSP430 memory.
   ------------------------------------------------------------------------------*)
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^1 USCIAB0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {15} USCIAB0TX_ISR;
   BEGIN PRxData^ := M.UCB0RXBUF^; INC(SYSTEM.VAL(INTEGER, PRxData)); (* Move RX data to address PRxData *)
     INC(RXByteCtr); (* Increment RX byte count *)
   END USCIAB0TX_ISR;
@@ -93,7 +93,7 @@ MODULE msp430g2xx3uscib0i2c09;
    process the received data in the main program. LPM0 is only exit in case
    of a (re-)start or stop condition when actual data was received.
   ------------------------------------------------------------------------------*)
-  PROCEDURE* (M.USCIAB0RX_VECTOR) ^0 USCIAB0RX_ISR;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) USCIAB0RX_ISR;
   BEGIN BIC(M.UCB0STAT^, M.UCSTPIFG + M.UCSTTIFG); (* Clear interrupt flags *)
     IF RXByteCtr # 0 THEN (* Check RX byte counter *)
       SYSTEM.BIC_SR_ON_EXIT(M.CPUOFF) (* Exit LPM0 if data was received *)

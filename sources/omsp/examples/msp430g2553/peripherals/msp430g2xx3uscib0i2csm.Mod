@@ -207,14 +207,14 @@ MODULE msp430g2xx3uscib0i2csm;
   END initI2C;
 
   (* for USCI29 silicon erratum *)
-  PROCEDURE* (M.TRAPINT_VECTOR) ^0 TRAPINT_ISR;
+  PROCEDURE* (M.TRAPINT_VECTOR) TRAPINT_ISR;
   END TRAPINT_ISR;
 
   (*******************************************************************************
    I2C Interrupt For Received and Transmitted Data******************************
   ******************************************************************************)
 
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^-2 USCIAB0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {4, 5} USCIAB0TX_ISR;
     VAR rx_val: BYTE*;
   BEGIN
     IF BIT(M.IFG2^, M.UCB0RXIFG) THEN (* Receive Data Interrupt *)
@@ -268,7 +268,7 @@ MODULE msp430g2xx3uscib0i2csm;
    I2C Interrupt For Start, Restart, Nack, Stop ********************************
   ******************************************************************************)
 
-  PROCEDURE* (M.USCIAB0RX_VECTOR) ^0 USCIAB0RX_ISR;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) USCIAB0RX_ISR;
   BEGIN
     IF BIT(M.UCB0STAT^, M.UCNACKIFG) THEN BIC(M.UCB0STAT^, M.UCNACKIFG) (* Clear NACK Flags *) END;
     IF BIT(M.UCB0STAT^, M.UCSTPIFG) THEN (* Stop or NACK Interrupt *)

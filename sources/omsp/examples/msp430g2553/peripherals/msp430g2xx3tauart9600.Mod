@@ -141,7 +141,7 @@ MODULE msp430g2xx3tauart9600;
   (*------------------------------------------------------------------------------
   // Timer_A UART - Transmit Interrupt Handler
   //------------------------------------------------------------------------------*)
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 Timer_A0_ISR;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) Timer_A0_ISR;
   BEGIN INC(M.TA0CCR0^, UART_TBIT); (* Add Offset to CCRx *)
     IF txBitCnt = 0 THEN (* All bits TXed? *)
       BIC(M.TA0CCTL0^, M.CCIE); (* All bits TXed, disable interrupt *)
@@ -158,7 +158,7 @@ MODULE msp430g2xx3tauart9600;
   (*------------------------------------------------------------------------------
   // Timer_A UART - Receive Interrupt Handler
   //------------------------------------------------------------------------------*)
-  PROCEDURE* (M.TIMER0_A1_VECTOR) ^0 Timer_A1_ISR;
+  PROCEDURE* (M.TIMER0_A1_VECTOR) Timer_A1_ISR;
   BEGIN 
     IF M.TA0IV^ = M.TA0IV_TACCR1 THEN (* TACCR1 CCIFG - UART RX *)
       INC(M.TA0CCR1^, UART_TBIT); (* Add Offset to CCRx *)
@@ -228,7 +228,7 @@ OMSPTool.DecObj msp430g2xx3tauart9600.mpc
 decode msp430g2xx3tauart9600.mpc
 msp430g2xx3tauart9600 6251E057 Flash   574
 imports:
-	msp430g2553 5DB9B2F5
+	msp430g2553 F10488DC
 type descriptors
 
 data     6

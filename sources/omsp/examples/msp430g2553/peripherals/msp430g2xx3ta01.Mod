@@ -69,7 +69,7 @@
 MODULE msp430g2xx3ta01;
   IMPORT SYSTEM, M := msp430g2553;
 
-  PROCEDURE*(M.TIMER0_A0_VECTOR) ^0 Timer_A;
+  PROCEDURE*(M.TIMER0_A0_VECTOR) Timer_A;
   BEGIN
     XOR(M.P1OUT^, {0}); (* Toggle P1.0 *)
     INC(M.TA0CCR0^, 50000); (* Add Offset to CCR0 *)
@@ -87,9 +87,9 @@ END msp430g2xx3ta01.
 
 OMSPTool.DecObj msp430g2xx3ta01.mpc
 decode msp430g2xx3ta01.mpc
-msp430g2xx3ta01 DB3C4C7A Flash    46
+msp430g2xx3ta01 D9064DB7 Flash    46
 imports:
-	msp430g2553 8CA01B9B
+	msp430g2553 F10488DC
 type descriptors
 
 data     0
@@ -100,7 +100,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF 0000 FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 000C
+ c 000C
 fixup procedures chains
 fixup handlers chains
  0119     0	 0000

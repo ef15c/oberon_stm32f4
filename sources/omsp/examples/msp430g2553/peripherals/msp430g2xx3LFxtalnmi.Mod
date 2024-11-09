@@ -75,11 +75,11 @@ MODULE msp430g2xx3LFxtalnmi;
 
   VAR i: INTEGER;
 
-  PROCEDURE* (M.WDT_VECTOR) ^0 watchdog_timer;
+  PROCEDURE* (M.WDT_VECTOR) watchdog_timer;
   BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Clear LPM3 bits from 0(SP) *)
   END watchdog_timer;
 
-  PROCEDURE* (M.NMI_VECTOR) ^0 nmi_;
+  PROCEDURE* (M.NMI_VECTOR) nmi_;
   BEGIN
     REPEAT BIC(M.IFG1^, M.OFIFG); (* Clear OSCFault flag *)
       FOR i := 0FFFH TO 1 BY -1 DO END; (* Time for flag to set *)

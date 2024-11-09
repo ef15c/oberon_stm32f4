@@ -70,14 +70,14 @@ MODULE msp430g2x33adc1011;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* ADC10 interrupt service routine *)
-  PROCEDURE* (M.ADC10_VECTOR) ^0 ADC10_ISR;
+  PROCEDURE* (M.ADC10_VECTOR) ADC10_ISR;
   BEGIN
     IF M.ADC10MEM^ < 155H (* ADC10MEM = A1 > 0.5V? *) THEN BIC(M.P1OUT^, {0}) (* Clear P1.0 LED off *)
     ELSE BIS(M.P1OUT^, {0}) (* Set P1.0 LED on *)
     END
   END  ADC10_ISR;
 
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 ta0_isr;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) ta0_isr;
   BEGIN M.TA0CTL^ := {}; SYSTEM.BIC_SR_ON_EXIT(M.LPM0_bits) (* Exit LPM0 on return *)
   END ta0_isr;
 

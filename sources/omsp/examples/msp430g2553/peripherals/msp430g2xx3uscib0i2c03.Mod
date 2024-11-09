@@ -78,7 +78,7 @@ MODULE msp430g2xx3uscib0i2c03;
   VAR ByteCtr: BYTE;
 
   (* USCI_B0 Data ISR *)
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^1 USCIAB0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {15} USCIAB0TX_ISR;
   BEGIN M.UCB0TXBUF^ := SYSTEM.VAL(BYTE, Sine_Tab[ByteCtr]); INC(ByteCtr); (* Transmit data byte *)
     AND(ByteCtr, 1FH) (* Do not exceed table *)
   END USCIAB0TX_ISR;

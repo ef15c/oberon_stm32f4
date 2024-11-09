@@ -162,12 +162,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN IF AllocUp THEN INC(r) ELSE DEC(r) END
   END nextR;
 
-  PROCEDURE LimitRegisters*(nofregs: INTEGER);
-    VAR regl, regh: BYTE;
-  BEGIN IF (nofregs < -12) OR (nofregs > 12) THEN S.Mark("register stack overflow"); nofregs := 12 END;
-    IF nofregs >= 0 THEN regh :=  15; regl := 16 - nofregs 
-    ELSE regl := A.CG2 + 1; regh := -nofregs + regl - 1
-    END; RIU :=  RIU + ({0..15} - {regl..regh}) (*mark non saved registers as not available*)
+  PROCEDURE LimitRegisters*(savedregs: SET);
+  BEGIN IF savedregs * {0..3, 16..31} # {} THEN S.Mark("registers out of range"); savedregs := {4..15} END;
+    RIU :=  RIU + ({0..15} - savedregs) (*mark non saved registers as not available*)
   END LimitRegisters;
 
   PROCEDURE allocR*(r: INTEGER);
@@ -1120,8 +1117,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN A.FixLink(mcode, x.a)
   END Fixup;
 
-  PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
-    VAR t!, tsp!: Item; regl, regh: BYTE;
+  PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; savedregs: SET);
+    VAR t!, tsp!: Item;
   BEGIN
     OfsPTOS(0, 0, FALSE); IF int THEN (*SR copy is on TOS*) OfsPTOS(1, 1, TRUE) END;
     frame := 0;
@@ -1129,25 +1126,18 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF size >= A.C16 THEN S.Mark("local variables size exeeded") END;
     IF size # 0 THEN t := c0; t.a := size; tsp := sp; PutDO(A.SUB, t, tsp); adjFrmOfs(size) END;
 
-    (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
-    IF nofusedregs >= 0 THEN regh :=  15; regl := 16 - nofusedregs 
-    ELSE regl := A.CG2 + 1; regh := -nofusedregs + regl - 1
-    END;
-    IF regh >= regl THEN SaveRegs({regl .. regh}); (*save registers before use*) END;
+    SaveRegs(savedregs); (*save registers before use*)
     VRS := RIU; vframe := frame
   END Enter;
 
-  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; nofusedregs: INTEGER);
-    VAR t!, rr!: Item; regl, regh: BYTE;
+  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; savedregs: SET);
+    VAR t!, rr!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF form # B.NoTyp THEN resultRegister(rr); x.tmp := TRUE; IF rr.reg IN RIU THEN freeR(rr.reg) END;
       load(x, rr.reg); IF x.reg IN RIU THEN free(x) END
     END;
 
-    IF nofusedregs >= 0 THEN regh :=  15; regl := 16 - nofusedregs
-    ELSE regl := A.CG2 + 1; regh := -nofusedregs + regl - 1
-    END;
-    IF regh >= regl THEN RestoreRegs({regl .. regh}); PRU := PRU - {regl .. regh} END;
+    RestoreRegs(savedregs); PRU := PRU - savedregs;
     IF size # 0 THEN t.ofs := size; A.PutDO(mcode, A.ADD, t, sp, A.Word); adjFrmOfs(-size) END;
     IF int THEN A.PutNO(mcode, A.RETI); OfsPTOS(-1, -1, TRUE);
       IF PRU # {} THEN S.Mark("destroyed regs in handler") END

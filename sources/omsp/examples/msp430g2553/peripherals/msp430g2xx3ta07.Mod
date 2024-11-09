@@ -80,12 +80,12 @@ MODULE msp430g2xx3ta07;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* Timer A0 interrupt service routine *)
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 Timer_A0;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) Timer_A0;
   BEGIN INC(M.TA0CCR0^, 200); (* Add Offset to CCR0 *)
   END Timer_A0;
 
   (* Timer_A2 Interrupt Vector (TA0IV) handler *)
-  PROCEDURE* (M.TIMER0_A1_VECTOR) ^1 Timer_A1;
+  PROCEDURE* (M.TIMER0_A1_VECTOR) {4} Timer_A1;
     VAR taiv: INTEGER*;
   BEGIN taiv := M.TA0IV^;
     IF taiv = 2 THEN INC(M.TA0CCR1^, 1000); (* Add Offset to CCR1 *)
@@ -108,7 +108,7 @@ OMSPTool.DecObj msp430g2xx3ta07.mpc
 decode msp430g2xx3ta07.mpc
 msp430g2xx3ta07 7E342066 Flash    82
 imports:
-	msp430g2553 5DB9B2F5
+	msp430g2553 F10488DC
 type descriptors
 
 data     0

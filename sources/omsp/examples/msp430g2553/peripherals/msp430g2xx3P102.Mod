@@ -70,7 +70,7 @@ MODULE msp430g2xx3P102;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* Port 1 interrupt service routine *)
-  PROCEDURE* (M.PORT1_VECTOR) ^0 Port_1;
+  PROCEDURE* (M.PORT1_VECTOR) Port_1;
   BEGIN
     XOR(M.P1OUT^, {0}); (* P1.0 = toggle *)
    BIC( M.P1IFG^, {3}) (* P1.3 IFG cleared *)

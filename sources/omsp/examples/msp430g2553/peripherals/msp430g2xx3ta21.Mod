@@ -87,7 +87,7 @@ MODULE msp430g2xx3ta21;
     Count: BYTE;
 
   (* TA0_A1 Interrupt vector *)
-  PROCEDURE* (M.TIMER0_A1_VECTOR) ^0 TIMER0_A1_ISR;
+  PROCEDURE* (M.TIMER0_A1_VECTOR) TIMER0_A1_ISR;
   BEGIN
     IF M.TA0IV^ = M.TA0IV_TACCR1 THEN (* Vector  2:  TACCR1 CCIFG *)
       IF BIT(M.TA0CCTL1^, M.CCI) (* Capture Input Pin Status *) THEN

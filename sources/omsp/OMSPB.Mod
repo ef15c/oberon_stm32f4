@@ -416,6 +416,7 @@ BEGIN
   enter("ORD", SFunc, intType, 41);
   enter("CHR", SFunc, charType, 51);
   enter("LEN", SFunc, intType, 61);
+  enter("TOSET", SFunc, setType, 71);
   enter("BIT", SFunc, boolType, 142);
   enter("INC", SProc, noType, 1); (*procedures*)
   enter("DEC", SProc, noType, 11);

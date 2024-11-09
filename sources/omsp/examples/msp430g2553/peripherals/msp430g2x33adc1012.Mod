@@ -83,7 +83,7 @@ MODULE msp430g2x33adc1012;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* ADC10 interrupt service routine *)
-  PROCEDURE* (M.ADC10_VECTOR) ^0 ADC10_ISR;
+  PROCEDURE* (M.ADC10_VECTOR)  ADC10_ISR;
   BEGIN
     BIC(M.ADC10CTL0^, M.ENC); (* ADC10 disabled *)
     M.ADC10CTL0^ := {}; (* ADC10, Vref disabled completely *)
@@ -93,7 +93,7 @@ MODULE msp430g2x33adc1012;
   END ADC10_ISR;
 
   (* Timer A0 interrupt service routine *)
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 Timer_A;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) Timer_A;
   BEGIN
     M.ADC10CTL0^ := M.SREF_1 + M.ADC10SHT_2 + M.REFON + M.ADC10ON + M.ADC10IE;
     BIS(M.ADC10CTL0^, M.ENC) (* ADC10 enable set *)

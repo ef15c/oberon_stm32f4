@@ -69,7 +69,7 @@ MODULE msp430g2x13ca01;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* Timer A0 interrupt service routine *)
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 Timer_A;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) {} Timer_A;
   BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM0_bits) (* Clear LPM0 bits from 0(SP) *)
   END Timer_A;
 

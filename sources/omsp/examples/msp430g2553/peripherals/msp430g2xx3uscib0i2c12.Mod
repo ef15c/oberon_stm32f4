@@ -88,7 +88,7 @@ MODULE msp430g2xx3uscib0i2c12;
    to the MSP430 memory. It is structured such that it can be used to receive
    any 2+ number of bytes by pre-loading RXByteCtr with the byte count.
   -------------------------------------------------------------------------------*)
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^1 USCIAB0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {15} USCIAB0TX_ISR;
   BEGIN
     IF RX THEN (* Master Recieve? *)
       DEC(RXByteCtr); (* Decrement RX byte counter *)

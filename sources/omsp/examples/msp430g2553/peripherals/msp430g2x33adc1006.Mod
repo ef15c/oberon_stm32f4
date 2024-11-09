@@ -71,7 +71,7 @@ MODULE msp430g2x33adc1006;
     WHILE (ih # 0) OR (il # 0) DO DEC(il); SBC(ih, 0) END
   END delay;
 
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 ta0_isr;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) ta0_isr;
   BEGIN M.TA0CTL^ := {};
     SYSTEM.BIC_SR_ON_EXIT(M.LPM0_bits) (* Exit LPM0 on return *)
   END ta0_isr;
@@ -104,7 +104,7 @@ OMSPTool.DecObj msp430g2x33adc1006.mpc
 decode msp430g2x33adc1006.mpc
 msp430g2x33adc1006 C00A8C81 Flash   136
 imports:
-	msp430g2553 8250CA0E
+	msp430g2553 F10488DC
 type descriptors
 
 data     0
@@ -115,7 +115,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF 0000 FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0032
+ c 0032
 fixup procedures chains
  0082     0	 0000
 fixup handlers chains
@@ -133,15 +133,15 @@ code   136
  000A	     0000
  000C	     9381	CMP #0,2(SP)
  000E	     0002
- 0010	     2003	JNE #3, goes to  0018
+ 0010	     2003	JNE $+8, goes to  0018
  0012	     9381	CMP #0,0(SP)
  0014	     0000
- 0016	     2405	JEQ #5, goes to  0022
+ 0016	     2405	JEQ $+12, goes to  0022
  0018	     8391	SUB #1,0(SP)
  001A	     0000
  001C	     7381	SUBC #0,2(SP)
  001E	     0002
- 0020	     3FF5	JMP #-11, goes to  000C
+ 0020	     3FF5	JMP $-20, goes to  000C
  0022	     5221	ADD #4,SP
  0024	     4130	RET
  0026	     4382	MOV #0,&352
@@ -191,5 +191,5 @@ code   136
  007E	     01B0
  0080	     12B0	CALL #0
  0082	     0000
- 0084	     3FF5	JMP #-11, goes to  0070
+ 0084	     3FF5	JMP $-20, goes to  0070
  0086	     4130	RET

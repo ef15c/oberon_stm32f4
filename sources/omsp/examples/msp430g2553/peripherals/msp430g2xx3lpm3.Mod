@@ -72,7 +72,7 @@ MODULE msp430g2xx3lpm3;
 
   VAR i: INTEGER;
 
-  PROCEDURE* (M.WDT_VECTOR) ^0 watchdog_timer;
+  PROCEDURE* (M.WDT_VECTOR) watchdog_timer;
   BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Clear LPM3 bits from 0(SP) *)
   END watchdog_timer;
 

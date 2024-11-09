@@ -70,7 +70,7 @@ MODULE msp430g2xx3wdt02;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* Watchdog Timer interrupt service routine *)
-  PROCEDURE* (M.WDT_VECTOR) ^0 watchdog_timer;
+  PROCEDURE* (M.WDT_VECTOR) watchdog_timer;
   BEGIN XOR(M.P1OUT^, {0}); (* Toggle P1.0 using exclusive-OR *)
   END watchdog_timer;
 

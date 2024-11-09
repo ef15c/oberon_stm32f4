@@ -71,7 +71,7 @@ MODULE msp430g2xx3ta06;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* Timer_A3 Interrupt Vector (TA0IV) handler *)
-  PROCEDURE* (M.TIMER0_A1_VECTOR) ^0 Timer_A;
+  PROCEDURE* (M.TIMER0_A1_VECTOR) Timer_A;
   BEGIN (* CCR2, overflow not used *)
     IF M.TA0IV^ = 2 THEN (* CCR1 *) XOR(M.P1OUT^, {0}); (* Toggle P1.0 *)
       INC(M.TA0CCR1^, 50000) (* Add Offset to CCR1 *)

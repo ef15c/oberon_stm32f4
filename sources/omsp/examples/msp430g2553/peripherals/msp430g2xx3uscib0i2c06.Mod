@@ -75,10 +75,10 @@ MODULE msp430g2xx3uscib0i2c06;
   VAR TXData, TXByteCtr: BYTE;
 
   (* for USCI29 silicon erratum *)
-  PROCEDURE* (M.TRAPINT_VECTOR) ^ 0 TRAPINT_ISR;
+  PROCEDURE* (M.TRAPINT_VECTOR) TRAPINT_ISR;
   END TRAPINT_ISR;
 
-  PROCEDURE* (M.USCIAB0RX_VECTOR) ^0 I2C_STATE_ISR;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) I2C_STATE_ISR;
   BEGIN
     IF BIT(M.UCB0STAT^, M.UCNACKIFG) THEN (* check NAK flag *)
       BIS(M.UCB0CTL1^, M.UCTXSTP); (* I2C stop transaction *)
@@ -91,7 +91,7 @@ MODULE msp430g2xx3uscib0i2c06;
     The USCIAB0TX_ISR is structured such that it can be used to transmit any
     number of bytes by pre-loading TXByteCtr with the byte count.
     ------------------------------------------------------------------------------*)
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^0 USCIAB0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) USCIAB0TX_ISR;
   BEGIN BIS(M.P1OUT^, {0});
     IF TXByteCtr # 0 THEN (* Check TX byte counter *)
       M.UCB0TXBUF^ := TXData; (* Load TX buffer *)

@@ -76,13 +76,13 @@ MODULE msp430g2xx3uscia0u79600;
     i, j: BYTE;
 
   (* USCI A0/B0 Transmit ISR *)
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^1 USCI0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {15} USCI0TX_ISR;
   BEGIN M.UCA0TXBUF^ := ORD(string1[i]); INC(i); (* TX next character *)
     IF i = LEN(string1) THEN (* TX over? *) BIC(M.IE2^, M.UCA0TXIE) (* Disable USCI_A0 TX interrupt *) END
   END USCI0TX_ISR;
 
   (* USCI A0/B0 Receive ISR *)
-  PROCEDURE* (M.USCIAB0RX_VECTOR) ^2 USCI0RX_ISR;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) {14,15} USCI0RX_ISR;
   BEGIN string1[j] := CHR(M.UCA0RXBUF^); INC(j);
     IF j > LEN(string1) - 1 THEN i := 0; j := 0;
       BIS(M.IE2^, M.UCA0TXIE); (* Enable USCI_A0 TX interrupt *)

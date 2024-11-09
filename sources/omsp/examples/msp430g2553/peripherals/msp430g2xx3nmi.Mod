@@ -68,7 +68,7 @@
 MODULE msp430g2xx3nmi;
   IMPORT SYSTEM, M := msp430g2553;
 
-  PROCEDURE* (M.NMI_VECTOR) ^0 nmi_;
+  PROCEDURE* (M.NMI_VECTOR) nmi_;
     VAR i: INTEGER;
   BEGIN
     BIS(M.P1OUT^, {0}); (* Set P1.0 LED on *)

@@ -66,7 +66,7 @@
 //  D. Dang
 //  Texas Instruments Inc.
 //  December 2010
-//  C. Schoffit, 09.09.24, built with Oberon for MSP430
+//  C. Schoffit, 09.09.24, built with Oberon MSP430 compiler
 //******************************************************************************)
 
 MODULE msp430g2x33adc1003;
@@ -76,7 +76,7 @@ MODULE msp430g2x33adc1003;
 
   VAR FirstADCVal: INTEGER; (* holds 1st ADC result*)
 
-  PROCEDURE* (M.ADC10_VECTOR) ^1 ADC10_ISR;
+  PROCEDURE* (M.ADC10_VECTOR) {15} ADC10_ISR;
   BEGIN
     IF M.ADC10MEM^ >= FirstADCVal + ADCDeltaOn THEN BIS(M.P1OUT^, {0}) (* LED on *)
     ELSE BIC(M.P1OUT^, {0}) (* LED off *)
@@ -113,7 +113,7 @@ OMSPTool.DecObj msp430g2x33adc1003.mpc
 decode msp430g2x33adc1003.mpc
 msp430g2x33adc1003 B782B419 Flash   134
 imports:
-	msp430g2553 8250CA0E
+	msp430g2553 F10488DC
 type descriptors
 
 data     2
@@ -124,7 +124,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF 0000 FFFF FFFF FFFF 0000 FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 002A
+ c 002A
 fixup procedures chains
 fixup handlers chains
  0115     0	 0000
@@ -142,10 +142,10 @@ code   134
  0008	     0003
  000A	     9F82	CMP R15,&436
  000C	     01B4
- 000E	     3803	JL #3, goes to  0016
+ 000E	     3803	JL $+8, goes to  0016
  0010	     D3D2	BIS.B #1,&33
  0012	     0021
- 0014	     3C02	JMP #2, goes to  001A
+ 0014	     3C02	JMP $+6, goes to  001A
  0016	     C3D2	BIC.B #1,&33
  0018	     0021
  001A	     413F	POP R15
@@ -191,7 +191,7 @@ code   134
  006A	     0160
  006C	     B2A2	BIT #4,&432
  006E	     01B0
- 0070	     27FD	JEQ #-3, goes to  006C
+ 0070	     27FD	JEQ $-4, goes to  006C
  0072	     4292	MOV &436,&4
  0074	     01B4
  0076	     0004

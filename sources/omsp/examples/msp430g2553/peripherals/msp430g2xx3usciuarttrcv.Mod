@@ -93,7 +93,7 @@ MODULE msp430g2xx3usciuarttrcv;
    UART RX Interrupt ***********************************************************
   ******************************************************************************)
 
-  PROCEDURE* (M.USCIAB0RX_VECTOR) ^-1 USCI0RX_ISR;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) {4} USCI0RX_ISR;
   BEGIN
     IF BIT(M.IFG2^, M.UCA0RXIFG) THEN
       SendUCA0Data(M.UCA0RXBUF^) (* Must read UCxxRXBUF to clear the flag *) 

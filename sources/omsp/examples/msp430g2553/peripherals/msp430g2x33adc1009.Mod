@@ -76,11 +76,11 @@ MODULE msp430g2x33adc1009;
   VAR samples: ARRAY nofSamples OF INTEGER;
 
   (* ADC10 interrupt service routine *)
-  PROCEDURE* (M.ADC10_VECTOR) ^0 ADC10_ISR;
+  PROCEDURE* (M.ADC10_VECTOR) ADC10_ISR;
   BEGIN SYSTEM.BIC_SR_ON_EXIT(M.CPUOFF); (* Clear CPUOFF bit from 0(SP) *)
   END ADC10_ISR;
 
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 ta0_isr;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) ta0_isr;
   BEGIN M.TA0CTL^ := {};
     SYSTEM.BIC_SR_ON_EXIT(M.LPM0_bits) (* Exit LPM0 on return *)
   END ta0_isr;

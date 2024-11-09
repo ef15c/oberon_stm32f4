@@ -103,7 +103,7 @@ MODULE msp430g2xx3tauart2400;
   END RX_Ready;
 
   (* Timer A0 interrupt service routine *)
-  PROCEDURE* (M.TIMER0_A0_VECTOR) ^0 Timer_A;
+  PROCEDURE* (M.TIMER0_A0_VECTOR) Timer_A;
   BEGIN INC(M.TA0CCR0^, Bitime); (* Add Offset to CCR0 *)
     IF BIT(M.TA0CCTL0^, M.CCIS0) (* TX on CCI0B? *) THEN (* TX *)
       IF BitCnt = 0 THEN BIC(M.TA0CCTL0^, M.CCIE) (* All bits TXed, disable interrupt *)

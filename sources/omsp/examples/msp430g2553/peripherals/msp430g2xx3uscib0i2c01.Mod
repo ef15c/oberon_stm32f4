@@ -73,13 +73,13 @@ MODULE msp430g2xx3uscib0i2c01;
 
   VAR RxByteCtr, RxWord: INTEGER;
 
-  PROCEDURE*(M.TIMER0_A0_VECTOR) ^0 TA0_ISR;
+  PROCEDURE*(M.TIMER0_A0_VECTOR) TA0_ISR;
   BEGIN SYSTEM.BIC_SR_ON_EXIT(M.CPUOFF) (* Exit LPM0 *)
   END TA0_ISR;
 
   (* The USCIAB0TX_ISR is structured such that it can be used to receive any
     2 + number of bytes by pre-loading RxByteCtr with the byte count. *)
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^1 USCIAB0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {15} USCIAB0TX_ISR;
   BEGIN DEC(RxByteCtr); (* Decrement RX byte counter *)
     IF RxByteCtr # 0 THEN RxWord := M.UCB0RXBUF^; SWPB(RxWord); (* Get received byte *)
       IF RxByteCtr = 1 THEN (* Only one byte left? *) BIS(M.UCB0CTL1^, M.UCTXSTP) (* Generate I2C stop condition *) END;

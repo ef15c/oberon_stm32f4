@@ -83,7 +83,7 @@ MODULE msp430g2xx3uscib0i2c08;
    points to the next byte to transmit.
   ------------------------------------------------------------------------------*)
 
-  PROCEDURE* (M.USCIAB0TX_VECTOR) ^1 USCIAB0TX_ISR;
+  PROCEDURE* (M.USCIAB0TX_VECTOR) {15} USCIAB0TX_ISR;
   BEGIN
     IF TXByteCtr # 0 THEN (* Check TX byte counter *)
       M.UCB0TXBUF^ := PTxData^; INC(SYSTEM.VAL(INTEGER, PTxData)); (* Load TX buffer *)

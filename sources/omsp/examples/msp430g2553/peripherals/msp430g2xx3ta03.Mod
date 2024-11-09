@@ -69,7 +69,7 @@ MODULE msp430g2xx3ta03;
   IMPORT SYSTEM, M := msp430g2553;
 
   (* Timer_A3 Interrupt Vector (TA0IV) handler *)
-  PROCEDURE* (M.TIMER0_A1_VECTOR) ^0 Timer_A;
+  PROCEDURE* (M.TIMER0_A1_VECTOR) Timer_A;
   BEGIN (* CCR1, CCR2 not used *)
     IF M.TA0IV^ = 10 THEN XOR(M.P1OUT^,  {0}) (* overflow *) END
   END Timer_A;

@@ -83,7 +83,7 @@ MODULE msp430g2xx3uscia0spi09;
   VAR MST_Data, SLV_Data: BYTE;
 
   (* Test for valid RX and TX character *)
-  PROCEDURE* (M.USCIAB0RX_VECTOR) ^-1 USCIA0RX_ISR;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) {4} USCIA0RX_ISR;
   BEGIN REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (* USCI_A0 TX buffer ready? *)
     IF M.UCA0RXBUF^ = SLV_Data THEN (* Test for correct character RX'd *)
       BIS(M.P1OUT^, {0}); (* If correct, light LED *)

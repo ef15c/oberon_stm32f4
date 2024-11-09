@@ -274,6 +274,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
       ELSIF fct = 6 THEN (*LEN*)
           IF x.type.form IN {B.Array, B.String} THEN G.Len(x) ELSE S.Mark("not an array") END
+      ELSIF fct = 7 THEN (*TOSET*) CheckInt(x)
       ELSIF fct = 14 THEN (*BIT*)
         IF (x.type.form IN {B.Int, B.Set}) & (y.type.form IN {B.Int, B.Set}) THEN G.Bit(x, y) ELSE S.Mark("bad type") END
       ELSIF fct = 16 THEN (*VAL*)
@@ -946,10 +947,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR proc!, loc!: B.Object;
       type!: B.Type;
       procid: S.Ident;
-      x!: G.Item;
+      x!, sr!: G.Item;
       locblksize, parblksize, L: LONGINT;
-      int, haveinregs: BOOLEAN; nofusedregs: INTEGER;
-      riu: SET;
+      int, haveinregs: BOOLEAN;
+      riu, savedregs: SET;
       v: ARRAY 8 OF BYTE;
   BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym);
     IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt handler must be global") END;
@@ -957,11 +958,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[L] := x.a; INC(L); UNTIL sym # S.comma;
       Check(S.rparen, "no )")
     END; isInt := int;
-    IF sym = S.arrow THEN S.Get(sym);
-      IF sym = S.minus THEN S.Get(sym); nofusedregs := -S.ival
-      ELSE nofusedregs := S.ival
-      END; Check(S.int, "missing register limit");
-    ELSE nofusedregs := 0
+    IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); savedregs := TOSET(sr.a)
+    ELSE savedregs := {}
     END;
     IF sym = S.ident THEN
       S.CopyId(procid); S.Get(sym); B.NewObj(proc, S.id, B.Const);
@@ -1006,8 +1004,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         isInt := int
       END;
       IF isLeaf THEN G.SetAllocationMode(G.Register) ELSE G.SetAllocationMode(G.Stack) END;
-      IF int THEN G.LimitRegisters(nofusedregs) END;
-      G.Enter(locblksize, int, nofusedregs);
+      IF int THEN G.LimitRegisters(savedregs) END;
+      G.Enter(locblksize, int, savedregs);
       IF sym = S.begin THEN S.Get(sym); StatSequence END;
       IF sym = S.return THEN
         S.Get(sym); expression(x);
@@ -1017,7 +1015,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF type.base.form # B.NoTyp THEN
         S.Mark("function without result"); type.base := B.noType
       END;
-      G.Return(type.base.form, x, locblksize, int, nofusedregs);
+      G.Return(type.base.form, x, locblksize, int, savedregs);
       proc.type.ur := G.PRU;
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE; isInt := FALSE;
