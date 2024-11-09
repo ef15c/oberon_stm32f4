@@ -394,30 +394,31 @@ BEGIN
     LONGINT is synonym to INTEGER, LONGREAL to REAL.
     LED, ADC, SBC; LDPSR, LDREG, REG, COND are not in language definition*)
   system := NIL;  (*n = procno*10 + nofpar*)
-  enter("UML", SFunc, intType, 132);  (*functions*)
-  enter("SBC", SFunc, intType, 122);
-  enter("ADC", SFunc, intType, 112);
-  enter("ROR", SFunc, intType, 92);
-  enter("ASR", SFunc, intType, 82);
-  enter("LSL", SFunc, intType, 72);
-  enter("LSR", SFunc, intType, 102);
-  enter("LEN", SFunc, intType, 61);
-  enter("CHR", SFunc, charType, 51);
-  enter("ORD", SFunc, intType, 41);
-  enter("FLT", SFunc, realType, 31);
-  enter("FLOOR", SFunc, intType, 21);
+  enter("ABS", SFunc, intType, 1);  (*functions*)
   enter("ODD", SFunc, boolType, 11);
-  enter("ABS", SFunc, intType, 1);
-  enter("SQRT", SFunc, realType, 201);
+  enter("FLOOR", SFunc, intType, 21);
+  enter("FLT", SFunc, realType, 31);
+  enter("ORD", SFunc, intType, 41);
+  enter("CHR", SFunc, charType, 51);
+  enter("LEN", SFunc, intType, 61);
+  enter("LSL", SFunc, intType, 72);
+  enter("ASR", SFunc, intType, 82);
+  enter("ROR", SFunc, intType, 92);
+  enter("LSR", SFunc, intType, 102);
+  enter("ADC", SFunc, intType, 112);
+  enter("SBC", SFunc, intType, 122);
+  enter("UML", SFunc, intType, 132); (* 14x to 19x are in SYSTEM*)
+  enter("SQRT", SFunc, realType, 201); (* 21x to 22x are in SYSTEM*)
   enter("RBIT", SFunc, intType, 231);
+  enter("TOSET", SFunc, setType, 241);
   enter("LED", SProc, noType, 81);  (*procedures*)
+  enter("DEC", SProc, noType, 11);
   enter("UNPK", SProc, noType, 72);
   enter("PACK", SProc, noType, 62);
   enter("NEW", SProc, noType, 51);
   enter("ASSERT", SProc, noType, 41);
   enter("EXCL", SProc, noType, 32);
   enter("INCL", SProc, noType, 22);
-  enter("DEC", SProc, noType, 11);
   enter("INC", SProc, noType, 1);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BOOLEAN", Typ, boolType, 0);
@@ -430,17 +431,17 @@ BEGIN
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
   
   system := NIL;  (* initialize "unsafe" pseudo-module SYSTEM*)
-  enter("COND", SFunc, boolType, 191);
-  enter("CMP", SFunc, boolType, 223);
-  enter("SIZE", SFunc, intType, 181);
-  enter("ADR", SFunc, intType, 171);
-  enter("VAL", SFunc, intType, 162);
+  enter("BIT", SFunc, boolType, 142);  (*functions*)
   enter("REG", SFunc, intType, 151);
-  enter("BIT", SFunc, boolType, 142);
+  enter("VAL", SFunc, intType, 162);
+  enter("ADR", SFunc, intType, 171);
+  enter("SIZE", SFunc, intType, 181);
+  enter("COND", SFunc, boolType, 191);
+  enter("SVC", SFunc, intType, 211);
+  enter("CMP", SFunc, boolType, 223);
   enter("LDREG", SProc, noType, 142); (*procedures*)
   enter("COPY", SProc, noType, 123);
   enter("PUT", SProc, noType, 112);
   enter("GET", SProc, noType, 102);
-  enter("SVC", SFunc, intType, 211);
   enter("MBI", SProc, noType, 151);
 END OM4B.
