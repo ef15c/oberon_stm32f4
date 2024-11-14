@@ -500,7 +500,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       DEC(sxno)
     END;
     IF (x.a = mstrx) & (ORD(strdata[mstrx]) + ORD(strdata[mstrx + 1])*100H = 0) THEN (*string can be removed from table*)
-      strx := sx; INC(mstrx, 2)
+      strx := sx; INC(mstrx, 2); DEC(nofstrs)
     END;
     i := 0; DEC(sx); REPEAT INC(sx); xs[i] := strdata[sx]; INC(i) UNTIL strdata[sx] = 0X (*copy string in dest*)
   END stringPop;
