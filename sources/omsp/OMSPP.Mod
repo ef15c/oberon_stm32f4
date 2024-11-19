@@ -180,6 +180,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE EqualSignatures(t0, t1: B.Type): BOOLEAN;
     VAR p0!, p1!: B.Object; com: BOOLEAN;
   BEGIN com := TRUE;
+    IF t1.ur - t0.ur # {} THEN S.Mark("regs destroyed"); com := FALSE END;
     IF (t0.base = t1.base) & (t0.nofpar = t1.nofpar) THEN
       p0 := t0.dsc; p1 := t1.dsc;
       WHILE p0 # NIL DO
@@ -192,7 +193,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       END
     ELSE com := FALSE
-    END ;
+    END;
+    IF (t0.base.form # B.NoTyp) & (t0.leaf # t1.leaf) THEN S.Mark("incompatible leafness"); com := FALSE END
     RETURN com
   END EqualSignatures;
 
@@ -746,9 +748,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END InsertResultRegister;
 
   PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: LONGINT);
-    VAR obj!: B.Object; size: LONGINT; nofpar: INTEGER; leaf, inreg: BOOLEAN;
+    VAR obj!: B.Object; size: LONGINT; nofpar: INTEGER; leaf, inreg: BOOLEAN; x!, sr!: G.Item;
   BEGIN ptype.base := B.noType; size := parblksize; nofpar := 0; ptype.dsc := NIL; leaf := FALSE;
-    ptype.ur := {0..15}; (*all registers can be destroyed for dynamic procedures*)
+    ptype.ur := {4..15}; (*all non saved registers can be destroyed for dynamic procedures*)
+    IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); ptype.ur := ptype.ur - TOSET(sr.a) END;
     IF sym = S.lparen THEN
       S.Get(sym);
       IF sym = S.rparen THEN S.Get(sym)
@@ -764,7 +767,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
             S.Mark("illegal function type")
           END
         ELSE S.Mark("type identifier expected")
-        END
+        END;
+        G.resultRegister(x); INCL(ptype.ur, x.reg) (*include return register in the list of used registers*)
       END
     END ;
     ptype.nofpar := nofpar; ptype.leaf := leaf; ptype.size := G.WordSize; isLeaf := leaf; parblksize := size
