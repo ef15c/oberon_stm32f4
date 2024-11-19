@@ -37,78 +37,36 @@ Oberon version by C. Schoffit 04.11.24
 // ******************************************************************************)
 
 MODULE msp430g2553GcSmplJson;
-  IMPORT SYSTEM, M := msp430g2553, MP := MultiPrecisionArith, HALSYSmsp430g255x, I := HALIOmsp430g255x,
-    T := HALTIMmsp430g255x, GUIJson, JGC := JSONGUIComm, JC := JSONCallbacks;
+  IMPORT SYSTEM, M := msp430g2553, HALSYSmsp430g255x, HC := HALCallbacks, HI := HALIOmsp430g255x, HALTIMmsp430g255x, GUI := GUIJson,
+    JGC := JSONGUIComm, JC := JSONCallbacks;
 
   (* Q8 is used in this demo because the variable qCounter ranges 0.0-100.0 *)
 
-  VAR
-    (* Global variables used to track the of state of GUI and counter values *)
-    bUpdateGUI: BOOLEAN;
-    u8Counter: BYTE; (* Counter8 will be updated on SW1 press in increments of 50 *)
-    u16Counter: INTEGER; (* Counter16 will be updated on button press in increments of 5000 *)
-    u32Counterl, u32Counterh*: INTEGER; (* Counter32 will be updated on timer in increments of 10000 *)
-    qCounter: INTEGER; (* QMath counter updated on timer based on boolean in increments of qIncrement *)
-
-  (*! \brief Function called by HAL when there is a periodic timer interrupt
-     !
-     ! \return none*)
-  PROCEDURE {4..6, 15} TimerCallback;
-  BEGIN
-    (* Update 32-bit counter *)
-    MP.AddLongInt(u32Counterh, u32Counterl, 10000);
-    bUpdateGUI := TRUE;
-    IF JC.bEnableSwitch THEN
-        INC(qCounter, JC.qIncrement);
-        IF qCounter > 6400H (*Q.atoQ("100.0")*) THEN qCounter := 0 END
-    END
-  END TimerCallback;
-
-  (*! \brief Function called by HAL when SW1 is pressed
-     !
-     ! \return none*)
-  PROCEDURE ButtonCallbackSW1;
-  BEGIN INC(u8Counter, 50)
-  END ButtonCallbackSW1;
-
-  (*! \brief Function called by HAL when SW2 is pressed
-     !
-     ! \return none*)
-  PROCEDURE ButtonCallbackSW2;
-  BEGIN INC(u16Counter, 5000)
-  END ButtonCallbackSW2;
-
 BEGIN
-  bUpdateGUI := FALSE;
-  u8Counter := 50; u16Counter := 5000; u32Counterl := 10000; u32Counterh := 0;
-  qCounter := 0080H; (*Q.atoQ("0.5")*)
-
-  T.SetCallback(TimerCallback); I.SetCallback(ButtonCallbackSW1, ButtonCallbackSW2);
-
   (* Configure SW1 and SW2 for interrupts (pins set as input with pull-up during GPIO initialization) *)
-   I.InitButtons;
+   HI.InitButtons;
 
    (* Send default value of variables *)
-   JGC.sendUInt8("c1", u8Counter);
-   JGC.sendUInt16("c2", u16Counter);
-   JGC.sendInt32("c3", u32Counterh, u32Counterl);
-   JGC.sendInt16("c4", qCounter);
+   JGC.sendUInt8("c1", HC.u8Counter);
+   JGC.sendUInt16("c2", HC.u16Counter);
+   JGC.sendInt32("c3", HC.u32Counterh, HC.u32Counterl);
+   JGC.sendInt16("c4", HC.qCounter);
    JGC.sendInt16("u16Data", JC.qIncrement);
    JGC.sendBool("bEnable", JC.bEnableSwitch);
 
   SYSTEM.BIS_SR(M.LPM3_bits + M.GIE); (* Enter LPM3 w/interrupt *)
 
   REPEAT
-    WHILE bUpdateGUI DO
-      JGC.sendUInt8("c1", u8Counter);
-      JGC.sendUInt16("c2", u16Counter);
-      JGC.sendInt32("c3", u32Counterh, u32Counterl);
-      IF JC.bEnableSwitch THEN JGC.sendInt16("c4", qCounter) END;
-      bUpdateGUI := FALSE
+    WHILE HC.bUpdateGUI DO
+      JGC.sendUInt8("c1", HC.u8Counter);
+      JGC.sendUInt16("c2", HC.u16Counter);
+      JGC.sendInt32("c3", HC.u32Counterh, HC.u32Counterl);
+      IF JC.bEnableSwitch THEN JGC.sendInt16("c4", HC.qCounter) END;
+      HC.GUIUpdated
     END;
 
     SYSTEM.BIC_SR(M.GIE);
-    IF ~bUpdateGUI THEN
+    IF ~HC.bUpdateGUI THEN
       SYSTEM.BIS_SR(M.LPM0_bits + M.GIE); (* Enter LPM0 w/interrupt *)
       NOP (* For debug *)
     END

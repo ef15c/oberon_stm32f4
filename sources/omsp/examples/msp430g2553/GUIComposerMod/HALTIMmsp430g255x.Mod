@@ -36,21 +36,13 @@
 // *****************************************************************************)
 
 MODULE HALTIMmsp430g255x;
-  IMPORT SYSTEM, M := msp430g2553, HALSYSmsp430g255x;
-
-  TYPE Callback* = PROCEDURE {4..15};
-
-  VAR cbk: Callback;
+  IMPORT SYSTEM, M := msp430g2553, HALSYSmsp430g255x, C := HALCallbacks;
 
   (* Timer B0 interrupt service routine *)
   PROCEDURE* (M.TIMER0_A0_VECTOR) Timer;
-  BEGIN cbk;
+  BEGIN C.TimerCallback;
     SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Exit LPM3 *)
   END Timer;
-
-  PROCEDURE SetCallback*(c: Callback*);
-  BEGIN cbk := c
-  END SetCallback;
 
 (* ********************* Timer ***************************************************
   ! \brief Initializes a simple periodic interrupt timer.

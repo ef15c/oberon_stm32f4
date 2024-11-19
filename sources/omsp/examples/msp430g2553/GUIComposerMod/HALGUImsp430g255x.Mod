@@ -37,11 +37,7 @@
 // Texas Instruments, Inc.*)
 
 MODULE HALGUImsp430g255x;
-  IMPORT SYSTEM, HALSYSmsp430g255x, HALIOmsp430g255x, M := msp430g2553;
-
-  TYPE Callback* = PROCEDURE {4..15} (data: CHAR): BOOLEAN;
-
-  VAR cbk: Callback;
+  IMPORT SYSTEM, HALSYSmsp430g255x, HALIOmsp430g255x, M := msp430g2553, C := HALCallbacks;
 
   (*! \brief Transmits a character to the GUI in blocking mode.
   !
@@ -70,12 +66,8 @@ MODULE HALGUImsp430g255x;
 
   (* USCI interrupt service routine *)
   PROCEDURE* (M.USCIAB0RX_VECTOR) {15} USCI_A0_ISR;
-  BEGIN IF cbk(CHR(M.UCA0RXBUF^)) THEN SYSTEM.BIC_SR_ON_EXIT(M.LPM4_bits) (* Exit LPM *) END
+  BEGIN IF C.RxByteCallback(CHR(M.UCA0RXBUF^)) THEN SYSTEM.BIC_SR_ON_EXIT(M.LPM4_bits) (* Exit LPM *) END
   END USCI_A0_ISR;
-
-  PROCEDURE SetCallback*(c: Callback*);
-  BEGIN cbk := c
-  END SetCallback;
 
 
 (* ********************* GUI Communication *************************************

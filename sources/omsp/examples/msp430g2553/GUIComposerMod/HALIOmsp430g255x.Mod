@@ -36,11 +36,9 @@
 // *****************************************************************************)
 
 MODULE HALIOmsp430g255x;
-  IMPORT SYSTEM, M := msp430g2553;
+  IMPORT SYSTEM, M := msp430g2553, C := HALCallbacks;
 
-  TYPE Callback* = PROCEDURE {4..15};
-
-  VAR cbkB1, cbkB2: Callback;
+  TYPE ButtonCallback* = PROCEDURE;
 
   (*! \brief Initializes inputs used for push-buttons
      !           Pins are initialized with pull-ups and interrupts are enabled.
@@ -58,16 +56,12 @@ MODULE HALIOmsp430g255x;
   PROCEDURE* (M.PORT1_VECTOR) Port_1;
   BEGIN  
     IF BIT(M.P1IFG^, {3}) THEN
-      cbkB1; (* Only has 1 SW, updates both variables *)
-      cbkB2;
+      C.ButtonCallbackSW1; (* Only has 1 SW, updates both variables *)
+      C.ButtonCallbackSW2;
       BIC(M.P1IFG^, {3}) (* Clear IFG *)
     END;
     SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Exit LPM3 *)
   END Port_1;
-
-  PROCEDURE SetCallback*(c1, c2: Callback*);
-  BEGIN cbkB1 := c1; cbkB2 := c2
-  END SetCallback;
 
 (********************* I/O ***************************************************
   ! \brief Initializes I/Os used by the system.

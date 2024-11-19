@@ -48,7 +48,6 @@ MODULE JSONGUIComm;
 
   VAR cATXString: ARRAY 20 OF CHAR;
 
-
   (*! \brief Converts a number into a string
      !
      ! \return none*)

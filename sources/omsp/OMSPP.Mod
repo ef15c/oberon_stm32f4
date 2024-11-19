@@ -179,8 +179,15 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
   PROCEDURE EqualSignatures(t0, t1: B.Type): BOOLEAN;
     VAR p0!, p1!: B.Object; com: BOOLEAN;
-  BEGIN com := TRUE;
-    IF t1.ur - t0.ur # {} THEN S.Mark("regs destroyed"); com := FALSE END;
+      i: INTEGER; dr: SET; first: BOOLEAN;
+  BEGIN com := TRUE; dr := t1.ur - t0.ur;
+    IF dr # {} THEN S.Mark("regs destroyed: "); first := TRUE;
+      FOR i := 0 TO 15 DO
+        IF i IN dr THEN IF ~first THEN Texts.WriteString(W, ", ") END;
+          Texts.Write(W, "R"); Texts.WriteInt(W, i, 1); first := FALSE
+        END;
+      END; Texts.WriteLn(W);
+      com := FALSE END;
     IF (t0.base = t1.base) & (t0.nofpar = t1.nofpar) THEN
       p0 := t0.dsc; p1 := t1.dsc;
       WHILE p0 # NIL DO

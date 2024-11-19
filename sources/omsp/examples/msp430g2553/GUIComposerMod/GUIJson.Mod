@@ -37,19 +37,24 @@
 // ******************************************************************************)
 
 MODULE GUIJson;
-  IMPORT jsmn, JC := JSONCallbacks, HG := HALGUImsp430g255x;
+  IMPORT jsmn, JC := JSONCallbacks;
 
   CONST (*//! \brief Maximum string for RX*)
     MAX_STR_LEN* =  64;
     CMD_NAME_SIZE* = 16;
 
-  VAR txString: ARRAY MAX_STR_LEN OF CHAR;  (* String to transmit data *)
+  TYPE 
+    (*//! \brief Callback for RX Commands (called when command is received from GUI)*)
+    RxCmdCallback* = PROCEDURE(cmd, param: ARRAY OF CHAR);
+
+  VAR rxCmdCB: RxCmdCallback;
+    txString: ARRAY MAX_STR_LEN OF CHAR;  (* String to transmit or receive data *)
     p: jsmn.Parser; (* parses JSON data *)
     t: ARRAY 10 OF jsmn.Tok; (* We expect no more than 10 tokens *)
 
-    (* for RxByteCallback *)
-    rxString: ARRAY MAX_STR_LEN OF CHAR;  (* String to receive data *)
-    rxInProgress: BOOLEAN; charCnt: INTEGER;
+  PROCEDURE Init*(rxcmdcb: RxCmdCallback);
+  BEGIN rxCmdCB := rxcmdcb
+  END Init;
 
 
   (*! \brief Compare JSON keys
@@ -92,29 +97,4 @@ MODULE GUIJson;
     RETURN ret
   END ParseString;
 
-  (*! \brief Callback function for GUI HAL. Called when byte is received.
-     !
-     ! \param[in] data is the byte received from GUI Comm interface.
-     !
-     ! \return true to wake-up MCU, false to stay in LPM*)
-  PROCEDURE {4..14} RxByteCallback*(data: CHAR): BOOLEAN;
-    VAR ret: BOOLEAN;
-  BEGIN ret := FALSE;
-    IF ~rxInProgress THEN
-      IF data # 0AX THEN rxInProgress := TRUE; charCnt := 0; rxString[charCnt] := data END
-    ELSE (* in progress *)
-      INC(charCnt);
-      IF data # 0AX THEN
-        IF charCnt >= MAX_STR_LEN THEN rxInProgress := FALSE ELSE rxString[charCnt] := data END
-      ELSE (* String receive complete *) rxInProgress := FALSE; rxString[charCnt] := 0X;
-        IF ParseString(rxString) THEN ret := TRUE (* wake-up MCU *) END
-      END
-    END
-    
-    RETURN ret
-
-  END RxByteCallback;
-
-BEGIN rxString := ""; rxInProgress := FALSE; charCnt := 0;
-  HG.SetCallback(RxByteCallback)
 END GUIJson.
