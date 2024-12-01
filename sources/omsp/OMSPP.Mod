@@ -133,9 +133,52 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF ~guard THEN x.type := B.boolType END
   END TypeTest;
 
+  PROCEDURE StandFunc(VAR x: G.Item; fct: LONGINT; restyp: B.Type);
+    VAR y!, z!: G.Item; n, npar: LONGINT;
+  BEGIN Check(S.lparen, "no (");
+    npar := fct MOD 10; fct := fct DIV 10; expression(x); n := 1;
+    IF sym = S.comma THEN S.Get(sym); expression(y); n := 2;
+      WHILE sym = S.comma DO S.Get(sym); expression(z); INC(n) END ;
+    END;
+    Check(S.rparen, "no )");
+    IF n = npar THEN
+      IF fct = 0 THEN (*ABS*) CheckInt(x); G.Abs(x)
+      ELSIF fct = 1 THEN (*ODD*) CheckInt(x); G.Odd(x)
+      ELSIF fct = 4 THEN (*ORD*)
+        IF x.type.form <= B.Proc THEN G.Ord(x); IF x.type.size = 1 THEN restyp := B.byteType END
+        ELSIF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x)
+        ELSE S.Mark("bad type")
+        END
+      ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
+      ELSIF fct = 6 THEN (*LEN*)
+          IF x.type.form IN {B.Array, B.String} THEN G.Len(x) ELSE S.Mark("not an array") END
+      ELSIF fct = 7 THEN (*TOSET*) CheckInt(x)
+      ELSIF fct = 14 THEN (*BIT*)
+        IF (x.type.form IN {B.Int, B.Set}) & (y.type.form IN {B.Int, B.Set}) THEN G.Bit(x, y) ELSE S.Mark("bad type") END
+      ELSIF fct = 16 THEN (*VAL*)
+        IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; G.Val(y, restyp); x := y;
+          IF x.obj # NIL THEN x.rdo := x.obj.rdo END; (*allow updating of the parameter*)
+        ELSE S.Mark("casting not allowed")
+        END
+      ELSIF fct = 17 THEN (*ADR*) G.Adr(x)
+      ELSIF fct = 18 THEN (*SIZE*)
+        IF x.mode = B.Typ THEN G.MakeConstItem(x, B.intType, x.type.size)
+        ELSE S.Mark("must be a type")
+        END
+      ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); G.Condition(x)
+      ELSIF fct = 22 THEN (*Int Compare*)
+        CheckInt(x); CheckInt(y); CheckConst(z); CheckInt(z); G.IntCompare(x, y, z)
+      ELSE ASSERT(FALSE)
+      END;
+      x.type := restyp
+    ELSE S.Mark("wrong nof params")
+    END
+  END StandFunc;
+
   PROCEDURE selector(VAR x: G.Item);
     VAR y!: G.Item; obj!: B.Object;
   BEGIN
+    IF x.obj.class = B.SFunc THEN StandFunc(x, x.obj.val, x.obj.type) END;
     WHILE (sym = S.lbrak) OR (sym = S.period) OR (sym = S.arrow)
         OR (sym = S.lparen) & (x.type.form IN {B.Record, B.Pointer}) DO
       IF sym = S.lbrak THEN
@@ -171,7 +214,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           ELSE S.Mark("guard type expected")
           END
         ELSE S.Mark("not an identifier")
-        END ;
+        END;
         Check(S.rparen, " ) missing")
       END
     END
@@ -264,47 +307,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END ParamList;
 
-  PROCEDURE StandFunc(VAR x: G.Item; fct: LONGINT; restyp: B.Type);
-    VAR y!, z!: G.Item; n, npar: LONGINT;
-  BEGIN Check(S.lparen, "no (");
-    npar := fct MOD 10; fct := fct DIV 10; expression(x); n := 1;
-    IF sym = S.comma THEN S.Get(sym); expression(y); n := 2;
-      WHILE sym = S.comma DO S.Get(sym); expression(z); INC(n) END ;
-    END;
-    Check(S.rparen, "no )");
-    IF n = npar THEN
-      IF fct = 0 THEN (*ABS*) CheckInt(x); G.Abs(x)
-      ELSIF fct = 1 THEN (*ODD*) CheckInt(x); G.Odd(x)
-      ELSIF fct = 4 THEN (*ORD*)
-        IF x.type.form <= B.Proc THEN G.Ord(x); IF x.type.size = 1 THEN restyp := B.byteType END
-        ELSIF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x)
-        ELSE S.Mark("bad type")
-        END
-      ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
-      ELSIF fct = 6 THEN (*LEN*)
-          IF x.type.form IN {B.Array, B.String} THEN G.Len(x) ELSE S.Mark("not an array") END
-      ELSIF fct = 7 THEN (*TOSET*) CheckInt(x)
-      ELSIF fct = 14 THEN (*BIT*)
-        IF (x.type.form IN {B.Int, B.Set}) & (y.type.form IN {B.Int, B.Set}) THEN G.Bit(x, y) ELSE S.Mark("bad type") END
-      ELSIF fct = 16 THEN (*VAL*)
-        IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; G.Val(y, restyp); x := y
-        ELSE S.Mark("casting not allowed")
-        END
-      ELSIF fct = 17 THEN (*ADR*) G.Adr(x)
-      ELSIF fct = 18 THEN (*SIZE*)
-        IF x.mode = B.Typ THEN G.MakeConstItem(x, B.intType, x.type.size)
-        ELSE S.Mark("must be a type")
-        END
-      ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); G.Condition(x)
-      ELSIF fct = 22 THEN (*Int Compare*)
-        CheckInt(x); CheckInt(y); CheckConst(z); CheckInt(z); G.IntCompare(x, y, z)
-      ELSE ASSERT(FALSE)
-      END;
-      x.type := restyp
-    ELSE S.Mark("wrong nof params")
-    END
-  END StandFunc;
-
   PROCEDURE element(VAR x: G.Item);
     VAR y!: G.Item;
   BEGIN expression(x); CheckSetVal(x);
@@ -331,23 +333,21 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END set; 
 
   PROCEDURE factor(VAR x: G.Item);
-    VAR obj!: B.Object; rx, orx: SET;
+    VAR obj!: B.Object; rx, orx: SET; pau: BOOLEAN;
   BEGIN (*sync*)
     IF (sym < S.char) OR (sym > S.ident) THEN S.Mark("expression expected");
       REPEAT S.Get(sym) UNTIL (sym >= S.char) & (sym <= S.for) OR (sym >= S.then)
     END;
     IF sym = S.ident THEN
       qualident(obj); IF initmode & (obj.lev = 0) THEN obj.rdo := FALSE END;
-      IF obj.class = B.SFunc THEN StandFunc(x, obj.val, obj.type)
-      ELSE G.MakeItem(x, obj, level); selector(x); x.rdo := TRUE;
-        IF sym = S.lparen THEN
-          S.Get(sym);
-          IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
-            IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x)
-            ELSE G.PrepCall(x, rx, orx); ParamList(x); G.Call(x, rx, orx); x.type := x.type.base
-            END;
-          ELSE S.Mark("not a function"); ParamList(x)
-          END
+      G.MakeItem(x, obj, level); selector(x); x.rdo := TRUE;
+      IF sym = S.lparen THEN
+        S.Get(sym);
+        IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
+          IF isLeaf THEN S.Mark("no call in leaf func"); ParamList(x)
+          ELSE G.PrepCall(x, rx, orx, pau); ParamList(x); G.Call(x, rx, orx, pau); x.type := x.type.base
+          END;
+        ELSE S.Mark("not a function"); ParamList(x)
         END
       END
     ELSIF sym = S.int THEN G.MakeConstItem(x, B.intType, S.ival); S.Get(sym)
@@ -497,7 +497,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR obj!: B.Object;
       orgtype!: B.Type; (*original type of case var*)
       x!, y!, z!, w!: G.Item;
-      L0, L1: LONGINT; rx, orx: SET;
+      L0, L1: LONGINT; rx, orx: SET; pau: BOOLEAN;
 
     PROCEDURE TypeCase(obj: B.Object; VAR x: G.Item);
       VAR typobj!: B.Object;
@@ -547,16 +547,16 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           ELSIF sym = S.lparen THEN (*procedure call*)
             S.Get(sym);
             IF (x.type.form = B.Proc) & (x.type.base.form = B.NoTyp) THEN
-              IF isLeaf THEN S.Mark("call not allowed in leaf proc"); ParamList(x)
-              ELSE G.PrepCall(x, rx, orx); ParamList(x); G.Call(x, rx, orx)
+              IF isLeaf THEN S.Mark("no call in leaf proc"); ParamList(x)
+              ELSE G.PrepCall(x, rx, orx, pau); ParamList(x); G.Call(x, rx, orx, pau)
               END;
             ELSE S.Mark("not a procedure"); ParamList(x)
             END
           ELSIF x.type.form = B.Proc THEN (*procedure call without parameters*)
             IF x.type.nofpar > 0 THEN S.Mark("missing parameters") END ;
             IF x.type.base.form = B.NoTyp THEN
-              IF isLeaf THEN S.Mark("call not allowed in leaf proc")
-              ELSE G.PrepCall(x, rx, orx); G.Call(x, rx, orx)
+              IF isLeaf THEN S.Mark("no call in leaf proc")
+              ELSE G.PrepCall(x, rx, orx, pau); G.Call(x, rx, orx, pau)
               END;
             ELSE S.Mark("not a procedure")
             END

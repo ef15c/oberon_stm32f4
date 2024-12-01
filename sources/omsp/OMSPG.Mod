@@ -7,7 +7,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   CONST WordSize* = 2;
     maxStrx = 3000; maxGD = 200; maxTD = 160; maxFOS = 1000;
-    Register* = 0; Stack* = 1;
+    Register* = TRUE; Stack* = FALSE;
     
     Reg = 10; RegI = 11; Cond = 12; Absol = 13; (*internal item modes*)
 
@@ -143,10 +143,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.FixLink(mcode, L)
   END FixLink;
 
-  PROCEDURE SetAllocationMode*(mode: INTEGER);
-  BEGIN
-    IF mode = Register THEN AllocUp  := TRUE; RL := 16;  RB := A.CG2 + 1
-    ELSE AllocUp  := FALSE; RL := A.CG2;  RB := 15
+  PROCEDURE SetAllocationMode*(mode: BOOLEAN);
+  BEGIN AllocUp := mode;
+    IF AllocUp THEN RL := 16;  RB := A.CG2 + 1
+    ELSE RL := A.CG2;  RB := 15
     END
   END SetAllocationMode;
 
@@ -686,17 +686,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Neg;
 
-  PROCEDURE PrepCall*(VAR x: Item; VAR r, or: SET);
+  PROCEDURE PrepCall*(VAR x: Item; VAR r, or: SET; VAR am: BOOLEAN);
     VAR n, xr: INTEGER; rr!: Item;
-  BEGIN (*x.type.form = OM4B.Proc*) xr := -1;
-    IF AllocUp THEN S.Mark("call not allowed in leaf proc") END;
+  BEGIN (*x.type.form = OM4B.Proc*) xr := -1; am := AllocUp;
     IF x.mode > B.Par THEN load(x, 0FFH); xr := x.reg; EXCL(RIU, xr) END;
     r := RIU; or := x.type.ur*RIU; (*overwritten registers currently in use by the caller*)
-    SaveRegs(or);
+    SaveRegs(or); RIU := RIU - or;
     IF xr >= 0 THEN SaveRegs({xr}) END;
-    IF x.obj.type.leaf THEN SetAllocationMode(Register);
-      IF x.type.base.form # B.NoTyp THEN resultRegister(rr); rh.reg := AllocRP(rr.reg) END (*allocate result register*)
-    END;
+    IF x.obj.type.leaf THEN SetAllocationMode(Register) END;
     PRU := PRU + (x.type.ur - or)
   END PrepCall;
 
@@ -714,7 +711,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN size
   END getParSize;
 
-  PROCEDURE Call*(VAR x: Item; r, or: SET);
+  PROCEDURE Call*(VAR x: Item; r, or: SET; am: BOOLEAN);
     VAR rr!, t!: Item; n, s: INTEGER;
   BEGIN (*x.type.form = B.Proc*) s := getParSize(x.type);
     IF x.mode = B.Const THEN PutSO(A.CALL, x)
@@ -730,15 +727,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END;
     END;
     IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr); adjFrmOfs(-s) END;
-    IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(Stack)
+    IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(am)
     ELSE (*function*) 
       x.tmp := TRUE; x.mode := Reg; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
-      RIU := r; SetAllocationMode(Stack); 
+      RIU := r; SetAllocationMode(am); 
       IF rr.reg IN RIU THEN x.tmp := FALSE; load(x, 0FFH) (*move result in a free register*)
       ELSE INCL(RIU, rr.reg)
       END
     END;
-    RestoreRegs(or)
+    RestoreRegs(or); RIU := RIU + or
   END Call;
 
   PROCEDURE AddOp*(op: LONGINT; VAR x, y: Item);   (* x := x +- y *)
@@ -767,10 +764,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
     ELSE
       IF arith[0] = NIL THEN S.Mark("import Arith.mul16 function") 
-      ELSE  pau := AllocUp;
-        MakeItem(p, arith[0], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); Call(p, r, or);
+      ELSE MakeItem(p, arith[0], 0); x0 := x; y0 := y; PrepCall(p, r, or, pau); load(x, 5); load(y, 6); Call(p, r, or, pau);
         free(x0); free(y0); x.reg := p.reg;
-        IF pau THEN SetAllocationMode(Register) END
       END
     END
   END MulOp;
@@ -785,10 +780,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         x.mode := Reg; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod16 procedure")
         ELSE IF traps[6] # NIL THEN t := c0; PutDO(A.CMP, t, y); Trap(A.NE, 6); free(y) END;
-          pau := AllocUp;
-          MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); t := c0; load(t, 7); Call(p, r, or);
+          MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or, pau); load(x, 5); load(y, 6); t := c0; load(t, 7); Call(p, r, or, pau);
           free(x0); free(y0); x.reg := p.reg;
-          IF pau THEN SetAllocationMode(Register) END
         END
       END
     ELSE (*op = OM4S.mod*)
@@ -798,10 +791,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         x.mode := Reg; x.am := A.Register; x.ofs := 0
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod procedure")
         ELSE IF traps[6] # NIL THEN t := c0; PutDO(A.CMP, t, y); Trap(A.NE, 6); free(y) END;
-          pau := AllocUp;
-          MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); t := c1; load(t, 7); Call(p, r, or); x.reg := p.reg;
+            MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or, pau); load(x, 5); load(y, 6); t := c1; load(t, 7); Call(p, r, or, pau); x.reg := p.reg;
           free(x0); free(y0); x.reg := p.reg;
-          IF pau THEN SetAllocationMode(Register) END
         END
       END
     END
@@ -854,9 +845,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF (x.mode = B.Const) & ( y.mode = B.Const) THEN
       IF x.a <= y.a THEN x.a := ORD({x.a .. y.a}) ELSE x.a := 0 END
     ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set function")
-      ELSE pau := AllocUp; MakeItem(p, arith[2], 0); x0 := x; y0 := y; PrepCall(p, r, or); load(x, 5); load(y, 6); Call(p, r, or);
+      ELSE  MakeItem(p, arith[2], 0); x0 := x; y0 := y; PrepCall(p, r, or, pau); load(x, 5); load(y, 6); Call(p, r, or, pau);
         free(x0); free(y0); x.reg := p.reg;
-        IF pau THEN SetAllocationMode(Register) END
       END
     END
   END Set;
