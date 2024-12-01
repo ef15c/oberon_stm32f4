@@ -43,8 +43,7 @@ MODULE GUIJson;
     MAX_STR_LEN* =  64;
     CMD_NAME_SIZE* = 16;
 
-  VAR txString: ARRAY MAX_STR_LEN OF CHAR;  (* String to transmit data *)
-    p: jsmn.Parser; (* parses JSON data *)
+  VAR p: jsmn.Parser; (* parses JSON data *)
     t: ARRAY 10 OF jsmn.Tok; (* We expect no more than 10 tokens *)
 
     (* for RxByteCallback *)
@@ -73,7 +72,7 @@ MODULE GUIJson;
   (*! \brief Parses a string looking for JSON objects
      !
      ! \return true to wake-up MCU when a command is received, false to stay in LPM *)
-  PROCEDURE ParseString*(rxString: ARRAY OF CHAR): BOOLEAN;
+  PROCEDURE ParseString(): BOOLEAN;
     VAR i, r: INTEGER; ret: BOOLEAN;
   BEGIN ret := TRUE;
     jsmn.init(p);
@@ -107,7 +106,7 @@ MODULE GUIJson;
       IF data # 0AX THEN
         IF charCnt >= MAX_STR_LEN THEN rxInProgress := FALSE ELSE rxString[charCnt] := data END
       ELSE (* String receive complete *) rxInProgress := FALSE; rxString[charCnt] := 0X;
-        IF ParseString(rxString) THEN ret := TRUE (* wake-up MCU *) END
+        IF ParseString() THEN ret := TRUE (* wake-up MCU *) END
       END
     END
     

@@ -114,3 +114,12 @@ BEGIN
     END
   UNTIL FALSE
 END msp430g2553GcSmplJson.
+
+gc_simple_json example
+
+OMSPP.Compile msp430g2553.Mod MultiPrecisionArith.Mod HALSYSmsp430g255x.Mod HALIOmsp430g255x.Mod HALTIMmsp430g255x.Mod jsmn.Mod Arith.Mod
+ JSONCallbacks.Mod HALGUImsp430g255x.Mod GUIJson.Mod JSONGUIComm.Mod msp430g2553GcSmplJson.Mod ~
+
+OMSPL.Link 32 4000H 200H msp430g2553GcSmplJson ~
+  linking msp430g2553 MultiPrecisionArith HALSYSmsp430g255x HALIOmsp430g255x HALTIMmsp430g255x jsmn Arith JSONCallbacks HALGUImsp430g255x
+  GUIJson JSONGUIComm msp430g2553GcSmplJson, flash 4662, data  196, stack  316 bytes
