@@ -31,7 +31,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0010
+ c 0010
 fixup procedures chains
  0016     0	 0000
  002A     0	 000A

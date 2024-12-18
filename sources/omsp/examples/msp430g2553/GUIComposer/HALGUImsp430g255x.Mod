@@ -68,6 +68,17 @@ MODULE HALGUImsp430g255x;
   END TransmitStringBlocking;
 
 
+  (*! \brief Transmits a buffer to GUI.
+  !
+  ! \param[in] str is the string to be sent.
+  !
+  ! \return none*)
+  PROCEDURE TransmitBufferBlocking*(str: ARRAY OF CHAR; count: INTEGER);
+    VAR i: INTEGER;
+  BEGIN i := 0; WHILE i < count DO TransmitCharBlocking(str[i]); INC(i) END
+  END TransmitBufferBlocking;
+
+
   (* USCI interrupt service routine *)
   PROCEDURE* (M.USCIAB0RX_VECTOR) {15} USCI_A0_ISR;
   BEGIN IF cbk(CHR(M.UCA0RXBUF^)) THEN SYSTEM.BIC_SR_ON_EXIT(M.LPM4_bits) (* Exit LPM *) END
