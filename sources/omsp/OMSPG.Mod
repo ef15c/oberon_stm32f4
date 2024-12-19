@@ -348,11 +348,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.PutSO(mcode, op, sd, bw); freeSet(nba)
   END PutSO;
 
-  PROCEDURE push(VAR x: Item);
+  PROCEDURE push(VAR x: Item; dsize: INTEGER);
     VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
-  BEGIN adjFrmOfs(WordSize); t := x; t.reg := 0; t.am := A.Immediate;
+  BEGIN
+    bw := A.Word;
+    IF x.type.size = 1 THEN
+      IF dsize = 1 THEN bw := A.Byte ELSE (*convert byte to word before push*) load(x, 0FFH); x.type := B.intType END
+    END;
+    adjFrmOfs(WordSize); t := x; t.reg := 0; t.am := A.Immediate;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
-    IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
+  (*  IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END; *)
     IF x.mode = Reg THEN PutSO(A.PUSH, x)
     ELSIF x.mode = B.Const THEN
       IF x.type.form = B.Proc THEN
@@ -374,7 +379,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       FixLink(x.b); t := c1; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc0, mcode.pc - pc0 - 2);
       FixLink(x.a); t := c0; A.PutSO(mcode, A.PUSH, t, A.Word); A.fix(mcode, pc1, mcode.pc - pc1 - 2)
     ELSE S.Mark("bad mode in push")
-    END
+    END;
+    free(x)
   END push;
 
   PROCEDURE Adr*(VAR x:Item);
@@ -401,7 +407,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END loadAdr;
 
   PROCEDURE pushAdr(VAR x: Item);
-  BEGIN Adr(x); push(x)
+  BEGIN Adr(x); push(x, 2)
   END pushAdr;
 
   PROCEDURE loadCond(VAR x: Item);
@@ -1043,7 +1049,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END VarParam;
 
   PROCEDURE ValueParam*(VAR x: Item; par: B.Object);
-  BEGIN IF par.register # 0FFH THEN load(x, par.register) ELSE push(x) END
+  BEGIN IF par.register # 0FFH THEN load(x, par.register) ELSE push(x, par.type.size) END
   END ValueParam;
 
   PROCEDURE StringParam*(VAR x: Item; par: B.Object);

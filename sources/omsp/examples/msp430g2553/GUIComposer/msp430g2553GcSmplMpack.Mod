@@ -38,7 +38,7 @@ Oberon version by C. Schoffit 20.11.24
 
 MODULE msp430g2553GcSmplMpack;
   IMPORT SYSTEM, M := msp430g2553, MP := MultiPrecisionArith, HALSYSmsp430g255x, I := HALIOmsp430g255x,
-    T := HALTIMmsp430g255x, GUIMpack, JGC := MpackGUIComm, JC := MpackCallbacks;
+    T := HALTIMmsp430g255x, GUIMpack, MGC := MpackGUIComm, MC := MpackCallbacks;
 
   (* Q8 is used in this demo because the variable qCounter ranges 0.0-100.0 *)
 
@@ -58,8 +58,8 @@ MODULE msp430g2553GcSmplMpack;
     (* Update 32-bit counter *)
     MP.AddLongInt(u32Counterh, u32Counterl, 10000);
     bUpdateGUI := TRUE;
-    IF JC.bEnableSwitch THEN
-        INC(qCounter, JC.qIncrement);
+    IF MC.bEnableSwitch THEN
+        INC(qCounter, MC.qIncrement);
         IF qCounter > 6400H (*Q.atoQ("100.0")*) THEN qCounter := 0 END
     END
   END TimerCallback;
@@ -89,21 +89,21 @@ BEGIN
    I.InitButtons;
 
    (* Send default value of variables *)
-   JGC.sendUInt8("c1", u8Counter);
-   JGC.sendUInt16("c2", u16Counter);
-   JGC.sendInt32("c3", u32Counterh, u32Counterl);
-   JGC.sendInt16("c4", qCounter);
-   JGC.sendInt16("u16Data", JC.qIncrement);
-   JGC.sendBool("bEnable", JC.bEnableSwitch);
+   MGC.sendUInt8("c1", u8Counter);
+   MGC.sendUInt16("c2", u16Counter);
+   MGC.sendInt32("c3", u32Counterh, u32Counterl);
+   MGC.sendInt16("c4", qCounter);
+   MGC.sendInt16("u16Data", MC.qIncrement);
+   MGC.sendBool("bEnable", MC.bEnableSwitch);
 
   SYSTEM.BIS_SR(M.LPM3_bits + M.GIE); (* Enter LPM3 w/interrupt *)
 
   REPEAT
     WHILE bUpdateGUI DO
-      JGC.sendUInt8("c1", u8Counter);
-      JGC.sendUInt16("c2", u16Counter);
-      JGC.sendInt32("c3", u32Counterh, u32Counterl);
-      IF JC.bEnableSwitch THEN JGC.sendInt16("c4", qCounter) END;
+      MGC.sendUInt8("c1", u8Counter);
+      MGC.sendUInt16("c2", u16Counter);
+      MGC.sendInt32("c3", u32Counterh, u32Counterl);
+      IF MC.bEnableSwitch THEN MGC.sendInt16("c4", qCounter) END;
       bUpdateGUI := FALSE
     END;
 
@@ -118,8 +118,10 @@ END msp430g2553GcSmplMpack.
 gc_simple_mpack example
 
 OMSPP.Compile msp430g2553.Mod MultiPrecisionArith.Mod HALSYSmsp430g255x.Mod HALIOmsp430g255x.Mod HALTIMmsp430g255x.Mod
- mpack.Mod MpackCallbacks.Mod HALGUImsp430g255x.Mod GUIMpack.Mod MpackGUIComm.Mod msp430g2553GcSmplMpack.Mod /s
+ mpack.Mod MpackCallbacks.Mod/s HALGUImsp430g255x.Mod GUIMpack.Mod/s MpackGUIComm.Mod msp430g2553GcSmplMpack.Mod /s
 
 OMSPL.Link 32 4000H 200H msp430g2553GcSmplMpack ~
-  linking msp430g2553 MultiPrecisionArith HALSYSmsp430g255x HALIOmsp430g255x HALTIMmsp430g255x mpack MpackCallbacks HALGUImsp430g255x
-  GUIMpack MpackGUIComm msp430g2553GcSmplMpack, flash 4364, data  172, stack  340 bytes
+   linking msp430g2553 MultiPrecisionArith HALSYSmsp430g255x HALIOmsp430g255x HALTIMmsp430g255x mpack MpackCallbacks HALGUImsp430g255x
+  GUIMpack MpackGUIComm msp430g2553GcSmplMpack, flash 4298, data  172, stack  340 bytes
+
+OMSPTool.DecObj msp430g2553GcSmplMpack.mpc
