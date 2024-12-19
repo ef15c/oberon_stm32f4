@@ -53,4 +53,5 @@ MODULE MpackCallbacks;
     qIncrement := MP.tag_uint16_value(tag)
   END Callback_QMathData;
 
+BEGIN bEnableSwitch := TRUE; qIncrement := 0080H; (* Q.atoQ("0.5") *)
 END MpackCallbacks.

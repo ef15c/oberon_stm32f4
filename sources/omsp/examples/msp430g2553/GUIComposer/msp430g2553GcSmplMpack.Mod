@@ -121,7 +121,7 @@ OMSPP.Compile msp430g2553.Mod MultiPrecisionArith.Mod HALSYSmsp430g255x.Mod HALI
  mpack.Mod MpackCallbacks.Mod/s HALGUImsp430g255x.Mod GUIMpack.Mod/s MpackGUIComm.Mod msp430g2553GcSmplMpack.Mod /s
 
 OMSPL.Link 32 4000H 200H msp430g2553GcSmplMpack ~
-   linking msp430g2553 MultiPrecisionArith HALSYSmsp430g255x HALIOmsp430g255x HALTIMmsp430g255x mpack MpackCallbacks HALGUImsp430g255x
-  GUIMpack MpackGUIComm msp430g2553GcSmplMpack, flash 4298, data  172, stack  340 bytes
+  linking msp430g2553 MultiPrecisionArith HALSYSmsp430g255x HALIOmsp430g255x HALTIMmsp430g255x mpack MpackCallbacks HALGUImsp430g255x
+  GUIMpack MpackGUIComm msp430g2553GcSmplMpack, flash 4294, data  172, stack  340 bytes
 
 OMSPTool.DecObj msp430g2553GcSmplMpack.mpc
