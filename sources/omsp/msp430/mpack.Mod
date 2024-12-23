@@ -251,13 +251,13 @@ MODULE mpack;
   PROCEDURE parse_tag(VAR reader: ReaderDesc; VAR tag: Tag): INTEGER;
     VAR type, th: Type; count: INTEGER; data!: PBYTE;
   BEGIN ASSERT(reader.error = ok); count := 0; data := reader.data;
-    type := data^; INC(SYSTEM.VAL(INTEGER, data)); th := type; RRA(th, 4);
+    type := data^; INC(SYSTEM.VAL(INTEGER, data)); th := type; CLRC; RRC(th); RRA(th, 3);
 
     IF th < 8 (* positive fixnum ( num < 127) *) THEN tag.type := type_uint; tag.v0 := type; count := 1
-    ELSIF (th = 0EH) OR (th = 0FH) (* negative fixnum *) THEN tag.type := type_int; tag.v0 := type; tag.v1 := 0FFH; tag.v2 := 0FFH; tag.v3 := 0FFH; count := 1
-    ELSIF th = 8 (* fixmap *) THEN tag.type := type_map; tag.v0 := ORD(TOSET(type) - {4..7}); count := 1
-    ELSIF th = 9 (* fixarray *) THEN tag.type := type_array; tag.v0 := ORD(TOSET(type) - {4..7}); count := 1
-    ELSIF (th = 0AH) OR (th = 0BH) (* fixstr *) THEN tag.type := type_str; tag.v0 := ORD(TOSET(type) - {5..7}); count := 1
+    ELSIF (th = 0EH) OR (th = 0FH) (* negative fixnum *) THEN tag.type := type_int; tag.v0 := type; tag.v1 := -1; tag.v2 := -1; tag.v3 := -1; count := 1
+    ELSIF th = 8 (* fixmap *) THEN tag.type := type_map; tag.v0 := ORD(TOSET(type) - {4..15}); count := 1
+    ELSIF th = 9 (* fixarray *) THEN tag.type := type_array; tag.v0 := ORD(TOSET(type) - {4..15}); count := 1
+    ELSIF (th = 0AH) OR (th = 0BH) (* fixstr *) THEN tag.type := type_str; tag.v0 := ORD(TOSET(type) - {5..15}); count := 1
     ELSE (* not one of the common infix types *)
       (* handle individual type tags *)
       IF type = 0C0H (* nil *) THEN tag.type := type_nil; count := 1
@@ -343,7 +343,8 @@ MODULE mpack;
    * @param count The number of bytes to read
    *)
   PROCEDURE read_bytes*(VAR reader: ReaderDesc*; p: PBYTE*; count: INTEGER*);
-  BEGIN INC(count); RRA(count, 1); SYSTEM.COPY(SYSTEM.VAL(INTEGER, reader.data), SYSTEM.VAL(INTEGER, p), count);
+    VAR nbm: INTEGER*;
+  BEGIN nbm := count; INC(nbm); CLRC; RRC(nbm); SYSTEM.COPY(SYSTEM.VAL(INTEGER, reader.data), SYSTEM.VAL(INTEGER, p), nbm);
     INC(SYSTEM.VAL(INTEGER, reader.data), count)
   END read_bytes;
 

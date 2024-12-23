@@ -54,7 +54,7 @@ MODULE GUIMpack;
 
   PROCEDURE strncmp(l, r: ARRAY OF CHAR*; len: INTEGER*): INTEGER;
     VAR i: INTEGER*;
-  BEGIN i := 0;
+  BEGIN i := 0; DEC(len);
     WHILE (i < len) & (i < LEN(l)) & (i < LEN(r)) & (l[i] = r[i]) DO INC(i) END
 
     RETURN 0+ORD(l[i]) - ORD(r[i])
