@@ -14,8 +14,21 @@ This compiler is board agnostic, so **LED** is removed.
 #### New in-line functions
 **TOSET(x)** turns type of x into SET type.  
 #### New in-line procedures
+**BIC(x, y)** is an optimized equivalent of **x := x - y** with x and y of type set  
+**BIS(x, y)** is an optimized equivalent of **x := x + y** with x and y of type set  
+**XOR(x, y)** is an optimized equivalent of **x := x / y** with x and y of type set  
+**AND(x, y)** is an optimized equivalent of **x := x * y** with x and y of type set  
+**CLRC** generates a "clear carry" machine instruction  
+**NOP** generates a "no operation" machine instruction  
+**ADC(x, y)** is an optimized equivalent of **x := x + y + <carry>** with x and y of numeric type  
+**SBC(x, y)** is an optimized equivalent of **x := x - y - 1 + <carry>** with x and y of numeric type  
+**RLA(x, n)** is an optimized equivalent of **x := x * 2<sup>n</sup>** with x and y of numeric type  
+**RLC(x)** performs a rotate left through carry on x  
+**RRA(x, n)** is an optimized equivalent of **x := x / 2<sup>n</sup>** with x and y of numeric type  
+**RRC(x)** performs a rotate rightt through carry on x  
+**SWPB(x)** exchanges high and low bytes of x
 #### In-line functions with different semantics
-**BIT(x, y)** is an optimized equivalent of the condition **"X*Y # {}"**
+**BIT(x, y)** is an optimized equivalent of the condition **"x*y # {}"**
 ## Specific extensions
 ### Runtime modules
 Due to the limited RAM and Flash resources, it is useful to remove the trap
