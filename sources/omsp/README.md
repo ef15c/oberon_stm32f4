@@ -11,7 +11,11 @@ In-line procedures or functions have been removed: **LSL(x, n)**,
 With PINTEGER and PBYTE types, **SYSTEM.PUT** and **SYSTEM.GET** 
 are no more useful and are removed.  
 This compiler is board agnostic, so **LED** is removed.
-<<To be completed>>
+#### New in-line functions
+**TOSET(x)** turns type of x into SET type.  
+#### New in-line procedures
+#### In-line functions with different semantics
+**BIT(x, y)** is an optimized equivalent of the condition **"X*Y # {}"**
 ## Specific extensions
 ### Runtime modules
 Due to the limited RAM and Flash resources, it is useful to remove the trap
