@@ -1,13 +1,16 @@
 # MSP430 Oberon compiler
 **WORK IN PROGRESS**
 ## Language differences from Oberon 07 for Cortex M4
-### Integer and Byte pointers
-PINTEGER an PBYTE types have been defined to enforce the access size on
+### New types
+#### Integer and Byte pointers
+**PINTEGER**, **PBYTE**, **PSET** and **PBYTESET** types have been defined to enforce the access size on
 specific memory locations. See msp430g2553.Mod as an example.
+#### 8 bit sets
+**BYTESET** type has been added to handle byte access register of the MSP430 architecture.
 ### In-line procedures and functions
 Due to the difference of instruction set architectures, the following
 In-line procedures or functions have been removed: **LSL(x, n)**, 
-**ASR(x, n), **ROR(x, n)**  
+**ASR(x, n)**, **ROR(x, n)**  
 With PINTEGER and PBYTE types, **SYSTEM.PUT** and **SYSTEM.GET** 
 are no more useful and are removed.  
 This compiler is board agnostic, so **LED** is removed.
