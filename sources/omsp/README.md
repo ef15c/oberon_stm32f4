@@ -75,7 +75,8 @@ variable of the procedure type. The compiler ensures that the actual procedure p
 specified in the procedure type declaration.
 
 For example, the module **HALGUImsp430g255x** exports the Callback function type, requesting that any assigned function
-protects the registers R4 to R15.
+protects the registers R4 to R15. Please note that the Callback type denotes a non leaf function, so the register R15 is
+used to convey the return value, and therefore is automatically excluded from the register protection set.
 
 	MODULE HALGUImsp430g255x;
 	  IMPORT SYSTEM, HALSYSmsp430g255x, HALIOmsp430g255x, M := msp430g2553;
