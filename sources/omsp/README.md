@@ -59,17 +59,59 @@ the user can declare a set of registers to be save, in any procedure or function
 The compiler uses this to generate the appropriate set of **PUSH** and **POP** instructions,
 protecting the specified registers from corrpution.  
   
-For exemple, the following handle pushes R4 on the stack at entry and pop the intial value of
-R4 for the stack on exit:  
+For example, the following handler code pushes R4 on the stack at entry and pops the saved value of
+R4 from the stack on exit:  
   
 	PROCEDURE* (M.USCIAB0TX_VECTOR) {4} USCIAB0TX_ISR;
 	  VAR rx_val: BYTE;
 	BEGIN
  	  .
-    	  .
-        END USCIAB0TX_ISR;
-  
-## Example
+ 	  .
+	END USCIAB0TX_ISR;
+
+Additionally, the register set declaration can be used in the declaration of procedure or function types.
+In that case, it plays the role of a contract between the procedure type and actual procedure assigned to a
+variable of the procedure type. The compiler ensures that the actual procedure protects all the registers
+specified in the procedure type declaration.
+
+For example, the module **HALGUImsp430g255x** exports the Callback function type, requesting that any assigned function
+protects the registers R4 to R15.
+
+	MODULE HALGUImsp430g255x;
+	  IMPORT SYSTEM, HALSYSmsp430g255x, HALIOmsp430g255x, M := msp430g2553;
+	
+	  TYPE Callback* = PROCEDURE {4..15} (data: CHAR): BOOLEAN;
+	    .
+	    .
+	END HALGUImsp430g255x.
+
+ The actual procedure, defined in the module **GUIMpack**, complies wtih this requirement.
+
+	MODULE GUIMpack;
+	  IMPORT SYSTEM, MP := mpack, MC := MpackCallbacks, HG := HALGUImsp430g255x;
+	    .
+	    .
+	  PROCEDURE {4..14} RxByteCallback(data: CHAR): BOOLEAN;
+	    VAR ret: BOOLEAN;
+	  BEGIN ret := FALSE;
+	    IF ~rxInProgress THEN
+	      IF data # 0AX THEN rxInProgress := TRUE; charCnt := 0; rxString[charCnt] := data END
+	    ELSE (* in progress *)
+	      INC(charCnt);
+	      IF data # 0AX THEN
+	        IF charCnt >= MAX_STR_LEN THEN rxInProgress := FALSE ELSE rxString[charCnt] := data END
+	      ELSE (* String receive complete *) rxInProgress := FALSE; rxString[charCnt] := 0X;
+	        IF ParseString() THEN ret := TRUE; (* wake-up MCU *) END
+	      END
+	    END
+	
+	    RETURN ret
+	  END RxByteCallback;
+	    .
+	    .
+	END GUIMpack.
+
+## Another example
 To show what a real program looks like, this is an example based on 
 msp430g2xx3_lpm3_vlo.c, a C language example from TI.
 
