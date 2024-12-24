@@ -1,4 +1,4 @@
-/* --COPYRIGHT--,BSD_EX
+(* --COPYRIGHT--,BSD_EX
  * Copyright (c) 2012, Texas Instruments Incorporated
  * All rights reserved.
  *
@@ -71,7 +71,7 @@ MODULE msp430g2xx3lpm3vlo;
 
   VAR i: INTEGER;
 
-  PROCEDURE* (M.WDT_VECTOR) watchdog_timer ;
+  PROCEDURE* (M.WDT_VECTOR) watchdog_timer;
   BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Clear LPM3 bits from SR backup *)
   END watchdog_timer;
 
