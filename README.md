@@ -1,10 +1,12 @@
 # Oberon STM32F4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 9 released!</b><br>
+<b>Version 10 released!</b><br>
   
-This is the third release of the MSP430 toolchain. 32 examples have been added.  
+This is the fourth release of Oberon MSP430 compiler.
+There are minor improvement and bug fixes and two new examples: GUI composer simple JSON and GUI composer simple MPack.
+They demonstrate the usage of records and procedure type for callbacks implementation. There are also complex programs using several modules.
 
-With this release; it is now easy to launch user actions immediately after system startup.
+Starting wiht the release 9, it is now easy to launch user actions immediately after system startup.
 Put your code in the initialization section of the OnStartup module and compile it.
 
 ![OberonMSP430compiler](https://github.com/user-attachments/assets/6926baf1-dc6c-406c-8f0f-f2973136a3e1)
