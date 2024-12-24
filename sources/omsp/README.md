@@ -28,10 +28,15 @@ This compiler is board agnostic, so **LED** is removed.
 **RLA(x, n)** is an optimized equivalent of **x := x * 2<sup>n</sup>** with x and y of numeric type  
 **RLC(x)** performs a rotate left through carry on x  
 **RRA(x, n)** is an optimized equivalent of **x := x / 2<sup>n</sup>** with x and y of numeric type  
-**RRC(x)** performs a rotate rightt through carry on x  
+**RRC(x)** performs a rotate right through carry on x  
 **SWPB(x)** exchanges high and low bytes of x
 #### In-line functions with different semantics
 **BIT(x, y)** is an optimized equivalent of the condition **"x*y # {}"**
+#### New SYSTEM in-line procedures
+**BIC_SR** allows to clear bits of the status register  
+**BIS_SR** allows to set bits off the status register  
+**BIC_SR_ON_EXIT** allows to clear bits the status register at the exit of an interrupt handler  
+**BIS_SR_ON_EXIT** allows to set bits the status register at the exit of an interrupt handler  
 ## Specific extensions
 ### Runtime modules
 Due to the limited RAM and Flash resources, it is useful to remove the trap
@@ -46,63 +51,81 @@ eliminating the overhead related to the associated trap.
 An asterisk after a procedure name defines an interrupt handler. The asterisk
 must be followed by one or more vector numbers separated by commas, indicating
 which interrupts the handler will be servicing.
+### Register protection
+An interrupt handler must restore all register to their initial value before exiting.
+The MSP430 compiler automatically build a list of altered register and triggers an error 
+if they are not properly restored before the interrupt handler exit. To deal with this, 
+the user can declare a set of registers to be save, in any procedure or function declaration.
+The compiler uses this to generate the appropriate set of **PUSH** and **POP** instructions,
+protecting the specified registers from corrpution.  
+  
+For exemple, the following handle pushes R4 on the stack at entry and pop the intial value of
+R4 for the stack on exit:  
+  
+	PROCEDURE* (M.USCIAB0TX_VECTOR) {4} USCIAB0TX_ISR;
+	  VAR rx_val: BYTE;
+	BEGIN
+ 	  .
+    	  .
+        END USCIAB0TX_ISR;
+  
 ## Example
 To show what a real program looks like, this is an example based on 
 msp430g2xx3_lpm3_vlo.c, a C language example from TI.
 
-	(*******************************************************************************  
-	//  MSP430G2xx3 Demo - Basic Clock, LPM3 Using WDT ISR, VLO ACLK  
-	//  
-	//  Description: This program operates MSP430 normally in LPM3, pulsing P1.0  
-	//  ~ 6 second intervals. WDT ISR used to wake-up system. All I/O configured  
-	//  as low outputs to eliminate floating inputs. Current consumption does  
-	//  increase when LED is powered on P1.0. Demo for measuring LPM3 current.  
-	//  ACLK = VLO/2, MCLK = SMCLK = default DCO  
-	//  
-	//  
-	//           MSP430G2xx3  
-	//         ---------------  
-	//     /|\|            XIN|-  
-	//      | |               |  
-	//      --|RST        XOUT|-  
-	//        |               |  
-	//        |           P1.0|-->LED  
-	//  
-	//  Eason Zhou  
-	//  Texas Instruments Inc.  
-	//  January 2020  
-	//  Ported to Oberon by C. Schoffit 30.08.2024  
-	//******************************************************************************)  
-	  
-	MODULE msp430g2xx3lpm3vlo;  
-	  IMPORT SYSTEM, M := msp430g2553;  
-	  
-	  VAR i: INTEGER;  
+	(******************************************************************************
+	//  MSP430G2xx3 Demo - Basic Clock, LPM3 Using WDT ISR, VLO ACLK
+	//
+	//  Description: This program operates MSP430 normally in LPM3, pulsing P1.0
+	//  ~ 6 second intervals. WDT ISR used to wake-up system. All I/O configured
+	//  as low outputs to eliminate floating inputs. Current consumption does
+	//  increase when LED is powered on P1.0. Demo for measuring LPM3 current.
+	//  ACLK = VLO/2, MCLK = SMCLK = default DCO
+	//
+	//
+	//           MSP430G2xx3
+	//         ---------------
+	//     /|\|            XIN|-
+	//      | |               |
+	//      --|RST        XOUT|-
+	//        |               |
+	//        |           P1.0|-->LED
+	//
+	//  Eason Zhou
+	//  Texas Instruments Inc.
+	//  January 2020
+	//  Ported to Oberon by C. Schoffit 30.08.2024
+	//******************************************************************************)
 	
-	  PROCEDURE* (M.WDT_VECTOR) ^0 watchdog_timer ;  
-	  BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Clear LPM3 bits from SR backup *)  
-	  END watchdog_timer ;  
+	MODULE msp430g2xx3lpm3vlo;
+	  IMPORT SYSTEM, M := msp430g2553;
 	
-	BEGIN  
-	  BIS(M.BCSCTL1^, M.DIVA_1); (* ACLK/2 *)  
-	  BIS(M.BCSCTL3^, M.LFXT1S_2); (* ACLK = VLO *)  
-	  M.WDTCTL^ := ORD(M.WDT_ADLY_1000); (* Interval timer *)  
-	  BIS(M.IE1^, M.WDTIE); (* Enable WDT interrupt *)  
-	  M.P1DIR^ := 0FFH; (* All P1.x outputs *)  
-	  M.P1OUT^ := 0; (* All P1.x reset *)  
-	  M.P2DIR^ := 0FFH; (* All P2.x outputs *)  
-	  M.P2OUT^ := 0; (* All P2.x reset *)  
-	  M.P3DIR^ := 0FFH; (* All P3.x outputs *)  
-	  M.P3OUT^ := 0; (* All P3.x reset *)  
-	    
-	  REPEAT   
-	    BIS(M.P1OUT^, {0}); (* Set P1.0 LED on *)  
-	    i := 10000; REPEAT DEC(i) UNTIL i <= 0; (* Delay *)  
-	    BIC(M.P1OUT^, {0}); (* Reset P1.0 LED off *)  
-	    SYSTEM.BIS_SR(M.LPM3_bits + M.GIE) (* Enter LPM3 *)  
-	  UNTIL FALSE  
-	END msp430g2xx3lpm3vlo.  
-  
+	  VAR i: INTEGER;
+	
+	  PROCEDURE* (M.WDT_VECTOR) watchdog_timer;
+	  BEGIN SYSTEM.BIC_SR_ON_EXIT(M.LPM3_bits) (* Clear LPM3 bits from SR backup *)
+	  END watchdog_timer;
+	
+	BEGIN
+	  BIS(M.BCSCTL1^, M.DIVA_1); (* ACLK/2 *)
+	  BIS(M.BCSCTL3^, M.LFXT1S_2); (* ACLK = VLO *)
+	  M.WDTCTL^ := M.WDT_ADLY_1000; (* Interval timer *)
+	  BIS(M.IE1^, M.WDTIE); (* Enable WDT interrupt *)
+	  M.P1DIR^ := {0..7}; (* All P1.x outputs *)
+	  M.P1OUT^ := {}; (* All P1.x reset *)
+	  M.P2DIR^ := {0..7}; (* All P2.x outputs *)
+	  M.P2OUT^ := {}; (* All P2.x reset *)
+	  M.P3DIR^ := {0..7}; (* All P3.x outputs *)
+	  M.P3OUT^ := {}; (* All P3.x reset *)
+	  
+	  REPEAT 
+	    BIS(M.P1OUT^, {0}); (* Set P1.0 LED on *)
+	    i := 10000; REPEAT DEC(i) UNTIL i <= 0; (* Delay *)
+	    BIC(M.P1OUT^, {0}); (* Reset P1.0 LED off *)
+	    SYSTEM.BIS_SR(M.LPM3_bits + M.GIE) (* Enter LPM3 *)
+	  UNTIL FALSE
+	END msp430g2xx3lpm3vlo.
+
 Compilation and linking is done by OMSPP and OMSPL modules:  
   
 OMSPP msp430g2553 msp430g2xx3lpm3vlo ~  
