@@ -19,7 +19,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   TYPE Item* = RECORD
     mode*: INTEGER;
     type*: B.Type;
-    a*, b*, r*: LONGINT;
+    a*, b*, r*: INTEGER;
     rdo*: BOOLEAN  (*read only*)
   END ;
 
@@ -45,19 +45,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     FrameOffset = POINTER TO FrameOffsetDesc;
 
-  VAR varsize: LONGINT;   (*data index*)
-    tdx, strx: LONGINT;
-    entry: LONGINT;   (*main entry point*)
-    RH: LONGINT;      (*in use registers R[0] ... R[H-1]*)
+  VAR varsize: INTEGER;   (*data index*)
+    tdx, strx: INTEGER;
+    entry: INTEGER;   (*main entry point*)
+    RH: INTEGER;      (*in use registers R[0] ... R[H-1]*)
     RL: INTEGER; (*register limit*)
-    SH: LONGINT;      (*in use floating point registers S[0] ... S[H-1]*)
-    frame: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs*)
-    fixORGP, fixORGD, fixORGT: LONGINT;   (*origins of lists of locations to be fixed up by loader*)
+    SH: INTEGER;      (*in use floating point registers S[0] ... S[H-1]*)
+    frame: INTEGER;   (*frame offset changed in SaveRegs and RestoreRegs*)
+    fixORGP, fixORGD, fixORGT: INTEGER;   (*origins of lists of locations to be fixed up by loader*)
     check*: BOOLEAN;   (*emit run-time checks*)
     version: INTEGER; (*0 = bare metal program, 1 = oberon system module*)
     
     relmap: ARRAY 6 OF INTEGER;    (*condition codes for relations*)
-    data: ARRAY maxTD OF LONGINT;  (*type descriptors*)
+    data: ARRAY maxTD OF INTEGER;  (*type descriptors*)
     str: ARRAY maxStrx OF CHAR;
     mcode: OM4A.ModuleCode;
     frmOfsSegs: FrameOffset;
@@ -75,11 +75,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END OfsPTOS;
 
-  PROCEDURE FixOne*(at: LONGINT);
+  PROCEDURE FixOne*(at: INTEGER);
   BEGIN OM4A.FixOne(mcode, at)
   END FixOne;
 
-  PROCEDURE FixLink*(L: LONGINT);
+  PROCEDURE FixLink*(L: INTEGER);
   BEGIN
     OM4A.FixLink(mcode, L)
   END FixLink;
@@ -108,11 +108,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF frame # 0 THEN OM4S.Mark("frame error"); frame := 0 END
   END CheckRegs;
 
-  PROCEDURE SetCC(VAR x: Item; n: LONGINT);
+  PROCEDURE SetCC(VAR x: Item; n: INTEGER);
   BEGIN x.mode := Cond; x.a := 0; x.b := 0; x.r := n
   END SetCC;
 
-  PROCEDURE Trap(cond, num: LONGINT);
+  PROCEDURE Trap(cond, num: INTEGER);
   (*
     Trap is implemented as a coprocessor instruction targeting a
     non existing coprocessor, i.e. not CP10 or CP11 assocatied to FPU.
@@ -124,7 +124,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     This will generate an exception trapped by the usage fault handler 
     implemented as the trap procedure of the System module.
   *)
-  VAR pos: LONGINT;
+  VAR pos: INTEGER;
   BEGIN 
     IF cond # OM4A.AL THEN OM4A.IfThen(mcode, "", cond) END;
     pos := OM4S.Pos();
@@ -133,7 +133,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     OM4A.Put0(mcode, OM4A.CoP + pos DIV OM4A.C7*OM4A.C12 + pos MOD OM4A.C7*OM4A.C4 + num)
   END Trap;
 
-(*  Format of pseudo operations for accessing static vars and procs
+  (*  Format of pseudo operations for accessing static vars and procs
 
     These pseudo-instructions will be fixup at load or link time by
     the Modules or OM4L modules.
@@ -175,7 +175,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 *)
 
   PROCEDURE GetStaticVarAddress(x: Item; a: BYTE);
-    VAR progbaseIndic: LONGINT;
+    VAR progbaseIndic: INTEGER;
   BEGIN    
     ASSERT((x.r <= 0) & (a < 13));
     IF mcode.pc-fixORGD > OM4A.C25 THEN OM4S.Mark("too many instruction between static access") END;
@@ -201,7 +201,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* loading of operands and addresses into registers *)
 
   PROCEDURE doLoad(VAR x: Item; target: INTEGER);
-    VAR op, pc0, pc1: LONGINT;
+    VAR op, pc0, pc1: INTEGER;
   BEGIN
     ASSERT(target IN {Reg, FPReg});
     ASSERT((target # FPReg) OR (x.type.form = B.Real));
@@ -320,16 +320,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
-  PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: LONGINT);
+  PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: INTEGER);
   BEGIN x.mode := B.Const; x.type := typ; x.a := val
   END MakeConstItem;
 
   PROCEDURE MakeRealItem*(VAR x: Item; val: REAL);
-  BEGIN x.mode := B.Const; x.type := B.realType; x.a := SYSTEM.VAL(LONGINT, val)
+  BEGIN x.mode := B.Const; x.type := B.realType; x.a := SYSTEM.VAL(INTEGER, val)
   END MakeRealItem;
 
   PROCEDURE MakeStringItem*(VAR x: Item); (*copies string from OM4S-buffer to OM4G-string array*)
-    VAR i, len: LONGINT;
+    VAR i, len: INTEGER;
   BEGIN len := OM4S.slen; x.mode := B.Const; x.type := B.strType; x.a := strx; x.r := 0; x.b := len; i := 0;
     IF strx + len + 4 < maxStrx THEN
       WHILE len > 0 DO str[strx] := OM4S.str[i]; INC(strx); INC(i); DEC(len) END ;
@@ -338,7 +338,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END MakeStringItem;
 
-  PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: LONGINT);
+  PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: INTEGER);
   BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.r := y.lev;
     IF y.class = B.Par THEN x.b := 0
     ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN
@@ -361,7 +361,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Field;
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
-    VAR s, lim, p2: LONGINT;
+    VAR s, lim, p2: INTEGER;
   BEGIN s := x.type.base.size; 
     IF s=0 THEN OM4S.Mark("Invalid array item size")
     ELSE
@@ -413,7 +413,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
 
-  PROCEDURE Q(T: B.Type; VAR dcw: LONGINT);
+  PROCEDURE Q(T: B.Type; VAR dcw: INTEGER);
   BEGIN (*one entry of type descriptor extension table*)
     IF T.base # NIL THEN
       ASSERT((T.mno >= 0) & (T.mno < 256));
@@ -424,8 +424,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Q;
 
-  PROCEDURE FindPtrFlds(typ: B.Type; off: LONGINT; VAR dcw: LONGINT);
-    VAR fld!: B.Object; i, s: LONGINT;
+  PROCEDURE FindPtrFlds(typ: B.Type; off: INTEGER; VAR dcw: INTEGER);
+    VAR fld!: B.Object; i, s: INTEGER;
   BEGIN
     IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN data[dcw] := off; INC(dcw)
     ELSIF typ.form = B.Record THEN
@@ -437,8 +437,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END FindPtrFlds;
 
-  PROCEDURE BuildTD*(T: B.Type; VAR dc: LONGINT);
-    VAR dcw, k, s: LONGINT;  (*dcw = word address*)
+  PROCEDURE BuildTD*(T: B.Type; VAR dc: INTEGER);
+    VAR dcw, k, s: INTEGER;  (*dcw = word address*)
   BEGIN dcw := dc DIV 4; s := T.size; (*convert size for heap allocation*)
     IF s <= 24 THEN s := 32 ELSIF s <= 56 THEN s := 64 ELSIF s <= 120 THEN s := 128
     ELSE s := (s+263) DIV 256 * 256
@@ -454,7 +454,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END BuildTD;
 
   PROCEDURE TypeTest*(VAR x: Item; T: B.Type; varpar, isguard: BOOLEAN);
-    VAR pc0: LONGINT;
+    VAR pc0: INTEGER;
   BEGIN
     IF ~check OR (T = NIL) THEN
       IF x.mode >= Reg THEN DEC(RH) END ;
@@ -481,7 +481,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation for Boolean operators *)
 
   PROCEDURE Not*(VAR x: Item);   (* x := ~x *)
-    VAR t: LONGINT;
+    VAR t: INTEGER;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
     x.r := OM4A.negated(x.r); t := x.a; x.a := x.b; x.b := t
@@ -532,7 +532,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Neg;
 
-  PROCEDURE AddOp*(op: LONGINT; VAR x, y: Item);   (* x := x +- y *)
+  PROCEDURE AddOp*(op: INTEGER; VAR x, y: Item);   (* x := x +- y *)
   BEGIN
     IF op = OM4S.plus THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a + y.a
@@ -550,7 +550,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END AddOp;
 
   PROCEDURE MulOp*(VAR x, y: Item);   (* x := x * y *)
-    VAR e: LONGINT;
+    VAR e: INTEGER;
   BEGIN
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a * y.a
     ELSIF (y.mode = B.Const) & (y.a >= 2) & (OM4A.log2(y.a, e) = 1) THEN load(x); OM4A.encShiftImm5(mcode, OM4A.LSl, x.r, x.r, e)
@@ -560,8 +560,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END MulOp;
 
-  PROCEDURE DivOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
-    VAR e: LONGINT;
+  PROCEDURE DivOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
+    VAR e: INTEGER;
   BEGIN
     IF op = OM4S.div THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
@@ -647,7 +647,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     SetCC(x, OM4A.MI)
   END In;
 
-  PROCEDURE SetOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
+  PROCEDURE SetOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
     VAR xset, yset: SET; (*x.type.form = Set*)
   BEGIN
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN
@@ -657,7 +657,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF op = OM4S.times THEN xset := xset * yset
       ELSIF op = OM4S.rdiv THEN xset := xset / yset
       END ;
-      x.a := SYSTEM.VAL(LONGINT, xset)
+      x.a := SYSTEM.VAL(INTEGER, xset)
     ELSIF y.mode = B.Const THEN
       load(x);
       IF op = OM4S.plus THEN OM4A.encDPImm32(mcode, OM4A.ORR, x.r, x.r, RH, y.a)
@@ -715,7 +715,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
     (*x, y are char arrays or strings*)
-    VAR pc0, tbf0: LONGINT;
+    VAR pc0, tbf0: INTEGER;
   BEGIN
     IF x.type.form = B.String THEN loadStringAdr(x) ELSE loadAdr(x) END ;
     IF y.type.form = B.String THEN loadStringAdr(y) ELSE loadAdr(y) END ;
@@ -735,7 +735,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
-    VAR op: LONGINT;
+    VAR op: INTEGER;
   BEGIN IF ~(y.mode IN {Reg, FPReg}) THEN
       IF y.type.form = B.Real THEN loadFP(y) ELSE load(y) END
     END;
@@ -779,7 +779,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Store;
 
   PROCEDURE StoreStruct*(VAR x, y: Item); (* x := y, frame = 0 *)
-    VAR s, pc0, pc1: LONGINT;
+    VAR s, pc0, pc1: INTEGER;
   BEGIN
     pc0 := -1;
     IF y.type.size # 0 THEN
@@ -812,7 +812,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END StoreStruct;
 
   PROCEDURE CopyString*(VAR x, y: Item);  (* x := y *) 
-     VAR len, pc0: LONGINT;
+     VAR len, pc0: INTEGER;
    BEGIN loadAdr(x); len := x.type.len;
     IF len >= 0 THEN
       IF len < y.b THEN OM4S.Mark("string too long") END
@@ -865,7 +865,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN load(y)
   END For0;
 
-  PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: LONGINT);
+  PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: INTEGER);
   BEGIN 
     load(z); OM4A.encCMPReg(mcode, y.r, z.r); DEC(RH);
     L := mcode.pc;
@@ -883,11 +883,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* Branches, procedure calls, procedure prolog and epilog *)
 
-  PROCEDURE Here*(): LONGINT;
+  PROCEDURE Here*(): INTEGER;
   BEGIN RETURN mcode.pc
   END Here;
 
-  PROCEDURE FJump*(VAR L: LONGINT);
+  PROCEDURE FJump*(VAR L: INTEGER);
   BEGIN OM4A.Put0(mcode, OM4A.BRSIG*OM4A.C27 + L); L := mcode.pc-4
   END FJump;
 
@@ -898,11 +898,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     OM4A.FixLink(mcode, x.b); x.a := mcode.pc-4
   END CFJump;
 
-  PROCEDURE BJump*(L: LONGINT);
+  PROCEDURE BJump*(L: INTEGER);
   BEGIN OM4A.encBackBranch(mcode, OM4A.AL, L)
   END BJump;
 
-  PROCEDURE CBJump*(VAR x: Item; L: LONGINT);
+  PROCEDURE CBJump*(VAR x: Item; L: INTEGER);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
     OM4A.encBackBranch(mcode, OM4A.negated(x.r), L); OM4A.FixLink(mcode, x.b); OM4A.FixLinkWith(mcode, x.a, L)
@@ -912,7 +912,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN OM4A.FixLink(mcode, x.a)
   END Fixup;
 
-  PROCEDURE PrepCall*(VAR x: Item; VAR r, s: LONGINT);
+  PROCEDURE PrepCall*(VAR x: Item; VAR r, s: INTEGER);
     VAR xr: INTEGER;
   BEGIN (*x.type.form = B.Proc*) xr := -1;
     IF x.mode > B.Par THEN load(x); xr := x.r; DEC(RH); ASSERT(xr = RH) END ;
@@ -921,7 +921,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF xr >= 0 THEN OM4A.PushRegs(mcode, xr, xr); INC(frame, 4); OfsPTOS(1, 1, TRUE) END;
   END PrepCall;
 
-  PROCEDURE Call*(VAR x: Item; r, s: LONGINT);
+  PROCEDURE Call*(VAR x: Item; r, s: INTEGER);
   BEGIN (*x.type.form = B.Proc*)
     IF x.mode = B.Const THEN
       IF x.r >= 0 THEN OM4A.Put0(mcode, OM4A.BL + OM4A.formatEvenImm25(x.a - (mcode.pc+4)))
@@ -958,8 +958,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Call;
 
-  PROCEDURE Enter*(parblksize, locblksize: LONGINT; int: BOOLEAN; reglim: INTEGER);
-    VAR r: LONGINT;
+  PROCEDURE Enter*(parblksize, locblksize: INTEGER; int: BOOLEAN; reglim: INTEGER);
+    VAR r: INTEGER;
   BEGIN OfsPTOS(0, -1, FALSE); frame := 0;
     IF locblksize >= OM4A.C16 THEN OM4S.Mark("local variables size exeeded") END;
     r := (parblksize-4) DIV 4;
@@ -986,7 +986,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*PUSH T1 LR *) OM4A.Put1(mcode, OM4A.PUSHT1 + OM4A.C8); OfsPTOS(1, 1, TRUE)
   END Enter;
 
-  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; reglim: INTEGER);
+  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: INTEGER; reglim: INTEGER);
   BEGIN
     IF form # B.NoTyp THEN 
       IF x.type.form = B.Real THEN loadFP(x); ELSE load(x) END
@@ -1000,8 +1000,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* In-line code procedures*)
 
-  PROCEDURE Increment*(upordown: LONGINT; VAR x, y: Item);
-    VAR op, zr, vl, vs: LONGINT;
+  PROCEDURE Increment*(upordown: INTEGER; VAR x, y: Item);
+    VAR op, zr, vl, vs: INTEGER;
   BEGIN (*frame = 0*)
     IF upordown = 0 THEN op := OM4A.ADD ELSE op := OM4A.SUB END ;
     IF x.type = B.byteType THEN vl := OM4A.LDRB; vs := OM4A.STRB ELSE vl := OM4A.LDR; vs := OM4A.STR END ;
@@ -1016,8 +1016,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Increment;
 
-  PROCEDURE Include*(inorex: LONGINT; VAR x, y: Item);
-    VAR op, zr: LONGINT;
+  PROCEDURE Include*(inorex: INTEGER; VAR x, y: Item);
+    VAR op, zr: INTEGER;
   BEGIN loadAdr(x); zr := RH; incR; OM4A.encMemImm32(mcode, OM4A.LDR, zr, x.r, RH, 0);
     IF inorex = 0 THEN op := OM4A.ORR ELSE op := OM4A.BIC END ;
     IF y.mode = B.Const THEN OM4A.encDPImm32(mcode, op, zr, zr, RH, LSL(1, y.a))
@@ -1027,7 +1027,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Include;
 
   PROCEDURE Assert*(VAR x: Item);
-    VAR cond, pc0: LONGINT;
+    VAR cond, pc0: INTEGER;
   BEGIN
     pc0 := 0;
     IF x.mode # Cond THEN loadCond(x) END;
@@ -1083,7 +1083,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Put;
 
   PROCEDURE Copy*(VAR x, y, z: Item);
-    VAR pc0, pc1: LONGINT;
+    VAR pc0, pc1: INTEGER;
   BEGIN load(x); load(y);
     pc0 := 0;
     IF z.mode = B.Const THEN
@@ -1156,8 +1156,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END 
   END Len;
 
-  PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item);
-    VAR op: LONGINT;
+  PROCEDURE Shift*(fct: INTEGER; VAR x, y: Item);
+    VAR op: INTEGER;
   BEGIN IF (x.mode = B.Const) & (y.mode = B.Const) THEN
       IF fct = 0 THEN x.a := LSL(x.a, y.a) ELSIF fct = 1 THEN x.a := ASR(x.a, y.a) ELSIF fct = 2 THEN x.a := ROR(x.a, y.a) ELSE x.a := LSR(x.a, y.a) END 
     ELSE load(x);
@@ -1232,7 +1232,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF v = 0 THEN mcode.pc := 4; (*Make room for the jump to entry point instruction*) END
   END Open;
 
-  PROCEDURE SetDataSize*(dc: LONGINT);
+  PROCEDURE SetDataSize*(dc: INTEGER);
   BEGIN varsize := dc
   END SetDataSize;
 
@@ -1243,8 +1243,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Header;
 
-  PROCEDURE NofPtrs(typ: B.Type): LONGINT;
-    VAR fld!: B.Object; n: LONGINT;
+  PROCEDURE NofPtrs(typ: B.Type): INTEGER;
+    VAR fld!: B.Object; n: INTEGER;
   BEGIN
     IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN n := 1
     ELSIF typ.form = B.Record THEN
@@ -1256,8 +1256,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN n
   END NofPtrs;
 
-  PROCEDURE FindPtrs(VAR R: Files.Rider; typ: B.Type; adr: LONGINT);
-    VAR fld!: B.Object; i, s: LONGINT;
+  PROCEDURE FindPtrs(VAR R: Files.Rider; typ: B.Type; adr: INTEGER);
+    VAR fld!: B.Object; i, s: INTEGER;
   BEGIN
     IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN Files.WriteInt(R, adr)
     ELSIF typ.form = B.Record THEN
@@ -1269,9 +1269,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END FindPtrs;
 
-  PROCEDURE Close*(VAR modid: OM4S.Ident; key, nofent: LONGINT);
+  PROCEDURE Close*(VAR modid: OM4S.Ident; key, nofent: INTEGER);
     VAR obj!, obj2!: B.Object;
-      i, comsize, nofimps, nofptrs, nofusedextprocs, size: LONGINT;
+      i, comsize, nofimps, nofptrs, nofusedextprocs, size: INTEGER;
       name: OM4S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*)

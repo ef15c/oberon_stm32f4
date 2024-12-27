@@ -421,7 +421,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     Display_Pitch* = (Display_Width*8 DIV Display_BPP+63) DIV 64*64;
 
-  VAR Leds*: ARRAY 7 OF LONGINT;
+  VAR Leds*: ARRAY 7 OF INTEGER;
 
   PROCEDURE Delayus*(d: INTEGER);
     VAR beg, now: INTEGER;

@@ -12,7 +12,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
   
 (* ---------------------------------------------------*)
 
-  PROCEDURE WriteReg*(VAR W: Texts.Writer; r: LONGINT);
+  PROCEDURE WriteReg*(VAR W: Texts.Writer; r: INTEGER);
   BEGIN Texts.Write(W, " ");
     IF r < 13 THEN Texts.WriteString(W, "R"); Texts.WriteInt(W, r MOD 10H, 1)
     ELSIF r = 13 THEN Texts.WriteString(W, "SP")
@@ -22,13 +22,13 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     END
   END WriteReg;
 
-  PROCEDURE ThumbExpandImm(op: SET): LONGINT;
+  PROCEDURE ThumbExpandImm(op: SET): INTEGER;
   (*15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
                     i                          imm3             a b c d e f g h
     ThumbExpandImm(i:imm3:imm8);*)
     CONST iimm3Msk = {26, 12..14};
       f1 = {}; f2 = {12}; f3={13}; f4 = {12..13};
-    VAR res, i: LONGINT;
+    VAR res, i: INTEGER;
       b4: BYTE;
   BEGIN
     b4 := ORD(op) MOD OM4A.C8;
@@ -65,8 +65,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     (*Note b. UNPREDICTABLE if abcdefgh == 00000000.*)
   END ThumbExpandImm;
   
-  PROCEDURE SignExtendEven25(op: SET): LONGINT;
-    VAR res: LONGINT;
+  PROCEDURE SignExtendEven25(op: SET): INTEGER;
+    VAR res: INTEGER;
     s, j1, j2: BOOLEAN;
   BEGIN res := 0;
     s := 26 IN op;
@@ -80,9 +80,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     IF s THEN (* Negative offset*) INC(res, LSL(-1, 24)) END;
     RETURN res
   END SignExtendEven25;
-  
-  PROCEDURE SignExtendEven21(op: SET): LONGINT;
-    VAR res: LONGINT;
+
+  PROCEDURE SignExtendEven21(op: SET): INTEGER;
+    VAR res: INTEGER;
   BEGIN res := 0;
     IF 11 IN op THEN INC(res, OM4A.C18) END;
     IF 13 IN op THEN INC(res, OM4A.C17) END;
@@ -93,17 +93,17 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     RETURN res
   END SignExtendEven21;
   
-  PROCEDURE SignExtendEven8(imm: LONGINT): LONGINT;
+  PROCEDURE SignExtendEven8(imm: INTEGER): INTEGER;
   BEGIN IF imm > OM4A.C7 THEN DEC(imm, OM4A.C8) END;
     RETURN imm*OM4A.C1
   END SignExtendEven8;
   
-  PROCEDURE SignExtendEven11(imm: LONGINT): LONGINT;
+  PROCEDURE SignExtendEven11(imm: INTEGER): INTEGER;
   BEGIN IF imm > OM4A.C10 THEN DEC(imm, OM4A.C11) END;
     RETURN imm*OM4A.C1
   END SignExtendEven11;
-  
-  PROCEDURE imm16(b1, b2, b3, b4: BYTE): LONGINT;
+
+  PROCEDURE imm16(b1, b2, b3, b4: BYTE): INTEGER;
   BEGIN
     RETURN 0 + b2 MOD OM4A.C4*OM4A.C12 + b1 DIV OM4A.C2 MOD OM4A.C1*OM4A.C11 +
               b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C8 + b4
@@ -119,10 +119,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     ELSIF setFlagsOutsideITB THEN Texts.Write(W, "S")
     END
   END WriteOp;
-  
+
   PROCEDURE WriteShift(VAR W: Texts.Writer; op: SET);
     CONST TypeMSK = {4..5};
-    VAR imm5: LONGINT;
+    VAR imm5: INTEGER;
   BEGIN
     imm5 := ORD(op) DIV OM4A.C12 MOD OM4A.C3*OM4A.C2 + ORD(op) DIV OM4A.C6 MOD OM4A.C2;
     IF op*TypeMSK = {} THEN (*LSL*) Texts.WriteString(W, " LSL #"); Texts.WriteInt(W, imm5, 1)
@@ -135,14 +135,14 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       ELSE (*RRX*) Texts.WriteString(W, " ROR #") END
     END
   END WriteShift;
-  
-  PROCEDURE WritePCOffset(VAR W: Texts.Writer; at: LONGINT; ofs: LONGINT);
+
+  PROCEDURE WritePCOffset(VAR W: Texts.Writer; at: INTEGER; ofs: INTEGER);
   BEGIN
     Texts.WriteString(W, " #"); Texts.WriteInt(W, ofs, 1);
     Texts.WriteString(W, ", goes to "); Texts.WriteHex(W, at+ofs);
   END WritePCOffset;
-  
-  PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; base: LONGINT);
+
+  PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: INTEGER; base: INTEGER);
     CONST
       (*32-bit instructions*)
       T32MSK1 = {25..28, 22}; T32MSK2 = {25..28}; T32MSK3 = {26..27};

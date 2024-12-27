@@ -114,10 +114,10 @@ MODULE OM4Tool;  (*NW 18.2.2013
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
     END
   END DecSym;
-  
+
 (* ---------------------------------------------------*)
 
-  PROCEDURE opcode(VAR c: ARRAY OF BYTE; VAR er: ExternalRefMap; VAR i: LONGINT; base: LONGINT);                  
+  PROCEDURE opcode(VAR c: ARRAY OF BYTE; VAR er: ExternalRefMap; VAR i: INTEGER; base: INTEGER);                  
     VAR b1, b2, b3, b4, ext, proc: BYTE;
       op: SET;
   BEGIN

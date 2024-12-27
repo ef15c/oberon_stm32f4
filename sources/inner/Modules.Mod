@@ -40,14 +40,14 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
     importing*, imported*: ModuleName;
     limit: INTEGER;
 
-  PROCEDURE formatEvenImm25(disp: LONGINT): LONGINT;
+  PROCEDURE formatEvenImm25(disp: INTEGER): INTEGER;
   (* |00000S   imm10  00J0J   imm11   |
      |                  1 2
      I1 = NOT(J1 EOR S); I2 = NOT(J2 EOR S); imm32 = SignExtend(S:I1:I2:imm10:imm11:'0', 32);
   *) 
-  VAR res: LONGINT;
+  VAR res: INTEGER;
     S, J1, J2: BYTE;
-    imm10, imm11: LONGINT;
+    imm10, imm11: INTEGER;
   BEGIN
     disp := disp DIV C1;
     S := disp DIV C23 MOD C1;
@@ -68,7 +68,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
     RETURN imm11 + S*C26 + imm10*C16+J1*C13+J2*C11
   END formatEvenImm25;
   
-  PROCEDURE formatImm16(reg: BYTE; val: LONGINT): LONGINT;
+  PROCEDURE formatImm16(reg: BYTE; val: INTEGER): INTEGER;
   (*|xxxxxixxxxxximm4ximm reg  imm8  |
     |                   3            |
     val = imm4:i:imm3:imm8*)
@@ -77,7 +77,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
            val DIV C8 MOD C3*C12 + reg*C8 + val MOD C8
   END formatImm16;
 
-  PROCEDURE thumbSwap(w: LONGINT): LONGINT;
+  PROCEDURE thumbSwap(w: INTEGER): INTEGER;
   BEGIN
     RETURN w DIV 100H MOD 100H*1000000H
       + w MOD 100H*10000H

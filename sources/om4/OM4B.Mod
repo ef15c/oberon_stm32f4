@@ -29,7 +29,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       next*, dsc*: Object;
       type*: Type;
       name*: OM4S.Ident;
-      val*: LONGINT
+      val*: INTEGER
     END ;
 
     ModDesc* = RECORD (ObjDesc) orgname*: OM4S.Ident END ;
@@ -37,10 +37,10 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     TypeDesc* = RECORD
       form*, ref*, mno*: INTEGER;  (*ref is only used for import/export*)
       nofpar*: INTEGER;  (*for procedures, extension level for records*)
-      len*: LONGINT;  (*for arrays, len < 0 => open array; for records: adr of descriptor*)
+      len*: INTEGER;  (*for arrays, len < 0 => open array; for records: adr of descriptor*)
       dsc*, typobj*: Object;
       base*: Type;  (*for arrays, records, pointers*)
-      size*: LONGINT;  (*in bytes; always multiple of 4, except for Byte, Bool and Char*)
+      size*: INTEGER;  (*in bytes; always multiple of 4, except for Byte, Bool and Char*)
     END ;
 
   (* Object classes and the meaning of "val":
@@ -130,7 +130,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     FName[i] := 0X
   END MakeFileName;
   
-  PROCEDURE ThisModule(name, orgname: OM4S.Ident; decl: BOOLEAN; key: LONGINT): Object;
+  PROCEDURE ThisModule(name, orgname: OM4S.Ident; decl: BOOLEAN; key: INTEGER): Object;
     VAR mod!: Module; obj!, obj1!: Object;
   BEGIN obj1 := topScope; obj := obj1.next;  (*search for module*)
     WHILE (obj # NIL) & (obj(Module).orgname # orgname) DO obj1 := obj; obj := obj1.next END ;
@@ -160,7 +160,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END Read;
   
   PROCEDURE InType(VAR R: Files.Rider; thismod: Object; VAR T: Type);
-    VAR key: LONGINT;
+    VAR key: INTEGER;
       ref, class, form, np, readonly: INTEGER;
       fld!, par!, obj!, mod!, last!: Object;
       t!: Type;
@@ -213,7 +213,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END InType;
   
   PROCEDURE Import*(VAR modid, modid1: OM4S.Ident);
-    VAR key: LONGINT; class, k: INTEGER;
+    VAR key: INTEGER; class, k: INTEGER;
       obj!: Object;  t!: Type;
       thismod!: Object;
       modname, fname: OM4S.Ident;
@@ -268,8 +268,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       END
     END OutPar;
 
-    PROCEDURE FindHiddenPointers(VAR R: Files.Rider; typ: Type; offset: LONGINT);
-      VAR fld!: Object; i, n: LONGINT;
+    PROCEDURE FindHiddenPointers(VAR R: Files.Rider; typ: Type; offset: INTEGER);
+      VAR fld!: Object; i, n: INTEGER;
     BEGIN
       IF (typ.form = Pointer) OR (typ.form = NilTyp) THEN Write(R, Fld); Write(R, 0); Files.WriteNum(R, offset)
       ELSIF typ.form = Record THEN fld := typ.dsc;
@@ -312,8 +312,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     END
   END OutType;
 
-  PROCEDURE Export*(VAR modid: OM4S.Ident; VAR newSF: BOOLEAN; VAR key: LONGINT);
-    VAR x, sum, oldkey: LONGINT;
+  PROCEDURE Export*(VAR modid: OM4S.Ident; VAR newSF: BOOLEAN; VAR key: INTEGER);
+    VAR x, sum, oldkey: INTEGER;
       obj!, obj0!: Object;
       filename: OM4S.Ident;
       F!, F1!: Files.File; R!, R1!: Files.Rider;
@@ -366,13 +366,13 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN topScope := universe; nofmod := 1
   END Init;
   
-  PROCEDURE type(ref, form: INTEGER; size: LONGINT): Type;
+  PROCEDURE type(ref, form: INTEGER; size: INTEGER): Type;
     VAR tp!: Type;
   BEGIN NEW(tp); tp.form := form; tp.size := size; tp.ref := ref; tp.base := NIL;
     typtab[ref] := tp; RETURN tp
   END type;
 
-  PROCEDURE enter(name: ARRAY OF CHAR; cl: INTEGER; type: Type; n: LONGINT);
+  PROCEDURE enter(name: ARRAY OF CHAR; cl: INTEGER; type: Type; n: INTEGER);
     VAR obj!: Object;
   BEGIN NEW(obj); obj.name := name; obj.class := cl; obj.type := type; obj.val := n; obj.dsc := NIL;
     IF cl = Typ THEN type.typobj := obj END ;
@@ -391,7 +391,6 @@ BEGIN
   strType := type(String, String, 8);
     
   (*initialize universe with data types and in-line procedures;
-    LONGINT is synonym to INTEGER, LONGREAL to REAL.
     LED, ADC, SBC; LDPSR, LDREG, REG, COND are not in language definition*)
   system := NIL;  (*n = procno*10 + nofpar*)
   enter("ABS", SFunc, intType, 1);  (*functions*)
@@ -424,9 +423,9 @@ BEGIN
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);
   enter("CHAR", Typ, charType, 0);
-  enter("LONGREAL", Typ, realType, 0);
+(*  enter("LONGREAL", Typ, realType, 0); *)
   enter("REAL", Typ, realType, 0);
-  enter("LONGINT", Typ, intType, 0);
+(*  enter("LONGINT", Typ, intType, 0); *)
   enter("INTEGER", Typ, intType, 0);
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
   

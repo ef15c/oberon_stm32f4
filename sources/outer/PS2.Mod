@@ -27,7 +27,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       direction, statusIn*, statusOut*, connectedDevice*: BYTE;
       clockPin*, nofBitsToBeRead, parity: BYTE;
       parityEnabled*, haveWheel: BOOLEAN;
-      clock_In*, data_In*, clock_Out*, data_Out*, activityLED, mouseLED*, keyboardLED*: LONGINT;
+      clock_In*, data_In*, clock_Out*, data_Out*, activityLED, mouseLED*, keyboardLED*: INTEGER;
       dataIn, dataOut, tickLastReport, mouseReportSize, badEdge*: INTEGER;
       dest*: CircularBuffer; buf: CircularBufferDesc
     END;

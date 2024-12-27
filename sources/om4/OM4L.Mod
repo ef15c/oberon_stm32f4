@@ -272,7 +272,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
   END Link;
 
   PROCEDURE Load*;  (*load prelinked boot file M.bin onto the boot area of the local disk*)
-    VAR i, secno: LONGINT; b: BYTE;
+    VAR i, secno: INTEGER; b: BYTE;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       buf: ARRAY Kernel.SectorLength OF BYTE;

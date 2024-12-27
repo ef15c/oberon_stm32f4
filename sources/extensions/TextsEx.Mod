@@ -1,8 +1,8 @@
 MODULE TextsEx;
   IMPORT Texts;
 
-  PROCEDURE WriteHexVLen*(VAR W: Texts.Writer; x, n: LONGINT; leadingZero: BOOLEAN);
-    VAR i: INTEGER; y: LONGINT;
+  PROCEDURE WriteHexVLen*(VAR W: Texts.Writer; x, n: INTEGER; leadingZero: BOOLEAN);
+    VAR i: INTEGER; y: INTEGER;
       a: ARRAY 10 OF CHAR;
   BEGIN ASSERT(n<=10);
     i := 0; Texts.Write(W, " ");

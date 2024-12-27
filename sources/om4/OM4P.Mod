@@ -13,7 +13,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     END ;
   
   VAR sym: INTEGER;   (*last symbol read*)
-    dc: LONGINT;    (*data counter*)
+    dc: INTEGER;    (*data counter*)
     level, exno, version: INTEGER;
     newSF, initmode: BOOLEAN;  (*option flag*)
     expression: PROCEDURE (VAR x: G.Item);  (*to avoid forward reference*)
@@ -87,7 +87,6 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     ELSE expo := FALSE
     END
   END CheckExport;
-
 
   PROCEDURE CheckUnsafeMarking(VAR unsafe: BOOLEAN);
   BEGIN
@@ -248,8 +247,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END ParamList;
 
-  PROCEDURE StandFunc(VAR x: G.Item; fct: LONGINT; restyp: B.Type);
-    VAR y!, z!: G.Item; n, npar: LONGINT;
+  PROCEDURE StandFunc(VAR x: G.Item; fct: INTEGER; restyp: B.Type);
+    VAR y!, z!: G.Item; n, npar: INTEGER;
   BEGIN Check(OM4S.lparen, "no (");
     npar := fct MOD 10; fct := fct DIV 10; expression(x); n := 1;
     IF sym = OM4S.comma THEN OM4S.Get(sym); expression(y); n := 2;
@@ -325,7 +324,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END set; 
 
   PROCEDURE factor(VAR x: G.Item);
-    VAR obj!: B.Object; rx, sx: LONGINT;
+    VAR obj!: B.Object; rx, sx: INTEGER;
   BEGIN (*sync*)
     IF (sym < OM4S.char) OR (sym > OM4S.ident) THEN OM4S.Mark("expression expected");
       REPEAT OM4S.Get(sym) UNTIL (sym >= OM4S.char) & (sym <= OM4S.for) OR (sym >= OM4S.then)
@@ -442,8 +441,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
 
   (* statements *)
 
-  PROCEDURE StandProc(pno: LONGINT);
-    VAR nap, npar: LONGINT; (*nof actual/formal parameters*)
+  PROCEDURE StandProc(pno: INTEGER);
+    VAR nap, npar: INTEGER; (*nof actual/formal parameters*)
       x!, y!, z!: G.Item;
   BEGIN Check(OM4S.lparen, "no (");
     npar := pno MOD 10; pno := pno DIV 10; expression(x); nap := 1;
@@ -486,7 +485,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR obj!: B.Object;
       orgtype!: B.Type; (*original type of case var*)
       x!, y!, z!, w!: G.Item;
-      L0, L1, rx, sx: LONGINT;
+      L0, L1, rx, sx: INTEGER;
 
     PROCEDURE TypeCase(obj: B.Object; VAR x: G.Item);
       VAR typobj!: B.Object;
@@ -638,7 +637,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END IdentList;
   
   PROCEDURE ArrayType(VAR type: B.Type);
-    VAR x!: G.Item; typ!: B.Type; len: LONGINT;
+    VAR x!: G.Item; typ!: B.Type; len: INTEGER;
   BEGIN NEW(typ); typ.form := B.NoTyp;
     expression(x);
     IF (x.mode = B.Const) & (x.type.form = B.Int) & (x.a >= 0) THEN len := x.a
@@ -656,7 +655,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE RecordType(VAR type: B.Type);
     VAR obj!, obj0!, new!, bot!, base!: B.Object;
       typ!, tp!: B.Type;
-      offset, off, n: LONGINT;
+      offset, off, n: INTEGER;
   BEGIN NEW(typ); typ.form := B.NoTyp; typ.base := NIL; typ.mno := -level; typ.nofpar := 0; offset := 0; bot := NIL;
     IF sym = OM4S.lparen THEN
       OM4S.Get(sym); (*record extension*)
@@ -698,9 +697,9 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     typ.form := B.Record; typ.dsc := bot; typ.size := (offset + 3) DIV 4 * 4; type := typ
   END RecordType;
 
-  PROCEDURE FPSection(VAR adr: LONGINT; VAR nofpar: INTEGER);
+  PROCEDURE FPSection(VAR adr: INTEGER; VAR nofpar: INTEGER);
     VAR obj!, first!: B.Object; tp!: B.Type;
-      parsize: LONGINT; cl: INTEGER; rdo: BOOLEAN;
+      parsize: INTEGER; cl: INTEGER; rdo: BOOLEAN;
   BEGIN
     IF sym = OM4S.var THEN OM4S.Get(sym); cl := B.Par ELSE cl := B.Var END ;
     IdentList(cl, first); FormalType(tp, 0); rdo := FALSE;
@@ -717,8 +716,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     IF adr >= 52 THEN OM4S.Mark("too many parameters") END
   END FPSection;
 
-  PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: LONGINT);
-    VAR obj!: B.Object; size: LONGINT; nofpar: INTEGER;
+  PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: INTEGER);
+    VAR obj!: B.Object; size, nofpar: INTEGER;
   BEGIN ptype.base := B.noType; size := parblksize; nofpar := 0; ptype.dsc := NIL;
     IF sym = OM4S.lparen THEN
       OM4S.Get(sym);
@@ -742,7 +741,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END ProcedureType;
 
   PROCEDURE FormalType0(VAR typ: B.Type; dim: INTEGER);
-    VAR obj!: B.Object; dmy: LONGINT;
+    VAR obj!: B.Object; dmy: INTEGER;
   BEGIN
     IF sym = OM4S.ident THEN
       qualident(obj);
@@ -766,7 +765,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END CheckRecLevel;
 
   PROCEDURE Type0(VAR type: B.Type);
-    VAR dmy: LONGINT; obj!: B.Object; ptbase!: PtrBase;
+    VAR dmy: INTEGER; obj!: B.Object; ptbase!: PtrBase;
   BEGIN type := B.intType; (*sync*)
     IF (sym # OM4S.ident) & (sym < OM4S.array) THEN OM4S.Mark("not a type");
       REPEAT OM4S.Get(sym) UNTIL (sym = OM4S.ident) OR (sym >= OM4S.array)
@@ -823,7 +822,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     RETURN res
   END containsPointer;
 
-  PROCEDURE Declarations(VAR varsize: LONGINT);
+  PROCEDURE Declarations(VAR varsize: INTEGER);
     VAR obj!, first!: B.Object;
       x!: G.Item; tp!: B.Type; ptbase!: PtrBase;
       expo, unsafe, umm, umf, onetimeinit: BOOLEAN; id: OM4S.Ident;
@@ -909,7 +908,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       type!: B.Type;
       procid: OM4S.Ident;
       x!: G.Item;
-      locblksize, parblksize, L: LONGINT;
+      locblksize, parblksize, L: INTEGER;
       int: BOOLEAN; reglim: INTEGER;
   BEGIN (* ProcedureDecl *) int := FALSE; OM4S.Get(sym); 
     IF sym = OM4S.times THEN OM4S.Get(sym); int := TRUE END ;
@@ -974,7 +973,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END Import;
 
   PROCEDURE Module;
-    VAR key: LONGINT; oldCol: INTEGER;
+    VAR key, oldCol: INTEGER;
   BEGIN Texts.WriteString(W, "  compiling "); OM4S.Get(sym);
     IF sym = OM4S.module THEN
       OM4S.Get(sym);
@@ -1028,7 +1027,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END Option;
 
   PROCEDURE Compile*;
-    VAR beg, end, time: LONGINT;
+    VAR beg, end, time: INTEGER;
       T!: Texts.Text;
       S!: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
