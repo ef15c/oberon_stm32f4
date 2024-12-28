@@ -43,7 +43,7 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
       END ;
 
     SelQuery = RECORD (Display.FrameMsg)
-        f: Frame; time: LONGINT
+        f: Frame; time: INTEGER
       END ;
 
     FocusQuery = RECORD (Display.FrameMsg)
@@ -208,7 +208,7 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
   END Macro;
 
   PROCEDURE CaptionCopy(F: Frame;
-      x1, y1: INTEGER; T: Texts.Text; beg, end: LONGINT): Graphics.Caption;
+      x1, y1: INTEGER; T: Texts.Text; beg, end: INTEGER): Graphics.Caption;
     VAR ch: CHAR;
       dx, w, x2, y2, w1, h1: INTEGER;
       cap!: Graphics.Caption;
@@ -238,7 +238,7 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
   PROCEDURE Edit(F: Frame; x0, y0: INTEGER; k0: SET);
     VAR obj!: Graphics.Object;
       x1, y1, w, h, t: INTEGER;
-      beg, end, time: LONGINT;
+      beg, end, time: INTEGER;
       k1, k2: SET;
       mark!, newmark!: Location;
       T!: Texts.Text;
@@ -339,7 +339,7 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
   END InsertChar;
 
   PROCEDURE DeleteChar(F: Frame);
-    VAR w1, h1: INTEGER; ch: CHAR; pos: LONGINT;
+    VAR w1, h1: INTEGER; ch: CHAR; pos: INTEGER;
       DM!: DispMsg; R!: Texts.Reader;
   BEGIN DM.graph := F.graph;
     IF newcap.len > 0 THEN
@@ -353,7 +353,7 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
     END
   END DeleteChar;
 
-  PROCEDURE GetSelection(F: Frame; VAR text: Texts.Text; VAR beg, end, time: LONGINT);
+  PROCEDURE GetSelection(F: Frame; VAR text: Texts.Text; VAR beg, end, time: INTEGER);
     VAR obj!: Graphics.Object;
   BEGIN obj := F.graph.sel;
     IF (obj # NIL) & (F.graph.time >= time) THEN

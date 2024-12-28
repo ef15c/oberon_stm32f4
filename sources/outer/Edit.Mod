@@ -9,8 +9,8 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     pat: ARRAY maxlen OF CHAR;
     d: ARRAY 256 OF INTEGER;
 
-  PROCEDURE Max(i, j: LONGINT): LONGINT;
-    VAR m: LONGINT;
+  PROCEDURE Max(i, j: INTEGER): INTEGER;
+    VAR m: INTEGER;
   BEGIN IF i >= j THEN m := i ELSE m := j END ;
     RETURN m
   END Max;
@@ -20,7 +20,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     S!: Texts.Scanner;
     V!: Viewers.Viewer;
     X, Y: INTEGER;
-    beg, end, time: LONGINT;
+    beg, end, time: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF (S.class = Texts.Char) & (S.c = "^") OR (S.line # 0) THEN
       Oberon.GetSelection(T, beg, end, time);
@@ -41,7 +41,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
       T!: Texts.Text;
       S!: Texts.Scanner;
       R!: Files.Rider;
-      beg, end, time, len: LONGINT;
+      beg, end, time, len: INTEGER;
 
     PROCEDURE Backup (VAR name: ARRAY OF CHAR);
       VAR res, i: INTEGER; bak: ARRAY 32 OF CHAR;
@@ -73,7 +73,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     VAR T!: Texts.Text;
       F!: TextFrames.Frame;
       v!: Viewers.Viewer;
-      beg, end, time: LONGINT;
+      beg, end, time: INTEGER;
       fnt!: Fonts.Font; col, voff: INTEGER;
   BEGIN Oberon.GetSelection(T, beg, end, time);
     IF time >= 0 THEN
@@ -87,7 +87,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
   END CopyLooks; 
 
   PROCEDURE ChangeFont*;
-    VAR S!: Texts.Scanner; T!: Texts.Text; beg, end, time: LONGINT;
+    VAR S!: Texts.Scanner; T!: Texts.Text; beg, end, time: INTEGER;
   BEGIN
     Oberon.GetSelection(T, beg, end, time);
     IF time >= 0 THEN
@@ -102,7 +102,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     VAR S!: Texts.Scanner;
       T!: Texts.Text;
       col: INTEGER;
-      beg, end, time: LONGINT;
+      beg, end, time: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Int THEN
       col := S.i; Oberon.GetSelection(T, beg, end, time);
@@ -114,7 +114,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     VAR S!: Texts.Scanner;
       T!: Texts.Text;
       voff: INTEGER; ch: CHAR;
-      beg, end, time: LONGINT;
+      beg, end, time: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Int THEN
       voff := S.i; Oberon.GetSelection(T, beg, end, time);
@@ -127,7 +127,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
       V!: Viewers.Viewer;
       R!: Texts.Reader;
       T!: Texts.Text;
-      pos, beg, end, time, len: LONGINT; n, i, j: INTEGER;
+      pos, beg, end, time, len: INTEGER; n, i, j: INTEGER;
       buf: ARRAY 32 OF CHAR;
 
     PROCEDURE Forward(n: INTEGER; VAR R: Texts.Reader; VAR buf: ARRAY OF CHAR);
@@ -176,7 +176,7 @@ ASSERT(pos >= 0);
     VAR Text!: TextFrames.Frame;
       T!: Texts.Text; S!: Texts.Scanner;
       V!: Viewers.Viewer;
-      beg, end, time: LONGINT;
+      beg, end, time: INTEGER;
   BEGIN
     V := Oberon.FocusViewer;
     IF (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
@@ -201,7 +201,7 @@ ASSERT(pos >= 0);
     VAR Menu!, Main!: Display.Frame;
       buf!: Texts.Buffer;
       V!: Viewers.Viewer;
-      pos: LONGINT;
+      pos: INTEGER;
       M!: TextFrames.Frame;
   BEGIN V := Oberon.FocusViewer;
     IF (V # NIL) & (V IS MenuViewers.Viewer) THEN
@@ -228,5 +228,3 @@ ASSERT(pos >= 0);
 
 BEGIN Texts.OpenWriter(W)
 END Edit.
-
-

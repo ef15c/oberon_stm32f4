@@ -23,8 +23,8 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   BEGIN head0.typ := t; head0.len := L; SCC.SendPacket(head0, data)
   END Send;
 
-  PROCEDURE ReceiveHead(timeout: LONGINT);
-    VAR time: LONGINT;
+  PROCEDURE ReceiveHead(timeout: INTEGER);
+    VAR time: INTEGER;
   BEGIN time := Oberon.Time() + timeout;
     REPEAT
       SCC.ReceiveHead(head1);
@@ -57,7 +57,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     REPEAT ch := s[i]; d[k] := ORD(ch); INC(i); INC(k) UNTIL ch = 0X
   END AppendS;
 
-  PROCEDURE AppendW(s: LONGINT; VAR d: ARRAY OF BYTE;
+  PROCEDURE AppendW(s: INTEGER; VAR d: ARRAY OF BYTE;
       n: INTEGER; VAR k: INTEGER);
     VAR i: INTEGER;
   BEGIN i := 0;
@@ -70,7 +70,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     REPEAT SCC.Receive(x); s[i] := CHR(x); INC(i) UNTIL x = 0
   END PickS;
 
-  PROCEDURE PickQ(VAR w: LONGINT);
+  PROCEDURE PickQ(VAR w: INTEGER);
     VAR x0, x1, x2, x3: BYTE;
   BEGIN SCC.Receive(x0); SCC.Receive(x1); SCC.Receive(x2); SCC.Receive(x3);
     w := x0 + 100H * (x1 + 100H * (x2 + 100H * x3))
@@ -79,7 +79,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   PROCEDURE SendData(F: Files.File);
     VAR k, retry, seqno, nseqno: INTEGER;
       x: BYTE;
-      len: LONGINT;
+      len: INTEGER;
       R!: Files.Rider;
       buf: ARRAY PakSize OF BYTE;
   BEGIN Files.Set(R, F, 0); len := 0; seqno := 0;
@@ -101,7 +101,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   PROCEDURE ReceiveData(F: Files.File; VAR done: BOOLEAN);
     VAR k, retry, seqno: INTEGER;
      x: BYTE;
-     len: LONGINT;
+     len: INTEGER;
      R!: Files.Rider;
   BEGIN Files.Set(R, F, 0); seqno := 0; len := 0; retry := 20; k := PakSize;
     REPEAT
@@ -138,7 +138,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
     VAR i: INTEGER;
       done: BOOLEAN; x: BYTE;
       F!: Files.File;
-      pw, clock, newclock: LONGINT;
+      pw, clock, newclock: INTEGER;
       Id: ARRAY 8 OF CHAR;
       IdB: ARRAY 8 OF BYTE;
       FileName: ARRAY 32 OF CHAR;
@@ -204,8 +204,8 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S)
   END GetPar1;
 
-  PROCEDURE GetPar(VAR S: Texts.Scanner; VAR end: LONGINT);
-    VAR T!: Texts.Text; beg, tm: LONGINT;
+  PROCEDURE GetPar(VAR S: Texts.Scanner; VAR end: INTEGER);
+    VAR T!: Texts.Text; beg, tm: INTEGER;
   BEGIN Texts.Scan(S);
     IF (S.class = Texts.Char) & (S.c = "^") THEN
       Oberon.GetSelection(T, beg, end, tm);
@@ -216,7 +216,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
 
   PROCEDURE SendFiles*;
     VAR k, retry: INTEGER;
-      end: LONGINT;
+      end: INTEGER;
       S!: Texts.Scanner;
       F!: Files.File;
       buf: ARRAY 64 OF BYTE;
@@ -257,7 +257,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
 
   PROCEDURE ReceiveFiles*;
     VAR k, retry: INTEGER; done: BOOLEAN;
-      end: LONGINT;
+      end: INTEGER;
       S!: Texts.Scanner;
       F!: Files.File;
       buf: ARRAY 64 OF BYTE;
@@ -339,7 +339,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
 
   PROCEDURE StartServer*;
     VAR S!: Texts.Scanner;
-      end: LONGINT;
+      end: INTEGER;
       channel: BYTE;
   BEGIN GetPar1(S);
     IF S.class = Texts.Int THEN
@@ -372,7 +372,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
 
   PROCEDURE Reset*;
     VAR S!: Texts.Scanner;
-      end: LONGINT;
+      end: INTEGER;
       channel: BYTE;
   BEGIN GetPar1(S);
     IF S.class = Texts.Int THEN
@@ -411,11 +411,9 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   BEGIN SCC.PrintConfig(W); Texts.Append(Oberon.Log, W.buf)
   END SCCPrintConfig;
 
-
   PROCEDURE SCCShowRxPacket*;
   BEGIN SCC.ShowRxPacket(W); Texts.Append(Oberon.Log, W.buf)
   END SCCShowRxPacket;
-
 
   PROCEDURE ShowHead1*;
   BEGIN Texts.WriteString(W, "Valid "); Texts.WriteInt(W, ORD(head1.valid), 1);

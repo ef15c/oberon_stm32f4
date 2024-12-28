@@ -27,7 +27,7 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
     Name* = ARRAY NameLen OF CHAR;
 
     GraphDesc* = RECORD
-        time*: LONGINT;
+        time*: INTEGER;
         sel*, first: Object;
         changed*: BOOLEAN
       END ;
@@ -249,9 +249,9 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
   PROCEDURE InitContext(VAR C: Context);
     VAR i: INTEGER;
   BEGIN C.nofonts := 0; C.noflibs := 0; C.nofclasses := 4;
-    FOR i := 0 TO LEN(C.font) DO C.font[i] := NIL END;
-    FOR i := 0 TO LEN(C.lib) DO C.lib[i] := NIL END;
-    C.class[0] := NIL; FOR i := 4 TO LEN(C.class) DO C.class[i] := NIL END;
+    FOR i := 0 TO LEN(C.font) - 1 DO C.font[i] := NIL END;
+    FOR i := 0 TO LEN(C.lib) - 1 DO C.lib[i] := NIL END;
+    C.class[0] := NIL; FOR i := 4 TO LEN(C.class) - 1 DO C.class[i] := NIL END;
     C.class[1] := LineMethod.new; C.class[2] := CapMethod.new; C.class[3] := MacMethod.new
   END InitContext;
 
@@ -562,7 +562,7 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
 
   PROCEDURE ChangeCaption(obj: Object;  VAR M: Msg);
     VAR dx, x1, dy, y1, w, w1, h1, len: INTEGER;
-      pos: LONGINT;
+      pos: INTEGER;
       ch: CHAR; patadr: INTEGER; fnt!: Fonts.Font;
       R!: Texts.Reader;
   BEGIN
@@ -667,7 +667,7 @@ MODULE Graphics;   (*NW 21.12.89 / 18.11.201 / 8.4.2016*)
     END
   END PrintMacro; *)
 
-  PROCEDURE Notify(T: Texts.Text; op: INTEGER; beg, end: LONGINT);
+  PROCEDURE Notify(T: Texts.Text; op: INTEGER; beg, end: INTEGER);
   BEGIN
   END Notify;
 

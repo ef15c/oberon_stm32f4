@@ -26,8 +26,8 @@ MODULE Curves;  (*NW 8.11.90 / 18.4.2013*)
     END
   END mark;
 
-  PROCEDURE line(f: GraphicFrames.Frame; col: INTEGER; x, y, w, h, d: LONGINT);
-    VAR x1, y1, u: LONGINT;
+  PROCEDURE line(f: GraphicFrames.Frame; col: INTEGER; x, y, w, h, d: INTEGER);
+    VAR x1, y1, u: INTEGER;
   BEGIN
     IF h < w THEN
       x1 := x+w; u := (h-w) DIV 2;
@@ -45,8 +45,8 @@ MODULE Curves;  (*NW 8.11.90 / 18.4.2013*)
     END
   END line;
 
-  PROCEDURE circle(f: GraphicFrames.Frame; col: INTEGER; x0, y0, r: LONGINT);
-    VAR x, y, u: LONGINT;
+  PROCEDURE circle(f: GraphicFrames.Frame; col: INTEGER; x0, y0, r: INTEGER);
+    VAR x, y, u: INTEGER;
   BEGIN u := 1 - r; x := r; y := 0;
     WHILE y <= x DO
       Dot(f, col, x0+x, y0+y);
@@ -62,8 +62,8 @@ MODULE Curves;  (*NW 8.11.90 / 18.4.2013*)
     END
   END circle;
 
-  PROCEDURE ellipse(f: GraphicFrames.Frame; col: INTEGER; x0, y0, a, b: LONGINT);
-    VAR x, y, y1, aa, bb, d, g, h: LONGINT;
+  PROCEDURE ellipse(f: GraphicFrames.Frame; col: INTEGER; x0, y0, a, b: INTEGER);
+    VAR x, y, y1, aa, bb, d, g, h: INTEGER;
   BEGIN aa := a*a; bb := b*b;
     h := (aa DIV 4) - b*aa + bb; g := (9*aa DIV 4) - 3*b*aa + bb; x := 0; y := b;
     WHILE g < 0 DO

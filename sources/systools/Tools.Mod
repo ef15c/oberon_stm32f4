@@ -81,8 +81,7 @@ MODULE Tools;   (*NW 22.2.2014*)
   END ShowFile;
 
   PROCEDURE Convert*;   (*convert selected text to txt-format*)
-    VAR beg, end, time: LONGINT
-      ; ch: CHAR;
+    VAR beg, end, time: INTEGER; ch: CHAR;
       T!: Texts.Text; R!: Texts.Reader;  (*input*)
       F!: Files.File; Q!: Files.Rider;   (*output*)
       S!: Texts.Scanner;

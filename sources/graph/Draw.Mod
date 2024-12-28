@@ -14,7 +14,7 @@ MODULE Draw; (*NW 29.6.88 / 12.11.94 / 18.11.2013*)
 
   PROCEDURE Open*;
     VAR X, Y: INTEGER;
-      beg, end, t: LONGINT;
+      beg, end, t: INTEGER;
       G!: Graphics.Graph;
       F!: GraphicFrames.Frame;
       V!: Viewers.Viewer;
@@ -43,7 +43,7 @@ MODULE Draw; (*NW 29.6.88 / 12.11.94 / 18.11.2013*)
   END Delete;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
-    VAR T!: Texts.Text; beg, end, time: LONGINT;
+    VAR T!: Texts.Text; beg, end, time: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF (S.class = Texts.Char) & (S.c = "^") THEN
       Oberon.GetSelection(T, beg, end, time);
@@ -141,7 +141,7 @@ MODULE Draw; (*NW 29.6.88 / 12.11.94 / 18.11.2013*)
 
   PROCEDURE Macro*;
     VAR S!: Texts.Scanner;
-      time, beg, end: LONGINT;
+      time, beg, end: INTEGER;
       Lname: ARRAY 32 OF CHAR;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
