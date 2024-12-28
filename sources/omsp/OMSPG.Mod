@@ -15,7 +15,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     mode*: INTEGER;
     type*: B.Type;
     obj*: B.Object; (*symbol object, for register variables and update of "used at" chain*)
-    a*, b*, c*: LONGINT;
+    a*, b*, c*: INTEGER;
     rdo*, tmp: BOOLEAN  (*read only*)
   END ;
 
@@ -48,17 +48,17 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     FixupCond = PROCEDURE(obj: B.Object; local:BOOLEAN): BOOLEAN; (*fixup selection criteria*)
     FixupAction = PROCEDURE(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN); (*fixup action*)
 
-  VAR varsize: LONGINT;   (*data index*)
-    tdx, strx, mstrx, nofstrs: LONGINT;
+  VAR varsize: INTEGER;   (*data index*)
+    tdx, strx, mstrx, nofstrs: INTEGER;
     gvdata: ARRAY maxGD OF FixData; (*global variables references tracking*)
     tddata: ARRAY maxTD OF INTEGER; (*type descriptors data*)
     strdata: ARRAY maxStrx OF CHAR;
-    entry: LONGINT;   (*main entry point*)
+    entry: INTEGER;   (*main entry point*)
     AllocUp: BOOLEAN; (*if true, registers are in allocated in ascending or from R4 to R15, if false in descending order from R15 to R4*)
     RIU*, VRS: SET;      (*currently in use and variable + parameter register sets*)
     RB, RL: INTEGER; (*register base and limit*)
     PRU*: SET; (*set of registers used in procedure*)
-    frame, vframe: LONGINT;   (*frame offset changed in SaveRegs and RestoreRegs + variable and parameter frame offset*)
+    frame, vframe: INTEGER;   (*frame offset changed in SaveRegs and RestoreRegs + variable and parameter frame offset*)
     traps: ARRAY 8 OF B.Object; arith: ARRAY 4 OF B.Object;
     vector: ARRAY 32 OF INTEGER;
     
@@ -134,11 +134,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN A.SetEnabled(e)
   END EnableCode;
 
-  PROCEDURE FixOne*(at: LONGINT);
+  PROCEDURE FixOne*(at: INTEGER);
   BEGIN A.FixOne(mcode, at)
   END FixOne;
 
-  PROCEDURE FixLink*(L: LONGINT);
+  PROCEDURE FixLink*(L: INTEGER);
   BEGIN
     A.FixLink(mcode, L)
   END FixLink;
@@ -221,7 +221,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF frame # vframe THEN S.Mark("frame error"); frame := vframe END
   END CheckRegs;
 
-  PROCEDURE SetCC(VAR x: Item; n: LONGINT);
+  PROCEDURE SetCC(VAR x: Item; n: INTEGER);
   BEGIN x.mode := Cond; x.a := 0; x.b := 0; x.c := n
   END SetCC;
 
@@ -253,7 +253,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN res
   END GetOffset;
 
- PROCEDURE Trap(cond, num: LONGINT);
+ PROCEDURE Trap(cond, num: INTEGER);
   (*Trap is implemented as calls to functions in the Trap special module.  
      If the procedure Trap.Handle<num> procedure exists and is exported,
      the trap checking code is generated.*)
@@ -275,7 +275,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* loading of operands and addresses into registers *)
 
   PROCEDURE load(VAR x: Item; pr: BYTE); (*load item in a temporary register*)
-    VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
+    VAR pc0, pc1: INTEGER; bw: SET; t!, ti!, sva!: Item;
   BEGIN t := x; t.reg := 0; t.am := A.Immediate;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := A.C16;
     IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END;
@@ -349,7 +349,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END PutSO;
 
   PROCEDURE push(VAR x: Item; dsize: INTEGER);
-    VAR pc0, pc1: LONGINT; bw: SET; t!, ti!, sva!: Item;
+    VAR pc0, pc1: INTEGER; bw: SET; t!, ti!, sva!: Item;
   BEGIN
     bw := A.Word;
     IF x.type.size = 1 THEN
@@ -454,7 +454,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     x.rdo := TRUE; x.obj := T.typobj; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeTypTagAdr;
 
-  PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: LONGINT);
+  PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: INTEGER);
   BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.c := 0;
     x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
@@ -515,7 +515,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN stringPut(x, S.str, S.slen)
   END MakeStringItem;
 
-  PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: LONGINT);
+  PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: INTEGER);
   BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.c := y.lev;
     x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF (y.class IN {B.Var, B.Par}) THEN
@@ -544,7 +544,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Field;
 
   PROCEDURE Index*(VAR x, y: Item);   (* x := x[y] *)
-    VAR s, lim: LONGINT; t!: Item; typ!: B.Type;
+    VAR s, lim: INTEGER; t!: Item; typ!: B.Type;
   BEGIN
     IF x.type.form = B.String THEN s := 1; lim := x.b
     ELSE s := x.type.base.size; lim := x.type.len END;
@@ -604,7 +604,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Q;
 
   PROCEDURE BuildTD*(T: B.Type);
-    VAR k, s: LONGINT;
+    VAR k, s: INTEGER;
   BEGIN s := T.size;
     T.len := WordSize*tdx (*len used as address*); tddata[tdx] := s; INC(tdx);
     k := T.nofpar;   (*extension level!*)
@@ -644,7 +644,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation for Boolean operators *)
 
   PROCEDURE Not*(VAR x: Item);   (* x := ~x *)
-    VAR t: LONGINT;
+    VAR t: INTEGER;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END ;
     x.c := A.negated(x.c); t := x.a; x.a := x.b; x.b := t
@@ -744,7 +744,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RestoreRegs(or); RIU := RIU + or
   END Call;
 
-  PROCEDURE AddOp*(op: LONGINT; VAR x, y: Item);   (* x := x +- y *)
+  PROCEDURE AddOp*(op: INTEGER; VAR x, y: Item);   (* x := x +- y *)
   BEGIN
     IF op = S.plus THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a + y.a
@@ -776,7 +776,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END MulOp;
 
-  PROCEDURE DivOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
+  PROCEDURE DivOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
     VAR t!, p!, x0!, y0!: Item; r, or: SET; pau: BOOLEAN;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF op = S.div THEN
@@ -826,7 +826,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Rra;
 
   (* Code generation for sring operators *)
-  PROCEDURE StringOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
+  PROCEDURE StringOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
     VAR xs, ys: ARRAY S.stringBufSize OF CHAR; ix, iy: INTEGER;
   BEGIN
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN
@@ -870,7 +870,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     SetCC(x, A.NE)
   END In;
 
-  PROCEDURE SetOp*(op: LONGINT; VAR x, y: Item);   (* x := x op y *)
+  PROCEDURE SetOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
     VAR xset, yset: SET; (*x.type.form = Set*)
   BEGIN
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN
@@ -880,7 +880,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF op = S.times THEN xset := xset * yset
       ELSIF op = S.rdiv THEN xset := xset / yset
       END ;
-      x.a := SYSTEM.VAL(LONGINT, xset)
+      x.a := SYSTEM.VAL(INTEGER, xset)
     ELSE load(x, 0FFH);
       IF op = S.plus THEN PutDO(A.BIS, y, x)
       ELSIF op = S.minus THEN PutDO(A.BIC, y, x)
@@ -911,7 +911,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE StringRelation*(op: INTEGER; VAR x0, y0: Item);   (* x := x < y *)
     (*x, y are char arrays or strings*)
-    VAR pc0, tbf0: LONGINT; x!, y!: Item;
+    VAR pc0, tbf0: INTEGER; x!, y!: Item;
   BEGIN
     IF x0.type.form = B.String THEN loadStringAdr(x0, 0FFH) ELSE loadAdr(x0, 0FFH) END;
     IF y0.type.form = B.String THEN loadStringAdr(y0, 0FFH) ELSE loadAdr(y0, 0FFH) END;
@@ -984,7 +984,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END StoreStruct;
 
   PROCEDURE CopyString*(VAR x, y: Item);  (* x := y *)
-     VAR len, pc0: LONGINT; t!,ti!, x1!: Item;
+     VAR len, pc0: INTEGER; t!,ti!, x1!: Item;
    BEGIN t.mode := B.Const; t.type := B.intType; t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti := y;
     len := x.type.len; loadAdr(x, 0FFH);
     IF len >= 0 THEN
@@ -1068,7 +1068,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN Store(x, y)
   END For0;
 
-  PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: LONGINT);
+  PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: INTEGER);
   BEGIN
     IF w.a > 0 THEN PutDO(A.CMP, x, z)
     ELSIF w.a < 0 THEN PutDO(A.CMP, z, x)
@@ -1078,16 +1078,17 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END For1;
 
   PROCEDURE For2*(VAR x, y, w: Item);
-  BEGIN x.rdo := FALSE; PutDO(A.ADD, w, x);
+  BEGIN free(x); MakeItem(x, x.obj, x.obj.lev); (* discard effects of previous loading if any *)
+    x.rdo := FALSE; PutDO(A.ADD, w, x);
   END For2;
 
   (* Branches, procedure calls, procedure prolog and epilog *)
 
-  PROCEDURE Here*(): LONGINT;
+  PROCEDURE Here*(): INTEGER;
   RETURN mcode.pc
   END Here;
 
-  PROCEDURE FJump*(VAR L: LONGINT);
+  PROCEDURE FJump*(VAR L: INTEGER);
   BEGIN A.PutJ(mcode, A.AL, L); L := mcode.pc - 2
   END FJump;
 
@@ -1098,11 +1099,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.FixLink(mcode, x.b)
   END CFJump;
 
-  PROCEDURE BJump*(L: LONGINT);
+  PROCEDURE BJump*(L: INTEGER);
   BEGIN A.PutJ(mcode, A.AL, L - mcode.pc - 2)
   END BJump;
 
-  PROCEDURE CBJump*(VAR x: Item; L: LONGINT);
+  PROCEDURE CBJump*(VAR x: Item; L: INTEGER);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
     IF x.c # A.AL THEN A.PutJ(mcode, A.negated(x.c), L - mcode.pc - 2) END;
@@ -1113,7 +1114,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN A.FixLink(mcode, x.a)
   END Fixup;
 
-  PROCEDURE Enter*(size: LONGINT; int: BOOLEAN; savedregs: SET);
+  PROCEDURE Enter*(size: INTEGER; int: BOOLEAN; savedregs: SET);
     VAR t!, tsp!: Item;
   BEGIN
     OfsPTOS(0, 0, FALSE); IF int THEN (*SR copy is on TOS*) OfsPTOS(1, 1, TRUE) END;
@@ -1126,7 +1127,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VRS := RIU; vframe := frame
   END Enter;
 
-  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: LONGINT; int: BOOLEAN; savedregs: SET);
+  PROCEDURE Return*(form: INTEGER; VAR x: Item; size: INTEGER; int: BOOLEAN; savedregs: SET);
     VAR t!, rr!: Item;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF form # B.NoTyp THEN resultRegister(rr); x.tmp := TRUE; IF rr.reg IN RIU THEN freeR(rr.reg) END;
@@ -1145,8 +1146,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* In-line code procedures*)
 
-  PROCEDURE Increment*(upordown: LONGINT; VAR x, y: Item);
-    VAR op: BYTE; zr: LONGINT;
+  PROCEDURE Increment*(upordown: INTEGER; VAR x, y: Item);
+    VAR op: BYTE; zr: INTEGER;
   BEGIN
     IF upordown = 0 THEN op := A.ADD ELSE op := A.SUB END;
     IF y.type.form = B.NoTyp THEN y.mode := B.Const; y.a := 1; y.tmp := FALSE END;
@@ -1163,7 +1164,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Include;
 
   PROCEDURE Assert*(VAR x: Item);
-    VAR cond, pc0: LONGINT;
+    VAR cond, pc0: INTEGER;
   BEGIN
     IF traps[7] # NIL
     THEN
@@ -1254,16 +1255,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN PutSO(A.SWPB, x)
   END Swpb;
 
-  PROCEDURE Shift*(fct: LONGINT; VAR x, y: Item); (*x := x op y*)
-    VAR op: LONGINT;
+  PROCEDURE Shift*(fct: INTEGER; VAR x, y: Item); (*x := x op y*)
+    VAR op: INTEGER;
   BEGIN IF (x.mode = B.Const) & (y.mode = B.Const) THEN
       IF fct = 0 THEN x.a := LSL(x.a, y.a) ELSIF fct = 2 THEN x.a := ASR(x.a, y.a) END 
     ELSE IF fct = 0 THEN Rla(x, y) ELSIF fct = 2 THEN Rra(x, y) END
     END
   END Shift;
 
-  PROCEDURE Rotate*(fct: LONGINT; VAR x: Item);
-    VAR op: LONGINT;
+  PROCEDURE Rotate*(fct: INTEGER; VAR x: Item);
+    VAR op: INTEGER;
   BEGIN IF fct = 0 THEN PutSO(A.RLC, x) ELSIF fct = 2 THEN PutSO(A.RRC, x) END
   END Rotate;
 
@@ -1309,7 +1310,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     SetAllocationMode(Stack)
   END Open;
 
-  PROCEDURE SetDataSize*(dc: LONGINT);
+  PROCEDURE SetDataSize*(dc: INTEGER);
   BEGIN varsize := dc
   END SetDataSize;
 
@@ -1404,9 +1405,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     WriteWord(R, 0)
   END WriteFixup;
 
-  PROCEDURE Close*(VAR modid: S.Ident; key, nofent: LONGINT; codeseg: BYTE);
+  PROCEDURE Close*(VAR modid: S.Ident; key, nofent: INTEGER; codeseg: BYTE);
     VAR obj!, obj2!: B.Object;
-      i, sx, suax, nofimps, fixadr, flashSize: LONGINT;
+      i, sx, suax, nofimps, fixadr, flashSize: INTEGER;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET);
