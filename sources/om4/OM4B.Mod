@@ -16,7 +16,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     (* form values*)
       Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; Real* = 5; Set* = 6;
       Pointer* = 7; NilTyp* = 8; NoTyp* = 9; Proc* = 10;
-      String* = 11; Array* = 12; Record* = 13;
+      String* = 11; Array* = 12; Record* = 13; LongInt* = 14;
+      LastForm = LongInt;
       
   TYPE Object* = POINTER TO ObjDesc;
     Module* = POINTER TO ModDesc;
@@ -65,7 +66,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
   VAR topScope*, universe, system*: Object;
     byteType*, boolType*, charType*: Type;
-    intType*, realType*, setType*, nilType*, noType*, strType*: Type;
+    intType*, realType*, setType*, nilType*, noType*,
+    longintType*, strType*: Type;
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
 
@@ -317,7 +319,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       obj!, obj0!: Object;
       filename: OM4S.Ident;
       F!, F1!: Files.File; R!, R1!: Files.Rider;
-  BEGIN Ref := Record + 1; MakeFileName(filename, modid, ".sm4");
+  BEGIN Ref := LastForm + 1; MakeFileName(filename, modid, ".sm4");
     F := Files.New(filename); Files.Set(R, F, 0);
     Files.WriteInt(R, 0); (*placeholder*)
     Files.WriteInt(R, 0); (*placeholder for key to be inserted at the end*)
@@ -348,7 +350,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       obj := obj.next
     END ;
     REPEAT Write(R, 0) UNTIL Files.Length(F) MOD 4 = 0;
-    FOR Ref := Record+1 TO maxTypTab-1 DO typtab[Ref] := NIL END ;
+    FOR Ref := LastForm +1 TO maxTypTab-1 DO typtab[Ref] := NIL END ;
     Files.Set(R, F, 0); CRC32.reset; Files.ReadInt(R, x);  (* compute key (checksum) *)
     WHILE ~R.eof DO CRC32.write(x); Files.ReadInt(R, x) END; sum := CRC32.read();
     F1 := Files.Old(filename); (*sum is new key*)
@@ -389,6 +391,7 @@ BEGIN
   nilType := type(NilTyp, NilTyp, 4);
   noType := type(NoTyp, NoTyp, 4);
   strType := type(String, String, 8);
+  longintType := type(LongInt, Int, 8);
     
   (*initialize universe with data types and in-line procedures;
     LED, ADC, SBC; LDPSR, LDREG, REG, COND are not in language definition*)
@@ -423,9 +426,8 @@ BEGIN
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);
   enter("CHAR", Typ, charType, 0);
-(*  enter("LONGREAL", Typ, realType, 0); *)
   enter("REAL", Typ, realType, 0);
-(*  enter("LONGINT", Typ, intType, 0); *)
+  enter("LONGINT", Typ, longintType, 0);
   enter("INTEGER", Typ, intType, 0);
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
   

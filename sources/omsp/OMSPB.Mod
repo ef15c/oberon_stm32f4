@@ -31,7 +31,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       next*, dsc*: Object;
       type*: Type;
       name*: S.Ident;
-      val*: LONGINT
+      val*: INTEGER
     END ;
 
     ModDesc* = RECORD (ObjDesc) orgname*: S.Ident END ;
@@ -39,10 +39,10 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     TypeDesc* = RECORD
       form*, ref*, mno*: INTEGER;  (*ref is only used for import/export*)
       nofpar*: INTEGER;  (*for procedures, extension level for records*)
-      len*: LONGINT;  (*for arrays, len < 0 => open array; for records: adr of descriptor*)
+      len*: INTEGER;  (*for arrays, len < 0 => open array; for records: adr of descriptor*)
       dsc*, typobj*: Object;
       base*: Type;  (*for arrays, records, pointers*)
-      size*: LONGINT;  (*in bytes; always multiple of 2, except for Byte, Bool and Char*)
+      size*: INTEGER;  (*in bytes; always multiple of 2, except for Byte, Bool and Char*)
       leaf*: BOOLEAN; ur*: SET; (*leafness of procedures, set of registers used by the procedure*)
     END ;
 
@@ -141,7 +141,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     FName[i] := 0X
   END MakeFileName;
   
-  PROCEDURE ThisModule(name, orgname: S.Ident; decl: BOOLEAN; key: LONGINT): Object;
+  PROCEDURE ThisModule(name, orgname: S.Ident; decl: BOOLEAN; key: INTEGER): Object;
     VAR mod!: Module; obj!, obj1!: Object;
   BEGIN obj1 := topScope; obj := obj1.next;  (*search for module*)
     WHILE (obj # NIL) & (obj(Module).orgname # orgname) DO obj1 := obj; obj := obj1.next END ;
@@ -171,7 +171,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END Read;
   
   PROCEDURE InType(VAR R: Files.Rider; thismod: Object; VAR T: Type);
-    VAR key: LONGINT;
+    VAR key: INTEGER;
       ref, class, form, np, tmp: INTEGER;
       fld!, par!, obj!, mod!, last!: Object;
       t!: Type;
@@ -223,7 +223,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END InType;
   
   PROCEDURE Import*(VAR modid, modid1: S.Ident);
-    VAR key: LONGINT; class, k: INTEGER;
+    VAR key, class, k: INTEGER;
       obj!: Object;  t!: Type;
       thismod!: Object;
       modname, fname: S.Ident;
@@ -278,8 +278,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       END
     END OutPar;
 
-    PROCEDURE FindHiddenPointers(VAR R: Files.Rider; typ: Type; offset: LONGINT);
-      VAR fld!: Object; i, n: LONGINT;
+    PROCEDURE FindHiddenPointers(VAR R: Files.Rider; typ: Type; offset: INTEGER);
+      VAR fld!: Object; i, n: INTEGER;
     BEGIN
       IF (typ.form = Pointer) OR (typ.form = NilTyp) THEN Write(R, Fld); Write(R, 0); Files.WriteNum(R, offset)
       ELSIF typ.form = Record THEN fld := typ.dsc;
@@ -323,8 +323,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     END
   END OutType;
 
-  PROCEDURE Export*(VAR modid: S.Ident; VAR newSF: BOOLEAN; VAR key: LONGINT);
-    VAR x, sum, oldkey: LONGINT;
+  PROCEDURE Export*(VAR modid: S.Ident; VAR newSF: BOOLEAN; VAR key: INTEGER);
+    VAR x, sum, oldkey: INTEGER;
       obj!, obj0!: Object;
       filename: S.Ident;
       F!, F1!: Files.File; R!, R1!: Files.Rider;
@@ -386,7 +386,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN RETURN  type2(ref, form, size, NIL)
   END type;
 
-  PROCEDURE enter(name: ARRAY OF CHAR; cl: INTEGER; type: Type; n: LONGINT);
+  PROCEDURE enter(name: ARRAY OF CHAR; cl: INTEGER; type: Type; n: INTEGER);
     VAR obj!: Object;
   BEGIN NEW(obj); obj.name := name; obj.class := cl; obj.type := type; obj.val := n; obj.dsc := NIL;
     IF cl = Typ THEN type.typobj := obj END ;

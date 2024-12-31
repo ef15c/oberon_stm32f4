@@ -13,7 +13,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END ;
 
   VAR sym: INTEGER;   (*last symbol read*)
-    dc: LONGINT;    (*data counter*)
+    dc: INTEGER;    (*data counter*)
     level, exno: INTEGER;
     newSF, initmode: BOOLEAN;  (*option flag*)
     expression: PROCEDURE (VAR x: G.Item);  (*to avoid forward reference*)
@@ -133,8 +133,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF ~guard THEN x.type := B.boolType END
   END TypeTest;
 
-  PROCEDURE StandFunc(VAR x: G.Item; fct: LONGINT; restyp: B.Type);
-    VAR y!, z!: G.Item; n, npar: LONGINT;
+  PROCEDURE StandFunc(VAR x: G.Item; fct: INTEGER; restyp: B.Type);
+    VAR y!, z!: G.Item; n, npar: INTEGER;
   BEGIN Check(S.lparen, "no (");
     npar := fct MOD 10; fct := fct DIV 10; expression(x); n := 1;
     IF sym = S.comma THEN S.Get(sym); expression(y); n := 2;
@@ -448,8 +448,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
   (* statements *)
 
-  PROCEDURE StandProc(pno: LONGINT);
-    VAR nap, npar: LONGINT; (*nof actual/formal parameters*)
+  PROCEDURE StandProc(pno: INTEGER);
+    VAR nap, npar: INTEGER; (*nof actual/formal parameters*)
       x!, y!, z!: G.Item;
   BEGIN npar := pno MOD 10; pno := pno DIV 10;
     IF npar # 0 THEN
@@ -497,7 +497,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR obj!: B.Object;
       orgtype!: B.Type; (*original type of case var*)
       x!, y!, z!, w!: G.Item;
-      L0, L1: LONGINT; rx, orx: SET; pau: BOOLEAN;
+      L0, L1: INTEGER; rx, orx: SET; pau: BOOLEAN;
 
     PROCEDURE TypeCase(obj: B.Object; VAR x: G.Item);
       VAR typobj!: B.Object;
@@ -651,7 +651,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END IdentList;
   
   PROCEDURE ArrayType(VAR type: B.Type);
-    VAR x!: G.Item; typ!: B.Type; len: LONGINT;
+    VAR x!: G.Item; typ!: B.Type; len: INTEGER;
   BEGIN NEW(typ); typ.form := B.NoTyp;
     expression(x);
     IF (x.mode = B.Const) & (x.type.form = B.Int) & (x.a >= 0) THEN len := x.a
@@ -669,7 +669,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE RecordType(VAR type: B.Type);
     VAR obj!, obj0!, new!, bot!, base!: B.Object;
       typ!, tp!: B.Type;
-      offset, off, n: LONGINT;
+      offset, off, n: INTEGER;
   BEGIN NEW(typ); typ.form := B.NoTyp; typ.base := NIL; typ.mno := -level; typ.nofpar := 0; offset := 0; bot := NIL;
     IF sym = S.lparen THEN
       S.Get(sym); (*record extension*)
@@ -711,9 +711,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     typ.form := B.Record; typ.dsc := bot; typ.size := (offset + (G.WordSize - 1)) DIV G.WordSize * G.WordSize; type := typ
   END RecordType;
 
-  PROCEDURE FPSection(VAR adr: LONGINT; VAR nofpar: INTEGER; VAR inreg: BOOLEAN);
+  PROCEDURE FPSection(VAR adr: INTEGER; VAR nofpar: INTEGER; VAR inreg: BOOLEAN);
     VAR obj!, first!: B.Object; tp!: B.Type;
-      parsize, dummy, nbregs: LONGINT; cl: INTEGER; rdo: BOOLEAN;
+      parsize, dummy, nbregs, cl: INTEGER; rdo: BOOLEAN;
   BEGIN inreg := FALSE;
     IF sym = S.var THEN S.Get(sym); cl := B.Par ELSE cl := B.Var END ;
     IdentList(cl, first); FormalType(tp, 0); rdo := FALSE;
@@ -754,8 +754,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END;
   END InsertResultRegister;
 
-  PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: LONGINT);
-    VAR obj!: B.Object; size: LONGINT; nofpar: INTEGER; leaf, inreg: BOOLEAN; x!, sr!: G.Item;
+  PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: INTEGER);
+    VAR obj!: B.Object; size, nofpar: INTEGER; leaf, inreg: BOOLEAN; x!, sr!: G.Item;
   BEGIN ptype.base := B.noType; size := parblksize; nofpar := 0; ptype.dsc := NIL; leaf := FALSE;
     ptype.ur := {4..15}; (*all non saved registers can be destroyed for dynamic procedures*)
     IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); ptype.ur := ptype.ur - TOSET(sr.a) END;
@@ -782,7 +782,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END ProcedureType;
 
   PROCEDURE FormalType0(VAR typ: B.Type; dim: INTEGER);
-    VAR obj!: B.Object; dmy: LONGINT;
+    VAR obj!: B.Object; dmy: INTEGER;
   BEGIN
     IF sym = S.ident THEN
       qualident(obj);
@@ -806,7 +806,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END CheckRecLevel;
 
   PROCEDURE Type0(VAR type: B.Type);
-    VAR dmy: LONGINT; obj!: B.Object; ptbase!: PtrBase;
+    VAR dmy: INTEGER; obj!: B.Object; ptbase!: PtrBase;
   BEGIN type := B.intType; (*sync*)
     IF (sym # S.ident) & (sym < S.array) THEN S.Mark("not a type");
       REPEAT S.Get(sym) UNTIL (sym = S.ident) OR (sym >= S.array)
@@ -863,7 +863,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     RETURN res
   END containsPointer;
 
-  PROCEDURE Declarations(VAR varsize: LONGINT; VAR haveinregs: BOOLEAN);
+  PROCEDURE Declarations(VAR varsize: INTEGER; VAR haveinregs: BOOLEAN);
     VAR obj!, first!: B.Object;
       x!: G.Item; tp!: B.Type; ptbase!: PtrBase;
       expo, unsafe, umm, umf, inreg, onetimeinit: BOOLEAN; id: S.Ident;
@@ -959,7 +959,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       type!: B.Type;
       procid: S.Ident;
       x!, sr!: G.Item;
-      locblksize, parblksize, L: LONGINT;
+      locblksize, parblksize, L: INTEGER;
       int, haveinregs: BOOLEAN;
       riu, savedregs: SET;
       v: ARRAY 8 OF BYTE;
@@ -1057,7 +1057,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END Import;
 
   PROCEDURE Module;
-    VAR key: LONGINT; oldCol: INTEGER; dmy: BOOLEAN;
+    VAR key, oldCol: INTEGER; dmy: BOOLEAN;
   BEGIN isLeaf := FALSE; isInt := FALSE; Texts.WriteString(W, "  compiling "); S.Get(sym);
     IF sym = S.module THEN S.Get(sym);
       IF sym = S.times THEN codeseg := 1 (*execute from RAM*); Texts.Write(W, "*"); S.Get(sym)
@@ -1111,7 +1111,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END Option;
 
   PROCEDURE Compile*;
-    VAR beg, end, time: LONGINT;
+    VAR beg, end, time: INTEGER;
       T!: Texts.Text;
       S1!: Texts.Scanner;
   BEGIN Texts.OpenScanner(S1, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S1);

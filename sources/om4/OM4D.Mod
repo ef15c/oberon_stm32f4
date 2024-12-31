@@ -152,10 +152,26 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T32MSK1 01 00xx0xx x Load Multiple and Store Multiple on page A5-144*)
       LoadMultStoreMult  = {27};
 
+      (*T32MSK1 01 00xx1xx x Load/store dual or exclusive, table branch on page A5-145*)
+      LoadDualExclTabBranch = {27, 22};
+
       T32MSK11 = {23..24, 20};
 
       (*T32MSK11 10 0 11101 Push Multiple Registers to the stack on page A7-322*)
       PushMultRegsT2 = {24};
+
+      T32MSK12 = {24, 20..21};
+      T32MSK13 = {24, 20};
+
+      (*T32MSK12 = 0x 11 xxxx Load Register Dual on page A7-257*)
+      LoadRegisterDual12 = {20..21};
+      (*T32MSK13 = 1x x1 xxxx Load Register Dual on page A7-257*)
+      LoadRegisterDual13 = {24, 20};
+
+      (*T32MSK12 = 0x 10 xxxx Store Register Dual on page A7-257*)
+      StoreRegisterDual12 = {21};
+      (*T32MSK13 = 1x x0 xxxx Store Register Dual on page A7-257*)
+      StoreRegisterDual13 = {24};
 
       (*T32MSK2 01 01xxxxx x Data processing (shifted register) on page A5-150*)
       DataProcShiftedReg = {27, 25};
@@ -209,7 +225,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
 
       (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
       LongMulAccDiv = {27..28, 23..25};
-      
+
       (*T32MSK42 00100 -: Move Wide, 16-bit MOV (immediate) on page A7-291*)
       MW16Bit = {22};
       (*T32MSK42 01100 -: Move Top, 16-bit MOVT on page A7-296*)
@@ -220,16 +236,16 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       SubWide12BitOrAdr = {23, 21};
      (*T32MSK42 10110 Rn = 1111 Bit Field Clear BFC on page A7-207*)
       BitField = {24, 21..22};
-      
+
       T32MSK61 = {21..23}; T32MSK62 = {21..23, 11};
       (*T32MSK61 100 xxxxxx Store Register Byte STRB (immediate) on page A7-389*)
       StrRegByteImmT2 = {23};
       (*T32MSK61 110 xxxxxx Store Register STR (immediate) on page A7-386*)
       StrRegImmT3 = {22..23};
-      
+
       (*T32MSK62 010 1xxxxx Store Register STR (immediate) on page A7-386*)
       StrRegImmT4 = {22, 11};
-      
+
       (*T32MSK7 11 00xx101 x Load word on page A5-146*)
       LdrWord = {27..28, 22, 20};
       T32MSK71 = {23..24}; T32MSK72 = {23..24, 11, 8}; T32MSK73 = {23..24, 8..11};
@@ -288,7 +304,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       
       (*T32MSK320 |111T/1110/opc1/opc2/xxxx/1010/o3x0/opc4|*)
       FPDataProc = {25};
-      
+
       T32MSK3203 = {28, 23, 20..21, 6};
       T32MSK3204 = {28, 23, 16..21, 6..7}; T32MSK325 = {28, 23, 17..21, 6};
       T32MSK3207 = {28, 23, 16..21, 6};
@@ -482,7 +498,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T16MSK12 01111 Subtract 3-bit immediate SUB (immediate) on page A7-402*)
       SubImmT1 = {9..12};
                   
-    VAR b1, b2, b3, b4, t, Rn, Rd, RdLo, RdHi, Rt, Rm, Sn, Sd, Sm: BYTE;
+    VAR b1, b2, b3, b4, t, Rn, Rd, RdLo, RdHi, Rt, Rt2, Rm, Sn, Sd, Sm: BYTE;
       op: SET;
   BEGIN
     b1 := c[i+1]; b2 := c[i]; INC(i, 2);
@@ -652,7 +668,6 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
             ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
             END
-
           ELSIF op*T32MSK52 = MovToSpReg THEN
             (*T32MSK52 0x0 011100x: Move to Special Register MSR on page A7-301*)
             (*MSR<c><spec_reg>,Rn*)
@@ -989,6 +1004,41 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           FOR t := 0 TO 12 DO IF t IN op THEN WriteReg(W, t) END END;
           IF 14 IN op THEN WriteReg(W, 14) END
         ELSE Texts.WriteString(W, "TODO other LoadMultStoreMult on page A5-144")
+        END
+      ELSIF op*T32MSK1 = LoadDualExclTabBranch THEN
+        (*T32MSK1 01 00xx1xx x Load/store dual or exclusive, table branch on page A5-145*)
+        Rn := b2 MOD OM4A.C4;
+        IF (op*T32MSK12 = LoadRegisterDual12) OR (op*T32MSK13 = LoadRegisterDual13) THEN
+          Rt := b3 DIV OM4A.C4; Rt2 := b3 MOD OM4A.C4;
+          (*T32MSK12 = 0x 11 xxxx Load Register Dual on page A7-257*)
+          (*T32MSK13 = 1x x1 xxxx Load Register Dual on page A7-257*)
+          (*LDRD<c> <Rt>, <Rt2>, [<Rn>{, #+/-<imm8>}]
+             LDRD<c> <Rt>, <Rt2>, [<Rn>], #+/-<imm8>]
+             LDRD<c> <Rt>, <Rt2>, [<Rn>, #+/-<imm8>]!*)
+          WriteOp(W, op, "LDRD", FALSE, FALSE); WriteReg(W, Rt); WriteReg(W, Rt2);
+          Texts.WriteString(W, " ["); WriteReg(W, Rn);
+          IF ~(24 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
+          IF 23 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "+ ") END;
+          Texts.WriteInt(W, b4*4, 1);
+          IF 24 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
+            IF 21 IN op THEN (*write-back*) Texts.Write(W, "!") END
+          END
+        ELSIF (op*T32MSK12 = StoreRegisterDual12) OR (op*T32MSK13 = StoreRegisterDual13) THEN
+          Rt := b3 DIV OM4A.C4; Rt2 := b3 MOD OM4A.C4;
+          (*T32MSK12 = 0x 10 xxxx Store Register Dual on page A7-257*)
+          (*T32MSK13 = 1x x0 xxxx Store Register Dual on page A7-257*)
+          (*STRD<c> <Rt>, <Rt2>, [<Rn>{, #+/-<imm8>}]
+             STRD<c> <Rt>, <Rt2>, [<Rn>], #+/-<imm8>]
+             STRD<c> <Rt>, <Rt2>, [<Rn>, #+/-<imm8>]!*)
+          WriteOp(W, op, "STRD", FALSE, FALSE); WriteReg(W, Rt); WriteReg(W, Rt2);
+          Texts.WriteString(W, " ["); WriteReg(W, Rn);
+          IF ~(24 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
+          IF 23 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "+ ") END;
+          Texts.WriteInt(W, b4*4, 1);
+          IF 24 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
+            IF 21 IN op THEN (*write-back*) Texts.Write(W, "!") END
+          END
+        ELSE Texts.WriteString(W, "TODO: other Load/store dual or exclusive, table branch on page A5-145")
         END
       ELSE Texts.WriteString(W, "TODO other 32-bit thumb instruction")
       END

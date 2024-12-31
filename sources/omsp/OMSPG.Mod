@@ -903,8 +903,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN
     IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
-    IF op < S.gtr THEN PutDO(A.CMP, y, x); SetCC(x, relmap[op - S.eql])
-    ELSE PutDO(A.CMP, x, y); SetCC(x, relmap[op - S.gtr + 2])
+    IF x.type.size # y.type.size THEN
+      IF x.type.size = 1 THEN load(x, 0FFH); x.type := B.intType ELSE load(y, 0FFH); y.type := B.intType END (*convert to word*)
+    END;
+    IF op < S.gtr THEN PutDO(A.CMP, y, x); IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.eql]) ELSE SetCC(x, relmap[op - S.eql]) END
+    ELSE PutDO(A.CMP, x, y); IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.gtr + 2]) ELSE SetCC(x, relmap[op - S.gtr + 2]) END
     END;
     free(y); free(x)
   END IntRelation;

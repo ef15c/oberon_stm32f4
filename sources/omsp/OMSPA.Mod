@@ -78,7 +78,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   TYPE
     ModuleCodeDesc* = RECORD
-      pc*: LONGINT; (*program counter*)
+      pc*: INTEGER; (*program counter*)
       code*: ARRAY maxCode OF BYTE;   (*MSP instructions are multiple of 16bit words, but this size does not exists in Oberon 07 cross compiler*)
       pos*: ARRAY maxCode DIV 2 OF INTEGER
     END;
@@ -98,7 +98,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   BEGIN getOfs := ofsp; allocR := ar; freeR := fr
   END SetProcs;
 
-  PROCEDURE log2*(m: LONGINT; VAR e: LONGINT): LONGINT;
+  PROCEDURE log2*(m: INTEGER; VAR e: INTEGER): INTEGER;
   BEGIN e := 0;
     WHILE ~ODD(m) DO m := LSR(m, 1); INC(e); END;
     RETURN m
@@ -229,8 +229,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   (*jump instructions:
     |opcC/nd  /   o/ffse/t   | *)
 
-  PROCEDURE PutJ*(VAR c: ModuleCodeDesc; cond: BYTE; offset: LONGINT);
-  BEGIN (*emit jump instruction*) ASSERT (cond < NV); ASSERT(~ODD(offset));
+  PROCEDURE PutJ*(VAR c: ModuleCodeDesc; cond: BYTE; offset: INTEGER);
+  BEGIN (*emit jump instruction*) IF cond = NV THEN S.Mark("invalid cond code"); enabled := FALSE END; ASSERT (cond <= 8); ASSERT(~ODD(offset));
     IF enabled THEN offset := LSR(offset, 1);
       c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8) MOD 4;
       c.code[c.pc]   := offset MOD C8;
@@ -258,7 +258,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     RETURN cond
   END negated;
 
-  PROCEDURE fix*(VAR c: ModuleCodeDesc; at, with: LONGINT);
+  PROCEDURE fix*(VAR c: ModuleCodeDesc; at, with: INTEGER);
   (*The statement must be a jump*)
   BEGIN
     IF enabled THEN
@@ -272,19 +272,19 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END fix;
 
-  PROCEDURE FixOne*(VAR c: ModuleCodeDesc; at: LONGINT);
+  PROCEDURE FixOne*(VAR c: ModuleCodeDesc; at: INTEGER);
   BEGIN 
     IF enabled THEN fix(c, at, c.pc-at-2) END
   END FixOne;
 
-  PROCEDURE FixLink*(VAR c: ModuleCodeDesc; L: LONGINT);
-    VAR L1: LONGINT;
+  PROCEDURE FixLink*(VAR c: ModuleCodeDesc; L: INTEGER);
+    VAR L1: INTEGER;
   BEGIN
     IF enabled THEN WHILE L # 0 DO L1 := (c.code[L+1] MOD C2*C8 + c.code[L])*2; fix(c, L, c.pc-L-2); L := L1 END END
   END FixLink;
 
-  PROCEDURE FixLinkWith*(VAR c: ModuleCodeDesc; L0, dst: LONGINT);
-    VAR L1: LONGINT;
+  PROCEDURE FixLinkWith*(VAR c: ModuleCodeDesc; L0, dst: INTEGER);
+    VAR L1: INTEGER;
   BEGIN
     IF enabled THEN
       WHILE L0 # 0 DO
@@ -294,8 +294,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END
   END FixLinkWith;
 
-  PROCEDURE merged*(VAR c: ModuleCodeDesc; L0, L1: LONGINT): LONGINT;
-    VAR L2, L3: LONGINT;
+  PROCEDURE merged*(VAR c: ModuleCodeDesc; L0, L1: INTEGER): INTEGER;
+    VAR L2, L3: INTEGER;
   BEGIN
     IF enabled & (L0 # 0) THEN L3 := L0;
       REPEAT L2 := L3;

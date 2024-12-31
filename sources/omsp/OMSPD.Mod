@@ -17,7 +17,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     END
   END WriteReg;
  
-  PROCEDURE WritePCOffset(VAR W: Texts.Writer; at: LONGINT; ofs: LONGINT);
+  PROCEDURE WritePCOffset(VAR W: Texts.Writer; at, ofs: INTEGER);
     VAR ofsb: INTEGER;
   BEGIN IF ofs >= 200H THEN DEC(ofs, 400H) END; ofs := 2*ofs; ofsb := ofs + 2;
     Texts.WriteString(W, " $");
@@ -50,7 +50,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     RETURN res
   END isConstant;
 
-  PROCEDURE WriteSD(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; op: SET; reg: BYTE);
+  PROCEDURE WriteSD(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: INTEGER; op: SET; reg: BYTE);
     VAR ct: INTEGER;
   BEGIN
     IF isConstant(op, reg, ct) THEN Texts.Write(W, "#"); Texts.WriteInt(W, ct, 1)
@@ -68,7 +68,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     END
   END WriteSD;
 
-  PROCEDURE WriteD(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; op: SET);
+  PROCEDURE WriteD(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: INTEGER; op: SET);
     VAR ct: INTEGER; reg: BYTE;
   BEGIN reg := ORD(op) MOD 10H;
     IF op*A.Idm = A.Idm THEN (*indexed*) ct := c[i+1]*100H + c[i]; INC(i, 2);
@@ -83,7 +83,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
   BEGIN IF op*A.Byte = A.Byte THEN Texts.WriteString(W, ".B") END
   END WriteSize;
 
-  PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: LONGINT; base: LONGINT);
+  PROCEDURE opcode*(VAR W: Texts.Writer; VAR c: ARRAY OF BYTE; VAR i: INTEGER; base: INTEGER);
     CONST 
       SOMSK = {10..15}; SO = {12}; (*Single operand*)
       JMPMSK = {13..15}; JMP = {13}; (*jump*)

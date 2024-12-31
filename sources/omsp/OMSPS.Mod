@@ -33,13 +33,13 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
 
   TYPE Ident* = ARRAY IdLen OF CHAR;
 
-  VAR ival*, slen*: LONGINT;  (*results of Get*)
+  VAR ival*, slen*: INTEGER;  (*results of Get*)
     id*: Ident;  (*for identifiers*)
     str*: ARRAY stringBufSize OF CHAR;
     errcnt*: INTEGER;
 
     ch: CHAR;  (*last character read*)
-    errpos: LONGINT;
+    errpos: INTEGER;
     R: Texts.Reader;
     W: Texts.Writer;
     k: INTEGER;
@@ -51,12 +51,12 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   BEGIN ident := id
   END CopyId;
 
-  PROCEDURE Pos*(): LONGINT;
+  PROCEDURE Pos*(): INTEGER;
   BEGIN RETURN Texts.Pos(R) - 1
   END Pos;
 
   PROCEDURE Mark*(msg: ARRAY OF CHAR);
-    VAR p: LONGINT;
+    VAR p: INTEGER;
   BEGIN p := Pos();
     IF (p > errpos) & (errcnt < 25) THEN
       Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
@@ -65,15 +65,15 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     INC(errcnt); errpos := p + 4
   END Mark;
 
-  PROCEDURE DebugHex*(msg: ARRAY OF CHAR; v: LONGINT);
-    VAR p: LONGINT;
+  PROCEDURE DebugHex*(msg: ARRAY OF CHAR; v: INTEGER);
+    VAR p: INTEGER;
   BEGIN p := Pos();
     Texts.WriteLn(W); Texts.WriteString(W, msg); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
     Texts.WriteHex(W, v); Texts.Append(Oberon.Log, W.buf)
   END DebugHex;
 
   PROCEDURE DebugString*(msg, v: ARRAY OF CHAR);
-    VAR p: LONGINT;
+    VAR p: INTEGER;
   BEGIN p := Pos();
     Texts.WriteLn(W); Texts.WriteString(W, msg); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
     Texts.WriteString(W, v); Texts.Append(Oberon.Log, W.buf)
@@ -128,7 +128,7 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
 
   PROCEDURE Number(VAR sym: INTEGER);
     CONST max = 2147483647 (*2^31 - 1*);
-    VAR i, k, n, h: LONGINT;
+    VAR i, k, n, h: INTEGER;
       d: ARRAY 16 OF INTEGER;
   BEGIN ival := 0; i := 0; n := 0; k := 0;
     REPEAT
@@ -226,7 +226,7 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     UNTIL sym # null
   END Get;
 
-  PROCEDURE Init*(T: Texts.Text; pos: LONGINT);
+  PROCEDURE Init*(T: Texts.Text; pos: INTEGER);
   BEGIN errpos := pos; errcnt := 0; Texts.OpenReader(R, T, pos); Texts.Read(R, ch)
   END Init;
 
