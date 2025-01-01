@@ -223,6 +223,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         or Bitwise NOT MVN (immediate) on page A7-303*)
       OrnOrMvn = {21..22};
 
+      (*T32MSK8 11 0110xxx Multiply, multiply accumulate and absolute difference on page A5-156*)
+      MulAccDiff = {27..28, 24..25};
       (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
       LongMulAccDiv = {27..28, 23..25};
 
@@ -360,12 +362,15 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T32MSK3206 1 0 111 - Move to Arm core register from FP Special Register VMRS on page A7-485*)
       VMRS = {20..23};
       
-      T32MSK81 = {20..22, 4..7};
+      T32MSK81 = {20..22, 4..7}; T32MSK82 = {20..22, 4..5};
       
       (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426*)
       UnsDiv = {20..21, 4..7};
       (*T32MSK81 010 0000 Unsigned Multiply Long UMULL on page A7-435*)
       UnsLongMUL = {21};
+
+      (*T32MSK82 000 00 Ra = 1111 Multiply on page A7-302*)
+      MulT2 = {};
 
       (*T32MSK9 11 010xxxx x Data processing (register) on page A5-152*)
       DataProcReg = {27..28, 25};
@@ -418,7 +423,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T16MSK22 1001 Reverse Subtract from 0 RSB (immediate) on page A7-341*)
       RevSub = {9, 6};
       (*T16MSK22 1101 Multiply Two Registers MUL on page A7-302*)
-      Mul = {8..9, 6};
+      MulT1 = {8..9, 6};
       (*T16MSK22 1110 Bit Clear BIC (register) on page A7-210*)
       BicReg = {7..9};
       (*T16MSK22 0000 Bitwise AND AND (register) on page A7-201*)
@@ -498,7 +503,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T16MSK12 01111 Subtract 3-bit immediate SUB (immediate) on page A7-402*)
       SubImmT1 = {9..12};
                   
-    VAR b1, b2, b3, b4, t, Rn, Rd, RdLo, RdHi, Rt, Rt2, Rm, Sn, Sd, Sm: BYTE;
+    VAR b1, b2, b3, b4, t, Ra, Rn, Rd, RdLo, RdHi, Rt, Rt2, Rm, Sn, Sd, Sm: BYTE;
       op: SET;
   BEGIN
     b1 := c[i+1]; b2 := c[i]; INC(i, 2);
@@ -956,6 +961,16 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           END
         ELSE Texts.WriteString(W, "TODO other DataProcShiftedReg on page A5-150")
         END
+      ELSIF op*T32MSK8 = MulAccDiff THEN
+        (*T32MSK8 11 0110xxx Multiply, multiply accumulate and absolute difference on page A5-156*)
+        Ra := b3 DIV OM4A.C4;
+        IF (op*T32MSK82 = MulT2) & (Ra = 15) THEN
+          (*T32MSK82 000 00 Ra = 1111 Multiply on page A7-302*)
+          (*MUL<c> <Rd>,<Rn><Rm>*)
+          Rd := b3 MOD OM4A.C4; Rn := b2 MOD OM4A.C4; Rm := b4 MOD OM4A.C4;
+          WriteOp(W, op, "MUL", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
+        ELSE Texts.WriteString(W, "TODO other Multiply, multiply accumulate and absolute difference on page A5-156")
+        END
       ELSIF op*T32MSK8 = LongMulAccDiv THEN
         (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
         IF op*T32MSK81 = UnsDiv THEN
@@ -1074,7 +1089,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           Rd := b2 MOD OM4A.C3; Rn := b2 DIV OM4A.C3 MOD OM4A.C3;
           WriteOp(W, op, "RSB", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn);
           Texts.WriteString(W, " #0")
-        ELSIF op*T16MSK22 = Mul THEN
+        ELSIF op*T16MSK22 = MulT1 THEN
           (*T16MSK22 1101 Multiply Two Registers MUL on page A7-302*)
           (*MULS <Rdm>,<Rn>,<Rdm> Outside IT block.
             MUL<c> <Rdm>,<Rn>,<Rdm> Inside IT block.*)
