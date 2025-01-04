@@ -222,6 +222,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T32MSK41 0011x Bitwise OR NOT ORN (immediate) on page A7-307
         or Bitwise NOT MVN (immediate) on page A7-303*)
       OrnOrMvn = {21..22};
+      (*T32MSK41 1011x Subtract with Carry on page A7-346*)
+      SBCT1 = {24, 21..22};
 
       (*T32MSK8 11 0110xxx Multiply, multiply accumulate and absolute difference on page A5-156*)
       MulAccDiff = {27..28, 24..25};
@@ -391,8 +393,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
 
       T32MSK921 = {20..21, 4..5};
 
-     (*T32MSK921 01 10 Reverse Bits RBIT on page A7-334*)
-     Rbit = {20, 5};
+      (*T32MSK921 01 10 Reverse Bits RBIT on page A7-334*)
+      Rbit = {20, 5};
+      (*T32MSK921 11 00 Count Leading Zeros on page A7-220*)
+      Clz = {20..21};
 
       (*16-bit instructions*)
       T16MSK1 = {14..15}; T16MSK2 = {10..15}; T16MSK3 = {11..15}; T16MSK4 = {12..15};
@@ -568,6 +572,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteOp(W, op, "ORN", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn)
           END;
           Texts.WriteString(W, " #"); Texts.WriteInt(W, ThumbExpandImm(op), 1)
+        ELSIF op*T32MSK41 = SBCT1 THEN
+          (*T32MSK41 1011x Subtract with Carry on page A7-346
+            SBC{S}<c><q> {<Rd>,} <Rn>, #<const>*)
+            WriteOp(W, op, "SBC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn);
+            Texts.WriteString(W, " #"); Texts.WriteInt(W, ThumbExpandImm(op), 1)
         ELSE Texts.WriteString(W, "TODO: other DataProcModImm on page A5-138")
         END
       ELSIF op*T32MSK4 = DataProcPlainBinImm THEN
@@ -1005,6 +1014,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           IF op*T32MSK921 = Rbit THEN
             ASSERT(Rn = Rm);
             WriteOp(W, op, "RBIT", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm)
+          ELSIF op*T32MSK921 = Clz THEN
+            ASSERT(Rn = Rm);
+            WriteOp(W, op, "CLZ", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm)
           ELSE Texts.WriteString(W, "TODO other Miscellaneous operations on page A5-155")
         END
         ELSE Texts.WriteString(W, "TODO other DataProcReg on page A5-152")

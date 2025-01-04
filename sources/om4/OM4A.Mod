@@ -873,7 +873,7 @@ BEGIN
   reg3map[ADc] := 0H;    reg3dnmap[ADc] := 4140H; reg4map[ADc] := 0H;        reg4shmap[ADc] := 0EB500000H;
   opnotmap[ADc] := NBOPS;  opnegmap[ADc] := NBOPS;
  
-  imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    immthmap[SBc]  := 0F1700F00H; imm12map[SBc] := 0H;
+  imm3map[SBc] := 0H;    imm8map[SBc] := 0H;    immthmap[SBc]  := 0F1700000H; imm12map[SBc] := 0H;
   reg3map[SBc] := 0H;    reg3dnmap[SBc] := 4180H; reg4map[SBc] := 0H;        reg4shmap[SBc] := 0EB700000H;
   opnotmap[SBc] := NBOPS;  opnegmap[SBc] := NBOPS;
 
