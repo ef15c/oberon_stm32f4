@@ -189,6 +189,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       BitwClear = {21};
       (*T32MSK21 0100 - Rd not 1111 - Bitwise Exclusive OR EOR (register) on page A7-233*)
       (*EorOrTeq = {23}; same as below*)
+      (*T32MSK21 1011 - - - Subtract with Carry SBC (register) on page A7-347*)
+      SbcRegT2 = {24, 21..22};
 
       T32MSK211 = {4..5};
       (*T32MSK211 11 00000 Rotate Right with Extend RRX on page A7-340
@@ -223,21 +225,23 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         or Bitwise NOT MVN (immediate) on page A7-303*)
       OrnOrMvn = {21..22};
       (*T32MSK41 1011x Subtract with Carry on page A7-346*)
-      SBCT1 = {24, 21..22};
+      SbcImmT1 = {24, 21..22};
 
       (*T32MSK8 11 0110xxx Multiply, multiply accumulate and absolute difference on page A5-156*)
       MulAccDiff = {27..28, 24..25};
       (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
       LongMulAccDiv = {27..28, 23..25};
 
-      (*T32MSK42 00100 -: Move Wide, 16-bit MOV (immediate) on page A7-291*)
+      (*T32MSK42 00100 - Move Wide, 16-bit MOV (immediate) on page A7-291*)
       MW16Bit = {22};
-      (*T32MSK42 01100 -: Move Top, 16-bit MOVT on page A7-296*)
+      (*T32MSK42 01100 - Move Top, 16-bit MOVT on page A7-296*)
       MoveTop = {23, 22};
       (*T32MSK42 00000 Rn not 1111 Add Wide, 12-bit ADD (immediate) on page A7-190*)
       AddWide12BitOrAdr = {};
       (*T32MSK42 01010 Rn not 1111 Subtract Wide, 12-bit SUB (immediate) on page A7-402*)
       SubWide12BitOrAdr = {23, 21};
+      (*T32MSK42 10100 - Signed Bit Field Extract SBFX on page A7-349*)
+      SBFX = {24, 22};
      (*T32MSK42 10110 Rn = 1111 Bit Field Clear BFC on page A7-207*)
       BitField = {24, 21..22};
 
@@ -441,7 +445,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T16MSK22 0101 Add with Carry ADC (register) on page A7-188*)
       AdcT1 = {8, 6};
       (*T16MSK22 0110 Subtract with Carry SBC (register) on page A7-347*)
-      SbcT1 = {7..8};
+      SbcRegT1 = {7..8};
       (*T16MSK22 0010 Logical Shift Left LSL (register) on page A7-283*)
       LslT1 = {7};
       (*T16MSK22 0100 Arithmetic Shift Right ASR (register) on page A7-204*)
@@ -572,7 +576,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteOp(W, op, "ORN", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn)
           END;
           Texts.WriteString(W, " #"); Texts.WriteInt(W, ThumbExpandImm(op), 1)
-        ELSIF op*T32MSK41 = SBCT1 THEN
+        ELSIF op*T32MSK41 = SbcImmT1 THEN
           (*T32MSK41 1011x Subtract with Carry on page A7-346
             SBC{S}<c><q> {<Rd>,} <Rn>, #<const>*)
             WriteOp(W, op, "SBC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn);
@@ -608,7 +612,13 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*BFC<c><q>  <Rd>,#<lsb>,#<witdth>*)
           t := b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C2 + b4 DIV OM4A.C6 MOD OM4A.C2;
           WriteOp(W, op, "BFC", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " #"); Texts.WriteInt(W, t, 1);
-          Texts.WriteString(W, " #"); Texts.WriteInt(W, b4 MOD OM4A.C5 - t + 1, 1);
+          Texts.WriteString(W, " #"); Texts.WriteInt(W, b4 MOD OM4A.C5 - t + 1, 1)
+        ELSIF op*T32MSK42 = SBFX THEN
+          (*T32MSK42 10100 - Signed Bit Field Extract SBFX on page A7-349
+            SBFX<c> <Rd>,<Rn>,#<lsb>,#<width>*)
+          WriteOp(W, op, "SBFX", FALSE, FALSE); WriteReg(W, Rd);  WriteReg(W, Rn); Texts.WriteString(W, " #");
+          Texts.WriteInt(W, b3 DIV OM4A.C4 MOD OM4A.C3*OM4A.C2 + b4 DIV OM4A.C6, 1);
+          Texts.WriteString(W, " #"); Texts.WriteInt(W, b4 MOD OM4A.C5 + 1, 1)
         ELSE Texts.WriteString(W, "TODO: other DataProcPlainBinImm on page A5-141")
         END
       ELSIF op*T32MSK6 = StrSingleDataItem THEN
@@ -968,6 +978,12 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteOp(W, op, "EOR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
           END
+        ELSIF op*T32MSK21 = SbcRegT2 THEN
+          Rm := b4 MOD OM4A.C4;
+          (*T32MSK21 1011 - - - Subtract with Carry SBC (register) on page A7-347
+            SBC{S}<c>.W <Rd>,<Rn>,<Rm> {,<shift>}*)
+            WriteOp(W, op, "SBC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
+            WriteShift(W, op)
         ELSE Texts.WriteString(W, "TODO other DataProcShiftedReg on page A5-150")
         END
       ELSIF op*T32MSK8 = MulAccDiff THEN
@@ -1143,7 +1159,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             ADC<c> <Rdn>,<Rm> Inside IT block.*)
           Rd := b2 MOD OM4A.C3; Rm := b2 DIV OM4A.C3 MOD OM4A.C3;
           WriteOp(W, op, "ADC", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm)
-        ELSIF op*T16MSK22 = SbcT1 THEN
+        ELSIF op*T16MSK22 = SbcRegT1 THEN
           (*T16MSK22 0110 Subtract with Carry SBC (register) on page A7-347*)
           (*SBCS <Rdn>,<Rm> Outside IT block.
             SBC<c> <Rdn>,<Rm> Inside IT block.*)

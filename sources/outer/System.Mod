@@ -279,6 +279,38 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END
   END CopyFiles;
 
+  PROCEDURE CompareFiles*;
+    VAR f!, g!: Files.File; Rf!, Rg!: Files.Rider; chf, chg: CHAR; same: BOOLEAN;
+      name: ARRAY 32 OF CHAR;
+      S!: Texts.Scanner;
+  BEGIN GetArg(S);
+    Texts.WriteString(W, "System.CopyFiles"); EndLine;
+    WHILE S.class = Texts.Name DO
+      name := S.s; Texts.Scan(S);
+      IF (S.class = Texts.Char) & (S.c = "=") THEN Texts.Scan(S);
+        IF S.class = Texts.Name THEN
+          Texts.WriteString(W, name); Texts.WriteString(W, " and "); Texts.WriteString(W, S.s);
+          Texts.WriteString(W, " comparing"); Texts.Append(Oberon.Log, W.buf);
+          f := Files.Old(name);
+          IF f # NIL THEN g := Files.Old(S.s);
+            IF g # NIL THEN same := TRUE;
+              Files.Set(Rf, f, 0); Files.Set(Rg, g, 0); Files.Read(Rf, chf); Files.Read(Rg, chg);
+              WHILE same & ~Rf.eof & ~Rg.eof DO same := chf = chg; Files.Read(Rf, chf); Files.Read(Rg, chg) END;
+              IF ~Rf.eof OR ~Rg.eof THEN same := FALSE END
+            ELSE Texts.WriteString(W, " failed "); Texts.WriteString(W, S.s);  Texts.WriteString(W, " not found")
+            END
+          ELSE Texts.WriteString(W, " failed "); Texts.WriteString(W, name);  Texts.WriteString(W, " not found")
+          END;
+          IF same THEN Texts.WriteString(W, " same")
+          ELSE Texts.WriteString(W, " different at pos "); Texts.WriteInt(W, Files.Pos(Rf)-1, 1)
+          END;
+          EndLine
+        END
+      END ;
+      Texts.Scan(S)
+    END
+  END CompareFiles;
+
   PROCEDURE RenameFiles*;
     VAR res: INTEGER;
       name: ARRAY 32 OF CHAR;
