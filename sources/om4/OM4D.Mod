@@ -191,6 +191,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*EorOrTeq = {23}; same as below*)
       (*T32MSK21 1011 - - - Subtract with Carry SBC (register) on page A7-347*)
       SbcRegT2 = {24, 21..22};
+      (*T32MSK21 1110 - - - Reverse Subtract RSB (register) on page A7-342*)
+      RsbRegT1 = {22..24};
 
       T32MSK211 = {4..5};
       (*T32MSK211 11 00000 Rotate Right with Extend RRX on page A7-340
@@ -228,6 +230,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       AdcImmT1 = {24, 22};
       (*T32MSK41 1011x Subtract with Carry SBC (immediate)on page A7-346*)
       SbcImmT1 = {24, 21..22};
+      (*T32MSK41 1110x Reverse Subtract RSB (immediate)on page A7-341*)
+      RsbImmT2 = {22..24};
 
       (*T32MSK8 11 0110xxx Multiply, multiply accumulate and absolute difference on page A5-156*)
       MulAccDiff = {27..28, 24..25};
@@ -587,6 +591,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T32MSK41 1011x Subtract with Carry SBC (immediate)on page A7-346
             SBC{S}<c><q> {<Rd>,} <Rn>, #<const>*)
             WriteOp(W, op, "SBC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn);
+            Texts.WriteString(W, " #"); Texts.WriteInt(W, ThumbExpandImm(op), 1)
+        ELSIF op*T32MSK41 = RsbImmT2 THEN
+          (*T32MSK41 1110x Reverse Subtract RSB (immediate)on page A7-341
+            RSB{S}<c>W <Rd>, <Rn>, #<const>*)
+            WriteOp(W, op, "RSB", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn);
             Texts.WriteString(W, " #"); Texts.WriteInt(W, ThumbExpandImm(op), 1)
         ELSE Texts.WriteString(W, "TODO: other DataProcModImm on page A5-138")
         END
@@ -990,6 +999,12 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T32MSK21 1011 - - - Subtract with Carry SBC (register) on page A7-347
             SBC{S}<c>.W <Rd>,<Rn>,<Rm> {,<shift>}*)
             WriteOp(W, op, "SBC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
+            WriteShift(W, op)
+        ELSIF op*T32MSK21 = RsbRegT1 THEN
+          Rm := b4 MOD A.C4;
+          (*T32MSK21 1110 - - - Reverse Subtract RSB (register) on page A7-342
+            RSB{S}<c> <Rd>,<Rn>,<Rm> {,<shift>}*)
+            WriteOp(W, op, "RSB", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
         ELSE Texts.WriteString(W, "TODO other DataProcShiftedReg on page A5-150")
         END
