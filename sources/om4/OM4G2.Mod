@@ -812,21 +812,34 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END IntCompare;
 
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
-    VAR tmi: INTEGER;
   BEGIN
     IF (y.mode = B.Const) & (y.type.form # B.Proc) THEN
       load(x);
-      IF (y.a # 0) OR ~(op IN {S.eql, S.neq}) OR ~mcode.lastInstrSetFlags THEN
-        A.encCMPImm(mcode, x.r, RH, y.a(* TODO MOD 100000000H*));
-        IF x.type.size = 8 THEN A.encDPImm32(mcode, A.SBc, x.r+1, x.r+1, RH, (*TODO y.a DIV 100000000H*)0); DEC(RH) END
-      END; DEC(RH)
-    ELSE
-      IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END ;
-      load(x); load(y); A.encCMPReg(mcode, x.r, y.r); DEC(RH, 2);
       IF x.type.size = 8 THEN
-        IF y.type.size = 8 THEN A.encDPReg(mcode, A.SBc, x.r+1, x.r+1, y.r+1, A.LSl, 0, TRUE); DEC(RH, 2)
-        ELSE A.encDPImm32(mcode, A.SBc, x.r+1, x.r+1, RH, 0); DEC(RH)
+        IF op IN {S.eql, S.neq} THEN A.encCMPImm(mcode, x.r+1, RH, LSR(y.a, 32)); A.IfThen(mcode, "", A.EQ);
+          A.encCMPImm(mcode, x.r, RH, y.a) 
+        ELSIF op = S.gtr THEN A.encCMPImm(mcode, x.r, RH, y.a+1); A.encDPImm32(mcode, A.SBc, x.r+1, x.r+1, RH, LSR(y.a+1, 32)); op := S.geq
+        ELSIF op = S.leq THEN A.encCMPImm(mcode, x.r, RH, y.a+1); A.encDPImm32(mcode, A.SBc, x.r+1, x.r+1, RH, LSR(y.a+1, 32)); op := S.lss
+        ELSE A.encCMPImm(mcode, x.r, RH, y.a); A.encDPImm32(mcode, A.SBc, x.r+1, x.r+1, RH, LSR(y.a, 32))
+        END; DEC(RH, 2);
+      ELSE IF (y.a # 0) OR ~(op IN {S.eql, S.neq}) OR ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, x.r, RH, y.a) END; DEC(RH)
+      END
+    ELSE
+      IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
+      IF x.type # y.type THEN
+        IF x.type = B.longintType THEN convertInt(y, x.type); load(x)
+        ELSIF y.type = B.longintType THEN convertInt(x, y.type); load(y)
         END
+      ELSE load(x); load(y)
+      END;
+      IF x.type.size = 8 THEN
+        IF op IN {S.eql, S.neq} THEN A.encCMPReg(mcode, x.r+1, y.r+1); A.IfThen(mcode, "", A.EQ);
+          A.encCMPReg(mcode, x.r, y.r) 
+        ELSIF op = S.gtr THEN A.encCMPReg(mcode, y.r, x.r); A.encDPReg(mcode, A.SBc, y.r+1, y.r+1, x.r+1, A.LSl, 0, TRUE); op := S.lss
+        ELSIF op = S.leq THEN A.encCMPReg(mcode, y.r, y.r); A.encDPReg(mcode, A.SBc, y.r+1, y.r+1, x.r+1, A.LSl, 0, TRUE); op := S.geq
+        ELSE A.encCMPReg(mcode, x.r, y.r); A.encDPReg(mcode, A.SBc, x.r+1, x.r+1, y.r+1, A.LSl, 0, TRUE)
+        END; DEC(RH, 4)
+      ELSE A.encCMPReg(mcode, x.r, y.r); DEC(RH, 2)
       END
     END ;
     SetCC(x, relmap[op - S.eql])
@@ -1357,7 +1370,7 @@ S.DebugHex("RH RegI", RH);
   BEGIN load(x);
     IF x.type.size = 8 THEN A.Put0(mcode, A.CLZ + x.r+1*A.C16 + x.r+1*A.C8 + x.r+1);
       A.encCMPImm(mcode, x.r+1, RH, 32); A.IfThen(mcode, "TE", A.EQ);
-      A.Put0(mcode, A.CLZ + x.r*A.C16 + x.r*A.C8 + x.r); A.encDPReg(mcode, A.ADD, x.r, x.r+1, x.r, A.LSl, 0, TRUE);
+      A.Put0(mcode, A.CLZ + x.r*A.C16 + x.r*A.C8 + x.r); A.encDPReg(mcode, A.ADD, x.r, x.r+1, x.r, A.LSl, 0, FALSE);
       A.encMOVReg(mcode, x.r, x.r+1); DEC(RH)
     ELSE A.Put0(mcode, A.CLZ + x.r*A.C16 + x.r*A.C8 + x.r)
     END;
