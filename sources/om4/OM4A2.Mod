@@ -267,10 +267,8 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     (*Memory operations*)
     LDR*=0; LDRB*=1; STR*=2; STRB*=3;
 
-  TYPE
-    ModuleCode* = POINTER TO ModuleCodeDesc;
-    
-    ModuleCodeDesc* = RECORD
+  TYPE    
+    ModuleCode* = RECORD
       pc*: INTEGER; (*program counter*)
       nbRmnITBlockInsts: INTEGER; (*Number of remaining instructions in current IT block*)
       lastInstrSetFlags*: BOOLEAN; (*TRUE if last instructions set flags*)
@@ -477,7 +475,8 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN ASSERT(r1 < 16); ASSERT(r2 < 16);
 (*TODO: \E0 d\E9commenter plus tard quand la division 64 bits sera impl\E9ment\E9e
     encMOVImm32(c, r1, val MOD 100000000H); encMOVImm32(c, r2, val DIV 100000000H); *)
-    encMOVImm32(c, r1, 0); encMOVImm32(c, r2, val); c.lastInstrSetFlags := FALSE
+    encMOVImm32(c, r1, val); encMOVImm32(c, r2, 0);
+    c.lastInstrSetFlags := FALSE
   END encMOVImm64;
 
   PROCEDURE encMemImm8PUW*(VAR c: ModuleCode; op: INTEGER; a, b: BYTE; 

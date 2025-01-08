@@ -38,12 +38,10 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       end, ofsptos (*offset with previous top of stack*): INTEGER
     END;
 
-    FrameOffsetDesc = RECORD
+    FrameOffset = RECORD
       NofSegs: INTEGER;
       Segs: ARRAY maxFOS OF FrameOffsetSegment
     END;
-
-    FrameOffset = POINTER TO FrameOffsetDesc;
 
   VAR varsize: INTEGER;   (*data index*)
     tdx, strx: INTEGER;
@@ -531,8 +529,9 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.type # t THEN
         IF (t = B.longintType) & (x.mode # B.Const) THEN load(x); ASSERT(x.r = RH-1); incR;
           A.Put0(mcode, A.SBFX + x.r*A.C16 + (x.r+1)*A.C8 + 31 DIV A.C2*A.C12 + 31 MOD A.C2*A.C6 + 0); (*SBFX x.r+1, x.r, 31, 1*)
-        END;
-        x.type := t
+          x.type := t
+        ELSE x.type := t; load(x)
+        END
       END
     END
   END convertInt;
@@ -599,10 +598,14 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF x.type.size = 8 THEN A.encMOVImm32(mcode, x.r+1, 0) END;
         A.encMOVImm32(mcode, x.r, 0)
       END
-    ELSE load(y); dincR; A.encDPImm32(mcode, A.SUB, RH-1, y.r, RH, 32); A.encShiftReg(mcode, A.LSl, RH-1, x.r, RH-1, TRUE);
-      A.encDPImm32(mcode, A.RSB, RH-2, y.r, RH, 32); A.encShiftReg(mcode, A.LSl, x.r+1, x.r+1, y.r, TRUE);
-      A.encShiftReg(mcode, A.LSr, RH-2, x.r, RH-2, TRUE); A.encDPReg(mcode, A.ORR, x.r+1, x.r+1, RH-1, A.LSl, 0, TRUE);
-      A.encShiftReg(mcode, A.LSl, x.r, x.r, y.r, TRUE); A.encDPReg(mcode, A.ORR, x.r+1, x.r+1, RH-2, A.LSl, 0, TRUE); DEC(RH, 4)
+    ELSE load(y); ASSERT(x.r < y.r);
+      IF x.type.size = 8 THEN
+        dincR; A.encDPImm32(mcode, A.SUB, RH-1, y.r, RH, 32); A.encShiftReg(mcode, A.LSl, RH-1, x.r, RH-1, TRUE);
+        A.encDPImm32(mcode, A.RSB, RH-2, y.r, RH, 32); A.encShiftReg(mcode, A.LSl, x.r+1, x.r+1, y.r, TRUE);
+        A.encShiftReg(mcode, A.LSr, RH-2, x.r, RH-2, TRUE); A.encDPReg(mcode, A.ORR, x.r+1, x.r+1, RH-1, A.LSl, 0, TRUE);
+        A.encShiftReg(mcode, A.LSl, x.r, x.r, y.r, TRUE); A.encDPReg(mcode, A.ORR, x.r+1, x.r+1, RH-2, A.LSl, 0, TRUE); DEC(RH, 3)
+      ELSE A.encShiftReg(mcode, A.LSl, x.r, x.r, y.r, TRUE); DEC(RH)
+      END
     END;
   END Lsl;
 
@@ -621,10 +624,14 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF x.type.size = 8 THEN A.encMOVImm32(mcode, x.r+1, 0) END;
         A.encMOVImm32(mcode, x.r, 0)
       END
-    ELSE load(y); dincR; A.encDPImm32(mcode, A.RSB, RH-1, y.r, RH, 32); A.encShiftReg(mcode, A.LSl, RH-1, x.r+1, RH-1, TRUE);
-      A.encDPImm32(mcode, A.SUB, RH-2, y.r, RH, 32); A.encShiftReg(mcode, A.LSr, x.r, x.r, y.r, TRUE);
-      A.encShiftReg(mcode, A.LSr, RH-2, x.r+1, RH-2, TRUE); A.encDPReg(mcode, A.ORR, x.r, x.r, RH-1, A.LSl, 0, TRUE);
-      A.encDPReg(mcode, A.ORR, x.r, x.r, RH-2, A.LSl, 0, TRUE); A.encShiftReg(mcode, A.LSr, x.r+1, x.r+1, y.r, TRUE); DEC(RH, 4)
+    ELSE load(y); ASSERT(x.r < y.r);
+      IF x.type.size = 8 THEN
+        dincR; A.encDPImm32(mcode, A.RSB, RH-1, y.r, RH, 32); A.encShiftReg(mcode, A.LSl, RH-1, x.r+1, RH-1, TRUE);
+        A.encDPImm32(mcode, A.SUB, RH-2, y.r, RH, 32); A.encShiftReg(mcode, A.LSr, x.r, x.r, y.r, TRUE);
+        A.encShiftReg(mcode, A.LSr, RH-2, x.r+1, RH-2, TRUE); A.encDPReg(mcode, A.ORR, x.r, x.r, RH-1, A.LSl, 0, TRUE);
+        A.encDPReg(mcode, A.ORR, x.r, x.r, RH-2, A.LSl, 0, TRUE); A.encShiftReg(mcode, A.LSr, x.r+1, x.r+1, y.r, TRUE); DEC(RH, 3)
+      ELSE A.encShiftReg(mcode, A.LSr, x.r, x.r, y.r, TRUE); DEC(RH)
+      END
     END;
   END Lsr;
 
@@ -647,12 +654,16 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         ELSE A.encShiftImm5(mcode, A.ASr, x.r, x.r, 31)
         END
       END
-    ELSE load(y); dincR; A.encDPImm32(mcode, A.RSB, RH-1, y.r, RH, 32); A.encShiftReg(mcode, A.LSl, RH-1, x.r+1, RH-1, TRUE);
-      A.encDPImm32(mcode, A.SUB, RH-2, y.r, RH, 32); A.encShiftReg(mcode, A.LSr, x.r, x.r, y.r, FALSE);
-      A.IfThen(mcode, "", A.PL); A.encShiftReg(mcode, A.ASr, RH-2, x.r+1, RH-2, FALSE);
-      A.encDPReg(mcode, A.ORR, x.r, x.r, RH-1, A.LSl, 0, FALSE);
-      A.IfThen(mcode, "", A.PL); A.encDPReg(mcode, A.ORR, x.r, x.r, RH-2, A.LSl, 0, FALSE);
-      A.encShiftReg(mcode, A.ASr, x.r+1, x.r+1, y.r, TRUE); DEC(RH, 4)
+    ELSE load(y); ASSERT(x.r < y.r);
+      IF x.type.size = 8 THEN
+        dincR; A.encDPImm32(mcode, A.RSB, RH-1, y.r, RH, 32); A.encShiftReg(mcode, A.LSl, RH-1, x.r+1, RH-1, TRUE);
+        A.encDPImm32(mcode, A.SUB, RH-2, y.r, RH, 32); A.encShiftReg(mcode, A.LSr, x.r, x.r, y.r, FALSE);
+        A.IfThen(mcode, "", A.PL); A.encShiftReg(mcode, A.ASr, RH-2, x.r+1, RH-2, FALSE);
+        A.encDPReg(mcode, A.ORR, x.r, x.r, RH-1, A.LSl, 0, FALSE);
+        A.IfThen(mcode, "", A.PL); A.encDPReg(mcode, A.ORR, x.r, x.r, RH-2, A.LSl, 0, FALSE);
+        A.encShiftReg(mcode, A.ASr, x.r+1, x.r+1, y.r, TRUE); DEC(RH, 3)
+      ELSE A.encShiftReg(mcode, A.ASr, x.r, x.r, y.r, TRUE); DEC(RH)
+      END
     END;
   END Asr;
 
@@ -667,8 +678,8 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.type.size = 8 THEN dincR; A.encMUL(mcode, RH-2, x.r, y.r+1); A.encMUL(mcode, RH-1, x.r+1, y.r); 
           A.encDPReg(mcode, A.ADD, RH-2, RH-2, RH-1, A.LSl, 0, TRUE); A.Put0(mcode, A.UMULL + x.r*A.C16 + xr*A.C12 + (xr+1)*A.C8 + y.r);
           A.encDPReg(mcode, A.ADD, xr+1, xr+1, RH-2, A.LSl, 0, TRUE); DEC(RH, 4)
-      ELSE A.encMUL(mcode, xr, x.r, y.r); DEC(RH); x.r := xr
-      END
+      ELSE A.encMUL(mcode, xr, x.r, y.r); DEC(RH)
+      END; x.r := xr
     END
   END MulOp;
 
@@ -854,7 +865,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
     VAR op: INTEGER;
-  BEGIN convertInt(y, x.type);
+  BEGIN convertInt(y, x.type); ASSERT(frame = 0);
     IF ~(y.mode IN {Reg, FPReg}) THEN
       IF y.type.form = B.Real THEN loadFP(y) ELSE load(y) END
     END;
@@ -977,8 +988,8 @@ S.DebugHex("RH RegI", RH);
     END
   END VarParam;
 
-  PROCEDURE ValueParam*(VAR x: Item);
-  BEGIN load(x) (*Force loading in core registers even for real*)
+  PROCEDURE ValueParam*(VAR x: Item; t: B.Type);
+  BEGIN convertInt(x, t); load(x) (*Force loading in core registers even for real*)
   END ValueParam;
 
   PROCEDURE StringParam*(VAR x: Item);
@@ -1526,7 +1537,7 @@ S.DebugHex("RH RegI", RH);
     Files.Register(F)
   END Close;
 
-BEGIN NEW(mcode); NEW(frmOfsSegs);
+BEGIN
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.LT; 
   relmap[3] := A.LE; relmap[4] := A.GT; relmap[5] := A.GE
 END OM4G2.

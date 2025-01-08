@@ -718,7 +718,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = S.var THEN S.Get(sym); cl := B.Par ELSE cl := B.Var END ;
     IdentList(cl, first); FormalType(tp, 0); rdo := FALSE;
     IF sym = S.times THEN inreg := TRUE; G.SetAllocationMode(G.Register); S.Get(sym) END;
-    IF (cl = B.Var) & (tp.form >= B.Array) THEN cl := B.Par; rdo := TRUE END ;
+    IF (cl = B.Var) & (tp.form IN {B.Array, B.Record}) THEN cl := B.Par; rdo := TRUE END ;
     IF (tp.form = B.Array) & (tp.len < 0) OR (tp.form = B.Record) THEN
       parsize := 2*G.WordSize  (*open array or record, needs second word for length or type tag*)
     ELSE parsize := G.WordSize

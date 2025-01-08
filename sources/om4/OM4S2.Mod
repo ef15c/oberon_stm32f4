@@ -132,11 +132,11 @@ MODULE OM4S2; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   PROCEDURE Number(VAR sym: INTEGER);
     CONST max = 2147483647 (*2^31 - 1*);
     VAR i, e, n, s, h: INTEGER; x: REAL; k: LONGINT;
-      d: ARRAY 16 OF INTEGER;
+      d: ARRAY 20 OF INTEGER;
       negE: BOOLEAN;
   BEGIN ival := 0; i := 0; n := 0; k := 0;
     REPEAT
-      IF n < 16 THEN d[n] := ORD(ch)-30H; INC(n) ELSE Mark("too many digits"); n := 0 END ;
+      IF n < LEN(d) THEN d[n] := ORD(ch)-30H; INC(n) ELSE Mark("too many digits"); n := 0 END ;
       Texts.Read(R, ch)
     UNTIL (ch < "0") OR (ch > "9") & (ch < "A") OR (ch > "F");
     IF (ch = "H") OR (ch = "R") OR (ch = "X") THEN  (*hex*)

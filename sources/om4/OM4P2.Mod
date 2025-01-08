@@ -207,7 +207,7 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
     IF par # NIL THEN
       varpar := par.class = B.Par;
       IF CompTypes(par.type, x.type, varpar) THEN
-        IF ~varpar THEN G.ValueParam(x)
+        IF ~varpar THEN G.ValueParam(x, par.type)
         ELSE (*par.class = Par*)
           IF ~par.rdo THEN CheckReadOnly(x) END ;
           G.VarParam(x, par.type)
@@ -218,9 +218,9 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
         G.OpenArrayParam(x)
       ELSIF (x.type.form = B.String) & varpar & par.rdo & (par.type.form = B.Array) & 
           (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x)
-      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x)  (*BYTE*)
+      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par.type)  (*BYTE*)
       ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
-        G.StrToChar(x); G.ValueParam(x)
+        G.StrToChar(x); G.ValueParam(x, par.type)
       ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
           (par.type.len >= 0) & (par.type.size = x.type.size) THEN
         G.VarParam(x, par.type)
@@ -705,10 +705,10 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
   BEGIN
     IF sym = S.var THEN S.Get(sym); cl := B.Par ELSE cl := B.Var END ;
     IdentList(cl, first); FormalType(tp, 0); rdo := FALSE;
-    IF (cl = B.Var) & (tp.form >= B.Array) THEN cl := B.Par; rdo := TRUE END ;
-    IF (tp.form = B.Array) & (tp.len < 0) OR (G.check & (tp.form = B.Record))
-      OR (tp.form = B.Int) & (tp.size = 8) THEN
-      parsize := 2*G.WordSize  (*open array, record or LONGINT, needs second word for length, type tag or high word*)
+    IF (cl = B.Var) & (tp.form IN {B.Array, B.Record}) THEN cl := B.Par; rdo := TRUE END ;
+    IF (tp.form = B.Array) & (tp.len < 0) OR (G.check & (tp.form = B.Record)) THEN
+      parsize := 2*G.WordSize  (*open array or record, needs second word for length or type tag*)
+    ELSIF (tp = B.longintType) & (cl = B.Var) THEN parsize := 2*G.WordSize
     ELSE parsize := G.WordSize
     END ;
     obj := first;
