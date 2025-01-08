@@ -36,7 +36,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       end, ofsptos (*offset with previous top of stack*): INTEGER
     END;
 
-    FrameOffsetDesc = RECORD
+    FrameOffset = RECORD
       NofSegs: INTEGER;
       Segs: ARRAY maxFOS OF FrameOffsetSegment
     END;
@@ -67,8 +67,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     rh: Item;
     curImport: INTEGER;
 
-    mcode: A.ModuleCodeDesc;
-    frmOfsSegs: FrameOffsetDesc;
+    mcode: A.ModuleCode;
+    frmOfsSegs: FrameOffset;
 
   PROCEDURE CheckRTImport*(impid: S.Ident);
   BEGIN

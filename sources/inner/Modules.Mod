@@ -315,7 +315,10 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
     IF mod # NIL THEN
       IF mod.refcnt = 0 THEN
         mod.name[0] := 0X; p := mod.imp; q := mod.cmd;
-        WHILE p < q DO SYSTEM.GET(p, imp); DEC(imp.refcnt); INC(p, 4) END ;
+        WHILE p < q DO SYSTEM.GET(p, imp); DEC(imp.refcnt); INC(p, 4) END;
+        WHILE root.name[0] = 0X DO (*deallocate freed modules at end of module space*)
+          AllocPtr := SYSTEM.VAL(INTEGER, root); root := root.next
+        END
       ELSE res := 1
       END
     END

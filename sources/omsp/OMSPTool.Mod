@@ -4,6 +4,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
 
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
+    mcode: A.ModuleCode;
 
   PROCEDURE Read(VAR R: Files.Rider; VAR n: INTEGER);
     VAR b: BYTE;
@@ -140,12 +141,11 @@ MODULE OMSPTool;  (*NW 18.2.2013
       name: ARRAY 32 OF CHAR;
       F!: Files.File; R!: Files.Rider;
       S1!: Texts.Scanner;
-      mcode!: A.ModuleCode;
   BEGIN Texts.OpenScanner(S1, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S1);
     IF S1.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S1.s); F := Files.Old(S1.s);
       IF F # NIL THEN
-        NEW(mcode);
+        A.Init(mcode);
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
         Files.ReadInt(R, key); Texts.WriteHex(W, key); Files.ReadByte(R, bl);
         ReadWord(R, size); Texts.WriteString(W, " Flash"); Texts.WriteInt(W, size, 6);
