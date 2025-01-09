@@ -530,7 +530,8 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF (t = B.longintType) & (x.mode # B.Const) THEN load(x); ASSERT(x.r = RH-1); incR;
           A.Put0(mcode, A.SBFX + x.r*A.C16 + (x.r+1)*A.C8 + 31 DIV A.C2*A.C12 + 31 MOD A.C2*A.C6 + 0); (*SBFX x.r+1, x.r, 31, 1*)
           x.type := t
-        ELSE x.type := t; load(x)
+        ELSIF (t.size = 4) & (x.type = B.longintType) THEN x.type := t; IF x.mode = Reg THEN DEC(RH);  ELSE load(x) END
+        ELSE x.type := t
         END
       END
     END
@@ -676,46 +677,88 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*Lower half 32bit of result of a multiplication (32b*32b => 32b) is the same for signed and unsigned integers*)
     ELSE load(x); load(y); IF x.r < y.r THEN xr := x.r ELSE xr := y.r END;
       IF x.type.size = 8 THEN dincR; A.encMUL(mcode, RH-2, x.r, y.r+1); A.encMUL(mcode, RH-1, x.r+1, y.r); 
-          A.encDPReg(mcode, A.ADD, RH-2, RH-2, RH-1, A.LSl, 0, TRUE); A.Put0(mcode, A.UMULL + x.r*A.C16 + xr*A.C12 + (xr+1)*A.C8 + y.r);
-          A.encDPReg(mcode, A.ADD, xr+1, xr+1, RH-2, A.LSl, 0, TRUE); DEC(RH, 4)
+        A.encDPReg(mcode, A.ADD, RH-2, RH-2, RH-1, A.LSl, 0, TRUE); A.Put0(mcode, A.UMULL + x.r*A.C16 + xr*A.C12 + (xr+1)*A.C8 + y.r);
+        A.encDPReg(mcode, A.ADD, xr+1, xr+1, RH-2, A.LSl, 0, TRUE); DEC(RH, 4)
       ELSE A.encMUL(mcode, xr, x.r, y.r); DEC(RH)
       END; x.r := xr
     END
   END MulOp;
 
+  PROCEDURE doDivL(VAR x, y: Item; dr: INTEGER);
+    VAR crh, xr: INTEGER; yIsVar: BOOLEAN;
+  BEGIN
+    crh := RH;
+    IF crh > 2 THEN A.SaveRegs(mcode, 4, frame); OfsPTOS(4, 4, TRUE); RH := 0
+    ELSIF crh > 0 THEN A.SaveRegs(mcode, 2, frame); OfsPTOS(2, 2, TRUE); RH := 0
+    END;
+    yIsVar := y.mode # B.Const;
+    load(x); load(y); IF x.r < y.r THEN xr := x.r ELSE xr := y.r END;
+    IF check & yIsVar THEN  A.encCMPImm(mcode, y.r, RH, 1); A.encDPImm32(mcode, A.SBc, RH, y.r+1, RH, 0); Trap(A.LT, 6) END;
+    IF x.r # 0 THEN
+      IF y.r = 0 THEN (*make room for x*) IF crh > RL-2 THEN S.Mark("register stack overflow") END;
+        A.encMOVReg(mcode, crh, y.r); A.encMOVReg(mcode, crh+1, y.r+1); y.r := crh
+      END;
+      A.encMOVReg(mcode, 0, x.r); A.encMOVReg(mcode, 1, x.r+1)
+    END;
+    IF y.r # 2 THEN A.encMOVReg(mcode, 2, y.r); A.encMOVReg(mcode, 3, y.r+1) END;
+    A.Put1(mcode, A.SVC + 2); (*Call 64bit integer division code in Kernel module*)
+    IF xr # dr THEN A.encMOVReg(mcode, xr, dr); A.encMOVReg(mcode, xr+1, dr+1) END;
+    IF crh > 2 THEN A.RestoreRegs(mcode, 4, frame); OfsPTOS(-4, -4, TRUE); RH := 0
+    ELSIF crh > 0 THEN A.RestoreRegs(mcode, 2, frame); OfsPTOS(-2, -2, TRUE); RH := 0
+    END; x.r := xr; RH := xr+2
+  END doDivL;
+
   PROCEDURE DivOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
     VAR e: INTEGER;
   BEGIN
+    convertInt(y, x.type);
     IF op = S.div THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
         IF y.a > 0 THEN x.a := x.a DIV y.a ELSE S.Mark("bad divisor") END
-      ELSIF (y.mode = B.Const) & (y.a >= 2) & (A.log2(y.a, e) = 1) THEN load(x); A.encShiftImm5(mcode, A.ASr, x.r, x.r, e)
+      ELSIF (y.mode = B.Const) & (y.a >= 2) & (A.log2(y.a, e) = 1) THEN y.a := e; Asr(x, y)
       ELSIF y.mode = B.Const THEN
-        IF y.a > 0 THEN load(x); load(y); A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1 ELSE S.Mark("bad divisor") END
-      ELSE load(y);
-        IF check THEN 
-          IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, y.r, RH, 0) END;
-          Trap(A.LE, 6)
-        END;
-        load(x); A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+        IF y.a > 0 THEN
+          IF x.type.size = 8 THEN doDivL(x, y, 2)
+          ELSE load(x); load(y); A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+          END
+        ELSE S.Mark("bad divisor")
+        END
+      ELSE
+        IF x.type.size = 8 THEN doDivL(x, y, 2)
+        ELSE load(y);
+          IF check THEN 
+            IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, y.r, RH, 0) END;
+            Trap(A.LE, 6)
+          END;
+          load(x); A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+        END
       END
     ELSE (*op = S.mod*)
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
         IF y.a > 0 THEN x.a := x.a MOD y.a ELSE S.Mark("bad modulus") END
       ELSIF (y.mode = B.Const) & (y.a >= 2) & (A.log2(y.a, e) = 1) THEN load(x);
-        A.encBFC(mcode, x.r, e, 31)
-      ELSIF y.mode = B.Const THEN
-        IF y.a > 0 THEN load(x); load(y); 
-          A.encUDIV(mcode, RH, x.r, y.r); A.encMUL(mcode, RH, RH, y.r); A.encDPReg(mcode, A.SUB, RH-2, x.r, RH, A.LSl, 0, TRUE);
-          DEC(RH); x.r := RH-1
-        ELSE S.Mark("bad modulus") END
-      ELSE load(y);
-        IF check THEN 
-          IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, y.r, RH, 0) END;
-          Trap(A.LE, 6)
+        IF x.type.size = 8 THEN
+          IF e < 32 THEN A.encMOVImm32(mcode, x.r+1, 0) ELSE A.encBFC(mcode, x.r+1, e-32, 31) END
         END;
-        load(x); A.encUDIV(mcode, RH, x.r, y.r); A.encMUL(mcode, RH, RH, y.r); A.encDPReg(mcode, A.SUB, RH-2, x.r, RH, A.LSl, 0, TRUE);
-        DEC(RH); x.r := RH-1
+        IF e < 32 THEN A.encBFC(mcode, x.r, e, 31) END
+      ELSIF y.mode = B.Const THEN
+        IF y.a > 0 THEN
+          IF x.type.size = 8 THEN doDivL(x, y, 0)
+          ELSE load(x); load(y); A.encUDIV(mcode, RH, x.r, y.r);
+            A.encMUL(mcode, RH, RH, y.r); A.encDPReg(mcode, A.SUB, RH-2, x.r, RH, A.LSl, 0, TRUE);
+            DEC(RH); x.r := RH-1
+          END
+        ELSE S.Mark("bad modulus") END
+      ELSE
+        IF x.type.size = 8 THEN doDivL(x, y, 0)
+        ELSE load(y);
+          IF check THEN 
+            IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, y.r, RH, 0) END;
+            Trap(A.LE, 6)
+          END;
+          load(x); A.encUDIV(mcode, RH, x.r, y.r); A.encMUL(mcode, RH, RH, y.r); A.encDPReg(mcode, A.SUB, RH-2, x.r, RH, A.LSl, 0, TRUE);
+          DEC(RH); x.r := RH-1
+        END
       END
     END
   END DivOp;
@@ -912,12 +955,13 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE incR; A.encMemImm32(mcode, op, y.r, RH-1, RH, x.b); DEC(RH)
       END
     ELSIF x.mode = RegI THEN
-S.DebugHex("RH RegI", RH);
       IF y.mode = FPReg THEN ASSERT((x.a) MOD A.C2 = 0);
         IF x.a + frame >= A.C10 THEN S.Mark("RegI too far")
         END;
         A.Put0(mcode, A.VSTRT2 + 1*A.C23 + y.r MOD A.C1*A.C22 + x.r*A.C16 + y.r DIV A.C1*A.C12 + (x.a + frame) DIV A.C2);
         DEC(SH)
+      ELSIF x.type.size = 8 THEN
+S.DebugHex("TODO RH RegI", RH);
       ELSE A.encMemImm32(mcode, op, y.r, x.r, RH, x.a); DEC(RH)
       END
     ELSE S.Mark("bad mode in Store")
