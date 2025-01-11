@@ -1,6 +1,6 @@
 MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   C. Schoffit 12/11/2023 for Cortex M4 STM32I-DISCO*)
-  IMPORT Files, CRC32, S := OM4S2;
+  IMPORT Files, (*FilesEx := FilesEx2,*) CRC32, S := OM4S2;
   (*Definition of data types Object and Type, which together form the data structure
     called "symbol table". Contains procedures for creation of Objects, and for search:
     NewObj, this, thisimport, thisfield (and OpenScope, CloseScope).
@@ -23,14 +23,14 @@ MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     Module* = POINTER TO ModDesc;
     Type* = POINTER TO TypeDesc;
 
-    ObjDesc*= RECORD
+    ObjDesc* = RECORD
       class*, exno*: BYTE;
       expo*, unsafe*, rdo*, used*: BOOLEAN;   (*exported / read-only / used*)
       lev*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
       name*: S.Ident;
-      val*: INTEGER
+      val*: LONGINT
     END ;
 
     ModDesc* = RECORD (ObjDesc) orgname*: S.Ident END ;
@@ -186,7 +186,7 @@ MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           IF last = NIL THEN t.dsc := fld ELSE last.next := fld END ;
           last := fld;
           IF fld.name[0] # 0X THEN fld.expo := TRUE; InType(R, thismod, fld.type) ELSE fld.expo := FALSE; fld.type := nilType END ;
-          Files.ReadNum(R, fld.val); Read(R, class)
+          (*FilesEx.ReadLongNum(R, fld.val);*) Files.ReadNum(R, key); fld.val := key; Read(R, class)
         END ;
         IF last = NIL THEN t.dsc := obj ELSE last.next := obj END
       ELSIF form = Proc THEN
@@ -239,8 +239,8 @@ MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
           ELSE
             IF class = Const THEN
-              IF obj.type.form IN {Real, String} THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END
-            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.used := FALSE;
+              IF obj.type.form IN {Real, String} THEN Files.ReadInt(R, k); obj.val := k ELSE (*FilesEx.ReadLongNum(R, obj.val)*) Files.ReadNum(R, k); obj.val := k END
+            ELSIF class = Var THEN (*FilesEx.ReadLongNum(R, obj.val);*) Files.ReadNum(R, k); obj.val := k; obj.rdo := TRUE; obj.used := FALSE;
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
@@ -275,7 +275,7 @@ MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     BEGIN
       IF (typ.form = Pointer) OR (typ.form = NilTyp) THEN Write(R, Fld); Write(R, 0); Files.WriteNum(R, offset)
       ELSIF typ.form = Record THEN fld := typ.dsc;
-        WHILE fld # NIL DO FindHiddenPointers(R, fld.type, fld.val + offset); fld := fld.next END
+        WHILE fld # NIL DO FindHiddenPointers(R, fld.type, offset + fld.val); fld := fld.next END
       ELSIF typ.form = Array THEN i := 0; n := typ.len;
         WHILE i < n DO FindHiddenPointers(R, typ.base, typ.base.size * i + offset); INC(i) END
       END
@@ -447,3 +447,5 @@ BEGIN
   enter("LDREG", SProc, noType, 142);
   enter("MBI", SProc, noType, 151);
 END OM4B2.
+
+OM4Tool.DecObj OM4B2.m4c

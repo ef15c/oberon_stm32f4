@@ -325,20 +325,30 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     RETURN res
   END load22;
   
-  PROCEDURE Put0*(VAR c: ModuleCode; op: INTEGER);
+  PROCEDURE doPut0(VAR c: ModuleCode; op: INTEGER);
   BEGIN (*emit format-0 instruction (32bit)
          format: op8:p24 *)
     IF c.nbRmnITBlockInsts > 0 THEN DEC(c.nbRmnITBlockInsts) END;
     modify(c, c.pc, op); c.pos[c.pc DIV 2] := S.Pos(); c.pos[c.pc DIV 2 + 1] := S.Pos();
     INC(c.pc, 4)
+  END doPut0;
+
+  PROCEDURE Put0*(VAR c: ModuleCode; op: INTEGER);
+  BEGIN doPut0(c, op); (*emit format-0 instruction (32bit)*)
+    c.lastInstrSetFlags := FALSE
   END Put0;
 
-  PROCEDURE Put1*(VAR c: ModuleCode; op: INTEGER);
+  PROCEDURE doPut1(VAR c: ModuleCode; op: INTEGER);
   BEGIN (*emit format-1 instruction (16bit)*)
     IF c.nbRmnITBlockInsts > 0 THEN DEC(c.nbRmnITBlockInsts) END;
     c.code[c.pc+1] := op DIV C8 MOD C8;
     c.code[c.pc]   := op MOD C8;
     c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
+  END doPut1;
+
+  PROCEDURE Put1*(VAR c: ModuleCode; op: INTEGER);
+  BEGIN doPut1(c, op); (*emit format-1 instruction (16bit)*)
+    c.lastInstrSetFlags := FALSE
   END Put1;
 
   PROCEDURE formatEvenImm25*(disp: INTEGER): INTEGER;
@@ -447,35 +457,36 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     ASSERT(reg < 16);
     IF (reg < 8) & (val >= 0) & (val < C8) THEN (*use encoding T1 if possible*)
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
-      Put1(c, MOVIT1 + reg*C8 + val)
+      doPut1(c, MOVIT1 + reg*C8 + val)
     ELSIF formatThumbExpandImm(val, tmiCode) THEN (*else use encoding T2 if possible*)
       IF c.nbRmnITBlockInsts <= 1 THEN (*not in IT block or last in IT block*)
-        Put0(c, MOVSIT2 + reg*C8 + tmiCode);
+        doPut0(c, MOVSIT2 + reg*C8 + tmiCode);
         c.lastInstrSetFlags := TRUE
-      ELSE Put0(c, MOVSIT2-C0*C20 + reg*C8 + tmiCode) END  (*MOV instead of MOVS*)
+      ELSE doPut0(c, MOVSIT2-C0*C20 + reg*C8 + tmiCode) END;  (*MOV instead of MOVS*)
+        c.lastInstrSetFlags := FALSE
     ELSIF formatThumbExpandImm(-(val+1), tmiCode) THEN (*else use MVNS if possible*)
       IF c.nbRmnITBlockInsts <= 1 THEN (*not in IT block or last in IT block*)
-        Put0(c, MVNS + reg*C8 + tmiCode);
+        doPut0(c, MVNS + reg*C8 + tmiCode);
         c.lastInstrSetFlags := TRUE
-      ELSE Put0(c, MVNS-C0*C20 + reg*C8 + tmiCode) END (*MVN instead of MVNS*)
+      ELSE doPut0(c, MVNS-C0*C20 + reg*C8 + tmiCode) END; (*MVN instead of MVNS*)
+        c.lastInstrSetFlags := FALSE
     ELSE (*else one or two instructions are needed depending on the size of val,
            one for low half word and if necessary a second for high half word*)
       halfw := val MOD C16;
-      IF (reg < 8) & (halfw < C8) THEN Put1(c, MOVIT1 + reg*C8 + halfw)
-      ELSE Put0(c, MOVIT3 + formatImm16(reg, halfw)) END;
+      IF (reg < 8) & (halfw < C8) THEN doPut1(c, MOVIT1 + reg*C8 + halfw)
+      ELSE doPut0(c, MOVIT3 + formatImm16(reg, halfw)) END;
       halfw := val DIV C16 MOD C16;
       IF halfw # 0 THEN
         ASSERT(c.nbRmnITBlockInsts = 0);
-        Put0(c, MOVT + formatImm16(reg, halfw))
-      END; c.lastInstrSetFlags := FALSE
+        doPut0(c, MOVT + formatImm16(reg, halfw))
+      END;
+      c.lastInstrSetFlags := FALSE
     END
   END encMOVImm32;
 
   PROCEDURE encMOVImm64*(VAR c: ModuleCode; r1, r2: BYTE; val: LONGINT);
   BEGIN ASSERT(r1 < 16); ASSERT(r2 < 16);
-(*TODO: \E0 d\E9commenter plus tard quand la division 64 bits sera impl\E9ment\E9e
-    encMOVImm32(c, r1, val MOD 100000000H); encMOVImm32(c, r2, val DIV 100000000H); *)
-    encMOVImm32(c, r1, val); encMOVImm32(c, r2, 0);
+    encMOVImm32(c, r1, val); encMOVImm32(c, r2, LSR(val, 32));
     c.lastInstrSetFlags := FALSE
   END encMOVImm64;
 
@@ -483,7 +494,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     p, u, w: BOOLEAN; imm: INTEGER);
   BEGIN
     ASSERT((imm >= 0) & (imm < C8));
-    Put0(c, op + a*C12 + b*C16 + formatPUWImm8(p, u, w, imm));
+    doPut0(c, op + a*C12 + b*C16 + formatPUWImm8(p, u, w, imm));
     c.lastInstrSetFlags := FALSE
   END encMemImm8PUW;
 
@@ -491,7 +502,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     p, u, w: BOOLEAN; imm: INTEGER);
   BEGIN
     (*|1110/100P/U1W1/ Rn / Rt / Rt2/ imm/8   |*)
-    Put0(mc, op + b*C8 + a*C12 + c*C16 + formatdPUWImm8(p, u, w, imm));
+    doPut0(mc, op + b*C8 + a*C12 + c*C16 + formatdPUWImm8(p, u, w, imm));
     mc.lastInstrSetFlags := FALSE
   END encDMemImm8PUW;
 
@@ -503,21 +514,21 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     ASSERT ((a < C4) & (b < C4) & (t < C4));
     IF (imm >= 0) & (imm < C3) & (a < C3) & (b < C3) & (imm3map[op] # 0) THEN
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
-      Put1(c, imm3map[op] + imm*C6 + b*C3 + a)
+      doPut1(c, imm3map[op] + imm*C6 + b*C3 + a)
     ELSIF (imm >= 0) & (imm < C8) & (a < C3) & (a = b) & (imm8map[op] # 0) THEN
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
-      Put1(c, imm8map[op] + a*C8 + imm)
+      doPut1(c, imm8map[op] + a*C8 + imm)
     ELSIF formatThumbExpandImm(imm, tmiCode) THEN
-      Put0(c, immthmap[op] + b*C16 + a*C8 + tmiCode);
+      doPut0(c, immthmap[op] + b*C16 + a*C8 + tmiCode);
       c.lastInstrSetFlags := ODD(reg4shmap[op] DIV C20)
     ELSIF (opnotmap[op] < NBOPS) & formatThumbExpandImm(-(imm+1), tmiCode) THEN
-      Put0(c, immthmap[opnotmap[op]] + b*C16 + a*C8 + tmiCode);
+      doPut0(c, immthmap[opnotmap[op]] + b*C16 + a*C8 + tmiCode);
       c.lastInstrSetFlags := ODD(immthmap[opnotmap[op]] DIV C20)
     ELSIF (opnegmap[op] < NBOPS) & formatThumbExpandImm(-imm, tmiCode) THEN
-      Put0(c, immthmap[opnegmap[op]] + b*C16 + a*C8 + tmiCode);
+      doPut0(c, immthmap[opnegmap[op]] + b*C16 + a*C8 + tmiCode);
       c.lastInstrSetFlags := ODD(immthmap[opnegmap[op]] DIV C20)
     ELSIF (imm >= 0) & (imm < C12)  & (imm12map[op] # 0) THEN
-      Put0(c, imm12map[op] + imm DIV C11 MOD C1*C26 + b*C16 +
+      doPut0(c, imm12map[op] + imm DIV C11 MOD C1*C26 + b*C16 +
         imm DIV C8 MOD C3*C12 + a*C8 + imm MOD C8);
       c.lastInstrSetFlags := FALSE
     ELSE
@@ -525,8 +536,9 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
       encMOVImm32(c, t, imm);
       IF (a < C3) & (b < C3) & (t < C3) & (reg3map[op] # 0) THEN
         c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
-        Put1(c, reg3map[op] + t*C6 + b*C3 + a)
-      ELSE Put0(c, reg4shmap[op] + format3Reg4(a, b, 0) + t);
+        doPut1(c, reg3map[op] + t*C6 + b*C3 + a);
+        c.lastInstrSetFlags := FALSE
+      ELSE doPut0(c, reg4shmap[op] + format3Reg4(a, b, 0) + t);
         c.lastInstrSetFlags := ODD(reg4shmap[op] DIV C20);
       END
     END
@@ -546,17 +558,17 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
       (*|0111/1 im/m5 R/n Rt| LDRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
       (*|0110/0 im/m5 R/n Rt| STR<c> <Rt>, [<Rn>{,#<imm5>}] T1*)
       (*|0111/0 im/m5 R/n Rt| STRB<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
-      Put1(c, memimm5map[op] + ASR(imm, memimm5shift[op])*C6 + b*C3 + a)
+      doPut1(c, memimm5map[op] + ASR(imm, memimm5shift[op])*C6 + b*C3 + a)
     ELSIF (imm < C10) & (imm MOD C2 = 0) & (a < C3) & (b = 13) & (memimm8map[op] # 0) THEN
       (*|1001/1 Rt/  imm8  | LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
       (*|1001/0 Rt/  imm8  | STR<c> <Rt>,[SP{,#<imm8>}] T2*)
-      Put1(c, memimm8map[op] + a*C8 + imm DIV C2)
+      doPut1(c, memimm8map[op] + a*C8 + imm DIV C2)
     ELSIF imm < C12 THEN
       (*|1111/1000/1101/ Rn / Rt /    /imm1/2   | LDR<c>.W <Rt>,[<Rn>{,#<imm12>}]  T3*)
       (*|1111/1000/1001/ Rn / Rt /    /imm1/2   | LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}] T2*)
       (*|1111/1000/1100/ Rn / Rt /    /imm1/2   | STR<c>.W <Rt>,[<Rn>{,#<imm12>}]  T3*)
       (*|1111/1000/1000/ Rn / Rt /    /imm1/2   | STRB<c>.W <Rt>,[<Rn>{,#<imm12>}] T2*)
-      Put0(c, memimm12map[op] + a*C12 + b*C16 + imm);
+      doPut0(c, memimm12map[op] + a*C12 + b*C16 + imm);
     ELSE (*imm = imm1+imm2 et 0 <= imm2 < C12*)
       imm2 := imm MOD C12; imm1 := imm DIV C12*C12;
       encDPImm32(c, ADD, t, b, t, imm1); encMemImm32(c, op, a, t, t, imm2)
@@ -588,15 +600,15 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     ASSERT ((a < C4) & (b < C4) & (c < C4));
     IF (a < C3) & (b < C3) & (c < C3) & (shift = 0) & (reg3map[op] # 0) & (ORD(setFlags) = ORD(co.nbRmnITBlockInsts = 0)) THEN
       co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0; (* not in IT block *)
-      Put1(co, reg3map[op] + c*C6 + b*C3 + a)
+      doPut1(co, reg3map[op] + c*C6 + b*C3 + a)
     ELSIF (a < C3) & (b < C3) & (a = b) & (shift = 0) & (reg3dnmap[op] # 0) & (ORD(setFlags) = ORD(co.nbRmnITBlockInsts = 0)) THEN
       co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0; (* not in IT block *)
-      Put1(co, reg3dnmap[op] + c*C3 + a)
+      doPut1(co, reg3dnmap[op] + c*C3 + a)
     ELSIF (a = b) & (shift = 0) & (reg4map[op] # 0) & ~setFlags THEN
-      Put1(co, reg4map[op] + a DIV C3*C7 + c*C3 + a MOD C3);
+      doPut1(co, reg4map[op] + a DIV C3*C7 + c*C3 + a MOD C3);
       co.lastInstrSetFlags := FALSE
     ELSE ASSERT(shiftType < C2); opc := TOSET(reg4shmap[op] + format3Reg4(a, b, c) + shiftType*C4 + formatShiftImm5(shift));
-      IF ~setFlags THEN EXCL(opc, 20) END; Put0(co, ORD(opc));
+      IF ~setFlags THEN EXCL(opc, 20) END; doPut0(co, ORD(opc));
       co.lastInstrSetFlags := 20 IN opc
     END;
     ASSERT(setFlags = co.lastInstrSetFlags)
@@ -606,9 +618,9 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN
     ASSERT (op <= ROr);
     ASSERT ((a < 15) & (b < C4) & (shift < C5));
-    IF (a < C3) & (b < C3) & (shimm5map[op] # 0FFFFH) THEN Put1(c, shimm5map[op] + shift*C6 + b*C3 + a);
+    IF (a < C3) & (b < C3) & (shimm5map[op] # 0FFFFH) THEN doPut1(c, shimm5map[op] + shift*C6 + b*C3 + a);
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
-    ELSE Put0(c, shimm5wmap[op] + a*C8 + b + formatShiftImm5(shift));
+    ELSE doPut0(c, shimm5wmap[op] + a*C8 + b + formatShiftImm5(shift));
       c.lastInstrSetFlags := ODD(shimm5wmap[op] DIV C20)
     END
   END encShiftImm5;
@@ -619,10 +631,10 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     ASSERT (op <= ROr);
     ASSERT((a < 15) & (a # 13) & (b < 15) & (b # 13) & (c < 15) & (c # 13));
     IF (a < C3) & (a = b) & (ORD(setFlags) = ORD(co.nbRmnITBlockInsts = 0)) THEN
-       Put1(co, shreg3map[op] + c*C3 + a);
+       doPut1(co, shreg3map[op] + c*C3 + a);
        co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0 (* not in IT block *)
     ELSE opc := TOSET(shreg4map[op] + format3Reg4(a, b, c));
-      IF ~setFlags THEN EXCL(opc, 20) END; Put0(co, ORD(opc));
+      IF ~setFlags THEN EXCL(opc, 20) END; doPut0(co, ORD(opc));
       co.lastInstrSetFlags := 20 IN opc
     END;
     ASSERT(setFlags = co.lastInstrSetFlags)
@@ -633,9 +645,9 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     ASSERT((a < 15) & (b < 15));
     IF (a < 8) & (b < 8) THEN
       (*CMP (register) T1*)
-      Put1(c, CMPRT1 + b*C3 + a)
+      doPut1(c, CMPRT1 + b*C3 + a)
     ELSE (*CMP (register) T2*)
-      Put1(c, CMPRT2 + format2Reg4(a, b))
+      doPut1(c, CMPRT2 + format2Reg4(a, b))
     END;
     c.lastInstrSetFlags := TRUE
   END encCMPReg;
@@ -645,11 +657,11 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN
     ASSERT(a < 15);
     IF (a < 8) & (imm >= 0) & (imm < C8) THEN (*CMP (immediate) T1*) 
-      Put1(c, CMPIT1 + a*C8 + imm)
+      doPut1(c, CMPIT1 + a*C8 + imm)
     ELSIF formatThumbExpandImm(imm, tmiCode) THEN (*CMP (immediate) T2*) 
-      Put0(c, CMPIT2 + a*C16 + tmiCode) 
+      doPut0(c, CMPIT2 + a*C16 + tmiCode) 
     ELSIF formatThumbExpandImm(-imm, tmiCode) THEN (*CMN (immediate) T2*) 
-      Put0(c, CMNI + a*C16 + tmiCode) 
+      doPut0(c, CMNI + a*C16 + tmiCode) 
     ELSE encMOVImm32(c, t, imm); encCMPReg(c, a, t)
     END;
     c.lastInstrSetFlags := TRUE
@@ -658,22 +670,23 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   PROCEDURE encMOVReg*(VAR c: ModuleCode; a, b: BYTE);
   BEGIN
     ASSERT((a # 15) OR (c.nbRmnITBlockInsts <= 1));
-    Put1(c, MOVRT1 + a DIV C3*C7 + b*C3 + a MOD C3)
+    doPut1(c, MOVRT1 + a DIV C3*C7 + b*C3 + a MOD C3);
+    c.lastInstrSetFlags := FALSE
   END encMOVReg;
   
   PROCEDURE encMUL*(VAR co: ModuleCode; a, b, c: BYTE);
   BEGIN
     ASSERT((a < 15) & (a # 13) & (b < 15) & (b # 13) & (c < 15) & (c # 13));
-    IF (a = b) & (a < C3) & (c < C3) THEN Put1(co, MULT1 + c*C3 + a)
-    ELSIF (a = c) & (a < C3) & (b < C3) THEN Put1(co, MULT1 + b*C3 + a)
-    ELSE Put0(co, MULT2 + format3Reg4(a, b, c)) END;
+    IF (a = b) & (a < C3) & (c < C3) THEN doPut1(co, MULT1 + c*C3 + a)
+    ELSIF (a = c) & (a < C3) & (b < C3) THEN doPut1(co, MULT1 + b*C3 + a)
+    ELSE doPut0(co, MULT2 + format3Reg4(a, b, c)) END;
     co.lastInstrSetFlags := FALSE
   END encMUL;
   
   PROCEDURE encUDIV*(VAR co: ModuleCode; a, b, c: BYTE);
   BEGIN
     ASSERT((a < 15) & (a # 13) & (b < 15) & (b # 13) & (c < 15) & (c # 13));
-    Put0(co, UDIV + format3Reg4(a, b, c));
+    doPut0(co, UDIV + format3Reg4(a, b, c));
     co.lastInstrSetFlags := FALSE
   END encUDIV;
   
@@ -682,7 +695,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     ASSERT((r < 13) & (s < C5));
     (*  VMOVSR (s := r)
     *  VMOVRS (r := s) *)
-    Put0(co, op + s DIV C1*C16 + r*C12 + s MOD C1*C7);
+    doPut0(co, op + s DIV C1*C16 + r*C12 + s MOD C1*C7);
     co.lastInstrSetFlags := FALSE
   END encFPMOVReg;
 
@@ -690,7 +703,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN
     ASSERT((a < C5) & (b < C5) & (c < C5));
     (* VNEG (a := -c) *)
-    Put0(co, op + a MOD C1*C22 + b DIV C1*C16 + a DIV C1*C12 + b MOD C1*C7 + c MOD C1*C5 + c DIV C1);
+    doPut0(co, op + a MOD C1*C22 + b DIV C1*C16 + a DIV C1*C12 + b MOD C1*C7 + c MOD C1*C5 + c DIV C1);
     co.lastInstrSetFlags := FALSE
   END encFPOpReg;
 
@@ -699,15 +712,15 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN ASSERT((cond < C4) & (cond # NV));
     ASSERT(~ODD(L-c.pc));
     ofs := (L - (c.pc + 4)) DIV C1; ASSERT(ofs < 0);
-    IF (cond # AL) & (ofs > -C7) THEN (*T1*) Put1(c, BCT1 + cond*C8 + ofs MOD C8)
-    ELSIF (cond = AL) & (ofs > -C10) THEN (*T2*) Put1(c, BT2 + ofs MOD C11)
+    IF (cond # AL) & (ofs > -C7) THEN (*T1*) doPut1(c, BCT1 + cond*C8 + ofs MOD C8)
+    ELSIF (cond = AL) & (ofs > -C10) THEN (*T2*) doPut1(c, BT2 + ofs MOD C11)
     ELSIF (cond # AL) & (ofs > -C19) THEN (*T3*) 
-      Put0(c, BCT3 + ofs DIV C19 MOD C1*C26 + cond*C22 + ofs DIV C11 MOD C6*C16 +
+      doPut0(c, BCT3 + ofs DIV C19 MOD C1*C26 + cond*C22 + ofs DIV C11 MOD C6*C16 +
         ofs DIV C17 MOD C1*C13 + ofs DIV C18 MOD C1*C11 + ofs MOD C11)
     ELSIF ofs > -C23 THEN
-      IF (cond # AL) THEN Put1(c, IT + cond*C4 + C3 (*IT cond*));  c.nbRmnITBlockInsts := 1
+      IF (cond # AL) THEN doPut1(c, IT + cond*C4 + C3 (*IT cond*));  c.nbRmnITBlockInsts := 1
       END;
-      Put0(c, BT4 + formatEvenImm25(ofs*C1))
+      doPut0(c, BT4 + formatEvenImm25(ofs*C1))
     ELSE S.Mark("branch too far")
     END;
     c.lastInstrSetFlags := FALSE
@@ -716,7 +729,8 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   PROCEDURE encBFC*(VAR c: ModuleCode; a, l, m: BYTE);
   BEGIN
     ASSERT((a < C4) & (l < C5) & (m >= l) & (m < C5));
-    Put0(c, BFC + l DIV C2*C12 + a*C8 + l MOD C2*C6 + m)
+    doPut0(c, BFC + l DIV C2*C12 + a*C8 + l MOD C2*C6 + m);
+    c.lastInstrSetFlags := FALSE
   END encBFC;
   
   PROCEDURE encMRS*(VAR c: ModuleCode; a, s: INTEGER);
@@ -725,7 +739,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN
     ASSERT(a < C4);
     ASSERT(s IN {0..9, 16..20});
-    Put0(c, 0F3EF8000H + a*C8 + s);
+    doPut0(c, 0F3EF8000H + a*C8 + s);
     c.lastInstrSetFlags := FALSE
   END encMRS;
 
@@ -736,7 +750,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN
     ASSERT(a < C4);
     ASSERT(s IN {0..9, 16..20});
-    Put0(c, 0F3808800H + a*C16 + s);
+    doPut0(c, 0F3808800H + a*C16 + s);
     c.lastInstrSetFlags := FALSE
   END encMSR;
 
@@ -864,7 +878,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
       END;
       INC(i)
     END;
-    INC(res, LSL(mask, 4-i) + suffix); Put1(c, res); c.nbRmnITBlockInsts := i+1;
+    INC(res, LSL(mask, 4-i) + suffix); doPut1(c, res); c.nbRmnITBlockInsts := i+1;
     c.lastInstrSetFlags := FALSE
   END IfThen;
 
@@ -872,8 +886,8 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     VAR r0: INTEGER;
   BEGIN ASSERT((rl IN {0..7}) & (rh IN {0..12}) & (rl <= rh));
     r0 := ORD({rl..rh});
-    IF r0 < C8 THEN (*PUSH T1*) Put1(c, PUSHT1 + r0)
-    ELSE (*PUSH T2*) Put0(c, PUSHT2 + r0)
+    IF r0 < C8 THEN (*PUSH T1*) doPut1(c, PUSHT1 + r0)
+    ELSE (*PUSH T2*) doPut0(c, PUSHT2 + r0)
     END;
     c.lastInstrSetFlags := FALSE
   END PushRegs;
@@ -888,8 +902,8 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     VAR r0: INTEGER;
   BEGIN ASSERT((rl IN {0..7}) & (rh IN {0..12}) & (rl <= rh));
     r0 := ORD({rl..rh});
-    IF r0 < C8 THEN (*POP T1*) Put1(c, POPT1 + r0)
-    ELSE (*POP T2*) Put0(c, POPT2 + r0)
+    IF r0 < C8 THEN (*POP T1*) doPut1(c, POPT1 + r0)
+    ELSE (*POP T2*) doPut0(c, POPT2 + r0)
     END;
     c.lastInstrSetFlags := FALSE
   END PopRegs;
@@ -904,7 +918,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN
     ASSERT(s IN {1..16});
     (*VPUSH{<c>}{<q>}{.<size>} <list>*)
-    Put0(c, VPUSHT2 + s);
+    doPut0(c, VPUSHT2 + s);
     INC(frame, 4*s);
     c.lastInstrSetFlags := FALSE
   END SaveFPRegs;
@@ -913,7 +927,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   BEGIN
     ASSERT(s IN {1..16});
     (*VPOP{<c>}{<q>}{.<size>} <list>*)
-    Put0(c, VPOPT2 + s);
+    doPut0(c, VPOPT2 + s);
     DEC(frame, 4*s);
     c.lastInstrSetFlags := FALSE
   END RestoreFPRegs;
@@ -987,3 +1001,4 @@ BEGIN
 END OM4A2.
 
 OM4Tool.DecSym OM4A2.sm4
+OM4Tool.DecObj OM4A2.m4c

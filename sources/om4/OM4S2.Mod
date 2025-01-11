@@ -130,7 +130,7 @@ MODULE OM4S2; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   END Ten;
 
   PROCEDURE Number(VAR sym: INTEGER);
-    CONST max = 2147483647 (*2^31 - 1*);
+    CONST max = 2147483647 (*2^31 - 1*); (*maxL = 7FFFFFFFFFFFFFFFH;*)
     VAR i, e, n, s, h: INTEGER; x: REAL; k: LONGINT;
       d: ARRAY 20 OF INTEGER;
       negE: BOOLEAN;
@@ -188,8 +188,8 @@ MODULE OM4S2; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
       END
     ELSE  (*decimal integer*)
       REPEAT
-        IF d[i] < 10 THEN
-          IF k <= (max-d[i]) DIV 10 THEN k := k*10 + d[i] ELSE Mark("too large"); k := 0 END
+        IF d[i] < 10 THEN (*Contr\F4le \E0 remettre en place plus tard *)
+          (*IF k <= (maxL-d[i]) DIV 10 THEN*) k := k*10 + d[i] (* ELSE Mark("too large"); k := 0 END*)
         ELSE Mark("bad integer")
         END ;
         INC(i)
@@ -319,4 +319,5 @@ BEGIN Texts.OpenWriter(W); k := 0; KWX[0] := 0; KWX[1] := 0;
   KWX[9] := k
 END OM4S2.
 
-OM4Tool.DecSym OM4S.sm4
+OM4Tool.DecSym OM4S2.sm4
+OM4Tool.DecObj OM4S2.m4c

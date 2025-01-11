@@ -1,0 +1,391 @@
+MODULE testRWNum;
+  IMPORT Files, FilesEx := FilesEx2, Texts, Oberon;
+
+  VAR W: Texts.Writer;
+
+  PROCEDURE write*;
+    VAR f!: Files.File; r!: Files.Rider; v: INTEGER;
+  BEGIN f := Files.New("testRWNum.data");
+    Files.Set(r, f, 0);  Files.WriteNum(r, -1000); Files.WriteNum(r, -1); Files.WriteNum(r, 0); Files.WriteNum(r, 1); Files.WriteNum(r, 1000);
+    Files.Register(f);
+
+    Files.Set(r, f, 0); Files.ReadNum(r, v);
+    WHILE ~r.eof DO Texts.WriteString(W, "v = "); Texts.WriteInt(W, v, 1); Texts.WriteLn(W); Files.ReadNum(r, v) END;
+    Texts.Append(Oberon.Log, W.buf)    
+  END write;
+
+  PROCEDURE writeL*;
+    VAR f!: Files.File; r!: Files.Rider; v: LONGINT;
+  BEGIN f := Files.New("testRWNum.data");
+    Files.Set(r, f, 0);  FilesEx.WriteLongNum(r, -1000); FilesEx.WriteLongNum(r, -1); FilesEx.WriteLongNum(r, 0);
+    FilesEx.WriteLongNum(r, 1); FilesEx.WriteLongNum(r, 1000);
+    Files.Register(f);
+
+    Files.Set(r, f, 0); FilesEx.ReadLongNum(r, v);
+    WHILE ~r.eof DO Texts.WriteString(W, "v = "); Texts.WriteInt(W, v, 1); Texts.WriteLn(W); FilesEx.ReadLongNum(r, v) END;
+    Texts.Append(Oberon.Log, W.buf)    
+  END writeL;
+
+  PROCEDURE run*;
+    VAR f!: Files.File; r!: Files.Rider; v: INTEGER;
+  BEGIN f := Files.Old("testRWNum.data");
+    Files.Set(r, f, 0); Files.ReadNum(r, v);
+    WHILE ~r.eof DO Texts.WriteString(W, "v = "); Texts.WriteInt(W, v, 1); Texts.WriteLn(W); Files.ReadNum(r, v) END;
+    Texts.Append(Oberon.Log, W.buf)    
+  END run;
+
+  PROCEDURE runL*;
+    VAR f!: Files.File; r!: Files.Rider; v: LONGINT;
+  BEGIN f := Files.Old("testRWNum.data");
+    Files.Set(r, f, 0); FilesEx.ReadLongNum(r, v);
+    WHILE ~r.eof DO Texts.WriteString(W, "v = "); Texts.WriteInt(W, v, 1); Texts.WriteLn(W); FilesEx.ReadLongNum(r, v) END;
+    Texts.Append(Oberon.Log, W.buf)    
+  END runL;
+
+BEGIN Texts.OpenWriter(W);  
+END testRWNum.
+
+OM4P2.Compile testRWNum.Mod/s ~ System.Free testRWNum OM4P2 OM4G2 FilesEx ~ 
+testRWNum.write testRWNum.writeL
+testRWNum.run testRWNum.runL
+
+OM4Tool.DecObj testRWNum.m4c
+decode testRWNum.m4c
+testRWNum 1E794B13   1  1460
+imports:
+	Files 1482C9F6
+	FilesEx2 8BA6CBB2
+	Texts AFCB7538
+	Fonts AA480AE7
+	Oberon DB3EE95B
+	Display 15E666AA
+	Viewers E54B088A
+	PS2 FA464427
+type descriptors
+
+data    40
+strings
+testRWNum.data||v = ||||testRWNum.data||v = ||||testRWNum.data||v = ||||testRWNum.data||v = ||||
+code
+commands:
+	write    0
+	writeL  328
+	run  666
+	runL  868
+entries
+ 0000042E 00000000 00000148 0000029A 00000364
+pointer refs
+    36    24     4     0
+fixP =     1088
+fixD =     1080
+fixT =        0
+entry =     1070
+ 00000000	 F1BD0D20	SUBS SP SP #32
+ 00000004	     B500	PUSH LR
+ 00000006	 00000003	MOV R0 lower 16-bits base(0)
+ 0000000A	 00000028	MOVT R0 higher 16-bits base + 40
+ 0000000E	     210F	MOVS R1 #15
+ 00000010	 10300008	BL Mod(  1) proc(3)
+ 00000014	     9001	STR R0 [ SP + 4 ]
+ 00000016	 F11D0008	ADDS R0 SP #8
+ 0000001A	 1100000A	MOV R1 lower 16-bits base(1)
+ 0000001E	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000022	     9A01	LDR R2 [ SP + 4 ]
+ 00000024	     2300	MOVS R3 #0
+ 00000026	 10B0000B	BL Mod(  1) proc(11)
+ 0000002A	 F11D0008	ADDS R0 SP #8
+ 0000002E	 1100000A	MOV R1 lower 16-bits base(1)
+ 00000032	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000036	 F64F4218	MOV R2 #64536
+ 0000003A	 F6CF72FF	MOVT R2 #65535
+ 0000003E	 11D0000C	BL Mod(  1) proc(29)
+ 00000042	 F11D0008	ADDS R0 SP #8
+ 00000046	 1100000C	MOV R1 lower 16-bits base(1)
+ 0000004A	 00000001	MOVT R1 higher 16-bits var(1)
+ 0000004E	 F05F32FF	MOVS R2 #-1
+ 00000052	 11D0000A	BL Mod(  1) proc(29)
+ 00000056	 F11D0008	ADDS R0 SP #8
+ 0000005A	 1100000A	MOV R1 lower 16-bits base(1)
+ 0000005E	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000062	     2200	MOVS R2 #0
+ 00000064	 11D00009	BL Mod(  1) proc(29)
+ 00000068	 F11D0008	ADDS R0 SP #8
+ 0000006C	 11000009	MOV R1 lower 16-bits base(1)
+ 00000070	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000074	     2201	MOVS R2 #1
+ 00000076	 11D00009	BL Mod(  1) proc(29)
+ 0000007A	 F11D0008	ADDS R0 SP #8
+ 0000007E	 11000009	MOV R1 lower 16-bits base(1)
+ 00000082	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000086	 F45F727A	MOVS R2 #1000
+ 0000008A	 11D0000A	BL Mod(  1) proc(29)
+ 0000008E	     9801	LDR R0 [ SP + 4 ]
+ 00000090	 10400003	BL Mod(  1) proc(4)
+ 00000094	 F11D0008	ADDS R0 SP #8
+ 00000098	 1100000D	MOV R1 lower 16-bits base(1)
+ 0000009C	 00000001	MOVT R1 higher 16-bits var(1)
+ 000000A0	     9A01	LDR R2 [ SP + 4 ]
+ 000000A2	     2300	MOVS R3 #0
+ 000000A4	 10B0000A	BL Mod(  1) proc(11)
+ 000000A8	 F11D0008	ADDS R0 SP #8
+ 000000AC	 1100000A	MOV R1 lower 16-bits base(1)
+ 000000B0	 00000001	MOVT R1 higher 16-bits var(1)
+ 000000B4	 F11D0220	ADDS R2 SP #32
+ 000000B8	 1150000A	BL Mod(  1) proc(21)
+ 000000BC	 F89D0008	LDRB R0 [ SP + 8 ]
+ 000000C0	     2800	CMP R0 #0
+ 000000C2	 F0408030	BNE #96, goes to  00000126
+ 000000C6	 0000000D	MOV R0 lower 16-bits base(0)
+ 000000CA	 00000000	MOVT R0 higher 16-bits base + 0
+ 000000CE	 13000004	MOV R1 lower 16-bits base(3)
+ 000000D2	 00000005	MOVT R1 higher 16-bits var(5)
+ 000000D6	 20000004	MOV R2 lower 16-bits base(0)
+ 000000DA	 00000038	MOVT R2 higher 16-bits base + 56
+ 000000DE	     2305	MOVS R3 #5
+ 000000E0	 31D00014	BL Mod(  3) proc(29)
+ 000000E4	 00000007	MOV R0 lower 16-bits base(0)
+ 000000E8	 00000000	MOVT R0 higher 16-bits base + 0
+ 000000EC	 13000004	MOV R1 lower 16-bits base(3)
+ 000000F0	 00000005	MOVT R1 higher 16-bits var(5)
+ 000000F4	     9A08	LDR R2 [ SP + 32 ]
+ 000000F6	     2301	MOVS R3 #1
+ 000000F8	 31E0000C	BL Mod(  3) proc(30)
+ 000000FC	 00000008	MOV R0 lower 16-bits base(0)
+ 00000100	 00000000	MOVT R0 higher 16-bits base + 0
+ 00000104	 13000004	MOV R1 lower 16-bits base(3)
+ 00000108	 00000005	MOVT R1 higher 16-bits var(5)
+ 0000010C	 31C0000A	BL Mod(  3) proc(28)
+ 00000110	 F11D0008	ADDS R0 SP #8
+ 00000114	 11000008	MOV R1 lower 16-bits base(1)
+ 00000118	 00000001	MOVT R1 higher 16-bits var(1)
+ 0000011C	 F11D0220	ADDS R2 SP #32
+ 00000120	 1150000A	BL Mod(  1) proc(21)
+ 00000124	     E7CA	B #-108, goes to  000000BC
+ 00000126	 05000009	MOV R0 lower 16-bits base(5)
+ 0000012A	 0000000D	MOVT R0 higher 16-bits var(13)
+ 0000012E	     6800	LDR R0 [ R0 + 0 ]
+ 00000130	 10000005	MOV R1 lower 16-bits base(0)
+ 00000134	 00000000	MOVT R1 higher 16-bits base + 0
+ 00000138	     6809	LDR R1 [ R1 + 0 ]
+ 0000013A	 30E0000D	BL Mod(  3) proc(14)
+ 0000013E	 F85DEB04	LDR LR [ SP ] + 4
+ 00000142	 F11D0D20	ADDS SP SP #32
+ 00000146	     4770	BX LR
+ 00000148	 F1BD0D24	SUBS SP SP #36
+ 0000014C	     B500	PUSH LR
+ 0000014E	 0000000F	MOV R0 lower 16-bits base(0)
+ 00000152	 00000040	MOVT R0 higher 16-bits base + 64
+ 00000156	     210F	MOVS R1 #15
+ 00000158	 1030000F	BL Mod(  1) proc(3)
+ 0000015C	     9001	STR R0 [ SP + 4 ]
+ 0000015E	 F11D0008	ADDS R0 SP #8
+ 00000162	 1100000A	MOV R1 lower 16-bits base(1)
+ 00000166	 00000001	MOVT R1 higher 16-bits var(1)
+ 0000016A	     9A01	LDR R2 [ SP + 4 ]
+ 0000016C	     2300	MOVS R3 #0
+ 0000016E	 10B0000B	BL Mod(  1) proc(11)
+ 00000172	 F11D0008	ADDS R0 SP #8
+ 00000176	 1100000A	MOV R1 lower 16-bits base(1)
+ 0000017A	 00000001	MOVT R1 higher 16-bits var(1)
+ 0000017E	 F64F4218	MOV R2 #64536
+ 00000182	 F6CF72FF	MOVT R2 #65535
+ 00000186	     2300	MOVS R3 #0
+ 00000188	 2090000D	BL Mod(  2) proc(9)
+ 0000018C	 F11D0008	ADDS R0 SP #8
+ 00000190	 1100000D	MOV R1 lower 16-bits base(1)
+ 00000194	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000198	 F05F32FF	MOVS R2 #-1
+ 0000019C	     2300	MOVS R3 #0
+ 0000019E	 2090000B	BL Mod(  2) proc(9)
+ 000001A2	 F11D0008	ADDS R0 SP #8
+ 000001A6	 1100000B	MOV R1 lower 16-bits base(1)
+ 000001AA	 00000001	MOVT R1 higher 16-bits var(1)
+ 000001AE	     2200	MOVS R2 #0
+ 000001B0	     2300	MOVS R3 #0
+ 000001B2	 2090000A	BL Mod(  2) proc(9)
+ 000001B6	 F11D0008	ADDS R0 SP #8
+ 000001BA	 1100000A	MOV R1 lower 16-bits base(1)
+ 000001BE	 00000001	MOVT R1 higher 16-bits var(1)
+ 000001C2	     2201	MOVS R2 #1
+ 000001C4	     2300	MOVS R3 #0
+ 000001C6	 2090000A	BL Mod(  2) proc(9)
+ 000001CA	 F11D0008	ADDS R0 SP #8
+ 000001CE	 1100000A	MOV R1 lower 16-bits base(1)
+ 000001D2	 00000001	MOVT R1 higher 16-bits var(1)
+ 000001D6	 F45F727A	MOVS R2 #1000
+ 000001DA	     2300	MOVS R3 #0
+ 000001DC	 2090000B	BL Mod(  2) proc(9)
+ 000001E0	     9801	LDR R0 [ SP + 4 ]
+ 000001E2	 10400003	BL Mod(  1) proc(4)
+ 000001E6	 F11D0008	ADDS R0 SP #8
+ 000001EA	 1100000E	MOV R1 lower 16-bits base(1)
+ 000001EE	 00000001	MOVT R1 higher 16-bits var(1)
+ 000001F2	     9A01	LDR R2 [ SP + 4 ]
+ 000001F4	     2300	MOVS R3 #0
+ 000001F6	 10B0000A	BL Mod(  1) proc(11)
+ 000001FA	 F11D0008	ADDS R0 SP #8
+ 000001FE	 1100000A	MOV R1 lower 16-bits base(1)
+ 00000202	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000206	 F11D0220	ADDS R2 SP #32
+ 0000020A	 2080000A	BL Mod(  2) proc(8)
+ 0000020E	 F89D0008	LDRB R0 [ SP + 8 ]
+ 00000212	     2800	CMP R0 #0
+ 00000214	 F0408030	BNE #96, goes to  00000278
+ 00000218	 0000000D	MOV R0 lower 16-bits base(0)
+ 0000021C	 00000000	MOVT R0 higher 16-bits base + 0
+ 00000220	 13000004	MOV R1 lower 16-bits base(3)
+ 00000224	 00000005	MOVT R1 higher 16-bits var(5)
+ 00000228	 20000004	MOV R2 lower 16-bits base(0)
+ 0000022C	 00000050	MOVT R2 higher 16-bits base + 80
+ 00000230	     2305	MOVS R3 #5
+ 00000232	 31D00014	BL Mod(  3) proc(29)
+ 00000236	 00000007	MOV R0 lower 16-bits base(0)
+ 0000023A	 00000000	MOVT R0 higher 16-bits base + 0
+ 0000023E	 13000004	MOV R1 lower 16-bits base(3)
+ 00000242	 00000005	MOVT R1 higher 16-bits var(5)
+ 00000246	     9A08	LDR R2 [ SP + 32 ]
+ 00000248	     2301	MOVS R3 #1
+ 0000024A	 31E0000C	BL Mod(  3) proc(30)
+ 0000024E	 00000008	MOV R0 lower 16-bits base(0)
+ 00000252	 00000000	MOVT R0 higher 16-bits base + 0
+ 00000256	 13000004	MOV R1 lower 16-bits base(3)
+ 0000025A	 00000005	MOVT R1 higher 16-bits var(5)
+ 0000025E	 31C0000A	BL Mod(  3) proc(28)
+ 00000262	 F11D0008	ADDS R0 SP #8
+ 00000266	 11000008	MOV R1 lower 16-bits base(1)
+ 0000026A	 00000001	MOVT R1 higher 16-bits var(1)
+ 0000026E	 F11D0220	ADDS R2 SP #32
+ 00000272	 2080000A	BL Mod(  2) proc(8)
+ 00000276	     E7CA	B #-108, goes to  0000020E
+ 00000278	 05000009	MOV R0 lower 16-bits base(5)
+ 0000027C	 0000000D	MOVT R0 higher 16-bits var(13)
+ 00000280	     6800	LDR R0 [ R0 + 0 ]
+ 00000282	 10000005	MOV R1 lower 16-bits base(0)
+ 00000286	 00000000	MOVT R1 higher 16-bits base + 0
+ 0000028A	     6809	LDR R1 [ R1 + 0 ]
+ 0000028C	 30E0000D	BL Mod(  3) proc(14)
+ 00000290	 F85DEB04	LDR LR [ SP ] + 4
+ 00000294	 F11D0D24	ADDS SP SP #36
+ 00000298	     4770	BX LR
+ 0000029A	 F1BD0D20	SUBS SP SP #32
+ 0000029E	     B500	PUSH LR
+ 000002A0	 0000000F	MOV R0 lower 16-bits base(0)
+ 000002A4	 00000058	MOVT R0 higher 16-bits base + 88
+ 000002A8	     210F	MOVS R1 #15
+ 000002AA	 1020000F	BL Mod(  1) proc(2)
+ 000002AE	     9001	STR R0 [ SP + 4 ]
+ 000002B0	 F11D0008	ADDS R0 SP #8
+ 000002B4	 1100000A	MOV R1 lower 16-bits base(1)
+ 000002B8	 00000001	MOVT R1 higher 16-bits var(1)
+ 000002BC	     9A01	LDR R2 [ SP + 4 ]
+ 000002BE	     2300	MOVS R3 #0
+ 000002C0	 10B0000B	BL Mod(  1) proc(11)
+ 000002C4	 F11D0008	ADDS R0 SP #8
+ 000002C8	 1100000A	MOV R1 lower 16-bits base(1)
+ 000002CC	 00000001	MOVT R1 higher 16-bits var(1)
+ 000002D0	 F11D0220	ADDS R2 SP #32
+ 000002D4	 1150000A	BL Mod(  1) proc(21)
+ 000002D8	 F89D0008	LDRB R0 [ SP + 8 ]
+ 000002DC	     2800	CMP R0 #0
+ 000002DE	 F0408030	BNE #96, goes to  00000342
+ 000002E2	 0000000D	MOV R0 lower 16-bits base(0)
+ 000002E6	 00000000	MOVT R0 higher 16-bits base + 0
+ 000002EA	 13000004	MOV R1 lower 16-bits base(3)
+ 000002EE	 00000005	MOVT R1 higher 16-bits var(5)
+ 000002F2	 20000004	MOV R2 lower 16-bits base(0)
+ 000002F6	 00000068	MOVT R2 higher 16-bits base + 104
+ 000002FA	     2305	MOVS R3 #5
+ 000002FC	 31D00014	BL Mod(  3) proc(29)
+ 00000300	 00000007	MOV R0 lower 16-bits base(0)
+ 00000304	 00000000	MOVT R0 higher 16-bits base + 0
+ 00000308	 13000004	MOV R1 lower 16-bits base(3)
+ 0000030C	 00000005	MOVT R1 higher 16-bits var(5)
+ 00000310	     9A08	LDR R2 [ SP + 32 ]
+ 00000312	     2301	MOVS R3 #1
+ 00000314	 31E0000C	BL Mod(  3) proc(30)
+ 00000318	 00000008	MOV R0 lower 16-bits base(0)
+ 0000031C	 00000000	MOVT R0 higher 16-bits base + 0
+ 00000320	 13000004	MOV R1 lower 16-bits base(3)
+ 00000324	 00000005	MOVT R1 higher 16-bits var(5)
+ 00000328	 31C0000A	BL Mod(  3) proc(28)
+ 0000032C	 F11D0008	ADDS R0 SP #8
+ 00000330	 11000008	MOV R1 lower 16-bits base(1)
+ 00000334	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000338	 F11D0220	ADDS R2 SP #32
+ 0000033C	 1150000A	BL Mod(  1) proc(21)
+ 00000340	     E7CA	B #-108, goes to  000002D8
+ 00000342	 05000009	MOV R0 lower 16-bits base(5)
+ 00000346	 0000000D	MOVT R0 higher 16-bits var(13)
+ 0000034A	     6800	LDR R0 [ R0 + 0 ]
+ 0000034C	 10000005	MOV R1 lower 16-bits base(0)
+ 00000350	 00000000	MOVT R1 higher 16-bits base + 0
+ 00000354	     6809	LDR R1 [ R1 + 0 ]
+ 00000356	 30E0000D	BL Mod(  3) proc(14)
+ 0000035A	 F85DEB04	LDR LR [ SP ] + 4
+ 0000035E	 F11D0D20	ADDS SP SP #32
+ 00000362	     4770	BX LR
+ 00000364	 F1BD0D24	SUBS SP SP #36
+ 00000368	     B500	PUSH LR
+ 0000036A	 0000000F	MOV R0 lower 16-bits base(0)
+ 0000036E	 00000070	MOVT R0 higher 16-bits base + 112
+ 00000372	     210F	MOVS R1 #15
+ 00000374	 1020000F	BL Mod(  1) proc(2)
+ 00000378	     9001	STR R0 [ SP + 4 ]
+ 0000037A	 F11D0008	ADDS R0 SP #8
+ 0000037E	 1100000A	MOV R1 lower 16-bits base(1)
+ 00000382	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000386	     9A01	LDR R2 [ SP + 4 ]
+ 00000388	     2300	MOVS R3 #0
+ 0000038A	 10B0000B	BL Mod(  1) proc(11)
+ 0000038E	 F11D0008	ADDS R0 SP #8
+ 00000392	 1100000A	MOV R1 lower 16-bits base(1)
+ 00000396	 00000001	MOVT R1 higher 16-bits var(1)
+ 0000039A	 F11D0220	ADDS R2 SP #32
+ 0000039E	 2080000A	BL Mod(  2) proc(8)
+ 000003A2	 F89D0008	LDRB R0 [ SP + 8 ]
+ 000003A6	     2800	CMP R0 #0
+ 000003A8	 F0408030	BNE #96, goes to  0000040C
+ 000003AC	 0000000D	MOV R0 lower 16-bits base(0)
+ 000003B0	 00000000	MOVT R0 higher 16-bits base + 0
+ 000003B4	 13000004	MOV R1 lower 16-bits base(3)
+ 000003B8	 00000005	MOVT R1 higher 16-bits var(5)
+ 000003BC	 20000004	MOV R2 lower 16-bits base(0)
+ 000003C0	 00000080	MOVT R2 higher 16-bits base + 128
+ 000003C4	     2305	MOVS R3 #5
+ 000003C6	 31D00014	BL Mod(  3) proc(29)
+ 000003CA	 00000007	MOV R0 lower 16-bits base(0)
+ 000003CE	 00000000	MOVT R0 higher 16-bits base + 0
+ 000003D2	 13000004	MOV R1 lower 16-bits base(3)
+ 000003D6	 00000005	MOVT R1 higher 16-bits var(5)
+ 000003DA	     9A08	LDR R2 [ SP + 32 ]
+ 000003DC	     2301	MOVS R3 #1
+ 000003DE	 31E0000C	BL Mod(  3) proc(30)
+ 000003E2	 00000008	MOV R0 lower 16-bits base(0)
+ 000003E6	 00000000	MOVT R0 higher 16-bits base + 0
+ 000003EA	 13000004	MOV R1 lower 16-bits base(3)
+ 000003EE	 00000005	MOVT R1 higher 16-bits var(5)
+ 000003F2	 31C0000A	BL Mod(  3) proc(28)
+ 000003F6	 F11D0008	ADDS R0 SP #8
+ 000003FA	 11000008	MOV R1 lower 16-bits base(1)
+ 000003FE	 00000001	MOVT R1 higher 16-bits var(1)
+ 00000402	 F11D0220	ADDS R2 SP #32
+ 00000406	 2080000A	BL Mod(  2) proc(8)
+ 0000040A	     E7CA	B #-108, goes to  000003A2
+ 0000040C	 05000009	MOV R0 lower 16-bits base(5)
+ 00000410	 0000000D	MOVT R0 higher 16-bits var(13)
+ 00000414	     6800	LDR R0 [ R0 + 0 ]
+ 00000416	 10000005	MOV R1 lower 16-bits base(0)
+ 0000041A	 00000000	MOVT R1 higher 16-bits base + 0
+ 0000041E	     6809	LDR R1 [ R1 + 0 ]
+ 00000420	 30E0000D	BL Mod(  3) proc(14)
+ 00000424	 F85DEB04	LDR LR [ SP ] + 4
+ 00000428	 F11D0D24	ADDS SP SP #36
+ 0000042C	     4770	BX LR
+ 0000042E	     B500	PUSH LR
+ 00000430	 0000000D	MOV R0 lower 16-bits base(0)
+ 00000434	 00000000	MOVT R0 higher 16-bits base + 0
+ 00000438	 13000004	MOV R1 lower 16-bits base(3)
+ 0000043C	 00000005	MOVT R1 higher 16-bits var(5)
+ 00000440	 31700010	BL Mod(  3) proc(23)
+ 00000444	 F85DEB04	LDR LR [ SP ] + 4
+ 00000448	     4770	BX LR

@@ -47,7 +47,8 @@ MODULE LongInt;
 
   PROCEDURE run*;
     VAR t: LONGINT;
-  BEGIN t := 1234567890; t := t*10000000; INC(t, 1234567);
+  BEGIN (*t := 1234567890; t := t*10000000; INC(t, 1234567);*)
+    t := 12345678901234567;
     f.r1 := LSR(t, 32); f.r0 := t; f.r3 := 0; f.r2 := 10;
     DivL(SYSTEM.VAL(DivParam, f));
     Texts.WriteString(W, "-----"); Texts.WriteLn(W);
@@ -112,3 +113,4 @@ OM4Tool.DecObj LongInt.m4c
 -----
 1
  FFFFFFFF FFFFFFFF
+ 000462D5 3C8ABAC0

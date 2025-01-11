@@ -520,7 +520,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T16MSK12 01111 Subtract 3-bit immediate SUB (immediate) on page A7-402*)
       SubImmT1 = {9..12};
                   
-    VAR b1, b2, b3, b4, t, Ra, Rn, Rd, RdLo, RdHi, Rt, Rt2, Rm, Sn, Sd, Sm: BYTE;
+    VAR b1, b2, b3, b4, t, Ra, Rn, Rd, Rdn, RdLo, RdHi, Rt, Rt2, Rm, Sn, Sd, Sm: BYTE;
       op: SET;
   BEGIN
     b1 := c[i+1]; b2 := c[i]; INC(i, 2);
@@ -646,22 +646,22 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T32MSK61 = StrRegImmT3 THEN
           (*T32MSK61 110 xxxxxx: Store Register STR (immediate) on page A7-386*)
           (*STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
-          WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
+          WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ "); WriteReg(W, Rn);
           Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD A.C12, 1); Texts.WriteString(W, " ]")
         ELSIF op*T32MSK61 = StrRegByteImmT2 THEN
           (*T32MSK61 100 xxxxxx Store Register Byte STRB (immediate) on page A7-389*)
           (*STRB<c>.W <Rt>,[<Rn>,#<imm12>]*)
-          WriteOp(W, op, "STRB", FALSE, FALSE);  WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
+          WriteOp(W, op, "STRB", FALSE, FALSE);  WriteReg(W, Rt); Texts.WriteString(W, " [ "); WriteReg(W, Rn);
           Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD A.C12, 1); Texts.WriteString(W, " ]")
         ELSIF op*T32MSK62 = StrRegImmT4 THEN
           (*T32MSK62 010 1xxxxx Store Register STR (immediate) on page A7-386*)
           (*STR<c> <Rt>,[<Rn>,#-<imm8>]
             STR<c> <Rt>,[<Rn>],#+/-<imm8>
             STR<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
-          WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
-          IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
-          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, " - ") END;
-          Texts.WriteInt(W, b4, 1);
+          WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ "); WriteReg(W, Rn);
+          IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ]") END;
+          IF 9 IN op THEN (*add*) Texts.WriteString(W, " +") ELSE Texts.WriteString(W, " -") END;
+          Texts.Write(W, " "); Texts.WriteInt(W, b4, 1);
           IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
@@ -682,9 +682,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             LDR<c> <Rt>,[<Rn>],#+/-<imm8>
             LDR<c> <Rt>,[<Rn>,#+/-<imm8>]! T4*)
           WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
-          IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
-          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, " - ") END;
-          Texts.WriteInt(W, b4, 1);
+          IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ]") END;
+          IF 9 IN op THEN (*add*) Texts.WriteString(W, " +") ELSE Texts.WriteString(W, " - ") END;
+          Texts.Write(W, " "); Texts.WriteInt(W, b4, 1);
           IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
@@ -894,9 +894,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*LDRB<c> <Rt>,[<Rn>,#-<imm8>]
             LDRB<c> <Rt>,[<Rn>],#+/-<imm8>
             LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
-          WriteOp(W, op, "LDRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
-          IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
-          IF 9 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, " - ") END;
+          WriteOp(W, op, "LDRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ "); WriteReg(W, Rn);
+          IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ]") END;
+          IF 9 IN op THEN (*add*) Texts.WriteString(W, " + ") ELSE Texts.WriteString(W, " - ") END;
           Texts.WriteInt(W, b4, 1);
           IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
@@ -1085,9 +1085,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
              LDRD<c> <Rt>, <Rt2>, [<Rn>, #+/-<imm8>]!*)
           WriteOp(W, op, "LDRD", FALSE, FALSE); WriteReg(W, Rt); WriteReg(W, Rt2);
           Texts.WriteString(W, " ["); WriteReg(W, Rn);
-          IF ~(24 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
-          IF 23 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "+ ") END;
-          Texts.WriteInt(W, b4*4, 1);
+          IF ~(24 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ]") END;
+          IF 23 IN op THEN (*add*) Texts.WriteString(W, " +") ELSE Texts.WriteString(W, " -") END;
+          Texts.Write(W, " "); Texts.WriteInt(W, b4*4, 1);
           IF 24 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 21 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
@@ -1100,9 +1100,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
              STRD<c> <Rt>, <Rt2>, [<Rn>, #+/-<imm8>]!*)
           WriteOp(W, op, "STRD", FALSE, FALSE); WriteReg(W, Rt); WriteReg(W, Rt2);
           Texts.WriteString(W, " ["); WriteReg(W, Rn);
-          IF ~(24 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ] ") END;
-          IF 23 IN op THEN (*add*) Texts.WriteString(W, "+ ") ELSE Texts.WriteString(W, "+ ") END;
-          Texts.WriteInt(W, b4*4, 1);
+          IF ~(24 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ]") END;
+          IF 23 IN op THEN (*add*) Texts.WriteString(W, " +") ELSE Texts.WriteString(W, " -") END;
+          Texts.Write(W, " "); Texts.WriteInt(W, b4*4, 1);
           IF 24 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 21 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
@@ -1264,8 +1264,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T16MSK11 110xx: Add 8-bit immediate ADD (immediate) on page A7-190*)
           (*ADDS <Rdn>,#<imm8> Outside IT block.
             ADD<c> <Rdn>,#<imm8> Inside IT block.*)
-          Rn := b1 MOD A.C3;
-          WriteOp(W, op, "ADD", TRUE, FALSE); WriteReg(W, Rn); WriteReg(W, Rd); Texts.WriteString(W, " #");
+          Rdn := b1 MOD A.C3;
+          WriteOp(W, op, "ADD", TRUE, FALSE); WriteReg(W, Rdn); WriteReg(W, Rdn); Texts.WriteString(W, " #");
           Texts.WriteInt(W, b2, 1)
         ELSIF op*T16MSK12 = AddImm3 THEN
           (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
@@ -1342,14 +1342,14 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T16MSK52 1001 0xx Store Register SP relative STR (immediate) on page A7-386*)
           (*STR<c> <Rt>,[SP,#<imm8>] T2*)
           Rt := b1 MOD A.C3;
-          WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [SP + ");
-          Texts.WriteInt(W, b2*A.C2, 1); Texts.Write(W, "]")
+          WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ SP + ");
+          Texts.WriteInt(W, b2*A.C2, 1); Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = LdRegSP THEN
           (*T16MSK52 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
           (*LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
           Rt := b1 MOD A.C3;
-          WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [SP + ");
-          Texts.WriteInt(W, b2*A.C2, 1); Texts.Write(W, "]")
+          WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ SP + ");
+          Texts.WriteInt(W, b2*A.C2, 1); Texts.WriteString(W, " ]")
         ELSE Texts.WriteString(W, "TODO: not LdRegSP")
         END
       ELSIF op*T16MSK5 = LdStSingleT1 THEN
@@ -1358,31 +1358,31 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T16MSK52 = StRegImm5 THEN
           (*T16MSK52 0110 0xx Store Register STR (immediate) on page A7-386*)
           (*STR<c> <Rt>, [<Rn>{,#<imm5>}]*)
-          WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
+          WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ ");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
           Texts.WriteInt(W, (b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2)*A.C2, 1);
-          Texts.Write(W, "]")
+          Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = LdRegImm5 THEN
           (*T16MSK52 0110 1xx Load Register LDR (immediate) on page A7-246*)
           (*LDR<c> <Rt>, [<Rn>{,#<imm5>}]*)
           WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
           Texts.WriteInt(W, (b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2)*A.C2, 1);
-          Texts.Write(W, "]")
+          Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = StRegByteImm5 THEN
           (*T16MSK52 0111 0xx Store Register Byte STRB (immediate) on page A7-389*)
           (*STRB<c> <Rt>,[<Rn>,#<imm5>]*)
           WriteOp(W, op, "STRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
           Texts.WriteInt(W, b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2, 1);
-          Texts.Write(W, "]")
+          Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = LdRegByteImm5 THEN
           (*T16MSK52 0111 1xx Load Register Byte LDRB (immediate) on page A7-252*)
           (*LDRB<c> <Rt>,[<Rn>{,#<imm5>}]*)
           WriteOp(W, op, "LDRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
           Texts.WriteInt(W, b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2, 1);
-          Texts.Write(W, "]")
+          Texts.WriteString(W, " ]")
         ELSE Texts.WriteString(W, "TODO other LdStSingleT1 on page A5-133")
         END
       ELSIF op*T16MSK3 = UncBr THEN

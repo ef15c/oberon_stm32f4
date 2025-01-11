@@ -979,8 +979,8 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR key, oldCol: INTEGER;
   BEGIN Texts.WriteString(W, "  compiling "); S.Get(sym);
     IF sym = S.module THEN
-      S.Get(sym);
-      IF sym = S.times THEN version := 0; dc := 8; Texts.Write(W, "*"); S.Get(sym) ELSE dc := 0; version := 1 END ;
+      S.Get(sym); dc := 0;
+      IF sym = S.times THEN version := 0; Texts.Write(W, "*"); S.Get(sym) ELSE version := 1 END;
       initmode := FALSE;
       B.Init; B.OpenScope;
       IF sym = S.ident THEN
@@ -1069,3 +1069,5 @@ BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  19/10/2023");
   NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0
 END OM4P2.
+
+OM4Tool.DecObj OM4P2.m4c
