@@ -255,7 +255,8 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.a >= A.C10 THEN S.Mark("real RegI too far") END;
           A.Put0(mcode, A.VLDRT2 + 1*A.C23 + SH MOD A.C1*A.C22 + x.r*A.C16 + SH DIV A.C1*A.C12 + x.a DIV A.C2);
           x.r := SH; incS; DEC(RH)
-        ELSIF x.type.size = 8 THEN (*LONGINT*) incR; A.encDMemImm32(mcode, A.LDRD, x.r, x.r+1, x.r, RH, x.a)
+        ELSIF x.type.size = 8 THEN (*LONGINT*) 
+          IF RH < x.r+2 THEN incR END; A.encDMemImm32(mcode, A.LDRD, x.r, x.r+1, x.r, RH, x.a)
         ELSE  A.encMemImm32(mcode, op, x.r, x.r, RH, x.a)
         END
       ELSIF x.mode = Cond THEN
@@ -430,8 +431,9 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.r)
-    ELSIF x.mode # Reg THEN S.Mark("bad mode in DeRef") END;
+    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.r); IF x.type.base.size = 8 THEN incR (*allocate room for upper word*) END
+    ELSIF x.mode = Reg THEN IF x.type.base.size = 8 THEN ASSERT(x.r = RH-1); incR END
+    ELSE S.Mark("bad mode in DeRef") END;
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
 

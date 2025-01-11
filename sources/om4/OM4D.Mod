@@ -189,6 +189,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       BitwClear = {21};
       (*T32MSK21 0100 - Rd not 1111 - Bitwise Exclusive OR EOR (register) on page A7-233*)
       (*EorOrTeq = {23}; same as below*)
+      (*T32MSK21 1010 - - - Add with Carry ADC (register) on page A7-188*)
+      AdcRegT2 = {24, 22};
       (*T32MSK21 1011 - - - Subtract with Carry SBC (register) on page A7-347*)
       SbcRegT2 = {24, 21..22};
       (*T32MSK21 1110 - - - Reverse Subtract RSB (register) on page A7-342*)
@@ -997,6 +999,12 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteOp(W, op, "EOR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
           END
+        ELSIF op*T32MSK21 = AdcRegT2 THEN
+          Rm := b4 MOD A.C4;
+          (*T32MSK21 1010 - - - Add with Carry ADC (register) on page A7-188
+            ADC{S}<c>.W <Rd>,<Rn>,<Rm> {,<shift>}*)
+            WriteOp(W, op, "ADC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
+            WriteShift(W, op)
         ELSIF op*T32MSK21 = SbcRegT2 THEN
           Rm := b4 MOD A.C4;
           (*T32MSK21 1011 - - - Subtract with Carry SBC (register) on page A7-347
