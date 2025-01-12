@@ -78,8 +78,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END FixOne;
 
   PROCEDURE FixLink*(L: INTEGER);
-  BEGIN
-    A.FixLink(mcode, L)
+  BEGIN A.FixLink(mcode, L)
   END FixLink;
 
   PROCEDURE incR;
@@ -359,14 +358,15 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation for Selectors, Variables, Constants *)
 
   PROCEDURE Field*(VAR x: Item; y: B.Object);   (* x := x.y *)
-  BEGIN;
+  BEGIN
     IF x.mode = B.Var THEN
       IF x.r >= 0 THEN x.a := x.a + y.val
       ELSE loadAdr(x); x.mode := RegI; x.a := y.val
       END
     ELSIF x.mode = RegI THEN x.a := x.a + y.val
     ELSIF x.mode = B.Par THEN x.b := x.b + y.val
-    END
+    END;
+    IF (x.mode = RegI) & (y.type = B.longintType) THEN ASSERT(x.r = RH-1); incR (*allocate room for upper word*) END
   END Field;
 
   PROCEDURE convertInt(VAR x: Item; t: B.Type);
@@ -377,7 +377,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.mode # B.Const THEN load(x); ASSERT(x.r = RH-1); incR;
             A.Put0(mcode, A.SBFX + x.r*A.C16 + (x.r+1)*A.C8 + 31 DIV A.C2*A.C12 + 31 MOD A.C2*A.C6 + 0) (*SBFX x.r+1, x.r, 31, 1*)
           END; x.type := t
-        ELSIF (t.size = 4) & (x.type = B.longintType) THEN x.type := t; IF x.mode = Reg THEN DEC(RH);  ELSE load(x) END
+        ELSIF (t.size = 4) & (x.type = B.longintType) THEN x.type := t; IF x.mode IN {Reg, RegI} THEN DEC(RH);  ELSE load(x) END
         END
       END
     END
@@ -431,9 +431,8 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.r); IF x.type.base.size = 8 THEN incR (*allocate room for upper word*) END
-    ELSIF x.mode = Reg THEN IF x.type.base.size = 8 THEN ASSERT(x.r = RH-1); incR END
-    ELSE S.Mark("bad mode in DeRef") END;
+    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.r)
+    ELSIF x.mode # Reg THEN S.Mark("bad mode in DeRef") END;
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
 
@@ -701,14 +700,13 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END MulOp;
 
   PROCEDURE doDivL(VAR x, y: Item; dr: INTEGER);
-    VAR crh, xr: INTEGER; yIsVar: BOOLEAN;
-  BEGIN
-    crh := RH;
+    VAR crh: INTEGER; yIsVar: BOOLEAN;
+  BEGIN crh := RH;
     IF crh > 2 THEN A.SaveRegs(mcode, 4, frame); OfsPTOS(4, 4, TRUE); RH := 0
     ELSIF crh > 0 THEN A.SaveRegs(mcode, 2, frame); OfsPTOS(2, 2, TRUE); RH := 0
     END;
     yIsVar := y.mode # B.Const;
-    load(x); load(y); IF x.r < y.r THEN xr := x.r ELSE xr := y.r END;
+    load(x); load(y);
     IF check & yIsVar THEN  A.encCMPImm(mcode, y.r, RH, 1); A.encDPImm32(mcode, A.SBc, RH, y.r+1, RH, 0); Trap(A.LT, 6) END;
     IF x.r # 0 THEN
       IF y.r = 0 THEN (*make room for x*) IF crh > RL-2 THEN S.Mark("register stack overflow") END;
@@ -718,10 +716,10 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
     IF y.r # 2 THEN A.encMOVReg(mcode, 2, y.r); A.encMOVReg(mcode, 3, y.r+1) END;
     A.Put1(mcode, A.SVC + 2); (*Call 64bit integer division code in Kernel module*)
-    IF xr # dr THEN A.encMOVReg(mcode, xr, dr); A.encMOVReg(mcode, xr+1, dr+1) END;
+    IF crh # dr THEN A.encMOVReg(mcode, crh, dr); A.encMOVReg(mcode, crh+1, dr+1) END;
     IF crh > 2 THEN A.RestoreRegs(mcode, 4, frame); OfsPTOS(-4, -4, TRUE); RH := 0
     ELSIF crh > 0 THEN A.RestoreRegs(mcode, 2, frame); OfsPTOS(-2, -2, TRUE); RH := 0
-    END; x.r := xr; RH := xr+2
+    END; x.r := crh; RH := crh+2
   END doDivL;
 
   PROCEDURE DivOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
@@ -977,7 +975,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END;
         A.Put0(mcode, A.VSTRT2 + 1*A.C23 + y.r MOD A.C1*A.C22 + x.r*A.C16 + y.r DIV A.C1*A.C12 + (x.a + frame) DIV A.C2);
         DEC(SH)
-      ELSIF x.type.size = 8 THEN A.encDMemImm32(mcode, A.STRD, y.r, y.r+1, x.r, RH, x.a); DEC(RH)
+      ELSIF x.type.size = 8 THEN A.encDMemImm32(mcode, A.STRD, y.r, y.r+1, x.r, RH, x.a); DEC(RH, 2)
       ELSE A.encMemImm32(mcode, op, y.r, x.r, RH, x.a); DEC(RH)
       END
     ELSE S.Mark("bad mode in Store")
