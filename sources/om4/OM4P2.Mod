@@ -262,11 +262,11 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 2 THEN (*FLOOR*) CheckReal(x); G.Floor(x)
       ELSIF fct = 3 THEN (*FLT*) CheckInt(x); G.Float(x)
       ELSIF fct = 4 THEN (*ORD*)
-        IF x.type.form <= B.Proc THEN G.Ord(x)
+        IF x.type.form <= B.Proc THEN G.Ord(x, restyp)
         ELSIF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x)
         ELSE S.Mark("bad type")
         END
-      ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
+      ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x, restyp)
       ELSIF fct = 6 THEN (*LEN*)
           IF x.type.form = B.Array THEN G.Len(x) ELSE S.Mark("not an array") END
       ELSIF fct IN {7, 8, 9, 10} THEN (*LSL, ASR, ROR, LSR*) CheckInt(y);

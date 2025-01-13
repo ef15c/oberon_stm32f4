@@ -509,7 +509,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   
   PROCEDURE encDPImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: INTEGER);
     VAR tmiCode: INTEGER;
-  BEGIN
+  BEGIN (* TODO si op = ADD SP ou SUB SP et setFlags = FALSE,optimisation possible par l'instruction sp\E9cifique SUB SP *)
     ASSERT (op < NBOPS);
     ASSERT ((a < C4) & (b < C4) & (t < C4));
     IF (imm >= 0) & (imm < C3) & (a < C3) & (b < C3) & (imm3map[op] # 0) THEN

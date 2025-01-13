@@ -212,7 +212,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF x.type.form = B.Proc THEN
           IF x.r > 0 THEN S.Mark("not allowed")
           ELSIF x.r = 0 THEN 
-            (*optimisation possible : si align(PC+4, 4) - x.a < 4096 on peut 
+            (* TODO optimisation possible : si align(PC+4, 4) - x.a < 4096 on peut 
               utiliser l'equivalent de l'assembleur ADR RH, <label>*)
             A.Put0(mcode, A.BL + A.formatEvenImm25(0)); (*Put address+1 of next statement in LR*)
             A.encDPImm32(mcode, A.SUB, RH, LR, RH, mcode.pc - x.a)
@@ -371,13 +371,14 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE convertInt(VAR x: Item; t: B.Type);
   BEGIN
-    IF x.type.form = B.Int THEN ASSERT(t.form = B.Int);
+    IF x.type.form = B.Int THEN ASSERT(t.form IN {B.Int, B.Char});
       IF x.type # t THEN
         IF t = B.longintType THEN
           IF x.mode # B.Const THEN load(x); ASSERT(x.r = RH-1); incR;
             A.Put0(mcode, A.SBFX + x.r*A.C16 + (x.r+1)*A.C8 + 31 DIV A.C2*A.C12 + 31 MOD A.C2*A.C6 + 0) (*SBFX x.r+1, x.r, 31, 1*)
           END; x.type := t
-        ELSIF (t.size = 4) & (x.type = B.longintType) THEN x.type := t; IF x.mode IN {Reg, RegI} THEN DEC(RH);  ELSE load(x) END
+        ELSIF (t.size <= 4) & (x.type = B.longintType) THEN x.type := B.intType;
+          IF x.mode IN {Reg, RegI} THEN DEC(RH) ELSE load(x) END
         END
       END
     END
@@ -575,6 +576,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSE (*op = S.minus*)
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a - y.a
+(*TODO ELSIF (x.mode = B.Const) & (y.type.size <= 4) on peut utiliser l'instruction RSB*)
       ELSIF y.mode = B.Const THEN load(x);
         IF y.a # 0 THEN A.encDPImm32(mcode, A.SUB, x.r, x.r, RH, y.a) END;
           IF x.type.size = 8 THEN A.encDPImm32(mcode, A.SBc, x.r+1, x.r+1, RH, LSR(y.a, 32)) END
@@ -699,27 +701,25 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END MulOp;
 
-  PROCEDURE doDivL(VAR x, y: Item; dr: INTEGER);
-    VAR crh: INTEGER; yIsVar: BOOLEAN;
-  BEGIN crh := RH;
-    IF crh > 2 THEN A.SaveRegs(mcode, 4, frame); OfsPTOS(4, 4, TRUE); RH := 0
-    ELSIF crh > 0 THEN A.SaveRegs(mcode, 2, frame); OfsPTOS(2, 2, TRUE); RH := 0
-    END;
-    yIsVar := y.mode # B.Const;
-    load(x); load(y);
+  PROCEDURE doDivL(VAR x, y: Item; rr: INTEGER);
+    VAR xr: INTEGER; yIsVar: BOOLEAN;
+  BEGIN IF x.r IN {Reg, RegI} THEN xr := x.r ELSE xr := RH END;
+    IF (y.r IN {Reg, RegI}) & (y.r < xr) THEN xr := y.r END;
+    IF xr > 0 THEN A.SaveRegs(mcode, xr, frame); OfsPTOS(xr, xr, TRUE) END; RH := 0;
+    yIsVar := y.mode # B.Const; load(x); convertInt(y, B.longintType); load(y);
     IF check & yIsVar THEN  A.encCMPImm(mcode, y.r, RH, 1); A.encDPImm32(mcode, A.SBc, RH, y.r+1, RH, 0); Trap(A.LT, 6) END;
     IF x.r # 0 THEN
-      IF y.r = 0 THEN (*make room for x*) IF crh > RL-2 THEN S.Mark("register stack overflow") END;
-        A.encMOVReg(mcode, crh, y.r); A.encMOVReg(mcode, crh+1, y.r+1); y.r := crh
-      END;
+      IF y.r < 2 THEN (*make room for x*) A.encMOVReg(mcode, 4, y.r); A.encMOVReg(mcode, 5+1, y.r+1); y.r := 4 END;
       A.encMOVReg(mcode, 0, x.r); A.encMOVReg(mcode, 1, x.r+1)
     END;
     IF y.r # 2 THEN A.encMOVReg(mcode, 2, y.r); A.encMOVReg(mcode, 3, y.r+1) END;
     A.Put1(mcode, A.SVC + 2); (*Call 64bit integer division code in Kernel module*)
-    IF crh # dr THEN A.encMOVReg(mcode, crh, dr); A.encMOVReg(mcode, crh+1, dr+1) END;
-    IF crh > 2 THEN A.RestoreRegs(mcode, 4, frame); OfsPTOS(-4, -4, TRUE); RH := 0
-    ELSIF crh > 0 THEN A.RestoreRegs(mcode, 2, frame); OfsPTOS(-2, -2, TRUE); RH := 0
-    END; x.r := crh; RH := crh+2
+    IF xr # rr THEN
+      IF xr <= rr+1 THEN A.encMOVReg(mcode, xr+1, rr+1); A.encMOVReg(mcode, xr, rr) (*reverse order to avoid xr corruption *)
+      ELSE A.encMOVReg(mcode, xr, rr); A.encMOVReg(mcode, xr+1, rr+1)
+      END
+    END; x.r := xr;
+    IF xr > 0 THEN A.RestoreRegs(mcode, xr, frame); OfsPTOS(-xr, -xr, TRUE) END; RH := xr+2
   END doDivL;
 
   PROCEDURE DivOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
@@ -1370,8 +1370,8 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.encFPOpReg(mcode, A.VCVTFS, x.r, 0, x.r)
   END Float;
 
-  PROCEDURE Ord*(VAR x: Item);
-  BEGIN
+  PROCEDURE Ord*(VAR x: Item; t: B.Type);
+  BEGIN convertInt(x, t);
     IF x.mode IN {B.Var, B.Par, RegI, Cond} THEN load(x) END
   END Ord;
 
