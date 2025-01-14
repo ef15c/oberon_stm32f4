@@ -569,6 +569,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF y.a # 0 THEN A.encDPImm32(mcode, A.ADD, x.r, x.r, RH, y.a);
           IF x.type.size = 8 THEN A.encDPImm32(mcode, A.ADc, x.r+1, x.r+1, RH, LSR(y.a, 32)) END
         END
+      ELSIF (x.mode = B.Const) & (x.a = 0) THEN load(y); x.mode := Reg; x.r := y.r; 
       ELSE load(x); load(y); IF x.r < y.r THEN xr := x.r ELSE xr := y.r END;
         A.encDPReg(mcode, A.ADD, xr, x.r, y.r, A.LSl, 0, TRUE);
         IF x.type.size = 8 THEN  A.encDPReg(mcode, A.ADc, xr+1, x.r+1, y.r+1, A.LSl, 0, TRUE); DEC(RH)

@@ -923,7 +923,7 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
       B.NewObj(proc, S.id, B.Const);
       parblksize := 4;
       NEW(type); type.form := B.Proc; type.size := G.WordSize;
-      proc.type := type; proc.val := -1; proc.lev := level; 
+      proc.type := type; proc.lev := level; 
       CheckExport(proc.expo);
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
       B.OpenScope; INC(level); type.base := B.noType;

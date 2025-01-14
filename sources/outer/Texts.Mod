@@ -12,7 +12,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
     (* TextBlock = TextTag offset run {run} "0" len {AsciiCode}.
       run = fnt [name] col voff len. *)
 
-    TAB = 9X; CR = 0DX;
+    TAB* = 9X; CR* = 0DX;
     TextTag = 0F1X;
     replace* = 0; insert* = 1; delete* = 2; unmark* = 3;  (*op-codes*)
 
@@ -324,7 +324,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
     x = 1.m * 2^(e-127)   bit 0: sign, bits 1- 8: e, bits  9-31: m
     x = 1.m * 2^(e-1023)  bit 0: sign, bits 1-11: e, bits 12-63: m *)
 
-  PROCEDURE Ten(n: INTEGER): REAL;
+  PROCEDURE Ten*(n: INTEGER): REAL;
     VAR t, p: REAL;
   BEGIN t := 1.0; p := 10.0;   (*compute 10^n *)
     WHILE n > 0 DO
@@ -392,7 +392,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
           IF neg THEN S.i := -n ELSE S.i := n END;
           IF hex THEN S.class := Inval ELSE S.class := Int END
         END
-      ELSE (*spectal character*) S.class := Char;
+      ELSE (*special character*) S.class := Char;
         IF neg THEN S.c := "-" ELSE S.c := ch; Read(S, ch) END
       END
     END ;

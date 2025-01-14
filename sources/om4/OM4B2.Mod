@@ -1,6 +1,6 @@
 MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   C. Schoffit 12/11/2023 for Cortex M4 STM32I-DISCO*)
-  IMPORT Files, (*FilesEx := FilesEx2,*) CRC32, S := OM4S2;
+  IMPORT Files, FilesEx := FilesEx2, CRC32, S := OM4S2;
   (*Definition of data types Object and Type, which together form the data structure
     called "symbol table". Contains procedures for creation of Objects, and for search:
     NewObj, this, thisimport, thisfield (and OpenScope, CloseScope).
@@ -186,7 +186,7 @@ MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           IF last = NIL THEN t.dsc := fld ELSE last.next := fld END ;
           last := fld;
           IF fld.name[0] # 0X THEN fld.expo := TRUE; InType(R, thismod, fld.type) ELSE fld.expo := FALSE; fld.type := nilType END ;
-          (*FilesEx.ReadLongNum(R, fld.val);*) Files.ReadNum(R, key); fld.val := key; Read(R, class)
+          FilesEx.ReadLongNum(R, fld.val); Read(R, class)
         END ;
         IF last = NIL THEN t.dsc := obj ELSE last.next := obj END
       ELSIF form = Proc THEN
@@ -239,8 +239,8 @@ MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
           ELSE
             IF class = Const THEN
-              IF obj.type.form IN {Real, String} THEN Files.ReadInt(R, k); obj.val := k ELSE (*FilesEx.ReadLongNum(R, obj.val)*) Files.ReadNum(R, k); obj.val := k END
-            ELSIF class = Var THEN (*FilesEx.ReadLongNum(R, obj.val);*) Files.ReadNum(R, k); obj.val := k; obj.rdo := TRUE; obj.used := FALSE;
+              IF obj.type.form IN {Real, String} THEN Files.ReadInt(R, k); obj.val := k ELSE FilesEx.ReadLongNum(R, obj.val) END
+            ELSIF class = Var THEN FilesEx.ReadLongNum(R, obj.val); obj.rdo := TRUE; obj.used := FALSE;
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
@@ -295,7 +295,7 @@ MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         fld := t.dsc;
         WHILE fld # bot DO  (*fields*)
           IF fld.expo THEN
-            Write(R, Fld); Files.WriteString(R, fld.name); OutType(R, fld.type); Files.WriteNum(R, fld.val)  (*offset*)
+            Write(R, Fld); Files.WriteString(R, fld.name); OutType(R, fld.type); FilesEx.WriteLongNum(R, fld.val) (*offset*)
           ELSE FindHiddenPointers(R, fld.type, fld.val)
           END ;
           fld := fld.next
@@ -342,7 +342,7 @@ MODULE OM4B2;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           IF obj.type.form = Proc THEN Files.WriteNum(R, obj.exno)
           ELSIF obj.type.form = Real THEN Files.WriteInt(R, obj.val)
           ELSIF obj.type.form = String THEN Files.WriteInt(R, obj.val DIV 10000H*10000H + obj.exno)
-          ELSE Files.WriteNum(R, obj.val)
+          ELSE FilesEx.WriteLongNum(R, obj.val)
           END
         ELSIF obj.class = Var THEN Files.WriteNum(R, obj.exno)
         END
