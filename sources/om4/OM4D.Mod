@@ -469,7 +469,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       
       T16MSK41 = {5..11}; T16MSK42 = {7..11}; T16MSK43 = {8..11}; T16MSK44 = {6..11};
       T16MSK45 = {9..11};
-      
+
+      (*T16MSK42 00000xx Add immediate to SP on page A7-194*)
+      AddSPT2 = {};
+      (*T16MSK42 00001xx Subtract immediate from SP on page A7-406*)
+      SubSPT1 = {7};
       (*T16MSK43 1111xxx: If-Then, and hints on page A5-135*)
       IfThenHints = {8..11};
       (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)
@@ -1220,7 +1224,15 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T16MSK4 = Misc16bInst THEN
         (*T16MSK4 1011xx: Miscellaneous 16-bit instructions on page A5-134*)
-        IF op*T16MSK43 = IfThenHints THEN
+        IF op*T16MSK42 = AddSPT2 THEN
+          (*T16MSK42 00000xx Add immediate to SP on page A7-194
+            ADD<c> SP,SP,#<imm7>*)
+          WriteOp(W, op, "ADD", FALSE, FALSE); Texts.WriteString(W, " SP SP #"); Texts.WriteInt(W, b2 MOD A.C7*A.C2, 1)
+        ELSIF op*T16MSK42 = SubSPT1 THEN
+          (*T16MSK42 00001xx Subtract immediate from SP on page A7-406
+            SUB<c> SP,SP,#<imm7>*)
+          WriteOp(W, op, "SUB", FALSE, FALSE); Texts.WriteString(W, " SP SP #"); Texts.WriteInt(W, b2 MOD A.C7*A.C2, 1)
+        ELSIF op*T16MSK43 = IfThenHints THEN
           (*T16MSK43 1111xxx: If-Then, and hints on page A5-135*)
           IF b2 MOD A.C4 # 0 THEN
             (*xxxx not 0000 If-Then IT on page A7-236*)
