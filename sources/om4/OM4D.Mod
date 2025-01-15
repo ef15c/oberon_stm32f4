@@ -418,7 +418,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       SpecDataBrEx = {14, 10};
       (*T16MSK2 010000 Data processing on page A5-131*)
       DataProc = {14};
-      
+
+      (*T16MSK3 1010 0x: Generate PC-relative address, see ADR on page A7-198*)
+      PCRelAdd = {15, 13};
       (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
       UncBr = {13..15};
       
@@ -431,7 +433,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       ShAdSuMoCm = {};
       
       T16MSK21 = {8..9}; T16MSK22 = {6..9}; T16MSK23 = {7..9};
-      
+
+      (*T16MSK21 00xx Add registers ADD (register) on page A7-192*)
+      AddRegT2 = {};
       (*T16MSK21 10xx Move Registers MOV (register) on page A7-293*)
       MovT1 = {9};
 
@@ -1133,6 +1137,13 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         ELSIF op*T16MSK23 = BrLEx THEN
           (*T16MSK23 111x: Branch with Link and Exchange BLX (register) on page A7-214*)
           WriteOp(W, op, "BLX", FALSE, FALSE); WriteReg(W, Rm)
+        ELSIF op*T16MSK21 = AddRegT2 THEN
+          (*T16MSK21 00xx Add registers ADD (register) on page A7-192*)
+          Rdn := b2 DIV A.C7*A.C3 + b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C4;
+          IF Rm = 13 THEN (*ADD (SP plus register) encoding T1*)
+            WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rdn); WriteReg(W, 13); WriteReg(W, Rdn)
+          ELSE WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rdn); WriteReg(W, Rdn); WriteReg(W, Rm)
+          END
         ELSIF op*T16MSK21 = MovT1 THEN
           (*T16MSK21 10xx Move Registers MOV (register) on page A7-293*)
           (*MOV<c> <Rd>,<Rm> If <Rd> is the PC, must be outside or last in IT block*)
@@ -1405,6 +1416,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           Texts.WriteString(W, " ]")
         ELSE Texts.WriteString(W, "TODO other LdStSingleT1 on page A5-133")
         END
+      ELSIF op*T16MSK3 = PCRelAdd THEN
+        (*T16MSK3 1010 0x: Generate PC-relative address, see ADR on page A7-198
+          ADD<c><q> <Rd> PC #<const>*)
+        Rd := b1 MOD A.C3;
+        WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " PC #"); Texts.WriteInt(W, b2, 1)
       ELSIF op*T16MSK3 = UncBr THEN
         (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
         (*B<c> <label>*)

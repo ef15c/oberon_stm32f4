@@ -1,5 +1,5 @@
 MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
-  IMPORT SYSTEM, BSP, SDCard;
+  IMPORT SYSTEM, BSP, SDCard, LongDiv;
   CONST SectorLength* = 1024; SDBlockSize = 512;
     FS_OFFSET = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*64K sectors, 64*1024*SectorLength bytes*)
@@ -21,8 +21,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       r0*, r1*, r2*, r3*, r12*, lr*: INTEGER;
       returnAddress*, xpsr*: INTEGER
     END;
-
-    DivParam* = RECORD D, S: LONGINT END;
 
   VAR allocated*, NofSectors*: INTEGER;
     heapOrg*, heapLim*: INTEGER;
@@ -281,46 +279,12 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     INC(tick)
   END IncTick;
 
-(*Test System.CompareFiles
-System.CopyFiles Kernel.m4c => Kernel.m4c.old
-System.CompareFiles Kernel.m4c = Kernel.m4c.old
-OM4Tool.DecObj Kernel.m4c Kernel.m4c.old.txt
-OM4Tool.DecObj Kernel.m4c.new Kernel.m4c.old.txt
-System.CompareFiles Kernel.m4c.txt = Kernel.m4c.old.txt
-*)
-
-  PROCEDURE DivL*(VAR p: DivParam);
-    (* Divides 2 64bit integers. D is dividend, S is divisor
-        at exit D becomes D MOD S and S becomes D DIV S *)
-    VAR clzd, clzs, coef, coef2: INTEGER; neg: BOOLEAN; q, rd: LONGINT;
-  BEGIN (* Int64 division *)
-    IF p.S > 0 THEN
-      neg := FALSE;
-      IF p.D < 0 THEN neg := TRUE; p.D := -p.D END;
-      clzd := CLZ(p.D); clzs :=  CLZ(p.S);
-      IF (clzd >= 32) & (clzs >= 32) THEN (*both D and S fit in INTEGER, we can use 32bit division*)
-        clzd := SYSTEM.VAL(INTEGER, p.D) DIV SYSTEM.VAL(INTEGER, p.S); 
-        DEC(SYSTEM.VAL(INTEGER, p.D), clzd*SYSTEM.VAL(INTEGER, p.S)); p.S := clzd
-      ELSE (*64bit division is required*) coef := clzs - clzd;
-        IF coef < 0 THEN p.S := 0
-        ELSE q := 0; rd := p.S; IF coef > 0 THEN rd := LSL(rd, coef) END;
-          WHILE p.D >= p.S DO
-            IF p.D < rd THEN rd := LSR(rd, 1); q := LSL(q, 1); DEC(coef) END;
-            DEC(p.D, rd); INC(q);
-            clzd := CLZ(p.D); clzs := CLZ(rd); coef2 := clzd - clzs; IF coef2 > coef THEN coef2 := coef END;
-            IF coef2 > 0 THEN q := LSL(q, coef2); rd := LSR(rd, coef2); DEC(coef, coef2) END
-          END; p.S := q
-        END
-      END; IF neg THEN p.D := -p.D; p.S := -p.S END
-    END
-  END DivL;
-
   PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
     VAR param: BYTE;
   BEGIN SYSTEM.GET(f.returnAddress - 2, param);
     IF param = 0 THEN (*Allocate dynamic memory*) New(f.r0, f.r1)
     ELSIF param = 1 THEN BSP.led(f.r0)
-    ELSIF param = 2 THEN DivL(SYSTEM.VAL(DivParam, f))
+    ELSIF param = 2 THEN LongDiv.DivL(SYSTEM.VAL(LongDiv.DivParam, f))
     END
   END SVCallHandler;
 
@@ -363,4 +327,3 @@ System.CompareFiles Kernel.m4c.txt = Kernel.m4c.old.txt
 
 END Kernel.
 
-OM4Tool.DecObj Kernel.m4c

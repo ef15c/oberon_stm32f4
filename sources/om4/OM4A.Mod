@@ -456,7 +456,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN
     ASSERT (op < NBOPS);
     ASSERT ((a < C4) & (b < C4) & (t < C4));
-    IF (imm >= 0) & (imm < C3) & (a < C3) & (b < C3) & (imm3map[op] # 0) THEN
+    IF (imm >= 0) & (imm < C3) & ((op # RSB) OR (imm = 0)) & (a < C3) & (b < C3) & (imm3map[op] # 0) THEN
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
       Put1(c, imm3map[op] + imm*C6 + b*C3 + a)
     ELSIF (imm >= 0) & (imm < C8) & (a < C3) & (a = b) & (imm8map[op] # 0) THEN

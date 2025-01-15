@@ -73,7 +73,13 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   BEGIN GetArg(S);
     IF S.class = Texts.Int THEN Oberon.SetOffset(S.i) END
   END SetOffset;
-  
+
+  PROCEDURE DisplayDate*;
+    VAR dt: INTEGER;
+  BEGIN  Texts.WriteString(W, "System.Clock");
+    dt := Oberon.Clock(); Texts.WriteClock(W, dt); EndLine
+  END DisplayDate;
+
   PROCEDURE Date*;
     VAR S!: Texts.Scanner;
       dt, hr, min, sec, yr, mo, day: INTEGER;
@@ -83,8 +89,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       hr := S.i; Texts.Scan(S); min := S.i; Texts.Scan(S); sec := S.i;
       dt := ((((yr*16 + mo)*32 + day)*32 + hr)*64 + min)*64 + sec;
       Kernel.SetClock(dt)
-    ELSE (*read clock*) Texts.WriteString(W, "System.Clock");
-      dt := Oberon.Clock(); Texts.WriteClock(W, dt); EndLine
+    ELSE (*read clock*) DisplayDate
     END
   END Date;
 

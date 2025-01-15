@@ -510,7 +510,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   PROCEDURE encDPImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: INTEGER; setFlags: BOOLEAN);
     VAR tmiCode: INTEGER; opc: SET;
   BEGIN ASSERT (op < NBOPS); ASSERT ((a < C4) & (b < C4) & (t < C4));
-    IF (imm >= 0) & (imm < C3) & (a < C3) & (b < C3) & (imm3map[op] # 0) & (ORD(setFlags) = ORD(c.nbRmnITBlockInsts = 0)) THEN
+    IF (imm >= 0) & (imm < C3) & ((op # RSB) OR (imm = 0)) & (a < C3) & (b < C3) & (imm3map[op] # 0) & (ORD(setFlags) = ORD(c.nbRmnITBlockInsts = 0)) THEN
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
       doPut1(c, imm3map[op] + imm*C6 + b*C3 + a)
     ELSIF (imm >= 0) & (imm < C8) & (a < C3) & (a = b) & (imm8map[op] # 0) & (ORD(setFlags) = ORD(c.nbRmnITBlockInsts = 0)) THEN
@@ -549,11 +549,12 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     ELSE
       ASSERT(c.nbRmnITBlockInsts = 0);
       encMOVImm32(c, t, imm);
-      IF (a < C3) & (b < C3) & (t < C3) & (reg3map[op] # 0) THEN
+      IF (a < C3) & (b < C3) & (t < C3) & (reg3map[op] # 0) & (ORD(setFlags) = ORD(c.nbRmnITBlockInsts = 0)) THEN
         c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
-        doPut1(c, reg3map[op] + t*C6 + b*C3 + a);
-      ELSE doPut0(c, reg4shmap[op] + format3Reg4(a, b, 0) + t);
-        c.lastInstrSetFlags := ODD(reg4shmap[op] DIV C20);
+        doPut1(c, reg3map[op] + t*C6 + b*C3 + a)
+      ELSE opc := TOSET(reg4shmap[op] + format3Reg4(a, b, 0) + t);
+        IF ~setFlags THEN EXCL(opc, 20) END; doPut0(c, ORD(opc));
+        c.lastInstrSetFlags := 20 IN opc;
       END
     END;
     ASSERT(setFlags = c.lastInstrSetFlags)
@@ -610,15 +611,22 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
 
   PROCEDURE encDPReg*(VAR co: ModuleCode; op, a, b, c: BYTE; shiftType: INTEGER; shift: INTEGER; setFlags: BOOLEAN);
     VAR opc: SET;
-  BEGIN (* TODO si op = ADD SP ou SUB SP et setFlags = FALSE,optimisation possible par l'instruction sp\E9cifique SUB SP *)
-    ASSERT (op < NBOPS);
-    ASSERT ((a < C4) & (b < C4) & (c < C4));
+  BEGIN ASSERT (op < NBOPS); ASSERT ((a < C4) & (b < C4) & (c < C4));
     IF (a < C3) & (b < C3) & (c < C3) & (shift = 0) & (reg3map[op] # 0) & (ORD(setFlags) = ORD(co.nbRmnITBlockInsts = 0)) THEN
       co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0; (* not in IT block *)
       doPut1(co, reg3map[op] + c*C6 + b*C3 + a)
     ELSIF (a < C3) & (b < C3) & (a = b) & (shift = 0) & (reg3dnmap[op] # 0) & (ORD(setFlags) = ORD(co.nbRmnITBlockInsts = 0)) THEN
       co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0; (* not in IT block *)
       doPut1(co, reg3dnmap[op] + c*C3 + a)
+    ELSIF (op = ADD) & (a # SP) & (b = SP) & (a = c) & (shift = 0) & ~setFlags THEN
+      (*|0100/0100/D110/1Rdm|
+         |                    M                  |*)
+      doPut1(co, 4468H + a DIV C3*C7 + a MOD C3);
+      co.lastInstrSetFlags := FALSE
+    ELSIF (op = ADD) & (a = SP) & (b = SP) & (c # SP) & (shift = 0) & ~setFlags THEN
+      (*|0100/0100/1  R/m101|*)
+      doPut1(co, 4485H + c*C3);
+      co.lastInstrSetFlags := FALSE
     ELSIF (a = b) & (shift = 0) & (reg4map[op] # 0) & ~setFlags THEN
       doPut1(co, reg4map[op] + a DIV C3*C7 + c*C3 + a MOD C3);
       co.lastInstrSetFlags := FALSE
@@ -639,6 +647,20 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
       c.lastInstrSetFlags := ODD(shimm5wmap[op] DIV C20)
     END
   END encShiftImm5;
+  
+  PROCEDURE encAdr*(VAR c: ModuleCode; a, t: BYTE; adr: INTEGER);
+    VAR ofs: INTEGER;
+  BEGIN ASSERT((a < C4) & ~(a IN {13, 15}));
+    ofs := adr - (c.pc DIV 4*4+4); (*offset = adr - Align(PC, 4)*)
+    IF (a < C3) & (ofs >= 0) & (ofs < C10) & (ofs MOD C2 = 0) THEN
+      (*|1010/0 Rd/  im/m8  |*)
+      doPut1(c, 0A000H + a*C8 + ofs DIV C2);
+    ELSIF (ofs > -C12) & (ofs < C12) THEN encDPImm32(c, ADD, a, 15, a+1, ofs, FALSE)
+    ELSE doPut0(c, BL + formatEvenImm25(0)); (*Put address+1 of next statement in LR*)
+      encDPImm32(c, SUB, a, 14, t, c.pc - adr + 1, FALSE)
+    END;
+    c.lastInstrSetFlags := FALSE
+  END encAdr;
   
   PROCEDURE encShiftReg*(VAR co: ModuleCode; op, a, b, c: BYTE; setFlags: BOOLEAN);
     VAR opc: SET;

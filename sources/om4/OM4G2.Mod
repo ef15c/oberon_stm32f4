@@ -211,11 +211,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.mode = B.Const THEN
         IF x.type.form = B.Proc THEN
           IF x.r > 0 THEN S.Mark("not allowed")
-          ELSIF x.r = 0 THEN 
-            (* TODO optimisation possible : si align(PC+4, 4) - x.a < 4096 on peut 
-              utiliser l'equivalent de l'assembleur ADR RH, <label>*)
-            A.Put0(mcode, A.BL + A.formatEvenImm25(0)); (*Put address+1 of next statement in LR*)
-            A.encDPImm32(mcode, A.SUB, RH, LR, RH, mcode.pc - x.a, TRUE)
+          ELSIF x.r = 0 THEN incR; A.encAdr(mcode, RH-1, RH, x.a+1); DEC(RH)
           ELSE GetStaticVarAddress(x, RH) 
           END;
           x.r := RH; incR
@@ -415,7 +411,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           A.encMUL(mcode, y.r, y.r, RH); p2 := 0
         END ;
         IF x.mode = B.Var THEN
-          IF x.r > 0 THEN A.encDPReg(mcode, A.ADD, y.r, SP, y.r, A.LSl, p2, TRUE); INC(x.a, frame)
+          IF x.r > 0 THEN A.encDPReg(mcode, A.ADD, y.r, SP, y.r, A.LSl, p2, FALSE); INC(x.a, frame)
           ELSE GetStaticVarAddress(x, RH);
             A.encDPReg(mcode, A.ADD, y.r, RH, y.r, A.LSl, p2, TRUE); x.a := 0
           END ;
@@ -577,7 +573,8 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSE (*op = S.minus*)
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a - y.a
-(*TODO ELSIF (x.mode = B.Const) & (y.type.size <= 4) on peut utiliser l'instruction RSB*)
+      ELSIF (x.mode = B.Const) & (x.type.size <= 4) THEN load(y);
+        A.encDPImm32(mcode, A.RSB, y.r, y.r, RH, x.a, TRUE); x.mode := Reg; x.r := y.r
       ELSIF y.mode = B.Const THEN load(x);
         IF y.a # 0 THEN A.encDPImm32(mcode, A.SUB, x.r, x.r, RH, y.a, TRUE) END;
           IF x.type.size = 8 THEN A.encDPImm32(mcode, A.SBc, x.r+1, x.r+1, RH, LSR(y.a, 32), TRUE) END
