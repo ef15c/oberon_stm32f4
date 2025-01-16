@@ -240,14 +240,15 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T32MSK8 11 0111xxx x Long multiply, long multiply accumulate, and divide on page A5-156*)
       LongMulAccDiv = {27..28, 23..25};
 
-      (*T32MSK42 00100 - Move Wide, 16-bit MOV (immediate) on page A7-291*)
-      MW16Bit = {22};
-      (*T32MSK42 01100 - Move Top, 16-bit MOVT on page A7-296*)
-      MoveTop = {23, 22};
       (*T32MSK42 00000 Rn not 1111 Add Wide, 12-bit ADD (immediate) on page A7-190*)
       AddWide12BitOrAdr = {};
-      (*T32MSK42 01010 Rn not 1111 Subtract Wide, 12-bit SUB (immediate) on page A7-402*)
+      (*T32MSK42 00100 - Move Wide, 16-bit MOV (immediate) on page A7-291*)
+      MW16Bit = {22};
+      (*T32MSK42 01010 - Rn not 1111: Subtract Wide 12 bit, SUB (immediate) on page A7-402
+         or Rn = 1111: Form PC-relative Address, ADR on page A7-198*)
       SubWide12BitOrAdr = {23, 21};
+      (*T32MSK42 01100 - Move Top, 16-bit MOVT on page A7-296*)
+      MoveTop = {23, 22};
       (*T32MSK42 10100 - Signed Bit Field Extract SBFX on page A7-349*)
       SBFX = {24, 22};
      (*T32MSK42 10110 Rn = 1111 Bit Field Clear BFC on page A7-207*)
@@ -421,6 +422,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
 
       (*T16MSK3 1010 0x: Generate PC-relative address, see ADR on page A7-198*)
       PCRelAdd = {15, 13};
+      (*T16MSK3 1010 1x: Generate SP-relative address, see ADD (SP plus immediate) on page A7-194*)
+      SPRelAdd = {15, 13, 11};
       (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
       UncBr = {13..15};
       
@@ -630,12 +633,19 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); Texts.WriteString(W, " #");
           Texts.WriteInt(W, 0 + b1 DIV A.C2 MOD A.C1*A.C11 +
             b3 DIV A.C4 MOD A.C3*A.C8 + b4, 1)
-        ELSIF (op*T32MSK42 = SubWide12BitOrAdr) & (Rn # 15) THEN
-          (*T32MSK42 01010 Rn not 1111 Subtract Wide, 12-bit SUB (immediate) on page A7-402*)
-          (*SUBW<c> <Rd>,<Rn>,#<imm12>*)
-          WriteOp(W, op, "SUB", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, 0 + b1 DIV A.C2 MOD A.C1*A.C11 +
-            b3 DIV A.C4 MOD A.C3*A.C8 + b4, 1)
+        ELSIF op*T32MSK42 = SubWide12BitOrAdr THEN
+          IF Rn = 15 THEN
+            (*T32MSK42 01010 - Rn = 1111: Form PC-relative Address, ADR on page A7-198
+              ADC<c>.W <Rd>,<Label>*)
+              WriteOp(W, op, "ADR", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " L");
+              Texts.WriteHex(W, (i + base) DIV 4 * 4 - (b1 DIV A.C2 MOD A.C1*A.C11 + b3 DIV A.C4 MOD A.C3*A.C8 + b4))
+          ELSE
+            (*T32MSK42 01010 Rn not 1111 Subtract Wide, 12-bit SUB (immediate) on page A7-402*)
+            (*SUBW<c> <Rd>,<Rn>,#<imm12>*)
+            WriteOp(W, op, "SUB", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); Texts.WriteString(W, " #");
+            Texts.WriteInt(W, 0 + b1 DIV A.C2 MOD A.C1*A.C11 +
+              b3 DIV A.C4 MOD A.C3*A.C8 + b4, 1)
+          END
         ELSIF (op*T32MSK42 = BitField) & (Rn = 15) THEN
           (*T32MSK42 10110 Rn = 1111 Bit Field Clear BFC on page A7-207*)
           (*BFC<c><q>  <Rd>,#<lsb>,#<witdth>*)
@@ -1420,7 +1430,12 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         (*T16MSK3 1010 0x: Generate PC-relative address, see ADR on page A7-198
           ADD<c><q> <Rd> PC #<const>*)
         Rd := b1 MOD A.C3;
-        WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " PC #"); Texts.WriteInt(W, b2, 1)
+        WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " PC #"); Texts.WriteInt(W, b2*4, 1)
+      ELSIF op*T16MSK3 = SPRelAdd THEN
+        (*T16MSK3 1010 1x: Generate SP-relative address, see ADD (SP plus immediate) on page A7-194
+          ADD<c><q> <Rd> SP #<const>*)
+        Rd := b1 MOD A.C3;
+        WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " SP #"); Texts.WriteInt(W, b2*4, 1)
       ELSIF op*T16MSK3 = UncBr THEN
         (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
         (*B<c> <label>*)

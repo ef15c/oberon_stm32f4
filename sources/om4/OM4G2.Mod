@@ -423,7 +423,8 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           A.encDPReg(mcode, A.ADD, x.r, x.r, y.r, A.LSl, p2, TRUE); DEC(RH)
         END
       END
-    END
+    END;
+    IF x.type.base = B.longintType THEN incR END; (*allocate register for future load*)
   END Index;
 
   PROCEDURE DeRef*(VAR x: Item);
@@ -932,7 +933,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN x.type := B.charType; DEC(strx, 4); x.a := ORD(str[x.a])
   END StrToChar;
 
-  PROCEDURE Store*(VAR x, y: Item); (* x := y *)
+  PROCEDURE Store*(VAR x, y: Item); (* x := y , frame = 0*)
     VAR op: INTEGER;
   BEGIN convertInt(y, x.type); ASSERT(frame = 0);
     IF ~(y.mode IN {Reg, FPReg}) THEN
@@ -941,14 +942,14 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.type.size = 1 THEN op := A.STRB ELSE op := A.STR END ;
     IF x.mode = B.Var THEN
       IF x.r > 0 THEN (*local*)
-        IF y.mode = FPReg THEN ASSERT((x.a + frame) MOD A.C2 = 0);
-          IF x.a + frame >= A.C10 THEN S.Mark("local real var too far")
+        IF y.mode = FPReg THEN ASSERT((x.a) MOD A.C2 = 0);
+          IF x.a >= A.C10 THEN S.Mark("local real var too far")
           END;
           A.Put0(mcode, A.VSTRT2 + 1*A.C23(*ADD*) +
             y.r MOD A.C1*A.C22 + SP*A.C16 + y.r DIV A.C1*A.C12 +
-            (x.a + frame) DIV A.C2)
-        ELSIF x.type.size = 8 THEN (*longint*) A.encDMemImm32(mcode, A.STRD, y.r, y.r+1, SP, RH, x.a + frame)
-        ELSE A.encMemImm32(mcode, op, y.r, SP, RH, x.a + frame)
+            x.a DIV A.C2)
+        ELSIF x.type.size = 8 THEN (*longint*) A.encDMemImm32(mcode, A.STRD, y.r, y.r+1, SP, RH, x.a)
+        ELSE A.encMemImm32(mcode, op, y.r, SP, RH, x.a)
         END
       ELSE GetStaticVarAddress(x, RH);
         IF y.mode = FPReg THEN
@@ -959,9 +960,9 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END
       END    
     ELSIF x.mode = B.Par THEN
-      incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
+      incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, x.a); DEC(RH);
       IF y.mode = FPReg THEN ASSERT((x.b) MOD A.C2 = 0);
-        IF x.a + frame >= A.C10 THEN S.Mark("real param offset 1 too far")
+        IF x.a >= A.C10 THEN S.Mark("real param offset 1 too far")
         END;
         A.Put0(mcode, A.VSTRT2 + 1*A.C23 + y.r MOD A.C1*A.C22 + RH*A.C16 + y.r DIV A.C1*A.C12 + (x.b) DIV A.C2)
       ELSIF x.type.size = 8 THEN (*longint*) incR; A.encDMemImm32(mcode, A.STRD, y.r, y.r+1, RH-1, RH, x.b); DEC(RH)
@@ -969,9 +970,9 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSIF x.mode = RegI THEN
       IF y.mode = FPReg THEN ASSERT((x.a) MOD A.C2 = 0);
-        IF x.a + frame >= A.C10 THEN S.Mark("RegI too far")
+        IF x.a >= A.C10 THEN S.Mark("RegI too far")
         END;
-        A.Put0(mcode, A.VSTRT2 + 1*A.C23 + y.r MOD A.C1*A.C22 + x.r*A.C16 + y.r DIV A.C1*A.C12 + (x.a + frame) DIV A.C2);
+        A.Put0(mcode, A.VSTRT2 + 1*A.C23 + y.r MOD A.C1*A.C22 + x.r*A.C16 + y.r DIV A.C1*A.C12 + x.a DIV A.C2);
         DEC(SH)
       ELSIF x.type.size = 8 THEN A.encDMemImm32(mcode, A.STRD, y.r, y.r+1, x.r, RH, x.a); DEC(RH, 2)
       ELSE A.encMemImm32(mcode, op, y.r, x.r, RH, x.a); DEC(RH)

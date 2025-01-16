@@ -5,31 +5,33 @@ Net.SendFiles CS BootLoad.hex ~
 (*no more used: OM4X.WriteASM BootLoad.m4c BootLoad.s ~*)
 
 Commands for generation of the boot file (inner core)
-OM4P.Compile BSP.Mod/s SDCard.Mod/s Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s ~ 
+OM4P.Compile BSP.Mod SDCard.Mod ~
+OM4P2.Compile LongDiv.Mod ~
+OM4P.Compile Kernel.Mod FileDir.Mod Files.Mod Modules.Mod ~ 
 OM4L.Link Modules ~
 OM4L.Load Modules.bin ~
 
 Commands for generation of outer core
-OM4P.Compile PS2.Mod/s InputAzerty.Mod/s Display.Mod/s Viewers.Mod/s Fonts.Mod/s Texts.Mod/s 
-  Oberon.Mod/s MenuViewers.Mod/s TextFrames.Mod/s System.Mod/s Edit.Mod/s OnStartup.Mod ~
+OM4P.Compile PS2.Mod InputAzerty.Mod Display.Mod Viewers.Mod Fonts.Mod Texts.Mod
+  Oberon.Mod MenuViewers.Mod TextFrames.Mod System.Mod Edit.Mod OnStartup.Mod ~
 
 Commands for generation of the compiler
-OM4P.Compile TextsEx.Mod/s CRC32.Mod/s FilesEx.Mod/s OM4S.Mod/s OM4B.Mod/s OM4A.Mod/s OM4G.Mod/s OM4P.Mod/s
-  OM4X.Mod/s OM4L.Mod/s OM4D.Mod/s OM4Tool.Mod/s StackTrace.Mod/s ~
+OM4P.Compile TextsEx.Mod CRC32.Mod FilesEx.Mod OM4S.Mod OM4B.Mod OM4A.Mod OM4G.Mod OM4P.Mod
+  OM4X.Mod OM4L.Mod OM4D.Mod OM4Tool.Mod StackTrace.Mod ~
 
 Commands for generation of net
-OM4P.Compile SCC.Mod/s Net.Mod/s ~
-OM4P.Compile RS232.Mod/s ~
+OM4P.Compile SCC.Mod Net.Mod ~
+OM4P.Compile RS232.Mod ~
 
 Command for generation of tools
-OM4P.Compile Tools.Mod/s HeapTool.Mod ~
+OM4P.Compile Tools.Mod HeapTool.Mod ~
 
 Commands for generation of graphic system
-OM4P.Compile Graphics.Mod/s GraphicFrames.Mod/s Draw.Mod Rectangles.Mod/s Curves.Mod/s
-  MacroTool.Mod/s GraphTool.Mod/s ~
+OM4P.Compile Graphics.Mod GraphicFrames.Mod Draw.Mod Rectangles.Mod Curves.Mod
+  MacroTool.Mod GraphTool.Mod ~
 
 Command for generating programs
-OM4P.Compile Hilbert.Mod/s Sierpinski.Mod/s Blink.Mod/s Stars.Mod/s ~
+OM4P.Compile Hilbert.Mod Sierpinski.Mod Blink.Mod Stars.Mod ~
 
 OM4Tool.DecBin Modules.bin ~
 
@@ -49,3 +51,26 @@ System.CopyFiles OM4B2.Mod=>OM4B.Mod OM4G2.Mod=>OM4G.Mod OM4P2.Mod=>OM4P.Mod ~
 Net.SendFiles CS OM4B.Mod OM4G.Mod OM4P.Mod ~
 <<rename modules with original names>>
 OM4P2.Compile OM4B.Mod OM4G.Mod OM4P.Mod ~
+
+System.CopyFiles OM4S.Mod => OM4S2.Mod ~
+
+LONGINT version
+
+OM4P.Compile FilesEx2.Mod OM4S2.Mod/s OM4B2.Mod OM4A2.Mod/s OM4G2.Mod/s OM4P2.Mod ~
+System.Free OM4P2 OM4G2 OM4A2 OM4B2 OM4S2 testRWNum FilesEx2 ~
+OM4P2.Compile FilesEx2.Mod OM4S2.Mod OM4B2.Mod OM4A2.Mod OM4G2.Mod OM4P2.Mod ~
+System.CopyFiles FilesEx2.Mod => FilesEx2.Mod.s2 OM4S2.m4c => OM4S2.m4c.s2 OM4B2.m4c => OM4B2.m4c.s2 OM4A2.m4c =>
+  OM4A2.m4c.s2 OM4G2.m4c => OM4G2.m4c.s2 OM4P2.m4c => OM4P2.m4c.s2 ~
+
+System.Free OM4P2 OM4G2 OM4A2 OM4B2 OM4S2 testRWNum FilesEx2 ~ System.Free OM4Tool OM4D ~
+OM4P2.Compile FilesEx2.Mod OM4S2.Mod OM4B2.Mod OM4A2.Mod OM4G2.Mod OM4P2.Mod ~
+System.CompareFiles FilesEx2.Mod = FilesEx2.Mod.s2 OM4S2.m4c = OM4S2.m4c.s2 OM4B2.m4c = OM4B2.m4c.s2
+  OM4A2.m4c = OM4A2.m4c.s2 OM4G2.m4c = OM4G2.m4c.s2 OM4P2.m4c = OM4P2.m4c.s2 ~
+
+
+OM4P2.Compile FilesEx2.Mod TextsEx2.Mod/s ~
+System.Free OM4Tool OM4D ~
+
+Net.SendFiles CS FilesEx2.Mod OM4S2.Mod OM4B2.Mod OM4A2.Mod OM4G2.Mod OM4P2.Mod ~
+
+Kernel2.Mod ~

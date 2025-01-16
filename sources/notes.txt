@@ -76,12 +76,8 @@ N° de service   Nom         R0                                                  
 -------------   -------     --------------------------------------------------  ------------------------------------    ------------------------
             0   NEW         Adresse du pointeur vers la zone à allouer          Taille de la zone à allouer
             1   LED         <7:0> : un bit par LED à allumer (1) ou éteindre 0
-            2   <supprimé>
-            3   <supprimé>
-            4   <supprimé>  
-            5   <supprimé>
-            6   <supprimé>
-            7   <supprimé>
+            2   DivL        en entrée : mot de poids faible du dividende        mot de poids fort du dividende          R2: poids faible diviseur, R3 poids fort
+                            en sortie : mot de poids faible du reste            mot de poids fort du reste              R2: poids faible quotient, R3 poids fort
 
 
 Runtime checks:

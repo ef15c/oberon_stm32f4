@@ -30,6 +30,9 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
 
     CoP*     = 0EC000000H; (*Coprocessor instruction*)
 
+    ADr*    = 0F20F0000H;
+    (*|1111/0i10/U0U0/1111/0im3/ rd /  im/m8  |*)
+
     BCT1*    = 0D000H;
     (*|1101 cond   imm8   |*)
     BT2*     = 0E000H;
@@ -446,10 +449,17 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   (*|xxxxxixxxxxximm4ximm reg  imm8  |
     |                   3            |
     val = imm4:i:imm3:imm8*)
-  BEGIN
+  BEGIN ASSERT(val >= 0); ASSERT(val < C16)
+
     RETURN val DIV C12 MOD C4*C16 + val DIV C11 MOD C1*C26 + 
            val DIV C8 MOD C3*C12 + reg*C8 + val MOD C8
   END formatImm16;
+
+  PROCEDURE formatImm12*(val: INTEGER): INTEGER;
+  BEGIN ASSERT(val >= 0); ASSERT(val < C12)
+
+    RETURN val DIV C11 MOD C1*C26 + val DIV C8 MOD C3*C12 + val MOD C8
+  END formatImm12;
 
   PROCEDURE encMOVImm32*(VAR c: ModuleCode; reg: BYTE; val: INTEGER);
   VAR halfw, tmiCode: INTEGER;
@@ -543,8 +553,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
       IF ~setFlags THEN EXCL(opc, 20) END; doPut0(c, ORD(opc));
       c.lastInstrSetFlags := 20 IN opc;
     ELSIF (imm >= 0) & (imm < C12)  & (imm12map[op] # 0) & ~setFlags THEN
-      doPut0(c, imm12map[op] + imm DIV C11 MOD C1*C26 + b*C16 +
-        imm DIV C8 MOD C3*C12 + a*C8 + imm MOD C8);
+      doPut0(c, imm12map[op] + formatImm12(imm) + b*C16 + a*C8);
       c.lastInstrSetFlags := FALSE
     ELSE
       ASSERT(c.nbRmnITBlockInsts = 0);
@@ -655,7 +664,8 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
     IF (a < C3) & (ofs >= 0) & (ofs < C10) & (ofs MOD C2 = 0) THEN
       (*|1010/0 Rd/  im/m8  |*)
       doPut1(c, 0A000H + a*C8 + ofs DIV C2);
-    ELSIF (ofs > -C12) & (ofs < C12) THEN encDPImm32(c, ADD, a, 15, a+1, ofs, FALSE)
+    ELSIF (ofs > -C12) & (ofs < 0) THEN doPut0(c, ADr + 5*C21 (*SUB*) + formatImm12(-ofs) + a*C8)
+    ELSIF (ofs >= 0) & (ofs < C12) THEN doPut0(c, ADr  (*ADD*) + formatImm12(ofs) +a*C8)
     ELSE doPut0(c, BL + formatEvenImm25(0)); (*Put address+1 of next statement in LR*)
       encDPImm32(c, SUB, a, 14, t, c.pc - adr + 1, FALSE)
     END;
