@@ -285,12 +285,12 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode = B.Var THEN
       IF x.r > 0 THEN (*local*) incR; A.encDPImm32(mcode, A.ADD, RH-1, SP, RH, x.a + frame, FALSE); DEC(RH)
-      ELSE GetStaticVarAddress(x, RH) 
+      ELSE GetStaticVarAddress(x, RH)
       END;
-      x.r := RH; incR
+      x.r := RH; incR; IF x.type = B.longintType THEN incR (*allocate register for upper word*) END
     ELSIF x.mode = B.Par THEN incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, x.a + frame); DEC(RH);
       IF x.b # 0 THEN incR; A.encDPImm32(mcode, A.ADD, RH-1, RH-1, RH, x.b, TRUE); DEC(RH) END;
-      x.r := RH; incR
+      x.r := RH; incR; IF x.type = B.longintType THEN incR (*allocate register for upper word*) END
     ELSIF x.mode = RegI THEN
       IF x.a # 0 THEN A.encDPImm32(mcode, A.ADD, x.r, x.r, RH, x.a, TRUE) END
     ELSE S.Mark("address error")
@@ -362,7 +362,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF x.mode = RegI THEN x.a := x.a + y.val
     ELSIF x.mode = B.Par THEN x.b := x.b + y.val
     END;
-    IF (x.mode = RegI) & (y.type = B.longintType) THEN ASSERT(x.r = RH-1); incR (*allocate room for upper word*) END
+    IF (x.mode = RegI) & (y.type = B.longintType) THEN ASSERT(x.r = RH-1); incR (*allocate register for upper word*) END
   END Field;
 
   PROCEDURE convertInt(VAR x: Item; t: B.Type);
@@ -393,7 +393,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSIF x.mode = B.Par THEN INC(x.b, y.a * s)
           END
         ELSE GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := y.a * s; incR;
-          IF x.type.base = B.longintType THEN incR END (*allocate register for future load*)
+          IF x.type.base = B.longintType THEN incR END (*allocate register for upper word*)
         END
       ELSE convertInt(y, B.intType); load(y);
         IF check THEN  (*check array bounds*)
@@ -423,7 +423,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         ELSIF x.mode = RegI THEN
           A.encDPReg(mcode, A.ADD, x.r, x.r, y.r, A.LSl, p2, TRUE); DEC(RH)
         END;
-        IF x.type.base = B.longintType THEN incR END (*allocate register for future load*)
+        IF x.type.base = B.longintType THEN incR END (*allocate register for upper word*)
       END
     END
   END Index;
@@ -1239,9 +1239,9 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.type = B.longintType THEN incR; A.encDMemImm32(mcode, A.LDRD, zr, zr+1, x.r, RH, 0)
       ELSE A.encMemImm32(mcode, vl, zr, x.r, RH, 0)
       END; doInc(x, y, op, op2, zr, vl, vs);
-      IF x.type = B.longintType THEN A.encDMemImm32(mcode, A.STRD, zr, zr+1, x.r, RH, 0); DEC(RH, 3)
+      IF x.type = B.longintType THEN A.encDMemImm32(mcode, A.STRD, zr, zr+1, x.r, RH, 0); DEC(RH, 4)
       ELSE A.encMemImm32(mcode, vs, zr, x.r, RH, 0); DEC(RH, 2)
-      END;
+      END
     END
   END Increment;
 

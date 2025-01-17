@@ -4,7 +4,7 @@ MODULE AOC2024Day7;
   TYPE ProcessProc = PROCEDURE(r: LONGINT; p: ARRAY OF LONGINT; c: INTEGER);
 
   VAR W: Texts.Writer;
-    s: LONGINT;
+    s: LONGINT; pr: BYTE;
 
   PROCEDURE concat(l, r: LONGINT): LONGINT;
     VAR t: LONGINT;
@@ -60,8 +60,7 @@ MODULE AOC2024Day7;
 
   PROCEDURE doPart2(r: LONGINT; p: ARRAY OF LONGINT; c: INTEGER);
     VAR i, k: INTEGER; ir: ARRAY 20 OF LONGINT; op: ARRAY 20 OF INTEGER;
-  BEGIN
-    ASSERT(c > 0);
+  BEGIN ASSERT(c > 0); LED(pr); INC(pr);
     k := 1; ir[0] := p[0]; FOR i := 0 TO LEN(op) - 1 DO op[i] := 0 END;
     WHILE k > 0 DO
       IF k >= c THEN IF ir[k - 1] = r THEN INC(s, r); k := 0 END; DEC(k)

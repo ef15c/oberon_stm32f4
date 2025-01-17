@@ -1,162 +1,79 @@
 MODULE testLongInt;
-  IMPORT Texts, Oberon;
 
-  VAR W: Texts.Writer;
-    q: PROCEDURE;
+  TYPE R = RECORD l: LONGINT; i: INTEGER END;
+    PR = POINTER TO R;
 
-  PROCEDURE p;
-    VAR i: INTEGER; l: ARRAY 15 OF LONGINT;
-  BEGIN i := 0; l[i] := 0
-  END p;
+  VAR s: LONGINT;
 
-  PROCEDURE p2;
-    VAR i: INTEGER; l: ARRAY 15 OF LONGINT;
-  BEGIN i := 0; l[i] := 0
-  END p2;
-
-  PROCEDURE run*;
-    VAR x: SET; y: INTEGER;
-  BEGIN y := 0; x := {y..23};
-    Texts.WriteString(W, "x="); Texts.WriteHex(W, ORD(x)); Texts.WriteLn(W);
-    Texts.Append(Oberon.Log, W.buf)
+  PROCEDURE run*(VAR x: LONGINT);
+    VAR pr!: PR; r: R;n: INTEGER; a: ARRAY 5 OF LONGINT;
+      b: ARRAY 5 OF INTEGER; y: LONGINT;
+  BEGIN INC(s, x); INC(x, LSL(y, n)); INC(pr.l, n); INC(pr.i, n)
   END run;
 
-  PROCEDURE run2*;
-  BEGIN q
-  END run2;
-
-BEGIN q := p; q := p2; q;
-  q := run; Texts.OpenWriter(W)
+BEGIN
 END testLongInt.
 
 System.Free OM4P2 OM4G2 OM4A2 OM4B2 OM4S2 ~ System.Free OM4Tool OM4D ~
 OM4P2.Compile testLongInt.Mod/s ~ System.Free testLongInt ~ testLongInt.run testLongInt.trap testLongInt.run2
 
 OM4Tool.DecObj testLongInt.m4c
-decode testLongInt.m4c
-testLongInt 37DE64EE   1    480
-imports:
-	Texts B8CAF4C4
-	Fonts AA480AE7
-	Files 1482C9F6
-	Oberon B56151A2
-	Display 15E666AA
-	Viewers E54B088A
-	PS2 FA464427
-type descriptors
 
-data    44
+ 00000000	     B096	SUB SP SP #88
+ 00000002	     B401	PUSH R0
+ 00000004	     B500	PUSH LR
+ 00000006	 00000003	MOV R0 lower 16-bits base(0)
+ 0000000A	 00000014	MOVT R0 higher 16-bits base + 20
+ 0000000E	 E9D02300	LDRD R2 R3 [ R0 + 0 ]
+ 00000012	     9B01	LDR R3 [ SP + 4 ]
+ 00000014	 E9D33400	LDRD R3 R4 [ R3 + 0 ]
+ 00000018	     18D2	ADDS R2 R2 R3
+ 0000001A	     4163	ADCS R3 R3 R4
+ 0000001C	 E9C02300	STRD R2 R3 [ R0 + 0 ]
+
+decode testLongInt.m4c
+testLongInt 1D710F9F   1    112
+imports:
+type descriptors
+ 00000020 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF
+data     0
 strings
-x=||
+
 code
 commands:
-	run   76
-	run2  206
+	run    0
 entries
- 000000E2 0000004C 000000CE
+ 0000003C 00000000
 pointer refs
-    36    24     4     0
-fixP =      298
-fixD =      290
+
+fixP =        0
+fixD =        0
 fixT =        0
-entry =      226
- 00000000	     B09F	SUB SP SP #124
+entry =       60
+ 00000000	     B094	SUB SP SP #80
  00000002	     B500	PUSH LR
- 00000004	     2000	MOVS R0 #0
- 00000006	     9001	STR R0 [ SP + 4 ]
- 00000008	     9801	LDR R0 [ SP + 4 ]
- 0000000A	     280F	CMP R0 #15
- 0000000C	     BF28	IT CS
- 0000000E	 EC001261	TrapCS 1 at pos 166
- 00000012	 EB0D00C0	ADD R0 SP R0 LSL #3
- 00000016	     2200	MOVS R2 #0
- 00000018	     2300	MOVS R3 #0
- 0000001A	 E9C02302	STRD R2 R3 [ R0 + 8 ]
- 0000001E	 F85DEB04	LDR LR [ SP ] + 4
- 00000022	     B01F	ADD SP SP #124
- 00000024	     4770	BX LR
- 00000026	     B09F	SUB SP SP #124
- 00000028	     B500	PUSH LR
- 0000002A	     2000	MOVS R0 #0
- 0000002C	     9001	STR R0 [ SP + 4 ]
- 0000002E	     9801	LDR R0 [ SP + 4 ]
- 00000030	     280F	CMP R0 #15
- 00000032	     BF28	IT CS
- 00000034	 EC002061	TrapCS 1 at pos 262
- 00000038	 EB0D00C0	ADD R0 SP R0 LSL #3
- 0000003C	     2200	MOVS R2 #0
- 0000003E	     2300	MOVS R3 #0
- 00000040	 E9C02302	STRD R2 R3 [ R0 + 8 ]
- 00000044	 F85DEB04	LDR LR [ SP ] + 4
- 00000048	     B01F	ADD SP SP #124
- 0000004A	     4770	BX LR
- 0000004C	     B082	SUB SP SP #8
- 0000004E	     B500	PUSH LR
- 00000050	     2000	MOVS R0 #0
- 00000052	     9002	STR R0 [ SP + 8 ]
- 00000054	     9802	LDR R0 [ SP + 8 ]
- 00000056	 F05F31FF	MOVS R1 #-1
- 0000005A	 FA11F000	LSLS R0 R1 R0
- 0000005E	 F05F417F	MOVS R1 #-16777216
- 00000062	     4388	BICS R0 R0 R1
- 00000064	     9001	STR R0 [ SP + 4 ]
- 00000066	 00000033	MOV R0 lower 16-bits base(0)
- 0000006A	 00000000	MOVT R0 higher 16-bits base + 0
- 0000006E	 11000004	MOV R1 lower 16-bits base(1)
- 00000072	 00000005	MOVT R1 higher 16-bits var(5)
- 00000076	 20000004	MOV R2 lower 16-bits base(0)
- 0000007A	 0000002C	MOVT R2 higher 16-bits base + 44
- 0000007E	     2303	MOVS R3 #3
- 00000080	 11E00040	BL Mod(  1) proc(30)
- 00000084	 00000007	MOV R0 lower 16-bits base(0)
- 00000088	 00000000	MOVT R0 higher 16-bits base + 0
- 0000008C	 11000004	MOV R1 lower 16-bits base(1)
- 00000090	 00000005	MOVT R1 higher 16-bits var(5)
- 00000094	     9A01	LDR R2 [ SP + 4 ]
- 00000096	 1200000B	BL Mod(  1) proc(32)
- 0000009A	 00000007	MOV R0 lower 16-bits base(0)
- 0000009E	 00000000	MOVT R0 higher 16-bits base + 0
- 000000A2	 11000004	MOV R1 lower 16-bits base(1)
- 000000A6	 00000005	MOVT R1 higher 16-bits var(5)
- 000000AA	 11D0000A	BL Mod(  1) proc(29)
- 000000AE	 04000006	MOV R0 lower 16-bits base(4)
- 000000B2	 0000000D	MOVT R0 higher 16-bits var(13)
- 000000B6	     6800	LDR R0 [ R0 + 0 ]
- 000000B8	 10000005	MOV R1 lower 16-bits base(0)
- 000000BC	 00000000	MOVT R1 higher 16-bits base + 0
- 000000C0	     6809	LDR R1 [ R1 + 0 ]
- 000000C2	 10E0000C	BL Mod(  1) proc(14)
- 000000C6	 F85DEB04	LDR LR [ SP ] + 4
- 000000CA	     B002	ADD SP SP #8
- 000000CC	     4770	BX LR
- 000000CE	     B500	PUSH LR
- 000000D0	 0000000C	MOV R0 lower 16-bits base(0)
- 000000D4	 00000028	MOVT R0 higher 16-bits base + 40
- 000000D8	     6800	LDR R0 [ R0 + 0 ]
- 000000DA	     4780	BLX R0
- 000000DC	 F85DEB04	LDR LR [ SP ] + 4
- 000000E0	     4770	BX LR
- 000000E2	     B500	PUSH LR
- 000000E4	 F2AF00E7	ADR R0 L 00000001
- 000000E8	 1000000C	MOV R1 lower 16-bits base(0)
- 000000EC	 00000028	MOVT R1 higher 16-bits base + 40
- 000000F0	     6008	STR R0 [  R1 + 0 ]
- 000000F2	 F2AF00CD	ADR R0 L 00000027
- 000000F6	 10000007	MOV R1 lower 16-bits base(0)
- 000000FA	 00000028	MOVT R1 higher 16-bits base + 40
- 000000FE	     6008	STR R0 [  R1 + 0 ]
- 00000100	 00000005	MOV R0 lower 16-bits base(0)
- 00000104	 00000028	MOVT R0 higher 16-bits base + 40
- 00000108	     6800	LDR R0 [ R0 + 0 ]
- 0000010A	     4780	BLX R0
- 0000010C	 F2AF00C3	ADR R0 L 0000004D
- 00000110	 10000008	MOV R1 lower 16-bits base(0)
- 00000114	 00000028	MOVT R1 higher 16-bits base + 40
- 00000118	     6008	STR R0 [  R1 + 0 ]
- 0000011A	 00000005	MOV R0 lower 16-bits base(0)
- 0000011E	 00000000	MOVT R0 higher 16-bits base + 0
- 00000122	 11000004	MOV R1 lower 16-bits base(1)
- 00000126	 00000005	MOVT R1 higher 16-bits var(5)
- 0000012A	 11800034	BL Mod(  1) proc(24)
- 0000012E	 F85DEB04	LDR LR [ SP ] + 4
- 00000132	     4770	BX LR
+ 00000004	     9801	LDR R0 [ SP + 4 ]
+ 00000006	     2800	CMP R0 #0
+ 00000008	     BF08	IT EQ
+ 0000000A	 EC001534	TrapEQ 4 at pos 211
+ 0000000E	     9A05	LDR R2 [ SP + 20 ]
+ 00000010	 F34273C0	SBFX R3 R2 #31 #1
+ 00000014	 E9D04500	LDRD R4 R5 [ R0 + 0 ]
+ 00000018	     18A4	ADDS R4 R4 R2
+ 0000001A	     415D	ADCS R5 R5 R3
+ 0000001C	 E9C04500	STRD R4 R5 [ R0 + 0 ]
+ 00000020	     9801	LDR R0 [ SP + 4 ]
+ 00000022	     2800	CMP R0 #0
+ 00000024	     BF08	IT EQ
+ 00000026	 EC001614	TrapEQ 4 at pos 225
+ 0000002A	     3008	ADDS R0 R0 #8 ; Optimisation possible avec suppression de cette instruction
+ 0000002C	     6801	LDR R1 [ R0 + 0 ]; et remplacement de celle ci par LDR R1 [ R0 + 8 ]
+ 0000002E	     9A05	LDR R2 [ SP + 20 ]
+ 00000030	     1889	ADDS R1 R1 R2
+ 00000032	     6001	STR R1 [  R0 + 0 ] et celle ci par STR R1 [  R0 + 8 ]
+ 00000034	 F85DEB04	LDR LR [ SP ] + 4
+ 00000038	     B014	ADD SP SP #80
+ 0000003A	     4770	BX LR
+ 0000003C	     B500	PUSH LR
+ 0000003E	 F85DEB04	LDR LR [ SP ] + 4
+ 00000042	     4770	BX LR
