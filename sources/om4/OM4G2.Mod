@@ -390,9 +390,10 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF (y.a < 0) OR (y.a >= lim) THEN S.Mark("bad index") END ;
         IF (x.mode # B.Var) OR (x.r >= 0) OR (y.a = 0) THEN
           IF x.mode IN {B.Var, RegI} THEN INC(x.a, y.a * s)
-          ELSIF x.mode = B.Par THEN x.b := y.a * s + x.b
+          ELSIF x.mode = B.Par THEN INC(x.b, y.a * s)
           END
-        ELSE GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := y.a * s; incR
+        ELSE GetStaticVarAddress(x, RH); x.mode := RegI; x.r := RH; x.a := y.a * s; incR;
+          IF x.type.base = B.longintType THEN incR END (*allocate register for future load*)
         END
       ELSE convertInt(y, B.intType); load(y);
         IF check THEN  (*check array bounds*)
@@ -421,10 +422,10 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           A.encDPReg(mcode, A.ADD, y.r, RH, y.r, A.LSl, p2, TRUE); x.mode := RegI; x.r := y.r; x.a := x.b
         ELSIF x.mode = RegI THEN
           A.encDPReg(mcode, A.ADD, x.r, x.r, y.r, A.LSl, p2, TRUE); DEC(RH)
-        END
+        END;
+        IF x.type.base = B.longintType THEN incR END (*allocate register for future load*)
       END
-    END;
-    IF x.type.base = B.longintType THEN incR END; (*allocate register for future load*)
+    END
   END Index;
 
   PROCEDURE DeRef*(VAR x: Item);
@@ -1159,7 +1160,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF s > 0 THEN (* VMOV Ss, S0*) A.Put0(mcode, A.VMOVSS + s DIV A.C1*A.C12 +
         s MOD A.C1*A.C22); A.RestoreFPRegs(mcode, s, frame); OfsPTOS(-s, -s, TRUE)
       END ;
-      IF r > 0 THEN A.encMOVReg(mcode, r, 0); 
+      IF r > 0 THEN A.encMOVReg(mcode, r, 0); IF x.type.base = B.longintType THEN A.encMOVReg(mcode, r+1, 1) END;
         A.RestoreRegs(mcode, r, frame); OfsPTOS(-r, -r, TRUE) END ;
       IF x.type.base.form = B.Real THEN x.mode := FPReg; x.r := s; SH := s+1; RH := r 
       ELSE x.mode := Reg; x.r := r;
