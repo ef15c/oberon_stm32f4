@@ -135,7 +135,7 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
       IF sym = S.lbrak THEN
         REPEAT S.Get(sym); expression(y);
           IF x.type.form = B.Array THEN
-            CheckInt(y); G.Index(x, y); x.type := x.type.base
+            CheckInt(y); G.Index(x, y)
           ELSE S.Mark("not an array")
           END
         UNTIL sym # S.comma;
@@ -145,7 +145,7 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
           IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base END ;
           IF x.type.form = B.Record THEN
             obj := B.thisfield(x.type); S.Get(sym);
-            IF obj # NIL THEN G.Field(x, obj); x.type := obj.type
+            IF obj # NIL THEN G.Field(x, obj)
             ELSE S.Mark("undef")
             END
           ELSE S.Mark("not a record"); S.Get(sym)
@@ -333,7 +333,7 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = S.ident THEN
       qualident(obj); IF initmode & (obj.lev = 0) THEN obj.rdo := FALSE END;
       IF obj.class = B.SFunc THEN StandFunc(x, obj.val, obj.type)
-      ELSE G.MakeItem(x, obj, level); selector(x);
+      ELSE G.MakeItem(x, obj, level); x.dip := TRUE; (* allocate extra register for long int*) selector(x);
         IF sym = S.lparen THEN
           S.Get(sym);
           IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
@@ -443,16 +443,27 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
 
   (* statements *)
 
+  PROCEDURE lvalue(VAR x: G.Item);
+    VAR obj!: B.Object;
+  BEGIN
+    IF sym = S.ident THEN
+      qualident(obj); G.MakeItem(x, obj, level);
+      IF x.mode = B.SProc THEN S.Mark("not assignable") ELSE selector(x) END
+    ELSE S.Mark("not assignable")
+    END
+   END lvalue;
+
   PROCEDURE StandProc(pno: INTEGER);
     VAR nap, npar: INTEGER; (*nof actual/formal parameters*)
       x!, y!, z!: G.Item;
   BEGIN Check(S.lparen, "no (");
-    npar := pno MOD 10; pno := pno DIV 10; expression(x); nap := 1;
+    npar := pno MOD 10; pno := pno DIV 10;
+    IF pno IN {0..3, 5..7} THEN lvalue(x) ELSE expression(x) END; nap := 1;
     IF sym = S.comma THEN
       S.Get(sym); IF pno = 14 (*LDREG*) THEN 
         CheckConst(x); CheckInt(x); IF x.a < 16 THEN G.SetRH(x.a) END 
       END;
-      expression(y); nap := 2; z.type := B.noType;
+      IF pno IN {7, 10} THEN lvalue(y) ELSE expression(y) END; nap := 2; z.type := B.noType;
       WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
     ELSE y.type := B.noType
     END ;
