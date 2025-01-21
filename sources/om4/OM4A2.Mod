@@ -463,7 +463,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
 
   PROCEDURE encMOVImm32*(VAR c: ModuleCode; reg: BYTE; val: INTEGER);
   VAR halfw, tmiCode: INTEGER;
-  BEGIN
+  BEGIN ASSERT(~(reg IN {13, 15}));
     ASSERT(reg < 16);
     IF (reg < 8) & (val >= 0) & (val < C8) THEN (*use encoding T1 if possible*)
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
@@ -519,7 +519,7 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   
   PROCEDURE encDPImm32*(VAR c: ModuleCode; op, a, b, t: BYTE; imm: INTEGER; setFlags: BOOLEAN);
     VAR tmiCode: INTEGER; opc: SET;
-  BEGIN ASSERT (op < NBOPS); ASSERT ((a < C4) & (b < C4) & (t < C4));
+  BEGIN ASSERT (op < NBOPS); ASSERT ((a < C4) & (b < C4) & (t < C4)); ASSERT(a # 15); (*use ADR instead*)
     IF (imm >= 0) & (imm < C3) & ((op # RSB) OR (imm = 0)) & (a < C3) & (b < C3) & (imm3map[op] # 0) & (ORD(setFlags) = ORD(c.nbRmnITBlockInsts = 0)) THEN
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
       doPut1(c, imm3map[op] + imm*C6 + b*C3 + a)
@@ -835,9 +835,9 @@ MODULE OM4A2; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F proces
   (*The statement must be a wide jump with immediate offset (B.W <Label>).*)
     VAR cond: BYTE;
   BEGIN
-    cond := c.code[at+1] MOD C2*C2 + c.code[at] DIV C6;
-    IF cond = NV THEN modify(c, at, NOPT2) (*branch never is equivalent to NOP*)
-    ELSIF cond = AL THEN modify(c, at, BT4 + formatEvenImm25(with)) (*use unconditional branch*)
+    cond := c.code[at+1] MOD C2*C2 + c.code[at] DIV C6; ASSERT(cond # NV);
+    (*TBD IF cond = NV THEN modify(c, at, NOPT2) (*branch never is equivalent to NOP*)
+    ELS *)IF cond = AL THEN modify(c, at, BT4 + formatEvenImm25(with)) (*use unconditional branch*)
     ELSE
       ASSERT(cond < 14);
       ASSERT (~ODD(with)); with := with DIV C1;

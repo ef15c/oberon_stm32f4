@@ -354,7 +354,7 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
     ELSIF sym = S.not THEN S.Get(sym); factor(x); CheckBool(x); G.Not(x)
     ELSIF sym = S.false THEN S.Get(sym); G.MakeConstItem(x, B.boolType, 0)
     ELSIF sym = S.true THEN S.Get(sym); G.MakeConstItem(x, B.boolType, 1)
-    ELSE S.Mark("not a factor"); G.MakeConstItem(x, B.intType, 0)
+    ELSE S.Mark("not a factor"); S.Get(sym); G.MakeConstItem(x, B.intType, 0)
     END
   END factor;
 

@@ -259,7 +259,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           A.Put0(mcode, A.VLDRT2 + 1*A.C23 + SH MOD A.C1*A.C22 + x.r*A.C16 + SH DIV A.C1*A.C12 + x.a DIV A.C2);
           x.r := SH; incS; DEC(RH)
         ELSIF x.type = B.longintType THEN ASSERT(x.r+1 < RH);
-          (*TBD IF RH < x.r+2 THEN incR END;*) A.encDMemImm32(mcode, A.LDRD, x.r, x.r+1, x.r, RH, x.a)
+          A.encDMemImm32(mcode, A.LDRD, x.r, x.r+1, x.r, RH, x.a)
         ELSE  A.encMemImm32(mcode, op, x.r, x.r, RH, x.a)
         END
       ELSIF x.mode = Cond THEN
@@ -1111,8 +1111,8 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE CFJump*(VAR x: Item);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.Put0(mcode, A.BRCSIG*A.C27 + A.negated(x.r)*A.C22 + x.a);
-    A.FixLink(mcode, x.b); x.a := mcode.pc-4
+    IF x.r # A.AL THEN A.Put0(mcode, A.BRCSIG*A.C27 + A.negated(x.r)*A.C22 + x.a); x.a := mcode.pc-4 END;
+    A.FixLink(mcode, x.b)
   END CFJump;
 
   PROCEDURE BJump*(L: INTEGER);
