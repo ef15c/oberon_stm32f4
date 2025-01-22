@@ -3,6 +3,7 @@ MODULE UTHash;
   Copyright (c) 2003-2022, Troy D. Hanson  https://troydhanson.github.io/uthash/
   All rights reserved.
 
+  Oberon adaptation by C. Schoffit 22.01.25
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
 
@@ -70,9 +71,9 @@ MODULE UTHash;
     END;
 
     Table1 = POINTER TO Table1Desc;
-    Table1Desc = RECORD(TableDesc) buckets: ARRAY 32 OF Bucket END;
+    Table1Desc = RECORD(TableDesc) buckets: ARRAY 1024 OF Bucket END;
     Table2 = POINTER TO Table2Desc;
-    Table2Desc = RECORD(TableDesc) buckets: ARRAY 64 OF Bucket END;
+    Table2Desc = RECORD(TableDesc) buckets: ARRAY 2048 OF Bucket END;
 
     Handle = RECORD
       tbl: Table;
@@ -178,6 +179,10 @@ MODULE UTHash;
     RETURN elt.hh.next
   END NEXT;
 
+  PROCEDURE SETNEXT*(elt, nxt: Hash);
+  BEGIN elt.hh.next := nxt
+  END SETNEXT;
+
   PROCEDURE getLongintHash*(key: Hash): INTEGER;
     VAR _hj_i, _hj_j, hashv: INTEGER;
   BEGIN hashv := 0FEEDBEEFH; _hj_i := 09E3779B9H; _hj_j := _hj_i;
@@ -221,6 +226,7 @@ MODULE UTHash;
     ptail.hh.next := add; head.hh.tbl.tail := add
   END APPEND_LIST;
 
+(*
   PROCEDURE printBucket(bkt: Bucket);
     VAR h!: Hash;
   BEGIN L.DebugHex("Bucket count", bkt.count);
@@ -240,6 +246,7 @@ MODULE UTHash;
     | Table2: printBuckets(tbl.buckets)
     END
   END printTable;
+*)
 
   (** Bucket expansion has the effect of doubling the number of buckets
    * and redistributing the items into the new buckets. Ideally the
@@ -267,7 +274,7 @@ MODULE UTHash;
   PROCEDURE EXPAND_BUCKETS(tbl: Table);
     VAR tbl2!: Table2;
 
-    PROCEDURE expandTable(num_items: INTEGER; bkts: ARRAY OF Bucket; newTbl: Table; VAR newBkts: ARRAY OF Bucket);
+    PROCEDURE expandTable(tbl: Table; bkts: ARRAY OF Bucket; newTbl: Table; VAR newBkts: ARRAY OF Bucket);
       VAR he_bkt, _he_bkt_i: INTEGER;
         he_t!, he_nxt!: Hash;
 
@@ -279,12 +286,12 @@ MODULE UTHash;
           END;
           newHead := SYSTEM.VAL(Hash, newBkt.head); _he_t.hh.prev_in_bkt := NIL; _he_t.hh.next_in_bkt := newHead;
           IF newHead # NIL THEN  newHead.hh.prev_in_bkt := _he_t END;
-          newBkt.head := SYSTEM.VAL(INTEGER, _he_t); _he_t.hh.tbl := newTbl; newTbl.tail := _he_t; INC(newTbl.num_items)
+          newBkt.head := SYSTEM.VAL(INTEGER, _he_t); _he_t.hh.tbl := newTbl; INC(newTbl.num_items)
         END addToNewBucket;
 
     BEGIN 
-      newTbl.ideal_chain_maxlen :=  (num_items + (LEN(newBkts) - 1)) DIV LEN(newBkts);
-      newTbl.nonideal_items := 0;
+      newTbl.ideal_chain_maxlen :=  (tbl.num_items + (LEN(newBkts) - 1)) DIV LEN(newBkts);
+      newTbl.nonideal_items := 0; newTbl.tail := tbl.tail;
       FOR _he_bkt_i := 0 TO LEN(bkts)-1 DO _he_t := SYSTEM.VAL(Hash, bkts[ _he_bkt_i ].head);
         WHILE _he_t # NIL DO _he_nxt := _he_t.hh.next_in_bkt;
           _he_bkt := _he_t.hh.hashv MOD LEN(newBkts);
@@ -297,7 +304,7 @@ MODULE UTHash;
     END expandTable;
   BEGIN
     CASE tbl OF
-      Table1: NEW(tbl2); expandTable(tbl.num_items, tbl.buckets, tbl2, tbl2.buckets)
+      Table1: NEW(tbl2); expandTable(tbl, tbl.buckets, tbl2, tbl2.buckets)
     | Table2: ASSERT(FALSE)
     | Table: ASSERT(FALSE)
     END
@@ -309,9 +316,7 @@ MODULE UTHash;
   BEGIN head := SYSTEM.VAL(Hash, bkt.head); INC(bkt.count); add.hh.next_in_bkt := head; add.hh.prev_in_bkt := NIL;
     IF head # NIL THEN head.hh.prev_in_bkt := add END; bkt.head := SYSTEM.VAL(INTEGER, add);
     IF (bkt.count >= (bkt.expand_mult + 1)*BKT_CAPACITY_THRESH) & ~add.hh.tbl.noexpand THEN
-printTable(add.hh.tbl);
       EXPAND_BUCKETS(add.hh.tbl)
-;printTable(add.hh.tbl);
     END
   END ADD_TO_BKT;
 
@@ -333,7 +338,7 @@ printTable(add.hh.tbl);
       MAKE_TABLE(add); head := add
     ELSE add.hh.tbl := head.hh.tbl; APPEND_LIST(head, add)
     END;
-    ADD_TO_TABLE(head.hh.tbl, add);
+    ADD_TO_TABLE(head.hh.tbl, add)
   END ADD_BYHASHVALUE;
 
   PROCEDURE ADD*(VAR head: Hash; add: Hash; getHash: HashProc);
@@ -343,7 +348,7 @@ printTable(add.hh.tbl);
 
   PROCEDURE ADD_LONGINT*(VAR head: LongintHash; add: LongintHash);
     VAR h!: Hash;
-  BEGIN h := head; ADD(h, add, getLongintHash); head := h(LongintHash);
+  BEGIN h := head; ADD(h, add, getLongintHash); head := h(LongintHash)
   END ADD_LONGINT;
 
 BEGIN NEW(kli)
