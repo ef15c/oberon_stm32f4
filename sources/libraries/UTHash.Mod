@@ -26,7 +26,7 @@ MODULE UTHash;
   TYPE Hash* = POINTER TO HashDesc;
 
     Bucket = RECORD
-      head: Hash;
+      head: INTEGER; (*pointer to hash hidden from GC*)
       count: INTEGER;
 
       (* expand_mult is normally set to 0. In this situation, the max chain length
@@ -69,10 +69,10 @@ MODULE UTHash;
       signature: INTEGER (* used only to find hash tables in external analysis *)
     END;
 
-    Table32 = POINTER TO Table32Desc;
-    Table32Desc = RECORD(TableDesc) buckets: ARRAY 32 OF Bucket END;
-    Table64 = POINTER TO Table32Desc;
-    Table64Desc = RECORD(TableDesc) buckets: ARRAY 64 OF Bucket END;
+    Table1 = POINTER TO Table1Desc;
+    Table1Desc = RECORD(TableDesc) buckets: ARRAY 32 OF Bucket END;
+    Table2 = POINTER TO Table2Desc;
+    Table2Desc = RECORD(TableDesc) buckets: ARRAY 64 OF Bucket END;
 
     Handle = RECORD
       tbl: Table;
@@ -83,13 +83,15 @@ MODULE UTHash;
 
     HashDesc* = RECORD hh: Handle END;
 
-    HashProc* = PROCEDURE(key: HashDesc): INTEGER;
-    EqualProc* = PROCEDURE(a, b: HashDesc): BOOLEAN;
+    HashProc* = PROCEDURE(key: Hash): INTEGER;
+    EqualProc* = PROCEDURE(a, b: Hash): BOOLEAN;
 
     LongintHashDesc* = RECORD(HashDesc) key*: LONGINT END;
     LongintHash* = POINTER TO LongintHashDesc;
 
-  PROCEDURE JEN_MIX(a,b,c: INTEGER);
+  VAR kli: LongintHash;
+
+  PROCEDURE JEN_MIX(VAR a,b,c: INTEGER);
   BEGIN
     DEC(a, b); DEC(a, c); a := ORD(TOSET(a) / TOSET(LSR(c, 13)));
     DEC(b, c); DEC(b, a); b := ORD(TOSET(b) / TOSET(LSL(a, 8)));
@@ -131,32 +133,29 @@ MODULE UTHash;
     JEN_MIX(_hj_i, _hj_j, hashv)
   END HASH_VALUE;
 
-  PROCEDURE HASH_TO_BKT(hashv, num_bkts: INTEGER): INTEGER;
-    RETURN ORD(TOSET(hashv)*TOSET((num_bkts) - 1))
-  END HASH_TO_BKT;
-
-  PROCEDURE FIND_IN_BKT(tbl: Table; bucket: Bucket; key: HashDesc; hashval: INTEGER; isEqual: EqualProc): Hash;
-    VAR out! : Hash; found: BOOLEAN;
+  PROCEDURE FIND_IN_BKT(tbl: Table; bucket: Bucket; key: Hash; hashval: INTEGER; isEqual: EqualProc): Hash;
+    VAR out! : Hash; found: BOOLEAN; count: INTEGER;
     (* iterate over items in a known bucket to find desired item *)
-  BEGIN out := bucket.head; found := FALSE;
-    WHILE ~found & (out # NIL) DO
-      IF (out.hh.hashv = hashval) & isEqual(out^, key) THEN found := TRUE
+  BEGIN out := SYSTEM.VAL(Hash, bucket.head); found := FALSE; count := 0;
+    WHILE ~found & (out # NIL) DO INC(count);
+      IF (out.hh.hashv = hashval) & isEqual(out, key) THEN found := TRUE
       ELSE out := out.hh.next_in_bkt
       END
-    END
+    END;
+    ASSERT(found OR (count = bucket.count))
 
     RETURN out
   END FIND_IN_BKT;
 
-  PROCEDURE FIND_BYHASHVALUE(head: Hash; key: HashDesc; hashval: INTEGER; isEqual: EqualProc): Hash;
+  PROCEDURE FIND_BYHASHVALUE(head, key: Hash; hashval: INTEGER; isEqual: EqualProc): Hash;
     VAR out!: Hash; hf_bkt: INTEGER; tbl!: Table;
   BEGIN out := NIL;
     IF head # NIL THEN tbl := head.hh.tbl;
       CASE tbl OF
-        Table32: hf_bkt := HASH_TO_BKT(hashval, LEN(tbl.buckets));
-          out := FIND_IN_BKT(head.hh.tbl, tbl.buckets[_hf_bkt ], key, hashval, isEqual)
-      | Table64: hf_bkt := HASH_TO_BKT(hashval, LEN(tbl.buckets));
-          out := FIND_IN_BKT(head.hh.tbl, tbl.buckets[_hf_bkt ], key, hashval, isEqual)
+        Table1: hf_bkt := hashval MOD LEN(tbl.buckets);
+          out := FIND_IN_BKT(head.hh.tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
+      | Table2: hf_bkt := hashval MOD LEN(tbl.buckets);
+          out := FIND_IN_BKT(head.hh.tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
       | Table: ASSERT(FALSE)
       END
     END
@@ -164,7 +163,7 @@ MODULE UTHash;
     RETURN out
   END FIND_BYHASHVALUE;
 
-  PROCEDURE  FIND*(head: Hash; key: HashDesc; getHash: HashProc; isEqual: EqualProc): Hash;
+  PROCEDURE  FIND*(head, key: Hash; getHash: HashProc; isEqual: EqualProc): Hash;
     VAR out!: Hash; _hf_hashv: INTEGER;
   BEGIN out := NIL;
     IF head # NIL THEN
@@ -175,40 +174,44 @@ MODULE UTHash;
     RETURN out
   END FIND;
 
-  PROCEDURE getLongintHash*(key: HashDesc): INTEGER;
+  PROCEDURE NEXT*(elt: Hash): Hash;
+    RETURN elt.hh.next
+  END NEXT;
+
+  PROCEDURE getLongintHash*(key: Hash): INTEGER;
     VAR _hj_i, _hj_j, hashv: INTEGER;
   BEGIN hashv := 0FEEDBEEFH; _hj_i := 09E3779B9H; _hj_j := _hj_i;
     CASE key OF
-      LongintHashDesc: 
+      LongintHash:
         INC(hashv, 8);
         INC(_hj_j, LSR(key.key, 32)); INC(_hj_i, key.key);
         JEN_MIX(_hj_i, _hj_j, hashv)
-    | HashDesc: ASSERT(FALSE)
+    | Hash: ASSERT(FALSE)
     END
 
     RETURN hashv
   END getLongintHash;
 
-  PROCEDURE isLongintEqual(a, b: HashDesc): BOOLEAN;
+  PROCEDURE isLongintEqual(a, b: Hash): BOOLEAN;
     VAR r: BOOLEAN;
   BEGIN
     CASE a OF
-      LongintHashDesc: r := a.key = b(LongintHashDesc).key
-    | HashDesc: ASSERT(FALSE)
+      LongintHash: r := a.key = b(LongintHash).key
+    | Hash: ASSERT(FALSE)
     END
 
     RETURN r
   END isLongintEqual;
 
   PROCEDURE  FIND_LONGINT*(head: LongintHash; key: LONGINT): LongintHash;
-    VAR k!: LongintHashDesc; f!: Hash;
-  BEGIN k.key := key; f := FIND(head, k, getLongintHash, isLongintEqual)
+    VAR f!: Hash;
+  BEGIN kli.key := key; f := FIND(head, kli, getLongintHash, isLongintEqual)
 
     RETURN f(LongintHash)
   END FIND_LONGINT;
 
   PROCEDURE MAKE_TABLE(head: Hash);
-    VAR tbl!: Table32;
+    VAR tbl!: Table1;
   BEGIN NEW(tbl); head.hh.tbl := tbl; tbl.tail := head; tbl.signature := SIGNATURE
   END MAKE_TABLE;
 
@@ -217,6 +220,26 @@ MODULE UTHash;
   BEGIN add.hh.next := NIL; ptail := head.hh.tbl.tail; add.hh.prev := ptail;
     ptail.hh.next := add; head.hh.tbl.tail := add
   END APPEND_LIST;
+
+  PROCEDURE printBucket(bkt: Bucket);
+    VAR h!: Hash;
+  BEGIN L.DebugHex("Bucket count", bkt.count);
+    h := SYSTEM.VAL(Hash, bkt.head); WHILE h # NIL DO L.DebugHex("Hash", ORD(h)); h := h.hh.next_in_bkt END
+  END printBucket;
+
+  PROCEDURE printBuckets(bkts: ARRAY OF Bucket);
+    VAR i: INTEGER;
+  BEGIN FOR i := 0 TO LEN(bkts) - 1 DO L.DebugHex("bucket idx", i); printBucket(bkts[i]) END
+  END printBuckets;
+ 
+  PROCEDURE printTable(tbl: Table);
+  BEGIN L.DebugHex("Table", ORD(tbl));
+    L.DebugHex("tbl.num_items", tbl.num_items);
+    CASE tbl OF
+      Table1: printBuckets(tbl.buckets)
+    | Table2: printBuckets(tbl.buckets)
+    END
+  END printTable;
 
   (** Bucket expansion has the effect of doubling the number of buckets
    * and redistributing the items into the new buckets. Ideally the
@@ -241,76 +264,81 @@ MODULE UTHash;
    *
    *)
 
-  PROCEDURE EXPAND_BUCKETS(hh: Handle);
-    VAR tbl!: Table; tbl64!: Table64;
+  PROCEDURE EXPAND_BUCKETS(tbl: Table);
+    VAR tbl2!: Table2;
 
-    PROCEDURE expandTable(tbl: Table; bkts: ARRAY OF Bucket; newTbl: Table; VAR newBkts: ARRAY OF Bucket);
+    PROCEDURE expandTable(num_items: INTEGER; bkts: ARRAY OF Bucket; newTbl: Table; VAR newBkts: ARRAY OF Bucket);
       VAR he_bkt, _he_bkt_i: INTEGER;
         he_t!, he_nxt!: Hash;
 
         PROCEDURE addToNewBucket(newTbl: Table; _he_t: Hash; VAR newBkt: Bucket);
+          VAR newHead!: Hash;
         BEGIN INC(newBkt.count);
           IF newBkt.count > newTbl.ideal_chain_maxlen THEN INC(newTbl.nonideal_items);
             IF newBkt.count > newBkt.expand_mult * newTbl.ideal_chain_maxlen THEN INC(newBkt.expand_mult) END
           END;
-          _he_t.hh.prev_in_bkt := NIL; _he_t.hh.next_in_bkt := newBkt.head;
-          IF newBkt.head # NIL THEN newBkt.head.hh.prev_in_bkt := _he_t END;
-          newBkt.head := _he_t
+          newHead := SYSTEM.VAL(Hash, newBkt.head); _he_t.hh.prev_in_bkt := NIL; _he_t.hh.next_in_bkt := newHead;
+          IF newHead # NIL THEN  newHead.hh.prev_in_bkt := _he_t END;
+          newBkt.head := SYSTEM.VAL(INTEGER, _he_t); _he_t.hh.tbl := newTbl; newTbl.tail := _he_t; INC(newTbl.num_items)
         END addToNewBucket;
 
-    BEGIN newTbl.ideal_chain_maxlen :=  (tbl.num_items + (LEN(newBkts) - 1)) DIV LEN(newBkts);
-    newTbl.nonideal_items := 0;
-    FOR _he_bkt_i := 0 TO LEN(bkts)-1 DO _he_t := bkts[ _he_bkt_i ].head;
-      WHILE _he_t # NIL DO _he_nxt := _he_t.hh.next;
-        _he_bkt := HASH_TO_BKT(_he_t.hh.hashv, LEN(newBkts));
-        addToNewBucket(newTbl, _he_t, newBkts[_he_bkt]);
-        _he_t := _he_nxt
-      END
-    END;
-    IF newTbl.nonideal_items > newTbl.num_items DIV 2 THEN INC(newTbl.nof_ineff_expands) ELSE newTbl.nof_ineff_expands := 0 END;
-    newTbl.noexpand := newTbl.nof_ineff_expands > 1;
+    BEGIN 
+      newTbl.ideal_chain_maxlen :=  (num_items + (LEN(newBkts) - 1)) DIV LEN(newBkts);
+      newTbl.nonideal_items := 0;
+      FOR _he_bkt_i := 0 TO LEN(bkts)-1 DO _he_t := SYSTEM.VAL(Hash, bkts[ _he_bkt_i ].head);
+        WHILE _he_t # NIL DO _he_nxt := _he_t.hh.next_in_bkt;
+          _he_bkt := _he_t.hh.hashv MOD LEN(newBkts);
+          addToNewBucket(newTbl, _he_t, newBkts[_he_bkt]);
+          _he_t := _he_nxt
+        END
+      END;
+      IF newTbl.nonideal_items > newTbl.num_items DIV 2 THEN INC(newTbl.nof_ineff_expands) ELSE newTbl.nof_ineff_expands := 0 END;
+      newTbl.noexpand := newTbl.nof_ineff_expands > 1;
     END expandTable;
-  BEGIN tbl := hh.tbl;
+  BEGIN
     CASE tbl OF
-      Table32: NEW(tbl64); expandTable(tbl, tbl.buckets, tbl64, tbl64.buckets)
-    | Table64: ASSERT(FALSE)
+      Table1: NEW(tbl2); expandTable(tbl.num_items, tbl.buckets, tbl2, tbl2.buckets)
+    | Table2: ASSERT(FALSE)
     | Table: ASSERT(FALSE)
     END
   END EXPAND_BUCKETS;
 
   PROCEDURE ADD_TO_BKT(VAR bkt: Bucket; add: Hash);
     (* add an item to a bucket *)
-  BEGIN INC(bkt.count); add.hh.next_in_bkt := bkt.head; add.hh.prev_in_bkt := NIL;
-    IF bkt.head # NIL THEN bkt.head.hh.prev_in_bkt := add END; bkt.head := add;
+    VAR head!: Hash;
+  BEGIN head := SYSTEM.VAL(Hash, bkt.head); INC(bkt.count); add.hh.next_in_bkt := head; add.hh.prev_in_bkt := NIL;
+    IF head # NIL THEN head.hh.prev_in_bkt := add END; bkt.head := SYSTEM.VAL(INTEGER, add);
     IF (bkt.count >= (bkt.expand_mult + 1)*BKT_CAPACITY_THRESH) & ~add.hh.tbl.noexpand THEN
-      EXPAND_BUCKETS(add.hh)
+printTable(add.hh.tbl);
+      EXPAND_BUCKETS(add.hh.tbl)
+;printTable(add.hh.tbl);
     END
   END ADD_TO_BKT;
 
-  PROCEDURE ADD_TO_TABLE(head: Hash; hashval: INTEGER; add: Hash);
-    VAR _ha_bkt: INTEGER; tbl!: Table;
-  BEGIN tbl := head.hh.tbl; INC(tbl.num_items);
+  PROCEDURE ADD_TO_TABLE(tbl: Table; add: Hash);
+    VAR _ha_bkt: INTEGER;
+  BEGIN INC(tbl.num_items);
     CASE tbl OF
-      Table32: _ha_bkt := HASH_TO_BKT(hashval, LEN(tbl.buckets));
+      Table1: _ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
         ADD_TO_BKT(tbl.buckets[_ha_bkt], add)
-    | Table64: _ha_bkt := HASH_TO_BKT(hashval, LEN(tbl.buckets));
+    | Table2: _ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
         ADD_TO_BKT(tbl.buckets[_ha_bkt], add)
     | Table: ASSERT(FALSE)
     END
   END ADD_TO_TABLE;
 
-  PROCEDURE ADD_BYHASHVALUE(VAR head: Hash; hashval: INTEGER; add: Hash);
-  BEGIN add.hh.hashv := hashval;
+  PROCEDURE ADD_BYHASHVALUE(VAR head: Hash; add: Hash);
+  BEGIN
     IF head = NIL THEN add.hh.next := NIL; add.hh.prev := NIL;
       MAKE_TABLE(add); head := add
     ELSE add.hh.tbl := head.hh.tbl; APPEND_LIST(head, add)
     END;
-    ADD_TO_TABLE(head, hashval, add);
+    ADD_TO_TABLE(head.hh.tbl, add);
   END ADD_BYHASHVALUE;
 
   PROCEDURE ADD*(VAR head: Hash; add: Hash; getHash: HashProc);
     VAR _ha_hashv: INTEGER;
-  BEGIN _ha_hashv := getHash(add^); ADD_BYHASHVALUE(head, _ha_hashv, add)
+  BEGIN add.hh.hashv := getHash(add); ADD_BYHASHVALUE(head, add)
   END ADD;
 
   PROCEDURE ADD_LONGINT*(VAR head: LongintHash; add: LongintHash);
@@ -318,6 +346,8 @@ MODULE UTHash;
   BEGIN h := head; ADD(h, add, getLongintHash); head := h(LongintHash);
   END ADD_LONGINT;
 
+BEGIN NEW(kli)
 END UTHash.
 
 OM4P2.Compile UTHash.Mod/s ~
+OM4Tool.DecObj UTHash.m4c
