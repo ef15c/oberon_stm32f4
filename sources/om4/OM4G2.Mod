@@ -83,7 +83,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE incR;
   BEGIN
-    IF RH < RL-1 THEN INC(RH) ELSE S.Mark("register stack overflow"); RH := 8 END
+    IF RH < RL THEN INC(RH) ELSE S.Mark("register stack overflow"); RH := 8 END
   END incR;
 
   PROCEDURE dincR;
@@ -194,7 +194,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE NilCheck(a: BYTE);
   BEGIN
     IF check THEN
-      IF ~mcode.lastInstrSetFlags THEN  incR; A.encCMPImm(mcode, a, RH, 0); DEC(RH) END ;
+      IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, a, RH, 0) END ;
       Trap(A.EQ, 4) 
     END
   END NilCheck;
@@ -219,7 +219,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.mode = B.Const THEN
         IF x.type.form = B.Proc THEN
           IF x.r > 0 THEN S.Mark("not allowed")
-          ELSIF x.r = 0 THEN incR; A.encAdr(mcode, RH-1, RH, x.a+1); DEC(RH)
+          ELSIF x.r = 0 THEN A.encAdr(mcode, RH, x.a+1)
           ELSE GetStaticVarAddress(x, RH) 
           END;
           x.r := RH; incR

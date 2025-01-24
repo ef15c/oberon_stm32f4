@@ -731,7 +731,7 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
       INC(nofpar); obj.class := cl; obj.type := tp; obj.rdo := rdo; obj.lev := level; obj.val := adr;
       adr := adr + parsize; obj := obj.next
     END ;
-    IF adr >= 52 THEN S.Mark("too many parameters") END
+    IF adr > 52 THEN S.Mark("too many parameters") END
   END FPSection;
 
   PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: INTEGER);
