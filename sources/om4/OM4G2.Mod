@@ -1233,7 +1233,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END doInc;
 
   PROCEDURE Increment*(upordown: INTEGER; VAR x, y: Item); (*x := x+y OR x := x+1 if y not defined*)
-    VAR op, op2, zr, vl, vs: INTEGER;
+    VAR op, op2, zr, vl, vs, ofs: INTEGER;
   BEGIN (*frame = 0*)
     IF upordown = 0 THEN op := A.ADD; op2 := A.ADc ELSE op := A.SUB; op2 := A.SBc END ;
     IF x.type = B.byteType THEN vl := A.LDRB; vs := A.STRB ELSE vl := A.LDR; vs := A.STR END ;
@@ -1246,12 +1246,12 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.type = B.longintType THEN A.encDMemImm32(mcode, A.STRD, zr, zr+1, SP, RH, x.a); DEC(RH, 2)
       ELSE A.encMemImm32(mcode, vs, zr, SP, RH, x.a); DEC(RH)
       END
-    ELSE loadAdr(x); zr := RH; incR;
-      IF x.type = B.longintType THEN incR; A.encDMemImm32(mcode, A.LDRD, zr, zr+1, x.r, RH, 0)
-      ELSE A.encMemImm32(mcode, vl, zr, x.r, RH, 0)
+    ELSE IF x.mode = RegI THEN ofs := x.a ELSE loadAdr(x); ofs := 0 END; zr := RH; incR;
+      IF x.type = B.longintType THEN incR; A.encDMemImm32(mcode, A.LDRD, zr, zr+1, x.r, RH, ofs)
+      ELSE A.encMemImm32(mcode, vl, zr, x.r, RH, ofs)
       END; doInc(x, y, op, op2, zr, vl, vs);
-      IF x.type = B.longintType THEN A.encDMemImm32(mcode, A.STRD, zr, zr+1, x.r, RH, 0); DEC(RH, 3)
-      ELSE A.encMemImm32(mcode, vs, zr, x.r, RH, 0); DEC(RH, 2)
+      IF x.type = B.longintType THEN A.encDMemImm32(mcode, A.STRD, zr, zr+1, x.r, RH, ofs); DEC(RH, 3)
+      ELSE A.encMemImm32(mcode, vs, zr, x.r, RH, ofs); DEC(RH, 2)
       END
     END
   END Increment;
