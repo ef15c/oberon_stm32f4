@@ -201,52 +201,6 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
         OR (t0.form IN {B.Pointer, B.Proc}) & (t1.form = B.NilTyp))
   END CompTypes;
 
-  PROCEDURE Parameter(par: B.Object);
-    VAR x!: G.Item; varpar: BOOLEAN;
-  BEGIN expression(x);
-    IF par # NIL THEN
-      varpar := par.class = B.Par;
-      IF CompTypes(par.type, x.type, varpar) THEN
-        IF ~varpar THEN G.ValueParam(x, par.type)
-        ELSE (*par.class = Par*)
-          IF ~par.rdo THEN CheckReadOnly(x) END ;
-          G.VarParam(x, par.type)
-        END
-      ELSIF (x.type.form = B.Array) & (par.type.form = B.Array) &
-          (x.type.base = par.type.base) & (par.type.len < 0) THEN
-        IF ~par.rdo THEN CheckReadOnly(x) END ;
-        G.OpenArrayParam(x)
-      ELSIF (x.type.form = B.String) & varpar & par.rdo & (par.type.form = B.Array) & 
-          (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x)
-      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par.type)  (*BYTE*)
-      ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
-        G.StrToChar(x); G.ValueParam(x, par.type)
-      ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
-          (par.type.len >= 0) & (par.type.size = x.type.size) THEN
-        G.VarParam(x, par.type)
-      ELSE S.Mark("incompatible parameters")
-      END
-    END
-  END Parameter;
-
-  PROCEDURE ParamList(x: G.Item);
-    VAR n: INTEGER; par!: B.Object;
-  BEGIN par := x.type.dsc; n := 0;
-    IF sym # S.rparen THEN
-      Parameter(par); n := 1;
-      WHILE sym <= S.comma DO
-        Check(S.comma, "comma?");
-        IF par # NIL THEN par := par.next END ;
-        INC(n); Parameter(par)
-      END ;
-      Check(S.rparen, ") missing")
-    ELSE S.Get(sym);
-    END ;
-    IF n < x.type.nofpar THEN S.Mark("too few params")
-    ELSIF n > x.type.nofpar THEN S.Mark("too many params")
-    END
-  END ParamList;
-
   PROCEDURE StandFunc(VAR x: G.Item; fct: INTEGER; restyp: B.Type);
     VAR y!, z!: G.Item; n, npar: INTEGER;
   BEGIN Check(S.lparen, "no (");
@@ -298,6 +252,66 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
     ELSE S.Mark("wrong nof params")
     END
   END StandFunc;
+
+  PROCEDURE lvalue(VAR x: G.Item);
+    VAR obj!: B.Object;
+  BEGIN
+    IF sym = S.ident THEN qualident(obj);
+      IF obj.class = B.SFunc THEN StandFunc(x, obj.val, obj.type)
+      ELSE G.MakeItem(x, obj, level);
+        IF x.mode = B.SProc THEN S.Mark("not assignable") ELSE selector(x) END
+      END
+    ELSE S.Mark("not assignable")
+    END
+   END lvalue;
+
+  PROCEDURE Parameter(par: B.Object);
+    VAR x!: G.Item; varpar: BOOLEAN;
+  BEGIN
+    IF par # NIL THEN
+      varpar := par.class = B.Par;
+      IF varpar & (sym = S.ident) THEN lvalue(x) ELSE expression(x) END;
+      IF CompTypes(par.type, x.type, varpar) THEN
+        IF ~varpar THEN G.ValueParam(x, par.type)
+        ELSE (*par.class = Par*)
+          IF ~par.rdo THEN CheckReadOnly(x) END ;
+          G.VarParam(x, par.type)
+        END
+      ELSIF (x.type.form = B.Array) & (par.type.form = B.Array) &
+          (x.type.base = par.type.base) & (par.type.len < 0) THEN
+        IF ~par.rdo THEN CheckReadOnly(x) END ;
+        G.OpenArrayParam(x)
+      ELSIF (x.type.form = B.String) & varpar & par.rdo & (par.type.form = B.Array) & 
+          (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x)
+      ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par.type)  (*BYTE*)
+      ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
+        G.StrToChar(x); G.ValueParam(x, par.type)
+      ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
+          (par.type.len >= 0) & (par.type.size = x.type.size) THEN
+        G.VarParam(x, par.type)
+      ELSE S.Mark("incompatible parameters")
+      END
+    ELSE expression(x)
+    END
+  END Parameter;
+
+  PROCEDURE ParamList(x: G.Item);
+    VAR n: INTEGER; par!: B.Object;
+  BEGIN par := x.type.dsc; n := 0;
+    IF sym # S.rparen THEN
+      Parameter(par); n := 1;
+      WHILE sym <= S.comma DO
+        Check(S.comma, "comma?");
+        IF par # NIL THEN par := par.next END ;
+        INC(n); Parameter(par)
+      END ;
+      Check(S.rparen, ") missing")
+    ELSE S.Get(sym);
+    END ;
+    IF n < x.type.nofpar THEN S.Mark("too few params")
+    ELSIF n > x.type.nofpar THEN S.Mark("too many params")
+    END
+  END ParamList;
 
   PROCEDURE element(VAR x: G.Item);
     VAR y!: G.Item;
@@ -442,16 +456,6 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
   END expression0;
 
   (* statements *)
-
-  PROCEDURE lvalue(VAR x: G.Item);
-    VAR obj!: B.Object;
-  BEGIN
-    IF sym = S.ident THEN
-      qualident(obj); G.MakeItem(x, obj, level);
-      IF x.mode = B.SProc THEN S.Mark("not assignable") ELSE selector(x) END
-    ELSE S.Mark("not assignable")
-    END
-   END lvalue;
 
   PROCEDURE StandProc(pno: INTEGER);
     VAR nap, npar: INTEGER; (*nof actual/formal parameters*)

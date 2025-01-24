@@ -712,10 +712,11 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE doDivL(VAR x, y: Item; rr: INTEGER);
     VAR xr: INTEGER; yIsVar: BOOLEAN;
-  BEGIN IF x.r IN {Reg, RegI} THEN xr := x.r ELSE xr := RH END;
-    IF (y.r IN {Reg, RegI}) & (y.r < xr) THEN xr := y.r END;
+  BEGIN IF x.mode IN {Reg, RegI} THEN xr := x.r ELSE xr := RH END;
+    IF (y.mode IN {Reg, RegI}) & (y.r < xr) THEN xr := y.r END;
     IF xr > 0 THEN A.SaveRegs(mcode, xr, frame); OfsPTOS(xr, xr, TRUE) END; RH := 0;
-    yIsVar := y.mode # B.Const; load(x); convertInt(y, B.longintType); load(y);
+    yIsVar := y.mode # B.Const; load(x); IF RH < x.r + 2 THEN RH := x.r+2 END; (*preserve dividend*)
+    convertInt(y, B.longintType); load(y);
     IF check & yIsVar THEN  A.encCMPImm(mcode, y.r, RH, 1); A.encDPImm32(mcode, A.SBc, RH, y.r+1, RH, 0, TRUE); Trap(A.LT, 6) END;
     IF x.r # 0 THEN
       IF y.r < 2 THEN (*make room for x*) A.encMOVReg(mcode, 4, y.r); A.encMOVReg(mcode, 5+1, y.r+1); y.r := 4 END;
@@ -723,18 +724,15 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
     IF y.r # 2 THEN A.encMOVReg(mcode, 2, y.r); A.encMOVReg(mcode, 3, y.r+1) END;
     A.Put1(mcode, A.SVC + 2); (*Call 64bit integer division code in Kernel module*)
-    IF xr # rr THEN
-      IF xr <= rr+1 THEN A.encMOVReg(mcode, xr+1, rr+1); A.encMOVReg(mcode, xr, rr) (*reverse order to avoid xr corruption *)
-      ELSE A.encMOVReg(mcode, xr, rr); A.encMOVReg(mcode, xr+1, rr+1)
-      END
+    IF xr < rr THEN A.encMOVReg(mcode, xr, rr); A.encMOVReg(mcode, xr+1, rr+1)
+    ELSIF xr > rr THEN A.encMOVReg(mcode, xr+1, rr+1); A.encMOVReg(mcode, xr, rr) (*reverse order to avoid xr corruption *)
     END; x.r := xr;
     IF xr > 0 THEN A.RestoreRegs(mcode, xr, frame); OfsPTOS(-xr, -xr, TRUE) END; RH := xr+2
   END doDivL;
 
   PROCEDURE DivOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
     VAR e: INTEGER;
-  BEGIN
-    convertInt(y, x.type);
+  BEGIN convertInt(y, x.type);
     IF op = S.div THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
         IF y.a > 0 THEN x.a := x.a DIV y.a ELSE S.Mark("bad divisor") END
@@ -1079,23 +1077,26 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (*For Statements*)
 
   PROCEDURE For0*(VAR x, y: Item);
-  BEGIN load(y)
+  BEGIN convertInt(y, x.type); load(y)
   END For0;
 
-  PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: INTEGER);
-  BEGIN 
-    load(z); A.encCMPReg(mcode, y.r, z.r); DEC(RH);
-    L := mcode.pc;
-    IF w.a > 0 THEN A.Put0(mcode, A.BRCSIG*A.C27 + A.GT*A.C22);
-    ELSIF w.a < 0 THEN A.Put0(mcode, A.BRCSIG*A.C27 + A.LT*A.C22)
+  PROCEDURE For1*(VAR x, y, z, w: Item; VAR L: INTEGER); (* FOR x :=  y TO z BY w*)
+  BEGIN convertInt(z, x.type); load(z);
+    IF w.a < 0 THEN
+      A.encCMPReg(mcode, y.r, z.r); DEC(RH);
+      IF x.type = B.longintType THEN A.encDPReg(mcode, A.SBc, z.r+1, y.r+1, z.r+1, A.LSl, 0, TRUE); DEC(RH) END
+    ELSIF w.a > 0 THEN
+      A.encCMPReg(mcode, z.r, y.r); DEC(RH);
+      IF x.type = B.longintType THEN A.encDPReg(mcode, A.SBc, z.r+1, z.r+1, y.r+1, A.LSl, 0, TRUE); DEC(RH) END
     ELSE S.Mark("zero increment");
-      A.Put0(mcode, A.BRCSIG*A.C27 + A.MI*A.C22)
     END;
+    L := mcode.pc; A.Put0(mcode, A.BRCSIG*A.C27 + A.LT*A.C22);
     Store(x, y)
   END For1;
 
   PROCEDURE For2*(VAR x, y, w: Item);
-  BEGIN load(x); A.encDPImm32(mcode, A.ADD, x.r, x.r, RH, w.a, TRUE); DEC(RH)
+  BEGIN load(x); A.encDPImm32(mcode, A.ADD, x.r, x.r, RH, w.a, TRUE); DEC(RH);
+    IF x.type = B.longintType THEN A.encDPImm32(mcode, A.ADc, x.r+1, x.r+1, RH, LSR(w.a, 32), TRUE); DEC(RH) END
   END For2;
 
   (* Branches, procedure calls, procedure prolog and epilog *)
