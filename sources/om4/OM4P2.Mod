@@ -247,6 +247,7 @@ MODULE OM4P2; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 23 THEN (*reverse bits*) CheckInt(x); G.Rbit(x)
       ELSIF fct = 24 THEN (*TOSET*) CheckInt(x)
       ELSIF fct = 25 THEN (*count leading zeros*) CheckInt(x); G.Clz(x)
+      ELSIF fct = 26 THEN (*exclusive OR*); G.XOR(x, y); restyp := x.type
       END ;
       x.type := restyp
     ELSE S.Mark("wrong nof params")

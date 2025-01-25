@@ -598,7 +598,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END AddOp;
 
   PROCEDURE loadXbeforeY(VAR x, y: Item);
-  BEGIN
+  BEGIN IF y.mode = Reg THEN convertInt(y, B.intType) END;
     IF x.type = B.longintType THEN
       IF (x.mode = Reg) & (y.mode = Reg) THEN ASSERT (x.r < y.r)
       ELSIF y.mode = Reg THEN ASSERT(RH = y.r + 1);
@@ -711,18 +711,23 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END MulOp;
 
   PROCEDURE doDivL(VAR x, y: Item; rr: INTEGER);
-    VAR xr: INTEGER; yIsVar: BOOLEAN;
+    VAR xr, ib: INTEGER; yIsVar: BOOLEAN;
   BEGIN IF x.mode IN {Reg, RegI} THEN xr := x.r ELSE xr := RH END;
     IF (y.mode IN {Reg, RegI}) & (y.r < xr) THEN xr := y.r END;
     IF xr > 0 THEN A.SaveRegs(mcode, xr, frame); OfsPTOS(xr, xr, TRUE) END; RH := 0;
+    IF (y.mode IN {Reg, RegI}) & (y.r < 2) THEN
+      IF x.mode IN {Reg, RegI} THEN
+        IF ~(x.r IN {1..3}) THEN ib := 2 ELSIF ~(x.r IN {3..5}) THEN ib := 4 ELSE ib := 6 END
+      ELSE ib := 2
+      END;
+      (*make room for x*) A.encMOVReg(mcode, ib, y.r); A.encMOVReg(mcode, ib+1, y.r+1); y.r := ib
+    END; (*y register is now out of the way*)
     yIsVar := y.mode # B.Const; load(x); IF RH < x.r + 2 THEN RH := x.r+2 END; (*preserve dividend*)
-    convertInt(y, B.longintType); load(y);
-    IF check & yIsVar THEN  A.encCMPImm(mcode, y.r, RH, 1); A.encDPImm32(mcode, A.SBc, RH, y.r+1, RH, 0, TRUE); Trap(A.LT, 6) END;
-    IF x.r # 0 THEN
-      IF y.r < 2 THEN (*make room for x*) A.encMOVReg(mcode, 4, y.r); A.encMOVReg(mcode, 5+1, y.r+1); y.r := 4 END;
-      A.encMOVReg(mcode, 0, x.r); A.encMOVReg(mcode, 1, x.r+1)
-    END;
+    convertInt(y, B.longintType); load(y); IF RH < y.r + 2 THEN RH := y.r+2 END; (*preserve divisor*)
+    (*move x into R0-R1 and y into R2-R3*)
+    IF x.r # 0 THEN A.encMOVReg(mcode, 0, x.r); A.encMOVReg(mcode, 1, x.r+1) END;
     IF y.r # 2 THEN A.encMOVReg(mcode, 2, y.r); A.encMOVReg(mcode, 3, y.r+1) END;
+    IF check & yIsVar THEN  A.encCMPImm(mcode, 2, RH, 1); A.encDPImm32(mcode, A.SBc, RH, 3, RH, 0, TRUE); Trap(A.LT, 6) END;
     A.Put1(mcode, A.SVC + 2); (*Call 64bit integer division code in Kernel module*)
     IF xr < rr THEN A.encMOVReg(mcode, xr, rr); A.encMOVReg(mcode, xr+1, rr+1)
     ELSIF xr > rr THEN A.encMOVReg(mcode, xr+1, rr+1); A.encMOVReg(mcode, xr, rr) (*reverse order to avoid xr corruption *)
@@ -1416,6 +1421,14 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE SBC*(VAR x, y: Item);
   BEGIN load(x); load(y); A.encDPReg(mcode, A.SBc, x.r, x.r, y.r, A.LSl, 0, TRUE); DEC(RH)
   END SBC;
+
+  PROCEDURE XOR*(VAR x, y: Item);
+    VAR t: INTEGER;
+  BEGIN convertInt(y, x.type); load(x); load(y);
+    IF y.r < x.r THEN t := y.r; y.r := x.r; x.r := t END; (*swap x and y so x.r < y.r*)
+    A.encDPReg(mcode, A.EOR, x.r, x.r, y.r, A.LSl, 0, TRUE); DEC(RH);
+    IF x.type = B.longintType THEN A.encDPReg(mcode, A.EOR, x.r+1, x.r+1, y.r+1, A.LSl, 0, TRUE); DEC(RH) END;
+  END XOR;
 
   PROCEDURE UML*(VAR x, y: Item);
   BEGIN load(x); load(y); A.Put0(mcode, A.UMULL + x.r*A.C16 + x.r*A.C12 + y.r*A.C8 + y.r); DEC(RH)
