@@ -21,5 +21,11 @@ MODULE SystemLog;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END DebugLongInt;
 
+  PROCEDURE DebugString*(msg, v: ARRAY OF CHAR);
+  BEGIN
+   Texts.WriteString(W, msg); Texts.WriteString(W, " = "); Texts.WriteString(W, v);
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END DebugString;
+
 BEGIN Texts.OpenWriter(W)
 END SystemLog.

@@ -2,7 +2,7 @@ MODULE AOC2024Day13;
   IMPORT Texts, TE := TextsEx2, Oberon, U := AOCUtils;
 
   TYPE ProcessProc = PROCEDURE(dxa, dya, dxb, dyb, px, py: LONGINT);
- VAR W: Texts.Writer;
+  VAR W: Texts.Writer;
     st: LONGINT;
 
   PROCEDURE doPart1(dxa, dya, dxb, dyb, px, py: LONGINT);
