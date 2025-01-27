@@ -5,7 +5,8 @@ MODULE AOC2024Day19;
     Displays = POINTER TO DisplaysDesc; 
     DisplaysDesc = RECORD(UT.HashDesc)
       display: ARRAY 64 OF CHAR;
-      nbpos: LONGINT
+      nbpos: LONGINT;
+      hits: INTEGER
     END;
 
   VAR W: Texts.Writer; t: INTEGER;
@@ -40,7 +41,7 @@ PROCEDURE possible(d: ARRAY OF CHAR; pos: INTEGER): LONGINT;
   BEGIN
     IF d[pos] = 0X THEN nbpos := 1
     ELSE U.CopyString(skey.display, d, pos); t := UT.FIND(dp, skey, getHash, isEqual); dh := t(Displays);
-      IF dh # NIL THEN nbpos := dh.nbpos
+      IF dh # NIL THEN nbpos := dh.nbpos; INC(dh.hits)
       ELSE (*New display*) nbpos := 0;
         FOR i := 0 TO nbp-1 DO l := U.strlen(patterns[i]);
           IF U.strncmp(patterns[i], skey.display, l) = 0 THEN (* Le début du design correspond à un pattern existant *)
@@ -48,8 +49,8 @@ PROCEDURE possible(d: ARRAY OF CHAR; pos: INTEGER): LONGINT;
           END
         END;
         IF freelist = NIL THEN NEW(dh) ELSE dh := freelist; t := UT.NEXT(freelist); freelist := t(Displays) END;
-        dh.display := skey.display; dh.nbpos := nbpos;
-        t := dp; UT.ADD(t, dh, getHash); dp := t(Displays)
+        dh.display := skey.display; dh.nbpos := nbpos; dh.hits := 0;
+        t := UT.ADD(dp, dh, getHash); dp := t(Displays)
       END
     END
 
@@ -67,15 +68,24 @@ PROCEDURE possible(d: ARRAY OF CHAR; pos: INTEGER): LONGINT;
   PROCEDURE parts*;
     VAR S!: TE.Scanner; disp: ARRAY 100 OF CHAR; l: INTEGER; ch: CHAR;
       nbpd, i: INTEGER; nb, nbpos: LONGINT;
-  BEGIN i := 0; parsePatterns(S); Texts.Read(S, ch); nbpd := 0; nbpos := 0; dp := NIL;
+      de!: Displays; t!, t2!: UT.Hash;
+  BEGIN i := 0; parsePatterns(S); Texts.Read(S, ch); nbpd := 0; nbpos := 0;
     REPEAT l := 0; WHILE (ch >= "a") & (ch <= "z") DO disp[l] := ch; INC(l); Texts.Read(S, ch) END; disp[l] := 0X;
-      IF l # 0 THEN nb := possible(disp, 0); INC(nbpos, nb); IF (nb # 0) THEN INC(nbpd) END
+      IF l # 0 THEN nb := possible(disp, 0); INC(nbpos, nb); IF (nb # 0) THEN INC(nbpd) END END;
+      (*delete non accessed elements from hash*)
+      de := dp;
+      WHILE de # NIL DO t := UT.NEXT(de);
+        IF de.hits = 0 THEN t2 := UT.DELETE(dp, de); dp := t2(Displays);
+          t2 := UT.FREE(freelist, de); freelist := t2(Displays)
+        ELSE de.hits := 0
+        END;
+        de := t(Displays)
       END;
       IF ch = Texts.CR THEN Texts.Read(S, ch) END;  INC(i); LED(i);
     UNTIL ~((ch >= "a") & (ch <= "z"));
     Texts.WriteString(W, "Partie 1: nbpd = "); Texts.WriteInt(W, nbpd, 1); Texts.WriteLn(W);
     Texts.WriteString(W, "Partie 2: nbpos = "); TE.WriteLongInt(W, nbpos, 1); Texts.WriteLn(W);
-    Texts.Append(Oberon.Log, W.buf); System.Collect
+    Texts.Append(Oberon.Log, W.buf); dp := NIL; System.Collect
   END parts;
 
 BEGIN Texts.OpenWriter(W);

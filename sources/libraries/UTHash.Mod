@@ -113,9 +113,9 @@ MODULE UTHash;
     IF head # NIL THEN tbl := head.hh.tbl;
       CASE tbl OF
         Table1: hf_bkt := hashval MOD LEN(tbl.buckets);
-          out := FIND_IN_BKT(head.hh.tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
+          out := FIND_IN_BKT(tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
       | Table2: hf_bkt := hashval MOD LEN(tbl.buckets);
-          out := FIND_IN_BKT(head.hh.tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
+          out := FIND_IN_BKT(tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
       | Table: ASSERT(FALSE)
       END
     END
@@ -124,11 +124,11 @@ MODULE UTHash;
   END FIND_BYHASHVALUE;
 
   PROCEDURE  FIND*(head, key: Hash; getHash: HashProc; isEqual: EqualProc): Hash;
-    VAR out!: Hash; _hf_hashv: INTEGER;
+    VAR out!: Hash; hf_hashv: INTEGER;
   BEGIN out := NIL;
     IF head # NIL THEN
-      _hf_hashv := getHash(key);
-      out := FIND_BYHASHVALUE(head, key, _hf_hashv, isEqual);
+      hf_hashv := getHash(key);
+      out := FIND_BYHASHVALUE(head, key, hf_hashv, isEqual);
     END
 
     RETURN out
@@ -138,9 +138,12 @@ MODULE UTHash;
     RETURN elt.hh.next
   END NEXT;
 
-  PROCEDURE SETNEXT*(elt, nxt: Hash);
-  BEGIN elt.hh.next := nxt
-  END SETNEXT;
+  PROCEDURE FREE*(freelist, elt: Hash): Hash;
+  BEGIN ASSERT(elt.hh.tbl = NIL); (*elt must not be assigned to a table*)
+    elt.hh.next := freelist; freelist := elt
+
+    RETURN freelist
+  END FREE;
 
   PROCEDURE HASH_STRING*(str: ARRAY OF CHAR): INTEGER;
     VAR w, i: INTEGER;
@@ -244,28 +247,28 @@ MODULE UTHash;
     VAR tbl2!: Table2;
 
     PROCEDURE expandTable(tbl: Table; bkts: ARRAY OF Bucket; newTbl: Table; VAR newBkts: ARRAY OF Bucket);
-      VAR he_bkt, _he_bkt_i: INTEGER;
+      VAR he_bkt, i: INTEGER;
         he_t!, he_nxt!: Hash;
 
-        PROCEDURE addToNewBucket(newTbl: Table; _he_t: Hash; VAR newBkt: Bucket);
+        PROCEDURE addToNewBucket(newTbl: Table; he_t: Hash; VAR newBkt: Bucket);
           VAR newHead!: Hash;
         BEGIN INC(newBkt.count);
           IF newBkt.count > newTbl.ideal_chain_maxlen THEN INC(newTbl.nonideal_items);
             IF newBkt.count > newBkt.expand_mult * newTbl.ideal_chain_maxlen THEN INC(newBkt.expand_mult) END
           END;
-          newHead := SYSTEM.VAL(Hash, newBkt.head); _he_t.hh.prev_in_bkt := NIL; _he_t.hh.next_in_bkt := newHead;
-          IF newHead # NIL THEN  newHead.hh.prev_in_bkt := _he_t END;
-          newBkt.head := SYSTEM.VAL(INTEGER, _he_t); _he_t.hh.tbl := newTbl; INC(newTbl.num_items)
+          newHead := SYSTEM.VAL(Hash, newBkt.head); he_t.hh.prev_in_bkt := NIL; he_t.hh.next_in_bkt := newHead;
+          IF newHead # NIL THEN  newHead.hh.prev_in_bkt := he_t END;
+          newBkt.head := SYSTEM.VAL(INTEGER, he_t); he_t.hh.tbl := newTbl; INC(newTbl.num_items)
         END addToNewBucket;
 
     BEGIN 
       newTbl.ideal_chain_maxlen :=  (tbl.num_items + (LEN(newBkts) - 1)) DIV LEN(newBkts);
       newTbl.nonideal_items := 0; newTbl.tail := tbl.tail;
-      FOR _he_bkt_i := 0 TO LEN(bkts)-1 DO _he_t := SYSTEM.VAL(Hash, bkts[ _he_bkt_i ].head);
-        WHILE _he_t # NIL DO _he_nxt := _he_t.hh.next_in_bkt;
-          _he_bkt := _he_t.hh.hashv MOD LEN(newBkts);
-          addToNewBucket(newTbl, _he_t, newBkts[_he_bkt]);
-          _he_t := _he_nxt
+      FOR i := 0 TO LEN(bkts)-1 DO he_t := SYSTEM.VAL(Hash, bkts[i].head);
+        WHILE he_t # NIL DO he_nxt := he_t.hh.next_in_bkt;
+          he_bkt := he_t.hh.hashv MOD LEN(newBkts);
+          addToNewBucket(newTbl, he_t, newBkts[_he_bkt]);
+          he_t := he_nxt
         END
       END;
       IF newTbl.nonideal_items > newTbl.num_items DIV 2 THEN INC(newTbl.nof_ineff_expands) ELSE newTbl.nof_ineff_expands := 0 END;
@@ -292,13 +295,13 @@ MODULE UTHash;
   END ADD_TO_BKT;
 
   PROCEDURE ADD_TO_TABLE(tbl: Table; add: Hash);
-    VAR _ha_bkt: INTEGER;
+    VAR ha_bkt: INTEGER;
   BEGIN INC(tbl.num_items);
     CASE tbl OF
-      Table1: _ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
-        ADD_TO_BKT(tbl.buckets[_ha_bkt], add)
-    | Table2: _ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
-        ADD_TO_BKT(tbl.buckets[_ha_bkt], add)
+      Table1: ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
+        ADD_TO_BKT(tbl.buckets[ha_bkt], add)
+    | Table2: ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
+        ADD_TO_BKT(tbl.buckets[ha_bkt], add)
     | Table: ASSERT(FALSE)
     END
   END ADD_TO_TABLE;
@@ -312,14 +315,49 @@ MODULE UTHash;
     ADD_TO_TABLE(head.hh.tbl, add)
   END ADD_BYHASHVALUE;
 
-  PROCEDURE ADD*(VAR head: Hash; add: Hash; getHash: HashProc);
-    VAR _ha_hashv: INTEGER;
+  PROCEDURE ADD*(head: Hash; add: Hash; getHash: HashProc): Hash;
   BEGIN add.hh.hashv := getHash(add); ADD_BYHASHVALUE(head, add)
+
+    RETURN head
   END ADD;
 
-  PROCEDURE ADD_LONGINT*(VAR head: LongintHash; add: LongintHash);
+  PROCEDURE DEL_FROM_BKT(tbl: Table; VAR bkt: Bucket; del: Hash);
+  (* remove an item from a given bucket *)
+    VAR bh!: Hash;
+  BEGIN DEC(bkt.count); bh := SYSTEM.VAL(Hash, bkt.head);
+    IF bh = del THEN bkt.head := SYSTEM.VAL(INTEGER, del.hh.next_in_bkt) END;
+    IF del.hh.prev_in_bkt # NIL THEN del.hh.prev_in_bkt.hh.next_in_bkt := del.hh.next_in_bkt END;
+    IF del.hh.next_in_bkt # NIL THEN del.hh.next_in_bkt.hh.prev_in_bkt := del.hh.prev_in_bkt END
+  END DEL_FROM_BKT;
+
+  PROCEDURE DELETE*(head: Hash; del: Hash): Hash;
+    VAR hd_bkt: INTEGER; tbl!: Table; hashval: INTEGER;
+  BEGIN ASSERT(head # NIL); tbl := head.hh.tbl;
+    IF (del.hh.prev = NIL) & (del.hh.next = NIL) THEN head := NIL
+    ELSE 
+      IF del = tbl.tail THEN tbl.tail := del.hh.prev END;
+      IF del.hh.prev # NIL THEN del.hh.prev.hh.next := del.hh.next ELSE head := del.hh.next END;
+      IF del.hh.next # NIL THEN del.hh.next.hh.prev := del.hh.prev END;
+      hashval := del.hh.hashv;
+      CASE tbl OF
+        Table1: hd_bkt := hashval MOD LEN(tbl.buckets);
+          DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del)
+      | Table2: hd_bkt := hashval MOD LEN(tbl.buckets);
+          DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del)
+      | Table: ASSERT(FALSE)
+      END;
+      DEC(tbl.num_items)
+    END;
+    del.hh.tbl := NIL
+
+    RETURN head
+  END DELETE;
+
+  PROCEDURE ADD_LONGINT*(head: LongintHash; add: LongintHash): LongintHash;
     VAR h!: Hash;
-  BEGIN h := head; ADD(h, add, getLongintHash); head := h(LongintHash)
+  BEGIN h := ADD(head, add, getLongintHash)
+
+    RETURN h(LongintHash)
   END ADD_LONGINT;
 
 BEGIN NEW(kli)

@@ -24,7 +24,7 @@ MODULE AOC2024Day11;
 
   PROCEDURE addStone(VAR sto: Stone; s: Stone);
     VAR l!: UT.LongintHash;
-  BEGIN l := sto; UT.ADD_LONGINT(l, s); sto := l(Stone)
+  BEGIN l := UT.ADD_LONGINT(sto, s); sto := l(Stone)
   END addStone;
 
   PROCEDURE add(VAR sto: Stone; id: LONGINT; nb: LONGINT);
@@ -47,11 +47,12 @@ MODULE AOC2024Day11;
   END add;
 
   PROCEDURE blink(VAR stones: Stone);
-    VAR s!, nexts!: Stone; j: INTEGER; n!: UT.Hash;
+    VAR s!, nexts!: Stone; j: INTEGER; n!, t!: UT.Hash;
   BEGIN nexts := NIL; s := stones;
     WHILE s # NIL DO n := UT.NEXT(s);
       FOR j := 0 TO s.nbNext - 1 DO add(nexts, s.next[j], s.count) END;
-      UT.SETNEXT(s, freelist); freelist := s; (*put s in free list for future reuse*)
+      t := UT.DELETE(stones, s); stones := t(Stone);
+      t := UT.FREE(freelist, s); freelist := t(Stone); (*put s in free list for future reuse*)
       s := n(Stone)
     END;
     stones := nexts
@@ -84,7 +85,7 @@ MODULE AOC2024Day11;
 BEGIN Texts.OpenWriter(W)
 END AOC2024Day11.
 
-OM4P2.Compile AOC2024Day11.Mod/s ~ System.Free AOC2024Day11 UTHash ~ SystemLog AOCUtils.Mod ~
+OM4P2.Compile AOC2024Day11.Mod/s ~ System.Free AOC2024Day11 UTHash ~ SystemLog AOCUtils ~
 
 Partie 1: nombre de pierres = 55312
 AOC2024Day11.run 25
