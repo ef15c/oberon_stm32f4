@@ -279,7 +279,7 @@ MODULE UTHash;
   BEGIN
     CASE tbl OF
       Table1: NEW(tbl2); expandTable(tbl, tbl.buckets, tbl2, tbl2.buckets)
-    | Table2: tbl.noexpand := TRUE;
+    | Table2: ASSERT(FALSE) (*tbl.noexpand := TRUE*)
     | Table: ASSERT(FALSE)
     END
   END EXPAND_BUCKETS;

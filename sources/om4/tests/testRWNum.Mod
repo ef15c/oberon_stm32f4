@@ -8,8 +8,7 @@ MODULE testRWNum;
   BEGIN f := Files.New("testRWNum.data");
     Files.Set(r, f, 0);
     Files.WriteNum(r, -1000); Files.WriteNum(r, -1); Files.WriteNum(r, 0); Files.WriteNum(r, 1); Files.WriteNum(r, 1000);
-    v := 1000; v := v*v*v*v; Texts.WriteString(W, "v = "); Texts.WriteInt(W, v, 1); Texts.WriteLn(W);
-    Files.WriteNum(r, v);  
+    v := 1000; v := v*v*v*v; Files.WriteNum(r, v); Files.WriteNum(r, 0D0000000H);
     Files.Register(f);
 
     Files.Set(r, f, 0); Files.ReadNum(r, v);
@@ -22,8 +21,7 @@ MODULE testRWNum;
   BEGIN f := Files.New("testRWNum.data");
     Files.Set(r, f, 0);
     FilesEx.WriteLongNum(r, -1000); FilesEx.WriteLongNum(r, -1); FilesEx.WriteLongNum(r, 0); FilesEx.WriteLongNum(r, 1); FilesEx.WriteLongNum(r, 1000);
-    v := 1000; v := v*v*v*v; Texts.WriteString(W, "v = "); TextsEx.WriteLongInt(W, v, 1); Texts.WriteLn(W);
-    FilesEx.WriteLongNum(r, v);  
+    v := 1000; v := v*v*v*v; FilesEx.WriteLongNum(r, v); FilesEx.WriteLongNum(r, 0D0000000H);
     Files.Register(f);
 
     Files.Set(r, f, 0); FilesEx.ReadLongNum(r, v);
@@ -60,13 +58,14 @@ v = 0
 v = 1
 v = 1000
 v = -727379968
+v = -805306368
 testRWNum.writeL
 v = -1000
 v = -1
 v = 0
 v = 1
 v = 1000
-v = -727379968
+v = -805306368
 testRWNum.run
 v = -1000
 v = -1
@@ -74,6 +73,7 @@ v = 0
 v = 1
 v = 1000
 v = -727379968
+v = -805306368
 testRWNum.runL
 v = -1000
 v = -1
@@ -81,10 +81,12 @@ v = 0
 v = 1
 v = 1000
 v = -727379968
+v = -805306368
 
 Stage 2
 
-OM4P2.Compile TextsEx2.Mod FilesEx2.Mod testRWNum.Mod/s ~ System.Free testRWNum FilesEx2 TextsEx2 ~ 
+OM4P2.Compile TextsEx2.Mod FilesEx2.Mod testRWNum.Mod/s ~
+System.Free testRWNum LongInt testScan SystemLog OM4P2 OM4G2 OM4B2 FilesEx2 TextsEx2 ~ 
 testRWNum.write
 v = -1000
 v = -1
@@ -92,6 +94,7 @@ v = 0
 v = 1
 v = 1000
 v = -727379968
+v = -805306368
 testRWNum.writeL
 v = -1000
 v = -1
@@ -99,6 +102,7 @@ v = 0
 v = 1
 v = 1000
 v = 1000000000000
+v = 3489660928
 testRWNum.run
 v = -1000
 v = -1
@@ -106,6 +110,7 @@ v = 0
 v = 1
 v = 1000
 v = -777434592
+v = -805306368
 testRWNum.runL
 v = -1000
 v = -1
@@ -113,5 +118,6 @@ v = 0
 v = 1
 v = 1000
 v = 1000000000000
+v = 3489660928
 
 OM4Tool.DecObj testRWNum.m4c

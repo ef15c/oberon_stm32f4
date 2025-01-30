@@ -524,7 +524,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     IF (a < C3) & (b < C3) & (c < C3) & (shift = 0) & (reg3map[op] # 0) THEN
       co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0; (* not in IT block *)
       Put1(co, reg3map[op] + c*C6 + b*C3 + a)
-    ELSIF (a < C3) & (b < C3) & (a = b) & (shift = 0) & (reg3dnmap[op] # 0) THEN
+    ELSIF (a < C3) & (b < C3) & (c < C3) & (a = b) & (shift = 0) & (reg3dnmap[op] # 0) THEN
       co.lastInstrSetFlags := co.nbRmnITBlockInsts = 0; (* not in IT block *)
       Put1(co, reg3dnmap[op] + c*C3 + a)
     ELSIF (a = b) & (shift = 0) & (reg4map[op] # 0) THEN

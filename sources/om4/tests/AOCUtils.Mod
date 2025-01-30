@@ -1,6 +1,12 @@
 MODULE AOCUtils;
   IMPORT Texts, TE := TextsEx2, L := SystemLog;
 
+  CONST LONG_MAX* = LSL(1L, 63) - 1;
+
+  TYPE Vector* = RECORD x*, y*: INTEGER END;
+
+  VAR DIRECTION4*: ARRAY 4 OF Vector;
+
   PROCEDURE ReadL*(VAR S: TE.Scanner): LONGINT;
     VAR r: LONGINT;
   BEGIN IF S.class = Texts.Int THEN r := S.i ELSE ASSERT(S.class = TE.LongInt); r := S.l END; TE.Scan(S)
@@ -30,12 +36,10 @@ MODULE AOCUtils;
   PROCEDURE strncmp*(a, b: ARRAY OF CHAR; l: INTEGER): INTEGER;
     VAR r, i: INTEGER;
   BEGIN i := 0; ASSERT(l > 0);
-(*;L.DebugString("a", a); L.DebugString("b", b); L.DebugInt("l", l, 1);*)
     WHILE  (i < l) & (i < LEN(a)) & (i < LEN(b)) & (a[i] # 0X) & (a[i] = b[i]) DO INC(i) END;
     IF i = l THEN r := ORD(a[i-1]) - ORD(b[i-1])
     ELSIF (i < LEN(a)) & (i < LEN(b)) THEN r := ORD(a[i]) - ORD(b[i])
     ELSE r := LEN(a) - LEN(b) END
-(*; L.DebugInt("r", r, 1);*)
 
     RETURN r
   END strncmp;
@@ -46,4 +50,31 @@ MODULE AOCUtils;
     IF i < LEN(d) THEN d[i] := 0X END
   END CopyString;
 
+  PROCEDURE manhattan*(p1, p2: Vector): INTEGER;
+  (*Calculer la distance de manhattan entre deux points*)
+    RETURN ABS(p1.x - p2.x) + ABS(p1.y - p2.y)
+  END manhattan;
+
+  PROCEDURE printVector*(VAR W: Texts.Writer; p: Vector);
+  BEGIN Texts.Write(W, "("); Texts.WriteInt(W, p.x, 1); Texts.Write(W, ","); Texts.WriteInt(W, p.y, 1);Texts.Write(W, ")")
+  END printVector;
+
+  PROCEDURE min*(a, b: INTEGER): INTEGER;
+    VAR r: INTEGER;
+  BEGIN IF a < b THEN r := a ELSE r := b END
+
+    RETURN r
+  END min;
+
+  PROCEDURE max*(a, b: INTEGER): INTEGER;
+    VAR r: INTEGER;
+  BEGIN IF a > b THEN r := a ELSE r := b END
+
+    RETURN r
+  END max;
+
+BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
+  DIRECTION4[1].x := 1; DIRECTION4[1].y := 0;
+  DIRECTION4[2].x := 0; DIRECTION4[2].y := 1;
+  DIRECTION4[3].x := -1; DIRECTION4[3].y := 0;
 END AOCUtils.
