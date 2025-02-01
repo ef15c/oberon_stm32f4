@@ -68,7 +68,7 @@ MODULE UTHash;
        * the hash will still work, albeit no longer in constant time.*)
       nof_ineff_expands: INTEGER; noexpand: BOOLEAN;
 
-      signature: INTEGER (* used only to find hash tables in external analysis *)
+      next: Table (* used for chaining free tables in freelist *)
     END;
 
     Table1 = POINTER TO Table1Desc;
@@ -91,7 +91,7 @@ MODULE UTHash;
     LongintHashDesc* = RECORD(HashDesc) key*: LONGINT END;
     LongintHash* = POINTER TO LongintHashDesc;
 
-  VAR kli: LongintHash;
+  VAR kli: LongintHash; freetable1list: Table1; freetable2list: Table2;
 
   PROCEDURE FIND_IN_BKT(tbl: Table; bucket: Bucket; key: Hash; hashval: INTEGER; isEqual: EqualProc): Hash;
     VAR out! : Hash; found: BOOLEAN; count: INTEGER;
@@ -189,7 +189,11 @@ MODULE UTHash;
 
   PROCEDURE MAKE_TABLE(head: Hash);
     VAR tbl!: Table1;
-  BEGIN NEW(tbl); head.hh.tbl := tbl; tbl.tail := head; tbl.signature := SIGNATURE
+  BEGIN 
+    IF freetable1list = NIL THEN NEW(tbl)
+    ELSE tbl := freetable1list; freetable1list := freetable1list.next(Table1)
+    END;
+    head.hh.tbl := tbl; tbl.tail := head; tbl.next := NIL
   END MAKE_TABLE;
 
   PROCEDURE APPEND_LIST(head, add: Hash);
@@ -197,28 +201,6 @@ MODULE UTHash;
   BEGIN add.hh.next := NIL; ptail := head.hh.tbl.tail; add.hh.prev := ptail;
     ptail.hh.next := add; head.hh.tbl.tail := add
   END APPEND_LIST;
-
-(*
-  PROCEDURE printBucket(bkt: Bucket);
-    VAR h!: Hash;
-  BEGIN L.DebugHex("Bucket count", bkt.count);
-    h := SYSTEM.VAL(Hash, bkt.head); WHILE h # NIL DO L.DebugHex("Hash", ORD(h)); h := h.hh.next_in_bkt END
-  END printBucket;
-
-  PROCEDURE printBuckets(bkts: ARRAY OF Bucket);
-    VAR i: INTEGER;
-  BEGIN FOR i := 0 TO LEN(bkts) - 1 DO L.DebugHex("bucket idx", i); printBucket(bkts[i]) END
-  END printBuckets;
- 
-  PROCEDURE printTable(tbl: Table);
-  BEGIN L.DebugHex("Table", ORD(tbl));
-    L.DebugHex("tbl.num_items", tbl.num_items);
-    CASE tbl OF
-      Table1: printBuckets(tbl.buckets)
-    | Table2: printBuckets(tbl.buckets)
-    END
-  END printTable;
-*)
 
   (** Bucket expansion has the effect of doubling the number of buckets
    * and redistributing the items into the new buckets. Ideally the
@@ -246,7 +228,7 @@ MODULE UTHash;
   PROCEDURE EXPAND_BUCKETS(tbl: Table);
     VAR tbl2!: Table2;
 
-    PROCEDURE expandTable(tbl: Table; bkts: ARRAY OF Bucket; newTbl: Table; VAR newBkts: ARRAY OF Bucket);
+    PROCEDURE expandTable(tbl: Table; VAR bkts: ARRAY OF Bucket; newTbl: Table; VAR newBkts: ARRAY OF Bucket);
       VAR he_bkt, i: INTEGER;
         he_t!, he_nxt!: Hash;
 
@@ -261,7 +243,7 @@ MODULE UTHash;
           newBkt.head := SYSTEM.VAL(INTEGER, he_t); he_t.hh.tbl := newTbl; INC(newTbl.num_items)
         END addToNewBucket;
 
-    BEGIN 
+    BEGIN newTbl.nof_ineff_expands := tbl.nof_ineff_expands; newTbl.next := NIL;
       newTbl.ideal_chain_maxlen :=  (tbl.num_items + (LEN(newBkts) - 1)) DIV LEN(newBkts);
       newTbl.nonideal_items := 0; newTbl.tail := tbl.tail;
       FOR i := 0 TO LEN(bkts)-1 DO he_t := SYSTEM.VAL(Hash, bkts[i].head);
@@ -269,16 +251,20 @@ MODULE UTHash;
           he_bkt := he_t.hh.hashv MOD LEN(newBkts);
           addToNewBucket(newTbl, he_t, newBkts[_he_bkt]);
           he_t := he_nxt
-        END
+        END; bkts[i].head := 0; bkts[i].count := 0; bkts[i].expand_mult := 0
       END;
       IF newTbl.nonideal_items > newTbl.num_items DIV 2 THEN INC(newTbl.nof_ineff_expands) ELSE newTbl.nof_ineff_expands := 0 END;
-      newTbl.noexpand := newTbl.nof_ineff_expands > 1
-(*;L.DebugInt("nonideal_items", newTbl.nonideal_items, 1);
-;L.DebugInt("num_items", newTbl.num_items, 1);*)
+      newTbl.noexpand := newTbl.nof_ineff_expands > 1;
+      tbl.num_items := 0; tbl.tail := NIL; tbl.nof_ineff_expands := 0
     END expandTable;
   BEGIN
     CASE tbl OF
-      Table1: NEW(tbl2); expandTable(tbl, tbl.buckets, tbl2, tbl2.buckets)
+      Table1:
+        IF freetable2list = NIL THEN NEW(tbl2)
+        ELSE tbl2 := freetable2list; freetable2list := freetable2list.next(Table2)
+        END;
+        expandTable(tbl, tbl.buckets, tbl2, tbl2.buckets);
+        tbl.next := freetable1list; freetable1list := tbl;
     | Table2: ASSERT(FALSE) (*tbl.noexpand := TRUE*)
     | Table: ASSERT(FALSE)
     END
@@ -333,20 +319,25 @@ MODULE UTHash;
   PROCEDURE DELETE*(head: Hash; del: Hash): Hash;
     VAR hd_bkt: INTEGER; tbl!: Table; hashval: INTEGER;
   BEGIN ASSERT(head # NIL); tbl := head.hh.tbl;
-    IF (del.hh.prev = NIL) & (del.hh.next = NIL) THEN head := NIL
+    hashval := del.hh.hashv;
+    CASE tbl OF
+      Table1: hd_bkt := hashval MOD LEN(tbl.buckets);
+        DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del);
+    | Table2: hd_bkt := hashval MOD LEN(tbl.buckets);
+        DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del)
+    | Table: ASSERT(FALSE)
+    END; DEC(tbl.num_items);
+    IF (del.hh.prev = NIL) & (del.hh.next = NIL) THEN ASSERT(tbl.num_items = 0);
+     head := NIL; tbl.tail := NIL; tbl.nof_ineff_expands := 0;
+      CASE tbl OF
+        Table1: tbl.next := freetable1list; freetable1list := tbl
+      | Table2: tbl.next := freetable2list; freetable2list := tbl
+      | Table: ASSERT(FALSE)
+    END;     
     ELSE 
       IF del = tbl.tail THEN tbl.tail := del.hh.prev END;
       IF del.hh.prev # NIL THEN del.hh.prev.hh.next := del.hh.next ELSE head := del.hh.next END;
-      IF del.hh.next # NIL THEN del.hh.next.hh.prev := del.hh.prev END;
-      hashval := del.hh.hashv;
-      CASE tbl OF
-        Table1: hd_bkt := hashval MOD LEN(tbl.buckets);
-          DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del)
-      | Table2: hd_bkt := hashval MOD LEN(tbl.buckets);
-          DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del)
-      | Table: ASSERT(FALSE)
-      END;
-      DEC(tbl.num_items)
+      IF del.hh.next # NIL THEN del.hh.next.hh.prev := del.hh.prev END
     END;
     del.hh.tbl := NIL
 

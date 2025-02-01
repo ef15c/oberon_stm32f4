@@ -1,7 +1,7 @@
 MODULE AOCUtils;
   IMPORT Texts, TE := TextsEx2, L := SystemLog;
 
-  CONST LONG_MAX* = LSL(1L, 63) - 1;
+  CONST LONG_MAX* = LSL(1L, 63) - 1; BYTE_MAX* = LSL(1, 8);
 
   TYPE Vector* = RECORD x*, y*: INTEGER END;
 
@@ -72,6 +72,17 @@ MODULE AOCUtils;
 
     RETURN r
   END max;
+
+  PROCEDURE toInt*(c: ARRAY OF CHAR): INTEGER;
+    VAR r, i: INTEGER; ch: CHAR;
+  BEGIN r := 0; i := 0;
+    WHILE (i < LEN(c)) & (c[i] # 0X) DO ch := c[i];
+      IF (ch >= "0") & (ch <= "9") THEN r := r*10; INC(r, ORD(ch) - ORD("0")) END;
+      INC(i)
+    END
+
+    RETURN r
+  END toInt;
 
 BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
   DIRECTION4[1].x := 1; DIRECTION4[1].y := 0;

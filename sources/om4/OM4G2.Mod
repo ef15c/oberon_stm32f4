@@ -462,7 +462,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE FindPtrFlds(typ: B.Type; off: INTEGER; VAR dcw: INTEGER);
     VAR fld!: B.Object; i, s: INTEGER;
   BEGIN
-    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN data[dcw] := off; INC(dcw)
+    IF typ.form IN {B.Pointer, B.NilTyp} THEN data[dcw] := off; INC(dcw)
     ELSIF typ.form = B.Record THEN
       fld := typ.dsc;
       WHILE fld # NIL DO FindPtrFlds(fld.type, fld.val + off, dcw); fld := fld.next END
@@ -1526,7 +1526,7 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE NofPtrs(typ: B.Type): INTEGER;
     VAR fld!: B.Object; n: INTEGER;
   BEGIN
-    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN n := 1
+    IF typ.form IN {B.Pointer, B.NilTyp} THEN n := 1
     ELSIF typ.form = B.Record THEN
       fld := typ.dsc; n := 0;
       WHILE fld # NIL DO n := NofPtrs(fld.type) + n; fld := fld.next END
@@ -1539,13 +1539,15 @@ MODULE OM4G2; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE FindPtrs(VAR R: Files.Rider; typ: B.Type; adr: INTEGER);
     VAR fld!: B.Object; i, s: INTEGER;
   BEGIN
-    IF (typ.form = B.Pointer) OR (typ.form = B.NilTyp) THEN Files.WriteInt(R, adr)
+    IF typ.form IN {B.Pointer, B.NilTyp} THEN Files.WriteInt(R, adr)
     ELSIF typ.form = B.Record THEN
       fld := typ.dsc;
       WHILE fld # NIL DO FindPtrs(R, fld.type, fld.val + adr); fld := fld.next END
     ELSIF typ.form = B.Array THEN
       s := typ.base.size;
-      FOR i := 0 TO typ.len-1 DO FindPtrs(R, typ.base, i*s + adr) END
+      IF typ.base.form IN {B.Pointer, B.NilTyp, B.Record, B.Array} THEN (*compiler execution time optimization*)
+        FOR i := 0 TO typ.len-1 DO FindPtrs(R, typ.base, i*s + adr) END
+      END
     END
   END FindPtrs;
 

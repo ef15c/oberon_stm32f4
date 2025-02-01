@@ -48,6 +48,11 @@ MODULE FilesEx2;
     l := 0; FOR i:= 7 TO 0 BY -1 DO l := l*100H + x[i] END
   END ReadLongInt;
 
+  PROCEDURE WriteLongInt*(VAR R: Files.Rider; l: LONGINT);
+    VAR i: INTEGER;
+  BEGIN FOR i := 0 TO 7 DO Files.WriteByte(R, l MOD 100H); l := LSR(l, 8) END
+  END WriteLongInt;
+
   PROCEDURE ReadLongNum*(VAR R: Files.Rider; VAR x: LONGINT);
     VAR n: INTEGER; y: LONGINT; b: BYTE;
   BEGIN

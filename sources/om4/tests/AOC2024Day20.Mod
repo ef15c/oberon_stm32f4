@@ -5,6 +5,8 @@ MODULE AOC2024Day20;
 
   TYPE Int = LONGINT;
     ProcessProc = PROCEDURE (p, p2: U.Vector; sav: Int);
+    Improved = POINTER TO ImprovedDesc;
+    ImprovedDesc = RECORD p: U.Vector; next: Improved END;
 
   VAR W: Texts.Writer;
     input: ARRAY MAZE_SIZE, MAZE_SIZE OF CHAR; d: ARRAY MAZE_SIZE, MAZE_SIZE OF Int;
@@ -49,7 +51,7 @@ MODULE AOC2024Day20;
 
   PROCEDURE parse*;
     VAR S!: TE.Scanner; ch: CHAR; x: INTEGER;
-        BEGIN mazeXlen := 0; mazeYlen := 0; x := 0; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Read(S, ch);
+  BEGIN mazeXlen := 0; mazeYlen := 0; x := 0; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Read(S, ch);
     WHILE ch = Texts.CR DO Texts.Read(S, ch) END;
     WHILE (ch = "#") OR (ch = ".") OR (ch = "S") OR (ch = "E") OR (ch = Texts.CR) DO
       IF ch = Texts.CR THEN
@@ -62,50 +64,69 @@ MODULE AOC2024Day20;
     L.DebugInt("mazeXlen", mazeXlen, 1); L.DebugInt("mazeXlen", mazeXlen, 1);
   END parse;
 
-  PROCEDURE computeDistance*;
-    VAR needMore: BOOLEAN; cs: Int;
-      i, j, cd, k, l, nk, nl: INTEGER; p, pi: U.Vector;
-      nbt: INTEGER;
-  BEGIN p.x := -1; p.y := -1; i := 0;
+  PROCEDURE findFlag(f: CHAR; VAR r: U.Vector);
+    VAR i, j: INTEGER;
+  BEGIN r.x := -1; r.y := -1; i := 0;
     WHILE i < mazeYlen DO j := 0;
       WHILE j < mazeXlen DO
-        IF input[i, j] = "E" THEN (* position de sortie *)
-          p.x := j; p.y := i; i := mazeYlen; j := mazeXlen (*break*)
+        IF input[i, j] = f THEN (* position trouv\E9e *)
+          r.x := j; r.y := i; i := mazeYlen; j := mazeXlen (*break*)
         END; INC(j)
       END; INC(i)
     END;
-    ASSERT((p.x # -1) & (p.y # -1));
+    ASSERT((r.x # -1) & (r.y # -1))
+  END findFlag;
 
-    pi.x := -1; pi.y := -1; i := 0;
-    WHILE i < mazeYlen DO j := 0;
-      WHILE j  < mazeXlen DO
-        IF input[i, j] = "S" THEN (* position d'entr\E9e *)
-          pi.x := j; pi.y := i; i := mazeYlen; j := mazeXlen (*break*)
-        END; INC(j)
-      END; INC(i)
-    END;
-    ASSERT((pi.x # -1) & (pi.y # -1));
-
+  PROCEDURE computeDistance*;
+    VAR needMore: BOOLEAN; i, j, cd, cs: Int;
+      p, pi: U.Vector; ip!, nip!, t!: Improved;
+  BEGIN  findFlag("E", p); (* position de sortie *) findFlag("S", pi); (* position d'entr\E9e *)
     FOR i := 0 TO mazeYlen -1 DO FOR j := 0 TO mazeXlen - 1 DO d[i, j] := U.LONG_MAX END END;
-    d[p.y, p.x] := 0; (* la case finale est \E0 une distance de 0 *)
-
-    (* calcul de la distance minimale entre chaque case et la case finale *)
-    REPEAT needMore := FALSE; nbt := 0;
-      FOR i := 0 TO mazeYlen - 1 DO
-        FOR j := 0 TO mazeXlen - 1 DO cs := d[i, j];
-          IF cs < U.LONG_MAX THEN (* case visit\E9e *)
-            (* propagation de la mise \E0 jour de la distance *)
-            k := i; l := j; cd := 0;
-            REPEAT nk := k + U.DIRECTION4[cd].y; nl := l + U.DIRECTION4[cd].x;
-              IF (input[nk, nl] # "#") & (d[nk, nl]  > cs + 1) THEN needMore := TRUE; k := nk; l := nl; INC(cs); d[k,l] := cs; cd := 0; INC(nbt) END;
-              INC(cd)
-            UNTIL cd = LEN(U.DIRECTION4)
-          END
-        END
-      END; LED(nbt)
-    UNTIL ~needMore;
+    d[p.y, p.x] := 0; (* la case finale est \E0 une distance de 0 *); NEW(ip); ip.p := p;
+    REPEAT nip := NIL;
+      REPEAT cs := dist(ip.p);
+        FOR cd := 0 TO LEN(U.DIRECTION4) - 1 DO i := ip.p.y + U.DIRECTION4[cd].y; j := ip.p.x + U.DIRECTION4[cd].x;
+          IF (input[i, j] # "#") & (d[i, j]  > cs + 1) THEN d[i, j] := cs + 1; NEW(t); t.p.y := i; t.p.x := j; t.next := nip; nip := t END
+        END;
+        ip := ip.next
+      UNTIL ip = NIL;
+      ip := nip;
+    UNTIL ip = NIL;
     L.DebugLongInt("Dist entr\E9e", dist(pi), 1); distComputed := TRUE
   END computeDistance;
+
+  PROCEDURE storeDist*;
+    VAR S!: TE.Scanner; f!: Files.File; rf!: Files.Rider;
+      i, j: INTEGER;
+  BEGIN
+    IF ~distComputed THEN Texts.WriteString(W, "Need to compute distance matrix before save.");
+      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+    END;
+    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); TE.Scan(S);
+    IF S.class = Texts.Name THEN f := Files.New(S.s);
+      IF f # NIL THEN Files.Set(rf, f, 0);
+        Files.WriteInt(rf, mazeYlen); Files.WriteInt(rf, mazeXlen);
+        FOR i := 0 TO mazeYlen DO FOR j := 0 TO mazeXlen DO FilesEx.WriteLongInt(rf, d[i, j]) END END;
+        Files.Register(f);
+      END
+    END
+  END storeDist;
+
+  PROCEDURE loadDist*;
+    VAR S!: TE.Scanner; f!: Files.File; rf!: Files.Rider;
+      i, j: INTEGER;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); TE.Scan(S);
+    IF S.class = Texts.Name THEN f := Files.Old(S.s);
+      IF f # NIL THEN Files.Set(rf, f, 0);
+        Files.ReadInt(rf, i); Files.ReadInt(rf, j);
+        IF (i # mazeYlen) OR (j # mazeXlen) THEN Texts.WriteString(W, "Maze size mismatch. Trt to parse the maze input data.");
+          Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+        ELSE FOR i := 0 TO mazeYlen DO FOR j := 0 TO mazeXlen DO FilesEx.ReadLongInt(rf, d[i, j]) END END;
+          distComputed := TRUE
+        END;
+      END
+    END;
+  END loadDist;
 
   PROCEDURE count2*;
   BEGIN IF ~distComputed THEN parse; computeDistance END;
@@ -133,9 +154,12 @@ END AOC2024Day20.
 
 OM4P2.Compile AOC2024Day20.Mod/s ~ System.Free AOC2024Day20 AOCUtils UTHash SystemLog ~
 
-AOC2024Day20.computeDistance
+AOC2024Day20.loadDist AOC2024Day1Ex.dist
 AOC2024Day20.count20
+
 AOC2024Day20.list2
+AOC2024Day20.computeDistance
+AOC2024Day20.storeDist AOC2024Day1Ex.dist
 AOC2024Day20.parse
 ###############
 #...#...#.....#
@@ -154,8 +178,13 @@ AOC2024Day20.parse
 ###############
 ~
 
+AOC2024Day20.loadDist AOC2024Day1Real.dist
+AOC2024Day20.count2
 Partie 1: nb of cheats that saves >= 100ps = 1384
+AOC2024Day20.count20
 Partie 2: nb of cheats that saves >= 100ps = 1008542
+AOC2024Day20.computeDistance
+AOC2024Day20.storeDist AOC2024Day1Real.dist
 AOC2024Day20.parse
 #############################################################################################################################################
 #...............#...#...#.......#...#.........###...#...#.....#...#...........#...###.....###.....#.....#...###.........#...#...#...###.....#
