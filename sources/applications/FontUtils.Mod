@@ -11,7 +11,7 @@ MODULE FontUtils;
 
   PROCEDURE chgExt(VAR name: ARRAY OF CHAR; ext: ARRAY OF CHAR);
     VAR i, j: INTEGER;
-  BEGIN i := LEN(name);
+  BEGIN i := 0; WHILE (i < LEN(name)) & (name[i] # 0X) DO INC(i) END;
     REPEAT DEC(i) UNTIL (i <= 0) OR (name[i] = "."); j := 0;
     WHILE ext[j] # 0X DO INC(i); name[i] := ext[j]; INC(j) END; name[i+1] := 0X
   END chgExt;
@@ -330,3 +330,6 @@ MODULE FontUtils;
 
 BEGIN Texts.OpenWriter(W)
 END FontUtils.
+
+FontUtils.FromBDF Oberon10.Scn.cp1252.bdf ~
+FontUtils.FromBDF Mono10.Scn.bdf ~
