@@ -23,7 +23,7 @@ MODULE UTHash;
   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*)
 
-  CONST SIGNATURE = 0A0111FE1H; BKT_CAPACITY_THRESH = 10; (* expand when bucket count reaches *)
+  CONST SIGNATURE = 0A0111FE1H; BKT_CAPACITY_THRESH = 15; (* expand when bucket count reaches *)
 
   TYPE Hash* = POINTER TO HashDesc;
 
@@ -72,9 +72,13 @@ MODULE UTHash;
     END;
 
     Table1 = POINTER TO Table1Desc;
-    Table1Desc = RECORD(TableDesc) buckets: ARRAY 1024 OF Bucket END;
+    Table1Desc = RECORD(TableDesc) buckets: ARRAY LSL(1, 10) OF Bucket END;
     Table2 = POINTER TO Table2Desc;
-    Table2Desc = RECORD(TableDesc) buckets: ARRAY 2048 OF Bucket END;
+    Table2Desc = RECORD(TableDesc) buckets: ARRAY LSL(1, 11) OF Bucket END;
+    Table3 = POINTER TO Table3Desc;
+    Table3Desc = RECORD(TableDesc) buckets: ARRAY LSL(1, 12) OF Bucket END;
+    Table4 = POINTER TO Table4Desc;
+    Table4Desc = RECORD(TableDesc) buckets: ARRAY LSL(1, 13) OF Bucket END;
 
     Handle = RECORD
       tbl: Table;
@@ -88,10 +92,13 @@ MODULE UTHash;
     HashProc* = PROCEDURE(key: Hash): INTEGER;
     EqualProc* = PROCEDURE(a, b: Hash): BOOLEAN;
 
+    IntHashDesc* = RECORD(HashDesc) key*: INTEGER END;
+    IntHash* = POINTER TO IntHashDesc;
+
     LongintHashDesc* = RECORD(HashDesc) key*: LONGINT END;
     LongintHash* = POINTER TO LongintHashDesc;
 
-  VAR kli: LongintHash; freetable1list: Table1; freetable2list: Table2;
+  VAR ki: IntHash; kli: LongintHash; freetable1list: Table1; freetable2list: Table2; freetable3list: Table3; freetable4list: Table4;
 
   PROCEDURE FIND_IN_BKT(tbl: Table; bucket: Bucket; key: Hash; hashval: INTEGER; isEqual: EqualProc): Hash;
     VAR out! : Hash; found: BOOLEAN; count: INTEGER;
@@ -115,6 +122,10 @@ MODULE UTHash;
         Table1: hf_bkt := hashval MOD LEN(tbl.buckets);
           out := FIND_IN_BKT(tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
       | Table2: hf_bkt := hashval MOD LEN(tbl.buckets);
+          out := FIND_IN_BKT(tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
+      | Table3: hf_bkt := hashval MOD LEN(tbl.buckets);
+          out := FIND_IN_BKT(tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
+      | Table4: hf_bkt := hashval MOD LEN(tbl.buckets);
           out := FIND_IN_BKT(tbl, tbl.buckets[_hf_bkt], key, hashval, isEqual)
       | Table: ASSERT(FALSE)
       END
@@ -158,6 +169,34 @@ MODULE UTHash;
 
     RETURN CRC32.read()
   END HASH_STRING;
+
+  PROCEDURE getIntHash*(key: Hash): INTEGER;
+  BEGIN CRC32.reset;
+    CASE key OF
+      IntHash: CRC32.write(key.key)
+    | Hash: ASSERT(FALSE)
+    END
+
+    RETURN CRC32.read()
+  END getIntHash;
+
+  PROCEDURE isIntEqual(a, b: Hash): BOOLEAN;
+    VAR r: BOOLEAN;
+  BEGIN
+    CASE a OF
+      IntHash: r := a.key = b(IntHash).key
+    | Hash: ASSERT(FALSE)
+    END
+
+    RETURN r
+  END isIntEqual;
+
+  PROCEDURE  FIND_INT*(head: IntHash; key: INTEGER): IntHash;
+    VAR f!: Hash;
+  BEGIN ki.key := key; f := FIND(head, ki, getIntHash, isIntEqual)
+
+    RETURN f(IntHash)
+  END FIND_INT;
 
   PROCEDURE getLongintHash*(key: Hash): INTEGER;
   BEGIN CRC32.reset;
@@ -226,7 +265,7 @@ MODULE UTHash;
    *)
 
   PROCEDURE EXPAND_BUCKETS(tbl: Table);
-    VAR tbl2!: Table2;
+    VAR tbl2!: Table2; tbl3!: Table3; tbl4!: Table4;
 
     PROCEDURE expandTable(tbl: Table; VAR bkts: ARRAY OF Bucket; newTbl: Table; VAR newBkts: ARRAY OF Bucket);
       VAR he_bkt, i: INTEGER;
@@ -264,8 +303,20 @@ MODULE UTHash;
         ELSE tbl2 := freetable2list; freetable2list := freetable2list.next(Table2)
         END;
         expandTable(tbl, tbl.buckets, tbl2, tbl2.buckets);
-        tbl.next := freetable1list; freetable1list := tbl;
-    | Table2: ASSERT(FALSE) (*tbl.noexpand := TRUE*)
+        tbl.next := freetable1list; freetable1list := tbl
+    | Table2:
+        IF freetable3list = NIL THEN NEW(tbl3)
+        ELSE tbl3 := freetable3list; freetable3list := freetable3list.next(Table3)
+        END;
+        expandTable(tbl, tbl.buckets, tbl3, tbl3.buckets);
+        tbl.next := freetable2list; freetable2list := tbl
+    | Table3:
+        IF freetable4list = NIL THEN NEW(tbl4)
+        ELSE tbl4 := freetable4list; freetable4list := freetable3list.next(Table4)
+        END;
+        expandTable(tbl, tbl.buckets, tbl4, tbl4.buckets);
+        tbl.next := freetable3list; freetable3list := tbl
+    | Table4: ASSERT(FALSE) (*tbl.noexpand := TRUE*)
     | Table: ASSERT(FALSE)
     END
   END EXPAND_BUCKETS;
@@ -287,6 +338,10 @@ MODULE UTHash;
       Table1: ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
         ADD_TO_BKT(tbl.buckets[ha_bkt], add)
     | Table2: ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
+        ADD_TO_BKT(tbl.buckets[ha_bkt], add)
+    | Table3: ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
+        ADD_TO_BKT(tbl.buckets[ha_bkt], add)
+    | Table4: ha_bkt := add.hh.hashv MOD LEN(tbl.buckets);
         ADD_TO_BKT(tbl.buckets[ha_bkt], add)
     | Table: ASSERT(FALSE)
     END
@@ -325,6 +380,10 @@ MODULE UTHash;
         DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del);
     | Table2: hd_bkt := hashval MOD LEN(tbl.buckets);
         DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del)
+    | Table3: hd_bkt := hashval MOD LEN(tbl.buckets);
+        DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del)
+    | Table4: hd_bkt := hashval MOD LEN(tbl.buckets);
+        DEL_FROM_BKT(tbl, tbl.buckets[hd_bkt], del)
     | Table: ASSERT(FALSE)
     END; DEC(tbl.num_items);
     IF (del.hh.prev = NIL) & (del.hh.next = NIL) THEN ASSERT(tbl.num_items = 0);
@@ -332,8 +391,10 @@ MODULE UTHash;
       CASE tbl OF
         Table1: tbl.next := freetable1list; freetable1list := tbl
       | Table2: tbl.next := freetable2list; freetable2list := tbl
+      | Table3: tbl.next := freetable3list; freetable3list := tbl
+      | Table4: tbl.next := freetable4list; freetable4list := tbl
       | Table: ASSERT(FALSE)
-    END;     
+      END
     ELSE 
       IF del = tbl.tail THEN tbl.tail := del.hh.prev END;
       IF del.hh.prev # NIL THEN del.hh.prev.hh.next := del.hh.next ELSE head := del.hh.next END;
@@ -344,6 +405,13 @@ MODULE UTHash;
     RETURN head
   END DELETE;
 
+  PROCEDURE ADD_INT*(head: IntHash; add: IntHash): IntHash;
+    VAR h!: Hash;
+  BEGIN h := ADD(head, add, getIntHash)
+
+    RETURN h(IntHash)
+  END ADD_INT;
+
   PROCEDURE ADD_LONGINT*(head: LongintHash; add: LongintHash): LongintHash;
     VAR h!: Hash;
   BEGIN h := ADD(head, add, getLongintHash)
@@ -351,7 +419,7 @@ MODULE UTHash;
     RETURN h(LongintHash)
   END ADD_LONGINT;
 
-BEGIN NEW(kli)
+BEGIN NEW(ki); NEW(kli)
 END UTHash.
 
 OM4P2.Compile UTHash.Mod/s ~
