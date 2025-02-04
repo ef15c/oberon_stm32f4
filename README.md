@@ -1,11 +1,19 @@
 # Oberon STM32F4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 10 released!</b><br>
+<b>Version 11 released!</b><br>
+## MSP430:
+add example MSPEXP430G2 "Out of the box".  
   
-This is the fourth release of Oberon MSP430 compiler.
-There are minor improvement and bug fixes and two new examples: GUI composer simple JSON and GUI composer simple MPack.
-They demonstrate the usage of records and procedure type for callbacks implementation. There are also complex programs using several modules.
-
+## Oberon System:  
+Add support of 64 bit integers in the candidate compiler OM4P2. LONGINT type is devoted to 64 bit signed integers and no longer a synonym of INTEGER type.  
+Add a file comparison command System.CompareFiles.  
+System.Free command has been improved.  
+Add a Hash map module UTHash based on uthash for Troy D. Hanson.  
+Add a trace module SystemLog.  
+Add a fixed size font Mono10.Scn.Fnt  
+Correction of OM4A code generator and FontUtils  
+Add several 64 bit integer test programs based on Advent Of Code 2024  
+  
 Starting wiht the release 9, it is now easy to launch user actions immediately after system startup.
 Put your code in the initialization section of the OnStartup module and compile it.
 
