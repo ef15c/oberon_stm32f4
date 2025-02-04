@@ -11,7 +11,7 @@ System.Free command has been improved.
 Add a Hash map module UTHash based on uthash from Troy D. Hanson.  
 Add a trace module SystemLog.  
 Add a fixed size font Mono10.Scn.Fnt  
-Correction of OM4A code generator and FontUtils  
+Correction of OM4A code generator and modules TextFrames and FontUtils  
 Add several 64 bit integer test programs based on Advent Of Code 2024  
   
 Starting wiht the release 9, it is now easy to launch user actions immediately after system startup.
