@@ -8,7 +8,7 @@ add example MSPEXP430G2 "Out of the box".
 Add support of 64 bit integers in the candidate compiler OM4P2. LONGINT type is devoted to 64 bit signed integers and is no longer a synonym of INTEGER type.  
 Add a file comparison command System.CompareFiles.  
 System.Free command has been improved.  
-Add a Hash map module UTHash based on uthash for Troy D. Hanson.  
+Add a Hash map module UTHash based on uthash from Troy D. Hanson.  
 Add a trace module SystemLog.  
 Add a fixed size font Mono10.Scn.Fnt  
 Correction of OM4A code generator and FontUtils  
