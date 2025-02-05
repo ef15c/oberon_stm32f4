@@ -3,8 +3,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   IMPORT SYSTEM, Files, Texts, Oberon, OM4B, OM4A, OM4D, Modules;
 
   TYPE
-    ExternalRefMap = POINTER TO ExternalRefMapDesc;
-    ExternalRefMapDesc = RECORD
+    ExternalRefMap = RECORD
       ext: ARRAY OM4A.maxCode OF BYTE
     END;
 
@@ -18,6 +17,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
     RdG, mno: BYTE;
+    mcode: OM4A.ModuleCode; eref: ExternalRefMap;
   
   PROCEDURE Read(VAR R: Files.Rider; VAR n: INTEGER);
     VAR b: BYTE;
@@ -173,18 +173,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
       name: ARRAY 32 OF CHAR;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
-      mcode!: OM4A.ModuleCode;
-      eref!: ExternalRefMap;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
-      IF F # NIL THEN
-        NEW(mcode); NEW(eref);
+      IF F # NIL THEN OM4A.Init(mcode);
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
         Files.ReadInt(R, key); Texts.WriteHex(W, key); Read(R, class); Texts.WriteInt(W, class, 4); (*version*)
         Texts.Append(Oberon.Log, W.buf); ASSERT(class IN {0, 1});
-        Files.ReadInt(R, size); Texts.WriteInt(W, size, 6); Texts.WriteLn(W);
-        Texts.Append(Oberon.Log, W.buf); ASSERT(size < 100000);
+        Files.ReadInt(R, size); Texts.WriteInt(W, size, 7); Texts.WriteLn(W);
+        Texts.Append(Oberon.Log, W.buf); ASSERT(size < 500000);
         Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
         WHILE name[0] # 0X DO
           Texts.Write(W, 9X); Texts.WriteString(W, name);
@@ -287,7 +284,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp!: BootParams;
-      mcode!: OM4A.ModuleCode;
       mod!: Modules.Module;
       ok: BOOLEAN;
       ch: CHAR;
@@ -296,8 +292,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); Texts.WriteLn(W);
       F := Files.Old(S.s);
-      IF F # NIL THEN
-        NEW(mcode);
+      IF F # NIL THEN OM4A.Init(mcode);
         Files.Set(R, F, 0); 
         FOR i := 0 TO SYSTEM.SIZE(BootParamsList) DIV 4 - 1 DO Files.ReadInt(R, bpb[i]) END;
         bp := SYSTEM.VAL(BootParams, SYSTEM.ADR(bpb)); 

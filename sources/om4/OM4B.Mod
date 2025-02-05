@@ -1,6 +1,6 @@
 MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   C. Schoffit 12/11/2023 for Cortex M4 STM32I-DISCO*)
-  IMPORT Files, CRC32, OM4S;
+  IMPORT Files, FilesEx, CRC32, S := OM4S;
   (*Definition of data types Object and Type, which together form the data structure
     called "symbol table". Contains procedures for creation of Objects, and for search:
     NewObj, this, thisimport, thisfield (and OpenScope, CloseScope).
@@ -23,17 +23,17 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     Module* = POINTER TO ModDesc;
     Type* = POINTER TO TypeDesc;
 
-    ObjDesc*= RECORD
+    ObjDesc* = RECORD
       class*, exno*: BYTE;
       expo*, unsafe*, rdo*, used*: BOOLEAN;   (*exported / read-only / used*)
       lev*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
-      name*: OM4S.Ident;
-      val*: INTEGER
+      name*: S.Ident;
+      val*: LONGINT
     END ;
 
-    ModDesc* = RECORD (ObjDesc) orgname*: OM4S.Ident END ;
+    ModDesc* = RECORD (ObjDesc) orgname*: S.Ident END ;
 
     TypeDesc* = RECORD
       form*, ref*, mno*: INTEGER;  (*ref is only used for import/export*)
@@ -71,14 +71,14 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
 
-  PROCEDURE NewObj*(VAR obj: Object; id: OM4S.Ident; class: INTEGER);  (*insert new Object with name id*)
+  PROCEDURE NewObj*(VAR obj: Object; id: S.Ident; class: INTEGER);  (*insert new Object with name id*)
     VAR new!, x!: Object;
   BEGIN x := topScope;
     WHILE (x.next # NIL) & (x.next.name # id) DO x := x.next END ;
     IF x.next = NIL THEN
       NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.used := FALSE; new.dsc := NIL;
       x.next := new; obj := new
-    ELSE obj := x.next; OM4S.Mark("mult def")
+    ELSE obj := x.next; S.Mark("mult def")
     END 
   END NewObj;
 
@@ -86,7 +86,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     VAR s!, x!: Object;
   BEGIN s := topScope;
     REPEAT x := s.next;
-      WHILE (x # NIL) & (x.name # OM4S.id) DO x := x.next END ;
+      WHILE (x # NIL) & (x.name # S.id) DO x := x.next END ;
       s := s.dsc
     UNTIL (x # NIL) OR (s = NIL);
     RETURN x
@@ -98,7 +98,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     IF mod.rdo THEN
       IF mod.name[0] # 0X THEN
         obj := mod.dsc;
-        WHILE (obj # NIL) & (obj.name # OM4S.id) DO obj := obj.next END
+        WHILE (obj # NIL) & (obj.name # S.id) DO obj := obj.next END
       ELSE obj := NIL
       END
     ELSE obj := NIL
@@ -109,7 +109,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   PROCEDURE thisfield*(rec: Type): Object;
     VAR fld!: Object;
   BEGIN fld := rec.dsc;
-    WHILE (fld # NIL) & (fld.name # OM4S.id) DO fld := fld.next END ;
+    WHILE (fld # NIL) & (fld.name # S.id) DO fld := fld.next END ;
     RETURN fld
   END thisfield;
 
@@ -124,15 +124,15 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
   (*------------------------------- Import ---------------------------------*)
 
-  PROCEDURE MakeFileName*(VAR FName: OM4S.Ident; name, ext: ARRAY OF CHAR);
+  PROCEDURE MakeFileName*(VAR FName: S.Ident; name, ext: ARRAY OF CHAR);
     VAR i, j: INTEGER;
   BEGIN i := 0; j := 0;  (*assume name suffix less than 4 characters*)
-    WHILE (i < OM4S.IdLen-5) & (name[i] > 0X) DO FName[i] := name[i]; INC(i) END ;
+    WHILE (i < S.IdLen-5) & (name[i] > 0X) DO FName[i] := name[i]; INC(i) END ;
     REPEAT FName[i]:= ext[j]; INC(i); INC(j) UNTIL ext[j] = 0X;
     FName[i] := 0X
   END MakeFileName;
   
-  PROCEDURE ThisModule(name, orgname: OM4S.Ident; decl: BOOLEAN; key: INTEGER): Object;
+  PROCEDURE ThisModule(name, orgname: S.Ident; decl: BOOLEAN; key: INTEGER): Object;
     VAR mod!: Module; obj!, obj1!: Object;
   BEGIN obj1 := topScope; obj := obj1.next;  (*search for module*)
     WHILE (obj # NIL) & (obj(Module).orgname # orgname) DO obj1 := obj; obj := obj1.next END ;
@@ -146,11 +146,11 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         IF decl THEN mod.type := noType ELSE mod.type := nilType END ;
         obj1.next := mod; obj := mod
       ELSIF decl THEN
-        IF obj.type.form = NoTyp THEN OM4S.Mark("mult def") ELSE OM4S.Mark("invalid import order") END
-      ELSE OM4S.Mark("conflict with alias")
+        IF obj.type.form = NoTyp THEN S.Mark("mult def") ELSE S.Mark("invalid import order") END
+      ELSE S.Mark("conflict with alias")
       END
     ELSIF decl THEN (*module already present, explicit import by declaration*)
-      IF  obj.type.form = NoTyp THEN OM4S.Mark("mult def") ELSE OM4S.Mark("invalid import order") END
+      IF  obj.type.form = NoTyp THEN S.Mark("mult def") ELSE S.Mark("invalid import order") END
     END ;
     RETURN obj
   END ThisModule;
@@ -166,7 +166,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       ref, class, form, np, readonly: INTEGER;
       fld!, par!, obj!, mod!, last!: Object;
       t!: Type;
-      name, modname: OM4S.Ident;
+      name, modname: S.Ident;
   BEGIN Read(R, ref);
     IF ref < 0 THEN T := typtab[-ref]  (*already read*)
     ELSE NEW(t); T := t; typtab[ref] := t; t.mno := thismod.lev;
@@ -186,7 +186,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           IF last = NIL THEN t.dsc := fld ELSE last.next := fld END ;
           last := fld;
           IF fld.name[0] # 0X THEN fld.expo := TRUE; InType(R, thismod, fld.type) ELSE fld.expo := FALSE; fld.type := nilType END ;
-          Files.ReadNum(R, fld.val); Read(R, class)
+          FilesEx.ReadLongNum(R, fld.val); Read(R, class)
         END ;
         IF last = NIL THEN t.dsc := obj ELSE last.next := obj END
       ELSIF form = Proc THEN
@@ -214,11 +214,11 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     END
   END InType;
   
-  PROCEDURE Import*(VAR modid, modid1: OM4S.Ident);
+  PROCEDURE Import*(VAR modid, modid1: S.Ident);
     VAR key: INTEGER; class, k: INTEGER;
       obj!: Object;  t!: Type;
       thismod!: Object;
-      modname, fname: OM4S.Ident;
+      modname, fname: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN
     IF modid1 = "SYSTEM" THEN
@@ -229,7 +229,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         Files.Set(R, F, 0); Files.ReadInt(R, key); Files.ReadInt(R, key); Files.ReadString(R, modname);
         thismod := ThisModule(modid, modid1, TRUE, key); thismod.rdo := TRUE;
         Read(R, class); (*version key*)
-        IF class # versionkey THEN OM4S.Mark("wrong version") END ;
+        IF class # versionkey THEN S.Mark("wrong version") END ;
         Read(R, class);
         WHILE class # 0 DO
           NEW(obj); obj.class := class; Files.ReadString(R, obj.name);
@@ -239,13 +239,13 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
           ELSE
             IF class = Const THEN
-              IF obj.type.form IN {Real, String} THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END
-            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.used := FALSE;
+              IF obj.type.form IN {Real, String} THEN Files.ReadInt(R, k); obj.val := k ELSE FilesEx.ReadLongNum(R, obj.val) END
+            ELSIF class = Var THEN FilesEx.ReadLongNum(R, obj.val); obj.rdo := TRUE; obj.used := FALSE;
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
         END ;
-      ELSE OM4S.Mark("import not available")
+      ELSE S.Mark("import not available")
       END
     END
   END Import;
@@ -275,7 +275,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     BEGIN
       IF (typ.form = Pointer) OR (typ.form = NilTyp) THEN Write(R, Fld); Write(R, 0); Files.WriteNum(R, offset)
       ELSIF typ.form = Record THEN fld := typ.dsc;
-        WHILE fld # NIL DO FindHiddenPointers(R, fld.type, fld.val + offset); fld := fld.next END
+        WHILE fld # NIL DO FindHiddenPointers(R, fld.type, offset + fld.val); fld := fld.next END
       ELSIF typ.form = Array THEN i := 0; n := typ.len;
         WHILE i < n DO FindHiddenPointers(R, typ.base, typ.base.size * i + offset); INC(i) END
       END
@@ -295,7 +295,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         fld := t.dsc;
         WHILE fld # bot DO  (*fields*)
           IF fld.expo THEN
-            Write(R, Fld); Files.WriteString(R, fld.name); OutType(R, fld.type); Files.WriteNum(R, fld.val)  (*offset*)
+            Write(R, Fld); Files.WriteString(R, fld.name); OutType(R, fld.type); FilesEx.WriteLongNum(R, fld.val) (*offset*)
           ELSE FindHiddenPointers(R, fld.type, fld.val)
           END ;
           fld := fld.next
@@ -307,17 +307,17 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         mod := topScope.next;
         WHILE (mod # NIL) & (mod.lev # t.mno) DO mod := mod.next END ;
         IF mod # NIL THEN Files.WriteString(R, mod(Module).orgname); Files.WriteInt(R, mod.val); Files.WriteString(R, obj.name)
-        ELSE OM4S.Mark("re-export not found"); Write(R, 0)
+        ELSE S.Mark("re-export not found"); Write(R, 0)
         END
       ELSE Write(R, 0)
       END
     END
   END OutType;
 
-  PROCEDURE Export*(VAR modid: OM4S.Ident; VAR newSF: BOOLEAN; VAR key: INTEGER);
+  PROCEDURE Export*(VAR modid: S.Ident; VAR newSF: BOOLEAN; VAR key: INTEGER);
     VAR x, sum, oldkey: INTEGER;
       obj!, obj0!: Object;
-      filename: OM4S.Ident;
+      filename: S.Ident;
       F!, F1!: Files.File; R!, R1!: Files.Rider;
   BEGIN Ref := LastForm + 1; MakeFileName(filename, modid, ".sm4");
     F := Files.New(filename); Files.Set(R, F, 0);
@@ -342,7 +342,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           IF obj.type.form = Proc THEN Files.WriteNum(R, obj.exno)
           ELSIF obj.type.form = Real THEN Files.WriteInt(R, obj.val)
           ELSIF obj.type.form = String THEN Files.WriteInt(R, obj.val DIV 10000H*10000H + obj.exno)
-          ELSE Files.WriteNum(R, obj.val)
+          ELSE FilesEx.WriteLongNum(R, obj.val)
           END
         ELSIF obj.class = Var THEN Files.WriteNum(R, obj.exno)
         END
@@ -358,7 +358,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     IF sum # oldkey THEN
       IF newSF OR (F1 = NIL) THEN
         key := sum; newSF := TRUE; Files.Set(R, F, 4); Files.WriteInt(R, sum); Files.Register(F)  (*insert checksum*)
-      ELSE OM4S.Mark("new symbol file inhibited")
+      ELSE S.Mark("new symbol file inhibited")
       END
     ELSE newSF := FALSE; key := sum
     END
@@ -413,15 +413,17 @@ BEGIN
   enter("SQRT", SFunc, realType, 201); (* 21x to 22x are in SYSTEM*)
   enter("RBIT", SFunc, intType, 231);
   enter("TOSET", SFunc, setType, 241);
-  enter("LED", SProc, noType, 81);  (*procedures*)
+  enter("CLZ", SFunc, intType, 251);
+  enter("XOR", SFunc, intType, 262);
+  enter("INC", SProc, noType, 1);  (*procedures*)
   enter("DEC", SProc, noType, 11);
-  enter("UNPK", SProc, noType, 72);
-  enter("PACK", SProc, noType, 62);
-  enter("NEW", SProc, noType, 51);
-  enter("ASSERT", SProc, noType, 41);
-  enter("EXCL", SProc, noType, 32);
   enter("INCL", SProc, noType, 22);
-  enter("INC", SProc, noType, 1);
+  enter("EXCL", SProc, noType, 32);
+  enter("ASSERT", SProc, noType, 41);
+  enter("NEW", SProc, noType, 51);
+  enter("PACK", SProc, noType, 62);
+  enter("UNPK", SProc, noType, 72);
+  enter("LED", SProc, noType, 81);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);
@@ -440,9 +442,9 @@ BEGIN
   enter("COND", SFunc, boolType, 191);
   enter("SVC", SFunc, intType, 211);
   enter("CMP", SFunc, boolType, 223);
-  enter("LDREG", SProc, noType, 142); (*procedures*)
-  enter("COPY", SProc, noType, 123);
+  enter("GET", SProc, noType, 102); (*procedures*)
   enter("PUT", SProc, noType, 112);
-  enter("GET", SProc, noType, 102);
+  enter("COPY", SProc, noType, 123);
+  enter("LDREG", SProc, noType, 142);
   enter("MBI", SProc, noType, 151);
 END OM4B.

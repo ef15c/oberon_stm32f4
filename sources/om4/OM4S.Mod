@@ -19,10 +19,10 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     and* = 5; plus* = 6; minus* = 7; or* = 8; eql* = 9;
     neq* = 10; lss* = 11; leq* = 12; gtr* = 13; geq* = 14;
     in* = 15; is* = 16; arrow* = 17; period* = 18; emark* = 19;
-    char* = 20; int* = 21; real* = 22; false* = 23; true* = 24;
-    nil* = 25; string* = 26; not* = 27; lparen* = 28; lbrak* = 29;
-    lbrace* = 30; ident* = 31;
-    if* = 32; while* = 34; repeat* = 35; case* = 36; for* = 37;
+    char* = 20; int* = 21; long* = 22; real* = 23; false* = 24; true* = 25;
+    nil* = 26; string* = 27; not* = 28; lparen* = 29; lbrak* = 30;
+    lbrace* = 31; ident* = 32;
+    if* = 33; while* = 34; repeat* = 35; case* = 36; for* = 37;
     comma* = 40; colon* = 41; becomes* = 42; upto* = 43; rparen* = 44;
     rbrak* = 45; rbrace* = 46; then* = 47; of* = 48; do* = 49;
     to* = 50; by* = 51; semicolon* = 52; end* = 53; bar* = 54;
@@ -32,7 +32,7 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
 
   TYPE Ident* = ARRAY IdLen OF CHAR;
 
-  VAR ival*, slen*: INTEGER;  (*results of Get*)
+  VAR ival*: LONGINT; slen*: INTEGER;  (*results of Get*)
     rval*: REAL;
     id*: Ident;  (*for identifiers*)
     str*: ARRAY stringBufSize OF CHAR;
@@ -130,13 +130,13 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   END Ten;
 
   PROCEDURE Number(VAR sym: INTEGER);
-    CONST max = 2147483647 (*2^31 - 1*);
-    VAR i, k, e, n, s, h: INTEGER; x: REAL;
-      d: ARRAY 16 OF INTEGER;
+    CONST max = 2147483647 (*2^31 - 1*); maxL = LSL(1L, 63) - 1;
+    VAR i, e, n, s, h: INTEGER; x: REAL; k: LONGINT;
+      d: ARRAY 20 OF INTEGER;
       negE: BOOLEAN;
   BEGIN ival := 0; i := 0; n := 0; k := 0;
     REPEAT
-      IF n < 16 THEN d[n] := ORD(ch)-30H; INC(n) ELSE Mark("too many digits"); n := 0 END ;
+      IF n < LEN(d) THEN d[n] := ORD(ch)-30H; INC(n) ELSE Mark("too many digits"); n := 0 END ;
       Texts.Read(R, ch)
     UNTIL (ch < "0") OR (ch > "9") & (ch < "A") OR (ch > "F");
     IF (ch = "H") OR (ch = "R") OR (ch = "X") THEN  (*hex*)
@@ -189,12 +189,12 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     ELSE  (*decimal integer*)
       REPEAT
         IF d[i] < 10 THEN
-          IF k <= (max-d[i]) DIV 10 THEN k := k*10 + d[i] ELSE Mark("too large"); k := 0 END
+          IF k <= (maxL-d[i]) DIV 10 THEN k := k*10 + d[i] ELSE Mark("too large"); k := 0 END
         ELSE Mark("bad integer")
         END ;
         INC(i)
       UNTIL i = n;
-      sym := int; ival := k
+      IF ch = "L" THEN Texts.Read(R, ch); sym := long ELSE sym := int END; ival := k
     END
   END Number;
 
@@ -318,5 +318,3 @@ BEGIN Texts.OpenWriter(W); k := 0; KWX[0] := 0; KWX[1] := 0;
   EnterKW(procedure, "PROCEDURE");
   KWX[9] := k
 END OM4S.
-
-OM4Tool.DecSym OM4S.sm4

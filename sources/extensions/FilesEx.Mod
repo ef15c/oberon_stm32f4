@@ -48,9 +48,15 @@ MODULE FilesEx;
     l := 0; FOR i:= 7 TO 0 BY -1 DO l := l*100H + x[i] END
   END ReadLongInt;
 
+  PROCEDURE WriteLongInt*(VAR R: Files.Rider; l: LONGINT);
+    VAR i: INTEGER;
+  BEGIN FOR i := 0 TO 7 DO Files.WriteByte(R, l MOD 100H); l := LSR(l, 8) END
+  END WriteLongInt;
+
   PROCEDURE ReadLongNum*(VAR R: Files.Rider; VAR x: LONGINT);
     VAR n: INTEGER; y: LONGINT; b: BYTE;
-  BEGIN n := 0; y := 0; x := 0; Files.ReadByte(R, b);
+  BEGIN
+    n := 0; y := 0; x := 0; Files.ReadByte(R, b);
     WHILE b >= 80H DO y := b-80H; INC(x, LSL(y, n)); INC(n, 7); Files.ReadByte(R, b) END;
     y := b; INC(x, LSL(y, n)); (*store last number*);
     INC(n, 7); IF n > 64 THEN n := 64 END; x := ASR(LSL(x, 64-n), 64-n) (*sign extend the number*)
@@ -63,5 +69,3 @@ MODULE FilesEx;
   END WriteLongNum;
 
 END FilesEx.
-
-OM4Tool.DecObj FilesEx.m4c
