@@ -257,7 +257,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE lvalue(VAR x: G.Item);
     VAR obj!: B.Object;
   BEGIN
-    IF sym = S.ident THEN qualident(obj);
+    IF sym = S.ident THEN qualident(obj); IF initmode & (obj.lev = 0) THEN obj.rdo := FALSE END;
       IF obj.class = B.SFunc THEN StandFunc(x, obj.val, obj.type)
       ELSE G.MakeItem(x, obj, level);
         IF x.mode = B.SProc THEN S.Mark("not assignable") ELSE selector(x) END

@@ -228,8 +228,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           END;
           x.r := RH; incR
         ELSE
-          IF isLongint(x.type) THEN A.encMOVImm64(mcode, RH, RH + 1, x.a, FALSE); x.r := RH; dincR
-          ELSE A.encMOVImm32(mcode, RH, x.a, FALSE);
+          IF isLongint(x.type) THEN A.encMOVImm64(mcode, RH, RH + 1, x.a, A.Any); x.r := RH; dincR
+          ELSE A.encMOVImm32(mcode, RH, x.a, A.Any);
             IF target = FPReg THEN
               A.encFPMOVReg(mcode, A.VMOVSR, RH, SH);
               x.r := SH; incS
@@ -269,12 +269,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF x.mode = Cond THEN
         IF (x.a = 0) & (x.b = 0) THEN (*No "false" or "true" chains*)
           A.IfThen(mcode, "E", x.r);
-          A.encMOVImm32(mcode, RH, 1, FALSE);
-          A.encMOVImm32(mcode, RH, 0, FALSE)
+          A.encMOVImm32(mcode, RH, 1, A.NSF);
+          A.encMOVImm32(mcode, RH, 0, A.NSF)
         ELSE (*A "true" and/or "false" chain need to be fixed, do it the classical way*)
           pc0 := mcode.pc; A.Put1(mcode, A.BCT1 + A.negated(x.r)*A.C8);
-          FixLink(x.b); A.encMOVImm32(mcode, RH, 1, TRUE); pc1 := mcode.pc; A.Put1(mcode, A.BT2);
-          A.fix8(mcode, pc0, mcode.pc - pc0 - 4); FixLink(x.a); A.encMOVImm32(mcode, RH, 0, TRUE);
+          FixLink(x.b); A.encMOVImm32(mcode, RH, 1, A.Any); pc1 := mcode.pc; A.Put1(mcode, A.BT2);
+          A.fix8(mcode, pc0, mcode.pc - pc0 - 4); FixLink(x.a); A.encMOVImm32(mcode, RH, 0, A.Any);
           A.fix11(mcode, pc1, mcode.pc - pc1 - 4);
         END;
         x.r := RH; incR
@@ -421,7 +421,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           Trap(A.CS, 1) (*ARM inverts the carry with SUB and CMP instructions*)
         END ;
         (* Compute the shift to apply when s is a power of two *)
-        IF A.log2(s, p2) # 1 THEN A.encMOVImm32(mcode, RH, s, FALSE);
+        IF A.log2(s, p2) # 1 THEN A.encMOVImm32(mcode, RH, s, A.Any);
           A.encMUL(mcode, y.r, y.r, RH); p2 := 0
         END ;
         IF x.mode = B.Var THEN
@@ -555,7 +555,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.type.form IN {B.Int, B.LongInt} THEN
       IF x.mode = B.Const THEN x.a := -x.a
       ELSE load(x);
-        IF isLongint(x.type) THEN incR; A.encMOVImm32(mcode, RH-1, 0, TRUE);
+        IF isLongint(x.type) THEN incR; A.encMOVImm32(mcode, RH-1, 0, A.Any);
           A.encDPImm32(mcode, A.RSB, x.r, x.r, RH, 0, TRUE); A.encDPReg(mcode, A.SBc, x.r+1, RH-1, x.r+1, A.LSl, 0, TRUE); DEC(RH)
         ELSE A.encDPImm32(mcode, A.RSB, x.r, x.r, RH, 0, TRUE);
         END;
@@ -622,12 +622,12 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.LSl, x.r+1, x.r+1, y.a); A.encDPReg(mcode, A.ORR, x.r+1, x.r+1, x.r, A.LSr, 32-y.a, TRUE) END;
         A.encShiftImm5(mcode, A.LSl, x.r, x.r, y.a)
       ELSIF y.a < 64 THEN
-        IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.LSl, x.r+1, x.r, y.a-32); A.encMOVImm32(mcode, x.r, 0, FALSE)
-        ELSE A.encMOVImm32(mcode, x.r, 0, TRUE)
+        IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.LSl, x.r+1, x.r, y.a-32); A.encMOVImm32(mcode, x.r, 0, A.NSF)
+        ELSE A.encMOVImm32(mcode, x.r, 0, A.Any)
         END;
       ELSE
-        IF isLongint(x.type) THEN A.encMOVImm32(mcode, x.r+1, 0, FALSE); A.encMOVImm32(mcode, x.r, 0, FALSE) 
-        ELSE A.encMOVImm32(mcode, x.r, 0, TRUE)
+        IF isLongint(x.type) THEN A.encMOVImm32(mcode, x.r+1, 0, A.Any); A.encMOVImm32(mcode, x.r, 0, A.NSF) 
+        ELSE A.encMOVImm32(mcode, x.r, 0, A.Any)
         END;
       END
     ELSE convertInt(y, B.intType); load(y);
@@ -648,16 +648,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF y.a < 32 THEN A.encShiftImm5(mcode, A.LSr, x.r, x.r, y.a);
         IF isLongint(x.type) THEN A.encDPReg(mcode, A.ORR, x.r, x.r, x.r+1, A.LSl, 32-y.a, TRUE); A.encShiftImm5(mcode, A.LSr, x.r+1, x.r+1, y.a) END
       ELSIF y.a = 32 THEN 
-        IF isLongint(x.type) THEN A.encMOVReg(mcode, x.r, x.r+1); A.encMOVImm32(mcode, x.r+1, 0, FALSE)
-        ELSE A.encMOVImm32(mcode, x.r, 0, TRUE)
+        IF isLongint(x.type) THEN A.encMOVReg(mcode, x.r, x.r+1); A.encMOVImm32(mcode, x.r+1, 0, A.NSF)
+        ELSE A.encMOVImm32(mcode, x.r, 0, A.Any)
         END
       ELSIF y.a < 64 THEN
-        IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.LSr, x.r, x.r+1, y.a-32); A.encMOVImm32(mcode, x.r+1, 0, FALSE)
-        ELSE A.encMOVImm32(mcode, x.r, 0, TRUE)
+        IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.LSr, x.r, x.r+1, y.a-32); A.encMOVImm32(mcode, x.r+1, 0, A.NSF)
+        ELSE A.encMOVImm32(mcode, x.r, 0, A.Any)
         END
       ELSE
-        IF isLongint(x.type) THEN A.encMOVImm32(mcode, x.r+1, 0, TRUE) END;
-        A.encMOVImm32(mcode, x.r, 0, TRUE)
+        IF isLongint(x.type) THEN A.encMOVImm32(mcode, x.r+1, 0, A.Any) END;
+        A.encMOVImm32(mcode, x.r, 0, A.Any)
       END
     ELSE convertInt(y, B.intType); load(y);
       IF isLongint(x.type) THEN ASSERT(x.r < y.r);
@@ -683,7 +683,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF isLongint(x.type) THEN A.encMOVReg(mcode, x.r, x.r+1); A.encShiftImm5(mcode, A.ASr, x.r+1, x.r+1, 31) END
       ELSIF y.a < 64 THEN
         IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.ASr, x.r, x.r+1, y.a-32); A.encShiftImm5(mcode, A.ASr, x.r+1, x.r+1, 31)
-        ELSE A.encMOVImm32(mcode, x.r, 0, TRUE)
+        ELSE A.encMOVImm32(mcode, x.r, 0, A.Any)
         END
       ELSE
         IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.ASr, x.r+1, x.r+1, 31); A.encMOVReg(mcode, x.r, x.r+1)
@@ -778,7 +778,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF y.a > 0 THEN x.a := x.a MOD y.a ELSE S.Mark("bad modulus") END
       ELSIF (y.mode = B.Const) & (y.a >= 2) & (A.log2(y.a, e) = 1) THEN load(x);
         IF isLongint(x.type) THEN
-          IF e < 32 THEN A.encMOVImm32(mcode, x.r+1, 0, TRUE) ELSE A.encBFC(mcode, x.r+1, e-32, 31) END
+          IF e < 32 THEN A.encMOVImm32(mcode, x.r+1, 0, A.NSF) ELSE A.encBFC(mcode, x.r+1, e-32, 31) END
         END;
         IF e < 32 THEN A.encBFC(mcode, x.r, e, 31) END
       ELSIF y.mode = B.Const THEN
@@ -820,7 +820,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
   BEGIN
     IF x.mode = B.Const THEN x.a := LSL(1, x.a)
-    ELSE load(x); A.encMOVImm32(mcode, RH, 1, TRUE); A.encShiftReg(mcode, A.LSl, x.r, RH,  x.r, TRUE)
+    ELSE load(x); A.encMOVImm32(mcode, RH, 1, A.Any); A.encShiftReg(mcode, A.LSl, x.r, RH,  x.r, TRUE)
     END
   END Singleton;
 
@@ -830,11 +830,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := ORD({xa .. ya})
     ELSE
       IF (x.mode = B.Const) & ((xa <= 8) OR (xa >= 24)) (*optimisation thumb via immedidate constants*) THEN xa := LSL(-1, xa)
-      ELSE load(x); A.encMOVImm32(mcode, RH, -1, TRUE); A.encShiftReg(mcode, A.LSl, x.r, RH, x.r, TRUE)
+      ELSE load(x); A.encMOVImm32(mcode, RH, -1, A.Any); A.encShiftReg(mcode, A.LSl, x.r, RH, x.r, TRUE)
       END;
       IF (y.mode = B.Const) & ((ya <= 7) OR (ya >= 23)) (*optimisation thumb via immedidate constants*) THEN
-       A.encMOVImm32(mcode, RH, LSL(-2, ya), TRUE); y.mode := Reg; y.r := RH; incR
-      ELSE load(y); A.encMOVImm32(mcode, RH, -2, TRUE); A.encShiftReg(mcode, A.LSl, y.r, RH, y.r, TRUE)
+       A.encMOVImm32(mcode, RH, LSL(-2, ya), A.Any); y.mode := Reg; y.r := RH; incR
+      ELSE load(y); A.encMOVImm32(mcode, RH, -2, A.Any); A.encShiftReg(mcode, A.LSl, y.r, RH, y.r, TRUE)
       END;      
       IF x.mode = B.Const THEN
         IF xa # 0 THEN A.encDPImm32(mcode, A.EOR, y.r, y.r, RH, -1,TRUE);
@@ -1017,19 +1017,19 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       loadAdr(x); loadAdr(y);
       IF (x.type.form = B.Array) &  (x.type.len > 0) THEN
         IF y.type.len >= 0 THEN 
-          IF x.type.size = y.type.size THEN A.encMOVImm32(mcode, RH, (y.type.size+3) DIV 4, FALSE)
+          IF x.type.size = y.type.size THEN A.encMOVImm32(mcode, RH, (y.type.size+3) DIV 4, A.Any)
           ELSE S.Mark("different length/size, not implemented")
           END
         ELSE (*y  open array*) incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, y.a+4); DEC(RH); s := y.type.base.size;  (*element size*)
           incR; A.encCMPImm(mcode ,RH-1, RH, 0); DEC(RH); pc0 := mcode.pc; A.Put1(mcode, A.BCT1 + A.EQ*A.C8); (*BEQ L0*)
           IF s = 1 THEN incR; A.encDPImm32(mcode, A.ADD, RH-1, RH-1, RH, 3, TRUE); DEC(RH); A.encShiftImm5(mcode, A.ASr, RH, RH, 2)
-          ELSIF s # 4 THEN ASSERT(s MOD 4 = 0); incR; A.encMOVImm32(mcode, RH, s DIV 4, TRUE); A.encMUL(mcode, RH-1, RH-1, RH); DEC(RH)
+          ELSIF s # 4 THEN ASSERT(s MOD 4 = 0); incR; A.encMOVImm32(mcode, RH, s DIV 4, A.Any); A.encMUL(mcode, RH-1, RH-1, RH); DEC(RH)
           END;
           IF check THEN
             incR; A.encCMPImm(mcode, RH-1, RH, (x.type.size+3) DIV 4); Trap(A.GT, 3); DEC(RH)
           END
         END
-      ELSIF x.type.form = B.Record THEN A.encMOVImm32(mcode, RH, x.type.size DIV 4, FALSE)
+      ELSIF x.type.form = B.Record THEN A.encMOVImm32(mcode, RH, x.type.size DIV 4, A.Any)
       ELSE S.Mark("inadmissible assignment")
       END ;
       (*L1*) pc1 := mcode.pc; incR;
@@ -1062,7 +1062,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE OpenArrayParam*(VAR x: Item);
   BEGIN loadAdr(x);
-    IF x.type.len >= 0 THEN A.encMOVImm32(mcode, RH, x.type.len, FALSE) 
+    IF x.type.len >= 0 THEN A.encMOVImm32(mcode, RH, x.type.len, A.Any) 
     ELSE incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, x.a+4+frame); DEC(RH)
     END ; incR
   END OpenArrayParam;
@@ -1071,7 +1071,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR xmd: INTEGER;
   BEGIN xmd := x.mode; loadAdr(x);
     IF (ftype.form = B.Array) & (ftype.len < 0) THEN (*open array*)
-      IF x.type.len >= 0 THEN A.encMOVImm32(mcode, RH, x.type.len, FALSE) 
+      IF x.type.len >= 0 THEN A.encMOVImm32(mcode, RH, x.type.len, A.Any) 
       ELSE  incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, x.a+4+frame); DEC(RH)
       END; incR
     ELSIF (ftype.form = B.Record) & check THEN
@@ -1087,7 +1087,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END ValueParam;
 
   PROCEDURE StringParam*(VAR x: Item);
-  BEGIN loadStringAdr(x); A.encMOVImm32(mcode, RH, x.b, FALSE); incR  (*len*)
+  BEGIN loadStringAdr(x); A.encMOVImm32(mcode, RH, x.b, A.Any); incR  (*len*)
   END StringParam;
 
   (*For Statements*)
@@ -1277,7 +1277,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN loadAdr(x); zr := RH; incR; A.encMemImm32(mcode, A.LDR, zr, x.r, RH, 0);
     IF inorex = 0 THEN op := A.ORR ELSE op := A.BIC END ;
     IF y.mode = B.Const THEN A.encDPImm32(mcode, op, zr, zr, RH, LSL(1, y.a), TRUE)
-    ELSE load(y); A.encMOVImm32(mcode, RH, 1, TRUE); A.encShiftReg(mcode, A.LSl, y.r, RH, y.r, TRUE); A.encDPReg(mcode, op, zr, zr, y.r, A.LSl, 0, TRUE); DEC(RH)
+    ELSE load(y); A.encMOVImm32(mcode, RH, 1, A.Any); A.encShiftReg(mcode, A.LSl, y.r, RH, y.r, TRUE); A.encDPReg(mcode, op, zr, zr, y.r, A.LSl, 0, TRUE); DEC(RH)
     END ;
     A.encMemImm32(mcode, A.STR, zr, x.r, RH, 0); DEC(RH, 2)
   END Include;
@@ -1556,7 +1556,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN  (*exit code*)
     IF version = 0 THEN
       (*A.BX R0 : Jump to the beginning of the program loaded by the Boot Loader*)
-      A.encMOVImm32(mcode, 0, VarORG0+1, FALSE); (*odd address to thumb mode*) A.Put1(mcode, A.BX)
+      A.encMOVImm32(mcode, 0, VarORG0+1, A.Any); (*odd address to thumb mode*) A.Put1(mcode, A.BX)
     ELSE (*POP T3 LR *) A.encMemImm8PUW(mcode, A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
       A.Put1(mcode, A.BX + LR*A.C3)
     END ;

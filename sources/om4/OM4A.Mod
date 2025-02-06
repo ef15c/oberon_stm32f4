@@ -1,7 +1,8 @@
 MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F processor*) 
-  IMPORT OM4S;
+  IMPORT S := OM4S;
   
-  CONST SP = 13;
+  CONST NSF* = {0}; (*Don't set flags*) SF* = {1}; (*Set flags*) Any* = NSF + SF; (*use the shortest instruction*)
+    (*Register name*) SP = 13;
     (*Powers of two*)
     C31*=80000000H; C30*=40000000H; C28*=10000000H; C27*=8000000H; C26*=4000000H;
     C25*=2000000H; C24*=1000000H; C23*=800000H; C22*=400000H; 
@@ -461,20 +462,20 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     RETURN val DIV C11 MOD C1*C26 + val DIV C8 MOD C3*C12 + val MOD C8
   END formatImm12;
 
-  PROCEDURE encMOVImm32*(VAR c: ModuleCode; reg: BYTE; val: INTEGER; setFlags: BOOLEAN);
+  PROCEDURE encMOVImm32*(VAR c: ModuleCode; reg: BYTE; val: INTEGER; setFlags: SET);
   VAR halfw, tmiCode: INTEGER; opc: SET;
   BEGIN ASSERT(~(reg IN {13, 15}));
     ASSERT(reg < 16);
-    IF (reg < 8) & (val >= 0) & (val < C8) & (ORD(setFlags) = ORD(c.nbRmnITBlockInsts = 0)) THEN (*use encoding T1 if possible*)
+    IF (reg < 8) & (val >= 0) & (val < C8) & (ORD(c.nbRmnITBlockInsts = 0) IN setFlags) THEN (*use encoding T1 if possible*)
       c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
       doPut1(c, MOVIT1 + reg*C8 + val)
     ELSIF formatThumbExpandImm(val, tmiCode) THEN (*else use encoding T2 if possible*) opc := TOSET(MOVSIT2 + reg*C8 + tmiCode);
-      IF ~setFlags THEN EXCL(opc, 20) END; doPut0(c, ORD(opc));
+      IF SF*setFlags = {} THEN EXCL(opc, 20) END; doPut0(c, ORD(opc));
       c.lastInstrSetFlags := 20 IN opc
     ELSIF formatThumbExpandImm(-(val+1), tmiCode) THEN (*else use MVNS if possible*) opc := TOSET(MVNS + reg*C8 + tmiCode);
-      IF ~setFlags THEN EXCL(opc, 20) END; doPut0(c, ORD(opc));
+      IF SF*setFlags = {} THEN EXCL(opc, 20) END; doPut0(c, ORD(opc));
       c.lastInstrSetFlags := 20 IN opc
-    ELSE ASSERT(~setFlags); (*else one or two instructions are needed depending on the size of val,
+    ELSE ASSERT(NSF*setFlags # {}); (*else one or two instructions are needed depending on the size of val,
            one for low half word and if necessary a second for high half word*)
       halfw := val MOD C16;
       IF (reg < 8) & (halfw < C8) THEN doPut1(c, MOVIT1 + reg*C8 + halfw)
@@ -488,7 +489,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END
   END encMOVImm32;
 
-  PROCEDURE encMOVImm64*(VAR c: ModuleCode; r1, r2: BYTE; val: LONGINT; setFlags: BOOLEAN);
+  PROCEDURE encMOVImm64*(VAR c: ModuleCode; r1, r2: BYTE; val: LONGINT; setFlags: SET);
   BEGIN ASSERT(r1 < 16); ASSERT(r2 < 16);
     encMOVImm32(c, r1, val, setFlags); encMOVImm32(c, r2, LSR(val, 32), setFlags);
     c.lastInstrSetFlags := FALSE
@@ -550,7 +551,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       doPut0(c, imm12map[op] + formatImm12(imm) + b*C16 + a*C8);
       c.lastInstrSetFlags := FALSE
     ELSE ASSERT (t < 13);
-      encMOVImm32(c, t, imm, FALSE);
+      encMOVImm32(c, t, imm, Any);
       IF (a < C3) & (b < C3) & (t < C3) & (reg3map[op] # 0) & (ORD(setFlags) = ORD(c.nbRmnITBlockInsts = 0)) THEN
         c.lastInstrSetFlags := c.nbRmnITBlockInsts = 0; (* not in IT block *)
         doPut1(c, reg3map[op] + t*C6 + b*C3 + a)
@@ -697,7 +698,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       doPut0(c, CMPIT2 + a*C16 + tmiCode) 
     ELSIF formatThumbExpandImm(-imm, tmiCode) THEN (*CMN (immediate) T2*) 
       doPut0(c, CMNI + a*C16 + tmiCode) 
-    ELSE ASSERT (t < 13); encMOVImm32(c, t, imm, FALSE); encCMPReg(c, a, t)
+    ELSE ASSERT (t < 13); encMOVImm32(c, t, imm, Any); encCMPReg(c, a, t)
     END;
     c.lastInstrSetFlags := TRUE
   END encCMPImm;
