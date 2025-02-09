@@ -43,7 +43,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       dsc*, typobj*: Object;
       base*: Type;  (*for arrays, records, pointers*)
       size*: INTEGER;  (*in bytes; always multiple of 2, except for Byte, Bool and Char*)
-      leaf*: BOOLEAN; ur*: SET; (*leafness of procedures, set of registers used by the procedure*)
+      leaf*: BOOLEAN; ur*: SET (*leafness of procedures, set of registers used by the procedure*)
     END ;
 
   (* Object classes and the meaning of "val":
@@ -230,7 +230,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       F!: Files.File; R!: Files.Rider;
   BEGIN
     IF modid1 = "SYSTEM" THEN
-      thismod := ThisModule(modid, modid1, TRUE,  key); DEC(nofmod);
+      thismod := ThisModule(modid, modid1, TRUE, 0); DEC(nofmod);
       thismod.lev := 0; thismod.dsc := system; thismod.rdo := TRUE
     ELSE MakeFileName(fname, modid1, ".sms"); F := Files.Old(fname);
       IF F # NIL THEN

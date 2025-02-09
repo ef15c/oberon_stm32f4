@@ -143,4 +143,149 @@ BEGIN
   UNTIL FALSE
 END msp430g2xx3tauart2400.
 
+OMSPTool.DecObj msp430g2xx3tauart2400.mpc
+decode msp430g2xx3tauart2400.mpc
+msp430g2xx3tauart2400 08C74C3D Flash   236
+imports:
+	msp430g2553 F10488DC
+type descriptors
 
+data     4
+strings
+
+vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF 0000 FFFF FFFF FFFF FFFF FFFF FFFF
+
+entries
+ c 00BC
+fixup procedures chains
+ 00E6     0	 0000
+ 00DE     0	 0036
+fixup handlers chains
+ 0119     0	 0042
+fixup data chains
+ 00AA     0	 0002
+ 00A2     0	 0000
+fixup constants chains
+fixup types chains
+entry =  00BC
+code   236
+ 0000	     40F2	MOV.B #10,&0
+ 0002	     000A
+ 0004	     0000
+ 0006	     4292	MOV &368,&370
+ 0008	     0170
+ 000A	     0172
+ 000C	     9292	CMP &368,&370
+ 000E	     0170
+ 0010	     0172
+ 0012	     23F9	JNE $-12, goes to  0006
+ 0014	     50B2	ADD #14,&370
+ 0016	     000E
+ 0018	     0172
+ 001A	     50B2	ADD #256,&0
+ 001C	     0100
+ 001E	     0000
+ 0020	     5292	ADD &30,&34
+ 0022	     001E
+ 0024	     0022
+ 0026	     40B2	MOV #4144,&354
+ 0028	     1030
+ 002A	     0162
+ 002C	     B0B2	BIT #16,&354
+ 002E	     0010
+ 0030	     0162
+ 0032	     23FC	JNE $-6, goes to  002C
+ 0034	     4130	RET
+ 0036	     42F2	MOV.B #8,&4
+ 0038	     0004
+ 003A	     40B2	MOV #-30416,&354
+ 003C	     8930
+ 003E	     0162
+ 0040	     4130	RET
+ 0042	     50B2	ADD #14,&370
+ 0044	     000E
+ 0046	     0172
+ 0048	     B0B2	BIT #4096,&354
+ 004A	     1000
+ 004C	     0162
+ 004E	     2416	JEQ $+46, goes to  007C
+ 0050	     93C2	CMP.B #0,&56
+ 0052	     0038
+ 0054	     2004	JNE $+10, goes to  005E
+ 0056	     C0B2	BIC #16,&354
+ 0058	     0010
+ 005A	     0162
+ 005C	     3C0E	JMP $+30, goes to  007A
+ 005E	     D0B2	BIS #128,&354
+ 0060	     0080
+ 0062	     0162
+ 0064	     B392	BIT #1,&36
+ 0066	     0024
+ 0068	     2403	JEQ $+8, goes to  0070
+ 006A	     C0B2	BIC #128,&354
+ 006C	     0080
+ 006E	     0162
+ 0070	     C312	BIC #1,SR
+ 0072	     1012	RRC &102
+ 0074	     0066
+ 0076	     83D2	SUB.B #1,&82
+ 0078	     0052
+ 007A	     3C1F	JMP $+64, goes to  00BA
+ 007C	     B0B2	BIT #256,&354
+ 007E	     0100
+ 0080	     0162
+ 0082	     2407	JEQ $+16, goes to  0092
+ 0084	     C0B2	BIC #256,&354
+ 0086	     0100
+ 0088	     0162
+ 008A	     50B2	ADD #6,&370
+ 008C	     0006
+ 008E	     0172
+ 0090	     3C14	JMP $+42, goes to  00BA
+ 0092	     1112	RRA &116
+ 0094	     0074
+ 0096	     B0B2	BIT #1024,&354
+ 0098	     0400
+ 009A	     0162
+ 009C	     2403	JEQ $+8, goes to  00A4
+ 009E	     D0B2	BIS #128,&148
+ 00A0	     0080
+ 00A2	     0094
+ 00A4	     83D2	SUB.B #1,&120
+ 00A6	     0078
+ 00A8	     93C2	CMP.B #0,&166
+ 00AA	     00A6
+ 00AC	     2006	JNE $+14, goes to  00BA
+ 00AE	     C0B2	BIC #16,&354
+ 00B0	     0010
+ 00B2	     0162
+ 00B4	     C0B1	BIC #208,0(SP)
+ 00B6	     00D0
+ 00B8	     0000
+ 00BA	     1300	RETI
+ 00BC	     40B2	MOV #23168,&288
+ 00BE	     5A80
+ 00C0	     0120
+ 00C2	     42F2	MOV.B #8,&83
+ 00C4	     0053
+ 00C6	     42A2	MOV #4,&354
+ 00C8	     0162
+ 00CA	     40B2	MOV #288,&352
+ 00CC	     0120
+ 00CE	     0160
+ 00D0	     40F2	MOV.B #34,&38
+ 00D2	     0022
+ 00D4	     0026
+ 00D6	     40F2	MOV.B #32,&34
+ 00D8	     0020
+ 00DA	     0022
+ 00DC	     12B0	CALL #0
+ 00DE	     0000
+ 00E0	     D032	BIS #216,SR
+ 00E2	     00D8
+ 00E4	     12B0	CALL #0
+ 00E6	     0000
+ 00E8	     3FF9	JMP $-12, goes to  00DC
+ 00EA	     4130	RET

@@ -156,7 +156,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 14 THEN (*BIT*)
         IF (x.type.form IN {B.Int, B.Set}) & (y.type.form IN {B.Int, B.Set}) THEN G.Bit(x, y) ELSE S.Mark("bad type") END
       ELSIF fct = 16 THEN (*VAL*)
-        IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; G.Val(y, restyp); x := y;
+        IF (x.mode= B.Typ) & ((y.mode = B.Const) OR (x.type.size <= y.type.size)) THEN restyp := x.type; G.Val(y, restyp); x := y;
           IF x.obj # NIL THEN x.rdo := x.obj.rdo END; (*allow updating of the parameter*)
         ELSE S.Mark("casting not allowed")
         END
@@ -350,7 +350,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         ELSE S.Mark("not a function"); ParamList(x)
         END
       END
-    ELSIF sym = S.int THEN G.MakeConstItem(x, B.intType, S.ival); S.Get(sym)
+    ELSIF sym = S.int THEN 
+      IF (S.ival >= 0) & (S.ival < 100H) THEN G.MakeConstItem(x, B.byteType, S.ival)
+      ELSE G.MakeConstItem(x, B.intType, S.ival)
+      END; S.Get(sym)
     ELSIF sym = S.char THEN G.MakeConstItem(x, B.charType, S.ival); S.Get(sym)
     ELSIF sym = S.nil THEN S.Get(sym); G.MakeConstItem(x, B.nilType, 0)
     ELSIF sym = S.string THEN G.MakeStringItem(x); S.Get(sym)

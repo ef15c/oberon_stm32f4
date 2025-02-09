@@ -367,7 +367,6 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
   END ReadInt;
 
   PROCEDURE ReadSet*(VAR R: Rider; VAR s: SET);
-    VAR n: INTEGER;
   BEGIN ReadInt(R, SYSTEM.VAL(INTEGER, s))
   END ReadSet;
 

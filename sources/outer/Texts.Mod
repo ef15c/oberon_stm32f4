@@ -96,7 +96,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
       END;
       NEW(q); q.fnt := Dict[fno];
       Files.ReadByte(R, bt); q.col := bt;
-      Files.ReadByte(R, bt); q.voff := ASR(LSL(bt, -24), 24);
+      Files.ReadByte(R, bt); q.voff := ASR(LSL(bt, 24), 24);
       Files.ReadInt(R, q.len);
       Files.ReadByte(R, bt); fno := bt;
       q.f := f; q.off := off; off := off + q.len;

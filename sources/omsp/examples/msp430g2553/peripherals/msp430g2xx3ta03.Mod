@@ -86,7 +86,7 @@ OMSPTool.DecObj msp430g2xx3ta03.mpc
 decode msp430g2xx3ta03.mpc
 msp430g2xx3ta03 47A89D95 Flash    36
 imports:
-	msp430g2553 5DB9B2F5
+	msp430g2553 F10488DC
 type descriptors
 
 data     0
