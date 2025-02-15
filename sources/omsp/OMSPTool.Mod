@@ -1,6 +1,6 @@
 MODULE OMSPTool;  (*NW 18.2.2013
   C. Schoffit  09.06.24*)
-  IMPORT SYSTEM, Files, Texts, Oberon, B := OMSPB, A := OMSPA, D := OMSPD, Modules, TextsEx;
+  IMPORT Files, Texts, Oberon, B := OMSPB, A := OMSPA, D := OMSPD, TextsEx;
 
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
@@ -19,7 +19,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
   END ReadWord;
 
   PROCEDURE ReadType(VAR R: Files.Rider);
-    VAR key, len, lev, size, off: INTEGER;
+    VAR key, len, size, off: INTEGER;
       ref, class, form, readonly: INTEGER;
       name, modname: ARRAY 32 OF CHAR;
   BEGIN Read(R, ref); Texts.Write(W, " "); Texts.Write(W, "[");
@@ -68,7 +68,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
   END ReadType;
 
   PROCEDURE DecSym*;  (*decode symbol file*)
-    VAR class, typno, k: INTEGER;
+    VAR class, k: INTEGER;
       name: ARRAY 32 OF CHAR;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
@@ -112,15 +112,6 @@ MODULE OMSPTool;  (*NW 18.2.2013
 
 (*---------------------------------------------------*)
 
-  PROCEDURE Sync(VAR R: Files.Rider);
-    VAR ch: CHAR;
-  BEGIN Files.Read(R, ch); Texts.WriteString(W, "Sync "); Texts.Write(W, ch); Texts.WriteLn(W)
-  END Sync;
- 
-  PROCEDURE Write(VAR R: Files.Rider; x: INTEGER);
-  BEGIN Files.WriteByte(R, x)  (* -128 <= x < 128 *)
-  END Write;
-
   PROCEDURE fixup(msg: ARRAY OF CHAR; VAR R: Files.Rider);
     VAR data: INTEGER; mno: BYTE;
   BEGIN
@@ -134,9 +125,8 @@ MODULE OMSPTool;  (*NW 18.2.2013
   END fixup;
 
   PROCEDURE DecObj*;   (*decode object file*)
-    VAR class, i, n, key, size, fix, adr, data: INTEGER;
+    VAR i, n, key, size, adr, data: INTEGER;
       bl: BYTE;
-      next: INTEGER;
       ch: CHAR;
       name: ARRAY 32 OF CHAR;
       F!: Files.File; R!: Files.Rider;
@@ -213,36 +203,6 @@ MODULE OMSPTool;  (*NW 18.2.2013
       Texts.Append(Oberon.Log, W.buf)
     END
   END DecObj;
-
-  PROCEDURE EmitByte(VAR W:Texts.Writer; v: BYTE; VAR p: INTEGER; base: INTEGER;
-    msg: ARRAY OF CHAR);
-  BEGIN
-    Texts.WriteHex(W, p+base); Texts.Write(W, 9X); 
-    Texts.WriteString(W, "    .byte "); Texts.WriteInt(W, v, 1);
-    Texts.WriteString(W, "; "); Texts.WriteString(W, msg);
-    Texts.WriteLn(W); INC(p);
-  END EmitByte;
-  
-  PROCEDURE EmitWord(VAR W:Texts.Writer; v: INTEGER; VAR p: INTEGER; base: INTEGER;
-    msg: ARRAY OF CHAR);
-  BEGIN
-    Texts.WriteHex(W, p+base); Texts.Write(W, 9X); 
-    Texts.WriteString(W, "    .word "); Texts.WriteHex(W, v);
-    Texts.WriteString(W, "H; "); Texts.WriteString(W, msg);
-    Texts.WriteLn(W); INC(p, 4);
-  END EmitWord;
- 
-  PROCEDURE EmitString(VAR W:Texts.Writer; s: ARRAY OF CHAR; l: INTEGER; VAR p: INTEGER;
-     base: INTEGER; msg: ARRAY OF CHAR);
-    VAR i: INTEGER;
-  BEGIN
-    Texts.WriteHex(W, p+base); Texts.Write(W, 9X); 
-    Texts.WriteString(W, "    .ascii "); Texts.Write(W, 22X); Texts.WriteString(W, s); Texts.Write(W, 22X);
-    Texts.WriteLn(W); i := 0; WHILE s[i] # 0X DO INC(i) END;
-    Texts.WriteString(W, "        .fill "); Texts.WriteInt(W, l-i, 1); Texts.WriteString(W, ", 1, 0"); 
-    Texts.WriteString(W, "; "); Texts.WriteString(W, msg);
-    Texts.WriteLn(W); INC(p, l)
-  END EmitString;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSPTool 10.06.24");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)

@@ -1,5 +1,5 @@
 MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
-  IMPORT SYSTEM, Modules, A := OMSPA, G := OMSPG, Files, FilesEx, Texts, TextsEx, Oberon;
+  IMPORT SYSTEM, Modules, G := OMSPG, Files, FilesEx, Texts, Oberon;
   CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7; notsupported = 8;
     RAMOrigin = 200H; FlashEnd = 10000H;
 
@@ -106,7 +106,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       F!: Files.File; R!: Files.Rider;
       import!: ARRAY 16 OF Module;
       mno, nv, codeseg: BYTE; vec: ARRAY 32 OF INTEGER;
-  BEGIN mod := first; error(noerr, name); nofimps := 0;
+  BEGIN mod := first; error(noerr, name); nofimps := 0; flashSize := LSL(1, 31) - 1;
+    key := 0; codeseg := 0FFH; f := 0;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
     IF mod = NIL THEN (*link*)
       Check(name);
@@ -211,7 +212,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       name: ModuleName;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := noerr;
     Flash := SYSTEM.VAL(Segment, Modules.AllocPtr); FOR i := 0 TO 31 DO vector[i] := 0FFFFH END;
-    IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE res := nopar END;
+    IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE vecsize := 0; res := nopar END;
     IF S.class = Texts.Int THEN  limit := S.i - vecsize; Flash.origin := FlashEnd - S.i; Flash.allocPtr := 0; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Name) THEN first := NIL; last := NIL;

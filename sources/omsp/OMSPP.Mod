@@ -53,16 +53,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF x.type.form # B.Int THEN S.Mark("not Integer"); x.type := B.intType END
   END CheckInt;
 
-  PROCEDURE CheckString(VAR x: G.Item);
-  BEGIN
-    IF x.type.form # B.String THEN S.Mark("not String"); x.type := B.strType END
-  END CheckString;
-
-  PROCEDURE CheckPointerToInt(VAR x: G.Item);
-  BEGIN
-    IF (x.type.form # B.Pointer) OR ~(x.type.base.form IN {B.Byte, B.Int}) THEN S.Mark("not pointer to int"); x.type := B.ptrIntType END
-  END CheckPointerToInt;
-
   PROCEDURE CheckSet(VAR x: G.Item);
   BEGIN
     IF x.type.form # B.Set THEN S.Mark("not Set"); x.type := B.setType END 
@@ -156,7 +146,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 14 THEN (*BIT*)
         IF (x.type.form IN {B.Int, B.Set}) & (y.type.form IN {B.Int, B.Set}) THEN G.Bit(x, y) ELSE S.Mark("bad type") END
       ELSIF fct = 16 THEN (*VAL*)
-        IF (x.mode= B.Typ) & ((y.mode = B.Const) OR (x.type.size <= y.type.size)) THEN restyp := x.type; G.Val(y, restyp); x := y;
+        IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; G.Val(y, restyp); x := y;
           IF x.obj # NIL THEN x.rdo := x.obj.rdo END; (*allow updating of the parameter*)
         ELSE S.Mark("casting not allowed")
         END
@@ -290,7 +280,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END Parameter;
 
   PROCEDURE ParamList(x: G.Item);
-    VAR n, size: INTEGER; par!: B.Object;
+    VAR n: INTEGER; par!: B.Object;
   BEGIN par := x.type.dsc; n := 0;
     IF sym # S.rparen THEN
       Parameter(par); n := 1;
@@ -350,10 +340,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         ELSE S.Mark("not a function"); ParamList(x)
         END
       END
-    ELSIF sym = S.int THEN 
-      IF (S.ival >= 0) & (S.ival < 100H) THEN G.MakeConstItem(x, B.byteType, S.ival)
-      ELSE G.MakeConstItem(x, B.intType, S.ival)
-      END; S.Get(sym)
+    ELSIF sym = S.int THEN G.MakeConstItem(x, B.intType, S.ival); S.Get(sym)
     ELSIF sym = S.char THEN G.MakeConstItem(x, B.charType, S.ival); S.Get(sym)
     ELSIF sym = S.nil THEN S.Get(sym); G.MakeConstItem(x, B.nilType, 0)
     ELSIF sym = S.string THEN G.MakeStringItem(x); S.Get(sym)
@@ -966,9 +953,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       int, haveinregs: BOOLEAN;
       riu, savedregs: SET;
       v: ARRAY 8 OF BYTE;
-  BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym);
+  BEGIN (* ProcedureDecl *) int := FALSE; L := 0; S.Get(sym);
     IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt handler must be global") END;
-      int := TRUE; L := 0; S.Get(sym); IF sym # S.lparen THEN S.Mark("no (") END;
+      int := TRUE; S.Get(sym); IF sym # S.lparen THEN S.Mark("no (") END;
       REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[L] := x.a; INC(L); UNTIL sym # S.comma;
       Check(S.rparen, "no )")
     END; isInt := int;

@@ -113,8 +113,7 @@ BEGIN
 END msp430g2xx3uscia0u79600.
 
 OMSPTool.DecObj msp430g2xx3uscia0u79600.mpc
-decode msp430g2xx3uscia0u79600.mpc
-msp430g2xx3uscia0u79600 7BEED13D Flash   182
+msp430g2xx3uscia0u79600 7BEED13D Flash   180
 imports:
 	msp430g2553 F10488DC
 type descriptors
@@ -127,19 +126,19 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF 0000 0000 FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- c 0064
+ c 0062
 fixup procedures chains
 fixup handlers chains
  0116     0	 0000
  0117     0	 0020
 fixup data chains
- 005C     0	 0008
- 0054     0	 0000
- 006C     0	 0009
+ 005A     0	 0008
+ 0052     0	 0000
+ 006A     0	 0009
 fixup constants chains
 fixup types chains
-entry =  0064
-code   182
+entry =  0062
+code   180
  0000	     120F	PUSH R15
  0002	     425F	MOV.B &0,R15
  0004	     0000
@@ -167,67 +166,66 @@ code   182
  0030	     0000
  0032	     53D2	ADD.B #1,&38
  0034	     0026
- 0036	     425F	MOV.B &52,R15
- 0038	     0034
- 003A	     403E	MOV #7,R14
- 003C	     0007
- 003E	     9F0E	CMP R15,R14
- 0040	     340E	JGE $+30, goes to  005E
- 0042	     43C2	MOV.B #0,&20
- 0044	     0014
- 0046	     43C2	MOV.B #0,&56
- 0048	     0038
- 004A	     D3E2	BIS.B #2,&1
- 004C	     0001
- 004E	     425F	MOV.B &68,R15
- 0050	     0044
- 0052	     503F	ADD #42,R15
- 0054	     002A
- 0056	     4FE2	MOV.B @R15,&103
- 0058	     0067
- 005A	     53D2	ADD.B #1,&80
- 005C	     0050
- 005E	     413E	POP R14
- 0060	     413F	POP R15
- 0062	     1300	RETI
- 0064	     40B2	MOV #23168,&288
- 0066	     5A80
- 0068	     0120
- 006A	     43C2	MOV.B #0,&72
- 006C	     0048
- 006E	     43F2	MOV.B #-1,&34
- 0070	     0022
- 0072	     43C2	MOV.B #0,&33
- 0074	     0021
- 0076	     43F2	MOV.B #-1,&42
- 0078	     002A
- 007A	     43C2	MOV.B #0,&41
- 007C	     0029
- 007E	     40F2	MOV.B #6,&38
- 0080	     0006
- 0082	     0026
- 0084	     40F2	MOV.B #6,&65
- 0086	     0006
- 0088	     0041
- 008A	     43F2	MOV.B #-1,&26
- 008C	     001A
- 008E	     43C2	MOV.B #0,&25
- 0090	     0019
- 0092	     D0F2	BIS.B #64,&97
- 0094	     0040
- 0096	     0061
- 0098	     40F2	MOV.B #3,&98
- 009A	     0003
- 009C	     0062
- 009E	     43C2	MOV.B #0,&99
- 00A0	     0063
- 00A2	     40F2	MOV.B #6,&100
- 00A4	     0006
- 00A6	     0064
- 00A8	     C3D2	BIC.B #1,&97
- 00AA	     0061
- 00AC	     D3D2	BIS.B #1,&1
- 00AE	     0001
- 00B0	     D032	BIS #216,SR
- 00B2	     00D8
- 00B4	     4130	RET
+ 0036	     403F	MOV #7,R15
+ 0038	     0007
+ 003A	     925F	CMP.B &52,R15
+ 003C	     0034
+ 003E	     2C0E	JC $+30, goes to  005C
+ 0040	     43C2	MOV.B #0,&20
+ 0042	     0014
+ 0044	     43C2	MOV.B #0,&60
+ 0046	     003C
+ 0048	     D3E2	BIS.B #2,&1
+ 004A	     0001
+ 004C	     425F	MOV.B &66,R15
+ 004E	     0042
+ 0050	     503F	ADD #42,R15
+ 0052	     002A
+ 0054	     4FE2	MOV.B @R15,&103
+ 0056	     0067
+ 0058	     53D2	ADD.B #1,&78
+ 005A	     004E
+ 005C	     413E	POP R14
+ 005E	     413F	POP R15
+ 0060	     1300	RETI
+ 0062	     40B2	MOV #23168,&288
+ 0064	     5A80
+ 0066	     0120
+ 0068	     43C2	MOV.B #0,&70
+ 006A	     0046
+ 006C	     43F2	MOV.B #-1,&34
+ 006E	     0022
+ 0070	     43C2	MOV.B #0,&33
+ 0072	     0021
+ 0074	     43F2	MOV.B #-1,&42
+ 0076	     002A
+ 0078	     43C2	MOV.B #0,&41
+ 007A	     0029
+ 007C	     40F2	MOV.B #6,&38
+ 007E	     0006
+ 0080	     0026
+ 0082	     40F2	MOV.B #6,&65
+ 0084	     0006
+ 0086	     0041
+ 0088	     43F2	MOV.B #-1,&26
+ 008A	     001A
+ 008C	     43C2	MOV.B #0,&25
+ 008E	     0019
+ 0090	     D0F2	BIS.B #64,&97
+ 0092	     0040
+ 0094	     0061
+ 0096	     40F2	MOV.B #3,&98
+ 0098	     0003
+ 009A	     0062
+ 009C	     43C2	MOV.B #0,&99
+ 009E	     0063
+ 00A0	     40F2	MOV.B #6,&100
+ 00A2	     0006
+ 00A4	     0064
+ 00A6	     C3D2	BIC.B #1,&97
+ 00A8	     0061
+ 00AA	     D3D2	BIS.B #1,&1
+ 00AC	     0001
+ 00AE	     D032	BIS #216,SR
+ 00B0	     00D8
+ 00B2	     4130	RET

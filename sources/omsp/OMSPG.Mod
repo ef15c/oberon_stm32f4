@@ -339,7 +339,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR bw, nba: SET; tmp: BOOLEAN;
   BEGIN tmp := FALSE;
     IF (src.type.size = 1) & (dst.type.size = 2) THEN (*move byte to word*)
-      IF ~(src.mode IN {B.Const, Reg}) THEN load(src, 0FFH); tmp := TRUE; END; src.type := B.intType (*extend source*)
+      IF src.mode # Reg THEN load(src, 0FFH); tmp := TRUE; END; src.type := B.intType (*extend source*)
     END;
     nba := {}; bw := A.Word; setRAO(op, dst, TRUE, nba, bw); setRAO(op, src, FALSE, nba, bw);
     A.PutDO(mcode, op, src, dst, bw); freeSet(nba);
@@ -898,6 +898,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   (* Code generation for relations *)
 
+  PROCEDURE AdjustSize(VAR x: Item);
+    VAR st!: B.Type;
+  BEGIN IF x.type.form = B.Int THEN st := B.byteType ELSIF x.type.form = B.Set THEN st := B.byteSetType ELSE st := NIL END;
+    IF (st # NIL) & (x.mode = B.Const) & (x.a >= 0) & (x.a < 100H) THEN x.type := st END
+  END AdjustSize;
+
   PROCEDURE IntCompare*(VAR x, y, z: Item);   (* x < y *)
   BEGIN
     IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
@@ -908,9 +914,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN
     IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
+    AdjustSize(x); AdjustSize(y);
     IF x.type.size # y.type.size THEN
-      IF (x.type.size = 1) & (x.mode # B.Const) THEN load(x, 0FFH); x.type := B.intType 
-      ELSIF y.mode # B.Const THEN load(y, 0FFH); y.type := B.intType
+      IF x.type.size = 1 THEN IF x.mode # B.Const THEN load(x, 0FFH) END; x.type := B.intType
+      ELSE IF y.mode # B.Const THEN load(y, 0FFH) END; y.type := B.intType
       END (*convert to word*)
     END;
     IF op < S.gtr THEN PutDO(A.CMP, y, x); IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.eql]) ELSE SetCC(x, relmap[op - S.eql]) END

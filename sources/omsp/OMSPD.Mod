@@ -1,5 +1,5 @@
 MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
-  IMPORT SYSTEM, Texts, TextsEx, B := OMSPB, A := OMSPA;
+  IMPORT SYSTEM, Texts, TextsEx, A := OMSPA;
 
   VAR mnemo1: ARRAY 8, 3 OF CHAR;  (*condition mnemonics*)
     mnemo2: ARRAY 7, 5 OF CHAR;  (*single-operand mnemonics*)
@@ -88,8 +88,8 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
       SOMSK = {10..15}; SO = {12}; (*Single operand*)
       JMPMSK = {13..15}; JMP = {13}; (*jump*)
                   
-    VAR b1, b2, t, src, dst: BYTE;
-      op: SET; ct: INTEGER;
+    VAR b1, b2, t: BYTE;
+      op: SET;
   BEGIN b1 := c[i+1]; b2 := c[i]; INC(i, 2);
     op := SYSTEM.VAL(SET, 0+b2+100H*b1);
     Texts.WriteString(W, "    "); TextsEx.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
