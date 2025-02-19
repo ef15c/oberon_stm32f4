@@ -44,11 +44,11 @@ The user has the responsablility to choose wich paramters or loacal variables wi
 by adding an asterisk after the type of the parameters or variables.  
 Leaf procedures cannot call other procedures.
 
-For example, ine the module **Arith** the function **mul16** uses register to store
-then parameters **x** and **y** and the the local parameter **r**
+For example, in the module **Arith** the function **mul16** uses register to store
+the parameters **x** and **y** and the the local parameter **r**
 
-  PROCEDURE mul16*(x, y: INTEGER*): INTEGER;
-    VAR r: INTEGER*;
+    PROCEDURE mul16*(x, y: INTEGER*): INTEGER;
+      VAR r: INTEGER*;
     BEGIN r := 0; 
       WHILE x # 0 DO IF ODD(x) THEN INC(r, y) END; INC(y, y); CLRC; RRC(x) END
       RETURN r
