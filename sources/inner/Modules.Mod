@@ -283,7 +283,8 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
           END ;
           SYSTEM.PUT(adr, inst); adr := adr - disp*4
         END ;
-        body   (*initialize module*)
+        body;   (*initialize module*)
+        IF AllocPtr > p THEN DEC(mod.size, AllocPtr - p); AllocPtr := p END (*remove trampoline unused space*)
       ELSIF res >= 3 THEN importing := name;
         WHILE nofimps > 0 DO DEC(nofimps); DEC(import[nofimps].refcnt) END
       END 

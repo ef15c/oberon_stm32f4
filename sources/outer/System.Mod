@@ -351,14 +351,15 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   (* ------------- Toolbox for system inspection ---------------*)
 
   PROCEDURE Watch*;
-    VAR modUsed, modSize: INTEGER;
+    VAR modUsed, size: INTEGER;
   BEGIN Texts.WriteString(W, "System.Watch"); Texts.WriteLn(W);
     modUsed := Modules.AllocPtr - Kernel.VarORG0;
     Texts.WriteString(W, "  Modules space (bytes)"); Texts.WriteInt(W, modUsed, 8);
-    modSize := Kernel.heapOrg - Kernel.VarORG0;
-    Texts.WriteInt(W, modUsed * 100 DIV modSize, 4); Texts.Write(W, "%"); EndLine;
+    size := Kernel.heapOrg - Kernel.VarORG0;
+    Texts.WriteInt(W, (modUsed * 100 + size DIV 2) DIV size, 4); Texts.Write(W, "%"); EndLine;
     Texts.WriteString(W, "  Heap space"); Texts.WriteInt(W, Kernel.allocated, 8);
-    Texts.WriteInt(W, Kernel.allocated * 100 DIV (Kernel.heapLim - Kernel.heapOrg), 4); Texts.Write(W, "%"); EndLine;
+    size := Kernel.heapLim - Kernel.heapOrg;
+    Texts.WriteInt(W, (Kernel.allocated * 100 + size DIV 2) DIV size, 4); Texts.Write(W, "%"); EndLine;
     Texts.WriteString(W, "  Disk sectors "); Texts.WriteInt(W, Kernel.NofSectors, 4);
     Texts.WriteInt(W, Kernel.NofSectors * 100 DIV 10000H, 4); Texts.WriteString(W, "%, read errors: "); Texts.WriteInt(W, SDCard.hsd.readErrors, 1);
     Texts.WriteString(W, ", write errors: "); Texts.WriteInt(W, SDCard.hsd.writeErrors, 1); Texts.WriteString(W, ", unrecoverable: ");

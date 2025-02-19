@@ -198,7 +198,6 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           adr := adr - disp
         END ;
         (*fixup of type descriptors*)
-        (* TODO : à revérifier après avoir fini de décortiquer le format .bin *)
         adr := mod.data + fixorgT*4;
         WHILE adr # mod.data DO
           SYSTEM.GET(adr, inst);
@@ -213,7 +212,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           END ;
           SYSTEM.PUT(adr, inst); adr := adr - disp*4
         END ;
-        SYSTEM.PUT(Start, body) (*module initialization body*)
+        SYSTEM.PUT(Start, body); (*module initialization body*)
+        IF AllocPtr > p THEN DEC(mod.size, AllocPtr - p); AllocPtr := p END (*remove trampoline unused space*)
       ELSIF res >= badkey THEN importing := name;
         WHILE nofimps > 0 DO DEC(nofimps); DEC(import[nofimps].refcnt) END
       END
