@@ -121,7 +121,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SxCR* = 10H; CHSEL* = 25; MBURST* = 23; PBURST* = 21; CT* = 19; DBM* = 18; PINCOS* = 15; MSIZE* = 13; PSIZE* = 11;
         MINC* = 10; PINC* = 9; CIRC* = 8; PFCTRL* = 5; SxCR_TCIE* = 4; HTIE* = 3;
        TEIE* = 2; DMEIE* = 1; SxCR_EN* = 0;
-      CHSELm* = {CHSEL..CHSEL+2}; MBURSTm* = {23..24}; PBURSTm* = {21..22}; PLm* = {16..17}; MSIZEm* = {13..14}; PSIZEm* = {11..12};
+      CHSELm* = {CHSEL..CHSEL+2}; MBURSTm* = {23..24}; PBURSTm* = {21..22}; PLm* = {16..17}; MSIZEm* = {13..14}; DMA_PSIZEm* = {11..12};
       MINCm* = {MINC}; DIRm* = {6..7}; PFCTRLm* = {PFCTRL}; SxCR_TCIEm* = {SxCR_TCIE}; HTIEm* = {HTIE}; TEIEm* = {TEIE}; DMEIEm* = {DMEIE};
 
       SINGLE_TRANSFERT* = {}; INCR4* = {0}; INCR8* = {1}; INCR16* = {0, 1};
@@ -141,6 +141,16 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     FLASH_BASE* = 40023C00H;
     ACR* = 0;
       DCRST* = 12; ICRST* = 11; DCEN* = 10; ICEN* = 9; PRFTEN* = 8; LATENCYm* = {0..3};
+    KEYR* = 4; OPT_KEYR* = 8; SR* = 0CH;
+      FLASH_BSY* = 16; RDERR* = 8; PGSERR* = 7; PGPERR* = 6; PGAERR* = 5; WRPERR* = 4; OPERR* = 1; EOP* = 0;
+    FLASH_CR* = 10H;
+      LOCK* = 31; ERRIE* = 25; EOPIE* = 24; STSR* = 16; MER1* = 15; FLASH_PSIZEm* = {8..9}; SNB* = 3; SNBm* = {SNB..SNB+4}; MER* = 2; SER* = 1; PG* = 0;
+        PSISZE_X8* = {}; PSISZE_X16* = {8}; PSISZE_X32* = {9}; PSISZE_X64* = {8..9};
+    OPTCR* = 14H;
+      SPRMOD* = 31; DB1M* = 30; nWRP* = 16; nWRPm* = {nWRP..nWRP+11}; RDP* = 8; RDPm* = {RDP..RDP+7}; nRST_STDBY* = 7;
+      nRST_STOP* = 6; WDG_SW* = 5; BFB2* = 4; BOR_LEV* = 2; BOR_LEVm* = {BOR_LEV..BOR_LEV+1}; OPTSTRT* = 1; OPTLOCK* = 0;
+    OPTCR1* = 18H;
+      nWRP1* = 16; nWRP1m* = {nWRP1..nWRP1+11};
 
     (*LTDC*)
     LTDC_BASE* = 40016800H; 
@@ -297,7 +307,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     I2SCFGR* = 1CH; I2SMOD* = 11;
     i2smod3* = PeriphBBAlias + (SPI3_BASE + I2SCFGR - PeriphBase + I2SMOD DIV 8)*32 + I2SMOD MOD 8*4;
 
-    SPI_SR* = 08H; SPI_RXNE* = 0; SPI_TXE* = 1; BSY* = 7;
+    SPI_SR* = 08H; SPI_RXNE* = 0; SPI_TXE* = 1; SPI_BSY* = 7;
 
     SPI_DR* = 0CH;
 
