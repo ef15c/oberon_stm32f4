@@ -848,7 +848,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE In*(VAR x, y: Item);  (* x := x IN y *)
   BEGIN load(y);
-    IF x.mode = B.Const THEN A.encShiftImm5(mcode, A.ROr, y.r, y.r, (x.a + 1) MOD 20H); DEC(RH)
+    IF x.mode = B.Const THEN 
+      IF x.a < 31 THEN A.encShiftImm5(mcode, A.ROr, y.r, y.r, (x.a + 1) MOD 20H)
+      ELSE A.encCMPImm(mcode, y.r, RH, 0)
+      END; DEC(RH)
     ELSE load(x); A.encDPImm32(mcode, A.ADD, x.r, x.r, RH, 1, TRUE); A.encShiftReg(mcode, A.ROr, y.r, y.r, x.r, TRUE); DEC(RH, 2)
     END ;
     SetCC(x, A.MI)
