@@ -96,10 +96,13 @@ MODULE FLASH;
   END load;
 
   PROCEDURE Write*(adr: INTEGER; data: ARRAY OF INTEGER; len: INTEGER);
-    VAR is: BYTE; i: INTEGER;
-  BEGIN is := GetSectorAt(adr); load(is); DEC(adr, FLASH_START + offset[is] - bufOffset[is]); 
-    FOR i := 0 TO len - 1 DO
-      IF buffer[adr + i] # data[i] THEN buffer[adr + i] := data[i]; INCL(mapUpdated, is) END
+    VAR is: BYTE; i, end: INTEGER;
+  BEGIN is := GetSectorAt(adr); DEC(adr, FLASH_START + offset[is] - bufOffset[is]); i := 0;
+    WHILE len > 0 DO load(is); end := bufOffset[is] + SectorSize(is);
+      WHILE (adr < end) & (len > 0) DO
+        IF buffer[adr] # data[i] THEN buffer[adr] := data[i]; INCL(mapUpdated, is) END;
+        INC(adr); INC(i); DEC(len)
+      END; INC(is)
     END
   END Write;
 

@@ -34,10 +34,26 @@ This compiler is board agnostic, so **LED** is removed.
 **BIT(x, y)** is an optimized equivalent of the condition **"x*y # {}"**
 #### New SYSTEM in-line procedures
 **BIC_SR** allows to clear bits of the status register  
-**BIS_SR** allows to set bits off the status register  
-**BIC_SR_ON_EXIT** allows to clear bits the status register at the exit of an interrupt handler  
-**BIS_SR_ON_EXIT** allows to set bits the status register at the exit of an interrupt handler  
+**BIS_SR** allows to set bits of the status register  
+**BIC_SR_ON_EXIT** allows to clear bits of the status register at the exit of an interrupt handler  
+**BIS_SR_ON_EXIT** allows to set bits of the status register at the exit of an interrupt handler  
 ## Specific extensions
+### Leaf procedures
+Leaf procedures allow paramters and local variables to be implemented in MSP430 registers.  
+The user has the responsablility to choose wich paramters or loacal variables will be stored in registers, 
+by adding an asterisk after the type of the parameters or variables.  
+Leaf procedures cannot call other procedures.
+
+For example, ine the module **Arith** the function **mul16** uses register to store
+then parameters **x** and **y** and the the local parameter **r**
+
+  PROCEDURE mul16*(x, y: INTEGER*): INTEGER;
+    VAR r: INTEGER*;
+    BEGIN r := 0; 
+      WHILE x # 0 DO IF ODD(x) THEN INC(r, y) END; INC(y, y); CLRC; RRC(x) END
+      RETURN r
+    END mul16;
+  
 ### Runtime modules
 Due to the limited RAM and Flash resources, it is useful to remove the trap
 overhead from the final code.  
@@ -57,7 +73,7 @@ The MSP430 compiler automatically build a list of altered register and triggers 
 if they are not properly restored before the interrupt handler exit. To deal with this, 
 the user can declare a set of registers to be save, in any procedure or function declaration.
 The compiler uses this to generate the appropriate set of **PUSH** and **POP** instructions,
-protecting the specified registers from corrpution.  
+protecting the specified registers from corruption.  
   
 For example, the following handler code pushes R4 on the stack at entry and pops the saved value of
 R4 from the stack on exit:  
