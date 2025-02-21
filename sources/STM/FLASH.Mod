@@ -1,11 +1,19 @@
 MODULE FLASH;
-  IMPORT SYSTEM, BSP;
+(* Handles STM32 FLASH erase and write 
+ * This module shouls not be statically linked and loaded on STM32 FLASH, 
+ *   in order to avoid any risk of erasing itself
+ *)
+  IMPORT SYSTEM, BSP, L := SystemLog;
 
   CONST FLASH_START* = 08000000H; FLASH_END* = 081FFFFFH; NB_SECTORS = 24;
 
   VAR buffer*: ARRAY 128*(1024 DIV 4) OF INTEGER;
-    mapLoaded, mapUpdated: SET; buffer16kbMap: ARRAY NB_SECTORS OF SET;
+    mapLoaded, mapModified, mapErased: SET; buffer16kbMap: ARRAY NB_SECTORS OF SET;
     offset, bufOffset: ARRAY NB_SECTORS OF INTEGER;
+
+  PROCEDURE ResetErrorFlags*;
+  BEGIN SYSTEM.PUT(BSP.FLASH_BASE + BSP.FLASH_SR, {BSP.RDERR, BSP.PGSERR, BSP.PGPERR, BSP.PGAERR, BSP.WRPERR, BSP.EOP})
+  END ResetErrorFlags;
 
   PROCEDURE SectorSize(idx: BYTE): INTEGER;
     VAR size: INTEGER;
@@ -45,15 +53,42 @@ MODULE FLASH;
 
   PROCEDURE Open*;
     VAR cr: SET;
-  BEGIN SYSTEM.GET(BSP.FLASH_BASE + BSP.FLASH_CR, cr);
+  BEGIN ResetErrorFlags; SYSTEM.GET(BSP.FLASH_BASE + BSP.FLASH_CR, cr);
     IF BSP.LOCK IN cr THEN unlock; cr := cr - {BSP.LOCK} + BSP.PSIZE_X32;
       SYSTEM.PUT(BSP.FLASH_BASE + BSP.FLASH_CR, cr);
     END
   END Open;
 
+  PROCEDURE WaitForCompletion;
+    VAR sr: SET;
+  BEGIN REPEAT SYSTEM.GET(BSP.FLASH_BASE + BSP.FLASH_SR, sr) UNTIL ~(BSP.FLASH_BSY IN sr)
+  END WaitForCompletion;
+
+  PROCEDURE erase(is: BYTE);
+    VAR cr: SET;
+  BEGIN ASSERT(is < NB_SECTORS);
+    IF ~(is IN mapErased) THEN
+      WaitForCompletion; SYSTEM.GET(BSP.FLASH_BASE + BSP.FLASH_CR, cr);
+      SYSTEM.PUT(BSP.FLASH_BASE + BSP.FLASH_CR, cr - {BSP.PG} + {BSP.STRT, BSP.SER} + TOSET(LSL(SectorToSNB(is), BSP.SNB)));
+      WaitForCompletion; SYSTEM.PUT(BSP.FLASH_BASE + BSP.FLASH_CR, cr - {BSP.SER});
+      INCL(mapErased, is)
+    END
+  END erase;
+
   PROCEDURE flush(is: BYTE);
-  BEGIN (*TODO*)
-    EXCL(mapUpdated, is)
+    VAR cr: SET; a, begin, end, i, data: INTEGER;
+  BEGIN ASSERT(is < NB_SECTORS);
+    IF is IN mapModified THEN (*write sector on FLASH*)
+      erase(is); WaitForCompletion; SYSTEM.GET(BSP.FLASH_BASE + BSP.FLASH_CR, cr);
+      SYSTEM.PUT(BSP.FLASH_BASE + BSP.FLASH_CR, cr - {BSP.SER} + {BSP.PG});
+      begin := FLASH_START + offset[is]; end := begin + SectorSize(is) - 1; i := bufOffset[is] DIV 4;
+      FOR a := begin TO end BY 4 DO SYSTEM.GET(a, data);
+        IF data # buffer[i] THEN SYSTEM.PUT(a, buffer[i]); WaitForCompletion END;
+        INC(i)
+      END;
+      SYSTEM.PUT(BSP.FLASH_BASE + BSP.FLASH_CR, cr - {BSP.PG});
+      EXCL(mapModified, is)
+    END
   END flush;
 
   PROCEDURE flushAllSectors;
@@ -63,8 +98,8 @@ MODULE FLASH;
 
   PROCEDURE Close*;
     VAR cr: SET;
-  BEGIN flushAllSectors; SYSTEM.GET(BSP.FLASH_BASE + BSP.FLASH_CR, cr); INCL(cr, BSP.LOCK);
-    SYSTEM.PUT(BSP.FLASH_BASE + BSP.FLASH_CR, cr);
+  BEGIN flushAllSectors; SYSTEM.GET(BSP.FLASH_BASE + BSP.FLASH_CR, cr);
+    SYSTEM.PUT(BSP.FLASH_BASE + BSP.FLASH_CR, cr + {BSP.LOCK});
     ASSERT(isLocked()) 
   END Close;
 
@@ -80,27 +115,30 @@ MODULE FLASH;
     VAR is: BYTE;
   BEGIN
     FOR is := 0 TO NB_SECTORS - 1 DO
-      IF (is IN mapUpdated) & (buffer16kbMap[is]*buffer16kbMap[isn] # {}) THEN flush(is); EXCL(mapUpdated, is) END;
+      IF (is IN mapModified) & (buffer16kbMap[is]*buffer16kbMap[isn] # {}) THEN flush(is) END;
       EXCL(mapLoaded, is);
     END
   END flushIfOverlap;
 
   PROCEDURE load(is: BYTE);
-    VAR a, begin, end, i: INTEGER;
+    VAR a, begin, end, i, data: INTEGER;
   BEGIN ASSERT(is < NB_SECTORS);
-    IF ~(is IN mapLoaded) THEN flushIfOverlap(is);
-      begin := FLASH_START + offset[is]; end := begin + (SectorSize(is) DIV 4) - 1; i := bufOffset[is];
-      FOR a := begin TO end BY 4 DO SYSTEM.GET(a, buffer[i]); INC(i) END;
-      INCL(mapLoaded, is);
+    IF ~(is IN mapLoaded) THEN flushIfOverlap(is); INCL(mapErased, is);
+      begin := FLASH_START + offset[is]; end := begin + SectorSize(is) - 1; i := bufOffset[is] DIV 4;
+      FOR a := begin TO end BY 4 DO SYSTEM.GET(a, data); buffer[i] := data;
+        IF data # 0FFFFH THEN EXCL(mapErased, is) END; INC(i)
+      END;
+      INCL(mapLoaded, is)
     END
   END load;
 
   PROCEDURE Write*(adr: INTEGER; data: ARRAY OF INTEGER; len: INTEGER);
     VAR is: BYTE; i, end: INTEGER;
-  BEGIN is := GetSectorAt(adr); DEC(adr, FLASH_START + offset[is] - bufOffset[is]); i := 0;
-    WHILE len > 0 DO load(is); end := bufOffset[is] + SectorSize(is);
+  BEGIN ASSERT(adr MOD 4 = 0);
+    is := GetSectorAt(adr); adr := (adr - FLASH_START - offset[is] + bufOffset[is]) DIV 4; i := 0;
+    WHILE len > 0 DO load(is); end := (bufOffset[is] + SectorSize(is)) DIV 4;
       WHILE (adr < end) & (len > 0) DO
-        IF buffer[adr] # data[i] THEN buffer[adr] := data[i]; INCL(mapUpdated, is) END;
+        IF buffer[adr] # data[i] THEN buffer[adr] := data[i]; INCL(mapModified, is) END;
         INC(adr); INC(i); DEC(len)
       END; INC(is)
     END
@@ -126,5 +164,5 @@ END FLASH.
 OM4Tool.DecObj FLASH.m4c
 
 Tests:
-  System.Free FLASH ~
+  System.Free testFLASH FLASH ~
   FLASH.Open FLASH.Close

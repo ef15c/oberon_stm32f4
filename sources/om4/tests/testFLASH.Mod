@@ -6,9 +6,10 @@ MODULE testFLASH;
   PROCEDURE test*;
     VAR buf: ARRAY 10 OF INTEGER;
       i: INTEGER;
-  BEGIN FLASH.Open;
+  BEGIN
+    FLASH.Open;
     FOR i := 0 TO LEN(buf) - 1 DO buf[i] := i + 1 END;
-    FLASH.Write(08000010H, buf, LEN(buf));
+    FLASH.Write(08103FFCH, buf, LEN(buf));
     FLASH.Close
   END test;
 

@@ -141,11 +141,11 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     FLASH_BASE* = 40023C00H;
     ACR* = 0;
       DCRST* = 12; ICRST* = 11; DCEN* = 10; ICEN* = 9; PRFTEN* = 8; LATENCYm* = {0..3};
-    KEYR* = 4; OPT_KEYR* = 8; SR* = 0CH;
+    KEYR* = 4; OPT_KEYR* = 8; FLASH_SR* = 0CH;
       FLASH_BSY* = 16; RDERR* = 8; PGSERR* = 7; PGPERR* = 6; PGAERR* = 5; WRPERR* = 4; OPERR* = 1; EOP* = 0;
     FLASH_CR* = 10H;
-      LOCK* = 31; ERRIE* = 25; EOPIE* = 24; STSR* = 16; MER1* = 15; FLASH_PSIZEm* = {8..9}; SNB* = 3; SNBm* = {SNB..SNB+4}; MER* = 2; SER* = 1; PG* = 0;
-        PSISZE_X8* = {}; PSISZE_X16* = {8}; PSISZE_X32* = {9}; PSISZE_X64* = {8..9};
+      LOCK* = 31; ERRIE* = 25; EOPIE* = 24; STRT* = 16; MER1* = 15; FLASH_PSIZEm* = {8..9}; SNB* = 3; SNBm* = {SNB..SNB+4}; MER* = 2; SER* = 1; PG* = 0;
+        PSIZE_X8* = {}; PSIZE_X16* = {8}; PSIZE_X32* = {9}; PSIZE_X64* = {8..9};
     OPTCR* = 14H;
       SPRMOD* = 31; DB1M* = 30; nWRP* = 16; nWRPm* = {nWRP..nWRP+11}; RDP* = 8; RDPm* = {RDP..RDP+7}; nRST_STDBY* = 7;
       nRST_STOP* = 6; WDG_SW* = 5; BFB2* = 4; BOR_LEV* = 2; BOR_LEVm* = {BOR_LEV..BOR_LEV+1}; OPTSTRT* = 1; OPTLOCK* = 0;
