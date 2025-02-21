@@ -131,7 +131,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
                   IntToByteArray(S.i, r.d, 0, TRUE); IntToByteArray(org + vtsize + 1, r.d, 4, TRUE); r.l := 8; WriteIntelHex(Rg, r);
                   OutCode(Rf, Rg, WriteIntelHex, org + vtsize, codelen, entry, res);
                   IF res = noerr THEN
-                    Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
+                    Texts.WriteInt(W, codelen, 6); Texts.WriteInt(W, entry, 6);
                     Texts.WriteString(W, "  done"); Files.Register(g)
                   ELSIF res = fixup THEN Texts.WriteString(W, "  program need fixup error")
                   ELSIF res = badfile THEN Texts.WriteString(W, "  input file format error")

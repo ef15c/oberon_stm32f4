@@ -137,13 +137,14 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
       p, u, v, w: INTEGER;  (*addresses*)
       b: BYTE;
       ch: CHAR;
+      shrinkable: BOOLEAN;
       body: Command;
       fixorgP, fixorgD, fixorgT: INTEGER;
       disp, adr, inst, pno, vno, dest, offset, trpbase, noftrps: INTEGER;
       name1, impname: ModuleName;
       F!: Files.File; R!: Files.Rider;
       import!: ARRAY 16 OF Module;
-  BEGIN mod := root; error(0, name); nofimps := 0;
+  BEGIN mod := root; error(0, name); nofimps := 0; shrinkable := FALSE;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
     IF mod = NIL THEN (*load*)
       Check(name);
@@ -172,6 +173,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
         WHILE (mod # NIL) & ~((mod.name[0] = 0X) & (mod.size >= size)) DO mod := mod.next END ;
         IF mod = NIL THEN (*no large enough hole was found*)
           IF AllocPtr + size < limit THEN (*allocate*)
+            shrinkable := TRUE;
             p := AllocPtr; mod := SYSTEM.VAL(Module, p);
             AllocPtr := (p + size + 3) DIV 4 * 4; mod.size := AllocPtr - p; mod.num := root.num + 1;
             mod.next := root; root := mod
@@ -284,7 +286,7 @@ MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019
           SYSTEM.PUT(adr, inst); adr := adr - disp*4
         END ;
         body;   (*initialize module*)
-        IF AllocPtr > p THEN DEC(mod.size, AllocPtr - p); AllocPtr := p END (*remove trampoline unused space*)
+        IF shrinkable & (AllocPtr > p) THEN DEC(mod.size, AllocPtr - p); AllocPtr := p END (*remove trampoline unused space*)
       ELSIF res >= 3 THEN importing := name;
         WHILE nofimps > 0 DO DEC(nofimps); DEC(import[nofimps].refcnt) END
       END 
