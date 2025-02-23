@@ -1,6 +1,33 @@
 MODULE FilesEx;
   IMPORT Files;
 
+  CONST nothexdigit = 0;
+
+  VAR res*: SET;
+
+  PROCEDURE ResetErrors*;
+  BEGIN res := {}
+  END ResetErrors;
+
+  PROCEDURE valueHexDigit(c: CHAR): BYTE;
+    VAR x: BYTE;
+  BEGIN
+    IF c < "0" THEN INCL(res, nothexdigit)
+    ELSIF c <= "9" THEN x := ORD(c) - ORD("0")
+    ELSIF c < "A" THEN INCL(res, nothexdigit)
+    ELSIF c <= "F" THEN x := ORD(c) - (ORD("A") - 10)
+    ELSE INCL(res, nothexdigit)
+    END
+
+    RETURN x
+  END valueHexDigit;
+
+  PROCEDURE ReadHex*(VAR R: Files.Rider; VAR x: BYTE); (*read to hex digits into a byte*)
+    VAR ch: CHAR;
+  BEGIN Files.Read(R, ch); x := valueHexDigit(ch)*10H;
+    Files.Read(R, ch); INC(x, valueHexDigit(ch))
+  END ReadHex;
+
   PROCEDURE ReadHalfWord*(VAR R: Files.Rider; VAR n: INTEGER);
     VAR b1, b2: BYTE;
   BEGIN Files.ReadByte(R, b1); Files.ReadByte(R, b2);

@@ -1,7 +1,7 @@
 MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   IMPORT Display, Files, FilesEx, Texts, Oberon;
   CONST noerr = 0; badfile = 4;  (*copied from Modules for use as cross development tool*)
-    fixup = 1;
+    fixup = 1; semicolonmissing = 2; nothexdigit = 3; checksumerror = 5; carriagereturnmissing = 6;
   TYPE record = RECORD
       t, l: BYTE;
       a: ARRAY 2 OF BYTE;
@@ -13,7 +13,24 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   VAR res*: INTEGER;
     W: Texts.Writer;
 
-  PROCEDURE WriteBinary(VAR R: Files.Rider; r: record);  (*write a record in binary format*)
+  PROCEDURE ReadIntelHex(VAR R: Files.Rider; VAR r: record); (*read a record in Intel HEX file format*)
+   VAR cs, data: BYTE; ch: CHAR; i: INTEGER;
+  BEGIN cs := 0; Files.Read(R, ch); res := noerr;
+    IF ~R.eof THEN FilesEx.ResetErrors;
+      IF ch = ":" THEN FilesEx.ReadHex(R, r.l); FilesEx.ReadHex(R, r.a[0]); FilesEx.ReadHex(R, r.a[1]); FilesEx.ReadHex(R, r.t);
+        INC(cs, r.l + r.a[0] + r.a[1] + r.t);
+        IF FilesEx.res = {} THEN FOR i:= 0 TO r.l-1 DO FilesEx.ReadHex(R, r.d[i]); INC(cs, r.d[i]) END END;
+        FilesEx.ReadHex(R, data); INC(cs, data);
+        IF FilesEx.res # {} THEN res := nothexdigit; FilesEx.ResetErrors
+        ELSIF cs # 0 THEN res := checksumerror
+        ELSE Files.Read(R, ch); IF ch # 0DX THEN res := carriagereturnmissing END
+        END
+      ELSE res := semicolonmissing
+      END
+    END;
+  END ReadIntelHex;
+
+  PROCEDURE WriteBinary(VAR R: Files.Rider; r: record); (*write a record in binary format*)
     VAR i: INTEGER;
   BEGIN
     IF r.t = 0 THEN FOR i:= 0 TO r.l-1 DO Files.WriteByte(R, r.d[i]) END
@@ -56,7 +73,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     END
   END IntToByteArray;
 
-  PROCEDURE OutCode(VAR R, R1: Files.Rider; write: Writer; loadaddress: INTEGER; VAR codelen, entry, res: INTEGER);
+  PROCEDURE OutCode(VAR R, R1: Files.Rider; write: Writer; loadaddress: INTEGER; VAR codelen, entry: INTEGER);
     VAR n, data: INTEGER; ch: CHAR; b: BYTE;               (*codelen in bytes, entry in bytes*)
       F!: Files.File;
       name: ARRAY 32 OF CHAR;
@@ -107,6 +124,31 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     r.t := 1; r.l := 0; write(R1, r)
   END OutCode;
 
+  PROCEDURE Load*;
+    VAR f!: Files.File; Rf!: Files.Rider;
+      oldCol: INTEGER;
+      S!: Texts.Scanner;
+      r: record;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
+    IF S.class = Texts.Name THEN
+      IF S.class = Texts.Name THEN Texts.WriteString(W, "  Load "); res := -2;
+        Texts.WriteString(W, S.s);
+        f := Files.Old(S.s);
+        IF f # NIL THEN Files.Set(Rf, f, 0); REPEAT ReadIntelHex(Rf, r) UNTIL (res # 0) OR Rf.eof;
+        END
+      ELSE Texts.WriteString(W, "  input file not found")
+      END
+    END;
+    IF res # 0 THEN Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; 
+      IF res = -1 THEN Texts.WriteString(W, "Usage: OM4X.Load M.hex") 
+      ELSE Texts.WriteString(W, "Error: "); Texts.WriteInt(W, res, 1); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, Files.Pos(Rf), 1);
+      END;
+      W.col := oldCol
+    ELSE Texts.WriteString(W, " done")
+    END;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END Load;
+
   PROCEDURE WriteFile*;  (*write code section of M.m4c in hex format to output file*)
     VAR f!, g!: Files.File; Rf!, Rg!: Files.Rider;
       org, vtsize, codelen, entry, lah, oldCol: INTEGER;
@@ -129,11 +171,11 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
                 IF S.class = Texts.Int THEN lah := LSR(org, 16); r.t := 4; r.l := 2; r.a[0] := 0; r.a[1] := 0; (*extended linear address record*)
                   r.d[0] := LSR(lah, 8); r.d[1] := lah MOD 100H; WriteIntelHex(Rg, r); SetAddress(r.a, org); r.t := 0; (*prepare for data record*)
                   IntToByteArray(S.i, r.d, 0, TRUE); IntToByteArray(org + vtsize + 1, r.d, 4, TRUE); r.l := 8; WriteIntelHex(Rg, r);
-                  OutCode(Rf, Rg, WriteIntelHex, org + vtsize, codelen, entry, res);
+                  OutCode(Rf, Rg, WriteIntelHex, org + vtsize, codelen, entry);
                   IF res = noerr THEN
                     Texts.WriteInt(W, codelen, 6); Texts.WriteInt(W, entry, 6);
                     Texts.WriteString(W, "  done"); Files.Register(g)
-                  ELSIF res = fixup THEN Texts.WriteString(W, "  program need fixup error")
+                  ELSIF res = fixup THEN Texts.WriteString(W, "  program must not need fixup")
                   ELSIF res = badfile THEN Texts.WriteString(W, "  input file format error")
                   END
                 ELSE res := -1
@@ -151,7 +193,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     IF res = -1 THEN Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; 
       Texts.WriteString(W, "Usage: OM4X.WriteFile M.m4c M.hex LoadAddress VecTabSize StackAddr");
       W.col := oldCol
-    END ;
+    END;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END WriteFile;
 
@@ -168,7 +210,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
         IF f # NIL THEN
           IF Files.Length(f) > 0 THEN
             g := Files.New(S.s); Files.Set(Rf, f, 0); Files.Set(Rg, g, 0);
-            OutCode(Rf, Rg, WriteBinary, 0, codelen, entry, res);
+            OutCode(Rf, Rg, WriteBinary, 0, codelen, entry);
             IF res = noerr THEN
               Texts.WriteInt(W, codelen*4, 6); Texts.WriteInt(W, entry, 6);
               Texts.WriteString(W, "  done"); Files.Register(g)
@@ -210,7 +252,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
             FilesEx.WriteString(Rg,"  .thumb_func"); FilesEx.WriteLn(Rg);
             FilesEx.WriteString(Rg, name); FilesEx.WriteString(Rg, ":"); FilesEx.WriteLn(Rg);
             
-            OutCode(Rf, Rg, WriteAsmLine, 0, codelen, entry, res);
+            OutCode(Rf, Rg, WriteAsmLine, 0, codelen, entry);
             FilesEx.WriteString(Rg,"  // End of file."); FilesEx.WriteLn(Rg);
         
             IF res = noerr THEN
