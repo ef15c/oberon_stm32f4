@@ -714,7 +714,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SYSTEM.PUT(RTC_BASE + PRER, 3999); (*two access are required, with synchronous prescaler first. Value is 3999*)
     SYSTEM.PUT(RTC_BASE + PRER, LSL(124, 16) + 3999); (*then write asynchronous prescaler factor. Value is 124*)
     SYSTEM.PUT(rtcInit, FALSE); (*exit RTC from init mode*)
-    SYSTEM.PUT(WPR, 0FFH); (*enable write protection on RTC registers*)
+    SYSTEM.PUT(RTC_BASE + WPR, 0FFH); (*enable write protection on RTC registers*)
   END InitRTC;
 
   PROCEDURE InitUART*;
