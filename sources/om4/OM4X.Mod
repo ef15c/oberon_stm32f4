@@ -1,13 +1,24 @@
 MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
-  IMPORT Display, Files, FilesEx, Texts, Oberon;
+  IMPORT SYSTEM, Display, Files, FilesEx, Texts, Oberon, FLASH;
+
   CONST noerr = 0; badfile = 4;  (*copied from Modules for use as cross development tool*)
-    fixup = 1; semicolonmissing = 2; nothexdigit = 3; checksumerror = 5; carriagereturnmissing = 6;
+    fixup = 1; semicolonmissing = 2; nothexdigit = 3; checksumerror = 5; carriagereturnmissing = 6; eofrecmissing = 7; unknownrectype = 8;
+
+    DATA = 0; EOF = 1; ELAR = 4; SLAR = 5; (*Intel Hex type codes*)
+
   TYPE record = RECORD
       t, l: BYTE;
       a: ARRAY 2 OF BYTE;
       d: ARRAY 16 OF BYTE
     END;
-   
+ 
+      record2 = POINTER TO record2Desc;
+      record2Desc = RECORD
+      t, l: BYTE;
+      a: ARRAY 2 OF BYTE;
+      d: ARRAY 4 OF INTEGER;
+    END;
+
     Writer = PROCEDURE(VAR R: Files.Rider; r: record);
 
   VAR res*: INTEGER;
@@ -33,7 +44,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   PROCEDURE WriteBinary(VAR R: Files.Rider; r: record); (*write a record in binary format*)
     VAR i: INTEGER;
   BEGIN
-    IF r.t = 0 THEN FOR i:= 0 TO r.l-1 DO Files.WriteByte(R, r.d[i]) END
+    IF r.t = DATA THEN FOR i:= 0 TO r.l-1 DO Files.WriteByte(R, r.d[i]) END
     END
   END WriteBinary;
 
@@ -50,7 +61,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
   PROCEDURE WriteAsmLine(VAR R: Files.Rider; r: record);  (*write a record in binary format*)
     VAR i: INTEGER;
   BEGIN
-    IF r.t = 0 THEN FilesEx.WriteString(R, "  .byte ");
+    IF r.t = DATA THEN FilesEx.WriteString(R, "  .byte ");
       FOR i:= 0 TO r.l-1 DO IF i # 0 THEN FilesEx.WriteString(R, ", ") END;
         FilesEx.WriteString(R, "0X"); FilesEx.WriteHex(R, r.d[i]) END
     END; FilesEx.WriteLn(R)
@@ -88,16 +99,16 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     Files.ReadInt(R, n); (*variable space*)
     Files.ReadInt(R, n); Files.Set(R, F, Files.Pos(R) + n); (*strings*)
     Files.ReadInt(R, codelen); n := 0; la := loadaddress; lah := 0; 
-    r.t := 0; r.l := 0; SetAddress(r.a, la);
+    r.t := DATA; r.l := 0; SetAddress(r.a, la);
     WHILE ~R.eof & (n < codelen) DO
       IF la DIV 10000H MOD 10000H # lah THEN
         (*Write pending record*)
         IF r.l # 0 THEN write(R1, r) END;
         lah := la DIV 10000H MOD 10000H;
         (*Write extended linear address record with upper 16-bits of the load address*)
-        r.t := 4; r.l := 2; r.a[0] := 0; r.a[1] := 0;
+        r.t := ELAR; r.l := 2; r.a[0] := 0; r.a[1] := 0;
         r.d[0] := lah DIV 100H MOD 100H; r.d[1] := lah MOD 100H; write(R1, r);
-        r.l := 0; SetAddress(r.a, la); r.t := 0; (*prepare for data record*);
+        r.l := 0; SetAddress(r.a, la); r.t := DATA; (*prepare for data record*);
       END;
       Files.ReadByte(R, r.d[r.l]); INC(r.l); INC(n); INC(la);
       IF r.l = LEN(r.d) THEN (*data array is full: output the line*)
@@ -117,24 +128,34 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     Files.ReadInt(R, entry);
     (*write start linear address record (MDK-ARM only)*)
     la := loadaddress + entry + 1; (*Odd value means thumb mode*)
-    r.t := 5; r.a[0] := 0; r.a[1] := 0; r.l := 4; IntToByteArray(la, r.d, 0, FALSE); write(R1, r);
+    r.t := SLAR; r.a[0] := 0; r.a[1] := 0; r.l := 4; IntToByteArray(la, r.d, 0, FALSE); write(R1, r);
     Files.Read(R, ch);
     IF ch # "O" THEN res := badfile END;
     (*write End-of-File (EOF) Record*)
-    r.t := 1; r.l := 0; write(R1, r)
+    r.t := EOF; r.l := 0; write(R1, r)
   END OutCode;
 
   PROCEDURE Load*;
     VAR f!: Files.File; Rf!: Files.Rider;
-      oldCol: INTEGER;
+      elah, adr, oldCol, i: INTEGER;
       S!: Texts.Scanner;
-      r: record;
+      r: record; r2!: record2;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN
       IF S.class = Texts.Name THEN Texts.WriteString(W, "  Load "); res := -2;
         Texts.WriteString(W, S.s);
         f := Files.Old(S.s);
-        IF f # NIL THEN Files.Set(Rf, f, 0); REPEAT ReadIntelHex(Rf, r) UNTIL (res # 0) OR Rf.eof;
+        IF f # NIL THEN Files.Set(Rf, f, 0); REPEAT ReadIntelHex(Rf, r) UNTIL (res # noerr) OR Rf.eof END; (*check hex file*)
+        IF r.t # EOF THEN res := eofrecmissing END;
+        IF res = noerr THEN Files.Set(Rf, f, 0); r2 := SYSTEM.VAL(record2, SYSTEM.ADR(r)); FLASH.Open;
+          REPEAT ReadIntelHex(Rf, r);
+            IF r.t = ELAR THEN elah := (r.d[0]*100H + r.d[1])*10000H;
+            ELSIF r.t = DATA THEN adr := elah + r.a[0]*100H + r.a[1];
+              WHILE r.l MOD 4 # 0 DO r.d[r.l] := 0FFH; INC(r.l) END; (*align 4*)
+              FLASH.Write(adr, r2.d, r.l DIV 4)
+            ELSIF (r.t # SLAR) & (r.t # EOF) THEN res := unknownrectype
+            END
+          UNTIL Rf.eof; FLASH.Close
         END
       ELSE Texts.WriteString(W, "  input file not found")
       END
@@ -168,8 +189,8 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
               org := S.i; Texts.Scan(S);
               IF S.class = Texts.Int THEN
                 vtsize := S.i; Texts.Scan(S);
-                IF S.class = Texts.Int THEN lah := LSR(org, 16); r.t := 4; r.l := 2; r.a[0] := 0; r.a[1] := 0; (*extended linear address record*)
-                  r.d[0] := LSR(lah, 8); r.d[1] := lah MOD 100H; WriteIntelHex(Rg, r); SetAddress(r.a, org); r.t := 0; (*prepare for data record*)
+                IF S.class = Texts.Int THEN lah := LSR(org, 16); r.t := ELAR; r.l := 2; r.a[0] := 0; r.a[1] := 0; (*extended linear address record*)
+                  r.d[0] := LSR(lah, 8); r.d[1] := lah MOD 100H; WriteIntelHex(Rg, r); SetAddress(r.a, org); r.t := DATA; (*prepare for data record*)
                   IntToByteArray(S.i, r.d, 0, TRUE); IntToByteArray(org + vtsize + 1, r.d, 4, TRUE); r.l := 8; WriteIntelHex(Rg, r);
                   OutCode(Rf, Rg, WriteIntelHex, org + vtsize, codelen, entry);
                   IF res = noerr THEN
