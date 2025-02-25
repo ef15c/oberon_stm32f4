@@ -8,9 +8,13 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
     DestAdr = 8; MemAdr = 12; AllocAdr = 16; RootAdr = 20; StackAdr = 24; HeapOrgAdr = 28;
     ModAdr = 32;
 
+    TYPE ModulesList = POINTER TO ModulesListDesc;
+    ModulesListDesc = RECORD body: INTEGER; next: ModulesList END;
+
   VAR root: Modules.Module;
     AllocPtr, Start, limit, res: INTEGER;
     importing, imported: Modules.ModuleName;
+    modules, tail: ModulesList;
     W: Texts.Writer;
 
   PROCEDURE thumbSwap(w: INTEGER): INTEGER;
@@ -81,7 +85,6 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       i, n, key, impkey, mno, nofimps, size: INTEGER;
       p, u, v, w: INTEGER;  (*addresses*)
       ch: CHAR;
-      body: Modules.Command;
       fixorgP, fixorgD, fixorgT: INTEGER;
       disp, adr, inst, pno, vno, dest, offset: INTEGER;
       name1, impname: Modules.ModuleName;
@@ -117,6 +120,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           p := AllocPtr; mod := SYSTEM.VAL(Modules.Module, p);
           AllocPtr := (p + size + 3) DIV 4 * 4; mod.size := AllocPtr - p;
           IF root = NIL THEN mod.num := 1 ELSE mod.num := root.num + 1 END ;
+          IF tail = NIL THEN NEW(tail); modules := tail ELSE NEW(tail.next); tail := tail.next END;
           mod.next := root; root := mod
         ELSE error(nospace, name1)
         END
@@ -156,7 +160,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         WHILE w >= 0 DO SYSTEM.PUT(p, mod.data + w - Start + VarORG0); INC(p, 4); Files.ReadInt(R, w) END ;
         SYSTEM.PUT(p, 0); INC(p, 4);
         Files.ReadInt(R, fixorgP); Files.ReadInt(R, fixorgD); Files.ReadInt(R, fixorgT);
-        Files.ReadInt(R, w); body := SYSTEM.VAL(Modules.Command, mod.code + w - Start + VarORG0);
+        Files.ReadInt(R, w); tail.body := SYSTEM.VAL(INTEGER, mod.code + w - Start + VarORG0);
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
       END ;
@@ -212,7 +216,6 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           END ;
           SYSTEM.PUT(adr, inst); adr := adr - disp*4
         END ;
-        SYSTEM.PUT(Start, body); (*module initialization body*)
         IF AllocPtr > p THEN DEC(mod.size, AllocPtr - p); AllocPtr := p END (*remove trampoline unused space*)
       ELSIF res >= badkey THEN importing := name;
         WHILE nofimps > 0 DO DEC(nofimps); DEC(import[nofimps].refcnt) END
@@ -245,8 +248,13 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           M.ent := M.ent - Start + VarORG0;
           M.ptr := M.ptr - Start + VarORG0
         END ;
-        SYSTEM.GET(Start, x);  (*address of initialization body of the top module relative to Start*)
-        SYSTEM.PUT(Start, thumbSwap(A.BT4 + A.formatEvenImm25(x - 4 - VarORG0)));  (*branch instruction to the initialization body of the top module*)
+(*TODO: initialiser la section data si elle est en SRAM*)
+        SYSTEM.PUT(Start, thumbSwap(A.BT4 + A.formatEvenImm25(AllocPtr - 4 - Start)));  (*branch instruction to the initialization sequence*)
+        tail := modules; (*generate initilization sequence*)
+        WHILE tail # NIL DO (*call each module body in order*)
+          SYSTEM.PUT(AllocPtr, thumbSwap(A.BL + A.formatEvenImm25(tail.body - 4 - AllocPtr + Start - VarORG0)));
+          INC(AllocPtr, 4); tail := tail.next
+        END;
         SYSTEM.PUT(Start + DestAdr, VarORG0);  (*destination address of the prelinked, executable binary*)
         SYSTEM.PUT(Start + MemAdr, MemLim);  (*limit of available memory, typically overwritten by the boot loader*)
         SYSTEM.PUT(Start + AllocAdr, AllocPtr - Start + VarORG0);  (*address of the end of the module space loaded*)
@@ -268,7 +276,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       END
     ELSE Texts.WriteString(W, "Usage: OM4L.Link [module...] topmodule")
     END ;
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); root := NIL
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); root := NIL; modules := NIL
   END Link;
 
   PROCEDURE Load*;  (*load prelinked boot file M.bin onto the boot area of the local disk*)
@@ -296,7 +304,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END Load;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.20 / CS 14/12/2023");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.20 / CS 25.02.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); 
   limit := Kernel.heapOrg; (*The end of the module space is the beginning of the heap*)
   IF limit = 0 THEN limit := Kernel.stackOrg - Kernel.stackSize END; (*Hack if ran by RISC-5 machine*)

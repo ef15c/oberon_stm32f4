@@ -1,5 +1,5 @@
 MODULE OM4Tool;  (*NW 18.2.2013
-  C. Schoffit 12/11/2023*)
+  C. Schoffit 25.02.25*)
   IMPORT SYSTEM, Files, Texts, Oberon, OM4B, OM4A, OM4D, Modules;
 
   TYPE
@@ -280,7 +280,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   END EmitString;
   
   PROCEDURE DecBin*;   (*decode binary boot file*)
-    VAR i, n, modLoc, root, ramOrg, data: INTEGER;
+    VAR i, n, modLoc, root, ramOrg, data: INTEGER; b: BYTE;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp!: BootParams;
@@ -426,7 +426,22 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
             Texts.WriteLn(W)
           END
-        UNTIL ~ok OR (modLoc + ramOrg = root)
+        UNTIL ~ok OR (modLoc + ramOrg = root);
+        IF ok THEN
+          mcode.pc := 0; Files.ReadByte(R, b);
+          WHILE ~R.eof DO mcode.code[mcode.pc] := b; INC(mcode.pc); Files.ReadByte(R, b) END;
+          IF mcode.pc > 0 THEN Texts.WriteString(W, "; global initialization section found"); Texts.WriteLn(W);
+            i := 0; 
+            WHILE i < mcode.pc DO 
+              Texts.WriteHex(W, n+ramOrg + i); Texts.Write(W, 9X); OM4D.opcode(W, mcode.code, i, n+ramOrg);
+              Texts.WriteLn(W)
+            END
+          ELSE
+            ok := FALSE;
+            Texts.WriteString(W, "initiamization section missing, at "); Texts.WriteHex(W, n+ramOrg); 
+            Texts.WriteLn(W)
+          END
+        END
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
       END;
       Texts.Append(Oberon.Log, W.buf)
@@ -450,6 +465,6 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END DecRAO;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 12.11.2023");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 25.02.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
 END OM4Tool.

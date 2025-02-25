@@ -100,3 +100,8 @@ type:
  1 DMB,
  2 DSB et
  3 ISB.
+
+Module en mémoire Flash embarquée:
+A faire:
+- Modifier OM4L.Link pour appeler les blocs d'initialisation des modules liés.
+- Créer OM4L.LinkEF à partir de OM4L.Link
