@@ -276,9 +276,10 @@ MODULE SDCard;
     BSP.ledsOnOff({}, {0});
   END Write;
 
-  PROCEDURE Init*;
+  PROCEDURE Init;
   BEGIN SYSTEM.GET(0D0201004H, hsd);
     hsd.readErrors := 0; hsd.writeErrors := 0; hsd.unrecoverableErrors := 0
   END Init;
 
+BEGIN Init
 END SDCard.

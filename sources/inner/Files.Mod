@@ -478,10 +478,6 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
 
   (*---------------------------System use---------------------------*)
 
-  PROCEDURE Init*;
-  BEGIN root := 0; Kernel.Init; FileDir.Init
-  END Init;
-
   PROCEDURE RestoreList*; (*after mark phase of garbage collection*)
     VAR f, f0: INTEGER;
 
@@ -502,4 +498,5 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
     END
   END RestoreList;
 
+BEGIN root := 0;
 END Files.

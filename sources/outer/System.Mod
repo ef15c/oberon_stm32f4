@@ -572,6 +572,6 @@ BEGIN Texts.OpenWriter(W);
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
   activateHandlers;
-  stack := SYSTEM.VAL(StackDump, 20000600H); stack.len := 0; stack.cause := 0;
+  stack := SYSTEM.VAL(StackDump, (*20000600H*) 0D0110000H); stack.len := 0; stack.cause := 0;
   stack.cfsr := {}; stack.bfar := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0
 END System.

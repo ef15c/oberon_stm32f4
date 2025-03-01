@@ -734,10 +734,11 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SYSTEM.PUT(ue1, TRUE); (*enble UART*)
   END InitUART;
 
-  PROCEDURE Init*;
+  PROCEDURE Init;
   BEGIN initGPIOs;
     Leds[0] := LED1Out; Leds[1] := LED2Out; Leds[2] := LED3Out; Leds[3] := LED4Out; 
     Leds[4] := LED5Out; Leds[5] := LED6Out; Leds[6] := LED7Out
   END Init;
 
+BEGIN Init;
 END BSP.

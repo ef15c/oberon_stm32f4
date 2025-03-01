@@ -292,7 +292,7 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17/03/24*)
 
 (* ----- initialization ----- *)
 
-PROCEDURE Init*;
+PROCEDURE Init;
     VAR k: INTEGER;
         A: ARRAY 2000 OF DiskAdr;
 
@@ -349,5 +349,6 @@ PROCEDURE Init*;
 
   BEGIN NEW(hd); k := 0; TraverseDir(A, k, DirRootAdr); MarkSectors(A, k); hd := NIL;
   END Init; 
-  
+
+BEGIN Init
 END FileDir.

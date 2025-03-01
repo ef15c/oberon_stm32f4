@@ -319,7 +319,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
           EmitWord(W, mod.cmd, n, ramOrg, "Commands section");
           EmitWord(W, mod.ent, n, ramOrg, "Entries section");
           EmitWord(W, mod.ptr, n, ramOrg, "Pointer section");
-          INC(n, 4); (*unused*)
+          EmitWord(W, mod.const, n, ramOrg, "Const section");
 
           IF ok & (n+ramOrg = mod.data) THEN  Texts.WriteString(W, "; data section found"); Texts.WriteLn(W)
           ELSE
