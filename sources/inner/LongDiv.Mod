@@ -32,7 +32,7 @@ END LongDiv.
 
 OM4Tool.DecObj LongDiv.m4c
 decode LongDiv.m4c
-LongDiv F96D031F   1    656
+LongDiv F96D031F   2    656
 imports:
 type descriptors
  00000020 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF
@@ -45,10 +45,11 @@ entries
  00000260 00000000 00000000
 pointer refs
 
-fixP =        0
-fixD =        0
-fixT =        0
-entry =      608
+fixP =  00000000
+fixV =  00000000
+fixC =  00000000
+fixT =  00000000
+entry =  00000260
  00000000	     B089	SUB SP SP #36
  00000002	     B403	PUSH R0 R1
  00000004	     B500	PUSH LR

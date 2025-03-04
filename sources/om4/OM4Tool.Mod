@@ -119,28 +119,28 @@ MODULE OM4Tool;  (*NW 18.2.2013
 
   PROCEDURE opcode(VAR c: ARRAY OF BYTE; VAR er: ExternalRefMap; VAR i: INTEGER; base: INTEGER);                  
     VAR b1, b2, b3, b4, ext, proc: BYTE;
-      op: SET;
+      op: SET; next: INTEGER;
   BEGIN
     ext := er.ext[i];
     IF ext = 0 THEN
       OM4D.opcode(W, c, i, base)
-    ELSE
-      b1 := c[i+1]; b2 := c[i]; INC(i, 2);
-      b3 := c[i+1]; b4 := c[i]; INC(i, 2);
+    ELSE b1 := c[i+1]; b2 := c[i]; INC(i, 2); b3 := c[i+1]; b4 := c[i]; INC(i, 2);
       IF ext = 1 THEN (*Get lower 16-bits of address of the object*)
         op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
         Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
         RdG := b1 DIV OM4A.C4; mno := b1 MOD OM4A.C4;
         OM4D.WriteOp(W, op, "MOV", FALSE, FALSE); OM4D.WriteReg(W, RdG); Texts.WriteString(W, " lower 16-bits base(");
-        Texts.WriteInt(W, mno, 1); Texts.WriteString(W, ")")
-      ELSIF ext = 2 THEN (*Get higher 16-bits of address of the object*)
+        Texts.WriteInt(W, mno, 1); Texts.WriteString(W, "), next at ");
+        next := i-4 - (b4 + 100H*(b3 + 100H*b2))*OM4A.C1;
+        Texts.WriteHex(W, next)
+      ELSIF ext IN {2, 4} THEN (*Get higher 16-bits of address of the object*)
         op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
         Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
         OM4D.WriteOp(W, op, "MOVT", FALSE, FALSE); OM4D.WriteReg(W, RdG);
         Texts.WriteString(W, " higher 16-bits ");
-        IF mno = 0 THEN Texts.WriteString(W, "base + "); 
+        IF mno = 0 THEN IF ext = 2 THEN Texts.WriteString(W, "var + ") ELSE Texts.WriteString(W, "const + ") END;
           Texts.WriteInt(W, 0+b4+100H*(b3+100H*b2), 1)
-        ELSE Texts.WriteString(W, "var("); Texts.WriteInt(W, b4, 1);
+        ELSE IF ext = 2 THEN Texts.WriteString(W, "var(") ELSE Texts.WriteString(W, "const(") END; Texts.WriteInt(W, b4, 1);
           Texts.WriteString(W, ")");
           IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END
         END
@@ -166,7 +166,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   END Write;
 
   PROCEDURE DecObj*;   (*decode object file*)
-    VAR class, i, n, key, size, fix, adr, data: INTEGER;
+    VAR version, i, n, key, size, adr, data: INTEGER;
       bl: BYTE;
       next: INTEGER;
       ch: CHAR;
@@ -178,8 +178,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
       IF F # NIL THEN OM4A.Init(mcode);
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
-        Files.ReadInt(R, key); Texts.WriteHex(W, key); Read(R, class); Texts.WriteInt(W, class, 4); (*version*)
-        Texts.Append(Oberon.Log, W.buf); ASSERT(class IN {0, 1});
+        Files.ReadInt(R, key); Texts.WriteHex(W, key); Read(R, version); Texts.WriteInt(W, version, 4);
+        Texts.Append(Oberon.Log, W.buf); ASSERT(version IN {0, 1, 2});
         Files.ReadInt(R, size); Texts.WriteInt(W, size, 7); Texts.WriteLn(W);
         Texts.Append(Oberon.Log, W.buf); ASSERT(size < 500000);
         Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
@@ -208,7 +208,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Files.ReadString(R, name);
         WHILE name[0] # 0X DO
           Texts.Write(W, 9X); Texts.WriteString(W, name);
-          Files.ReadInt(R, adr); Texts.WriteInt(W, adr, 5); Texts.WriteLn(W);
+          Files.ReadInt(R, adr); Texts.WriteHex(W, adr); Texts.WriteLn(W);
           Files.ReadString(R, name)
         END ;
       (* Sync(R); *)
@@ -223,18 +223,27 @@ MODULE OM4Tool;  (*NW 18.2.2013
         WHILE adr # -1 DO Texts.WriteInt(W, adr, 6); Files.ReadInt(R, adr) END ;
         Texts.WriteLn(W);
       (* Sync(R); *)
-        Files.ReadInt(R, data); Texts.WriteString(W, "fixP = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
+        Files.ReadInt(R, data); Texts.WriteString(W, "fixP = "); Texts.WriteHex(W, data); Texts.WriteLn(W);
         WHILE data # 0 DO eref.ext[data] := 3;
           next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*(mcode.code[data] MOD OM4A.C4)))*OM4A.C1;
           data := next
         END;
-        Files.ReadInt(R, data); Texts.WriteString(W, "fixD = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
+        Files.ReadInt(R, data);
+        IF version < 2 THEN Texts.WriteString(W, "fixD = ") ELSE Texts.WriteString(W, "fixV = ") END;
+        Texts.WriteHex(W, data); Texts.WriteLn(W);
         WHILE data # 0 DO eref.ext[data] := 1; eref.ext[data+4] := 2;
           next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*OM4A.C1;
           data := next
         END;
-        Files.ReadInt(R, data); Texts.WriteString(W, "fixT = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
-        Files.ReadInt(R, data); Texts.WriteString(W, "entry = "); Texts.WriteInt(W, data, 8); Texts.WriteLn(W);
+        IF version = 2 THEN Files.ReadInt(R, data); Texts.WriteString(W, "fixC = ");
+          Texts.WriteHex(W, data); Texts.WriteLn(W);
+          WHILE data # 0 DO eref.ext[data] := 1; eref.ext[data+4] := 4;
+            next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*OM4A.C1;
+            data := next
+          END
+        END;
+        Files.ReadInt(R, data); Texts.WriteString(W, "fixT = "); Texts.WriteHex(W, data); Texts.WriteLn(W);
+        Files.ReadInt(R, data); Texts.WriteString(W, "entry = "); Texts.WriteHex(W, data); Texts.WriteLn(W);
         Files.Read(R, ch);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
       (* Sync(R); *)

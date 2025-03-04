@@ -1000,6 +1000,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteShift(W, op)
           END
         ELSIF op*T32MSK21 = BitwClear THEN
+          Rm := b4 MOD A.C4;
           (*T32MSK21 0001 - - - Bitwise Bit Clear BIC (register) on page A7-210*)
           (*BIC{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
             WriteOp(W, op, "BIC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
