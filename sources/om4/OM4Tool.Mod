@@ -193,11 +193,17 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Files.ReadInt(R, n); n := n DIV 4; i := 0;
         WHILE i < n DO Files.ReadInt(R, data); Texts.WriteHex(W, data); INC(i) END ;
         Texts.WriteLn(W);
+        IF version = 2 THEN Texts.WriteString(W, "strings"); Texts.WriteLn(W);
+          Files.ReadInt(R, n); i := 0;
+          WHILE i < n DO Files.Read(R, ch); IF ch=0X THEN ch := "|" END; Texts.Write(W, ch); INC(i) END;
+          Texts.WriteLn(W);
+        END;
         Texts.WriteString(W, "data"); Files.ReadInt(R, data); Texts.WriteInt(W, data, 6); Texts.WriteLn(W);
-        Texts.WriteString(W, "strings"); Texts.WriteLn(W);
-        Files.ReadInt(R, n); i := 0;
-        WHILE i < n DO Files.Read(R, ch); IF ch=0X THEN ch := "|" END; Texts.Write(W, ch); INC(i) END ;
-        Texts.WriteLn(W);
+        IF version < 2 THEN Texts.WriteString(W, "strings"); Texts.WriteLn(W);
+          Files.ReadInt(R, n); i := 0;
+          WHILE i < n DO Files.Read(R, ch); IF ch=0X THEN ch := "|" END; Texts.Write(W, ch); INC(i) END ;
+          Texts.WriteLn(W);
+        END;
         Texts.WriteString(W, "code"); Texts.WriteLn(W);
         Files.ReadInt(R, mcode.pc); i := 0;
         WHILE i < mcode.pc DO Files.ReadByte(R, mcode.code[i]); eref.ext[i] := 0; INC(i)
@@ -330,6 +336,30 @@ MODULE OM4Tool;  (*NW 18.2.2013
           EmitWord(W, mod.ptr, n, ramOrg, "Pointer section");
           EmitWord(W, mod.const, n, ramOrg, "Const section");
 
+          IF ok & (n+ramOrg = mod.const) THEN  Texts.WriteString(W, "; const section found"); Texts.WriteLn(W)
+          ELSE
+            ok := FALSE;
+            Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
+            Texts.WriteLn(W)
+          END;
+          IF ok THEN
+            i := 0;
+            WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.data) DO 
+              Files.ReadInt(R, data);
+              IF data # 0 THEN
+                IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
+                  Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
+                  Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W); i := 0;
+                END;
+                EmitWord(W, data, n, ramOrg, "")
+              ELSE i := i+1; INC(n, 4)
+              END
+            END;
+            IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
+              Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
+              Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
+            END;
+          END;
           IF ok & (n+ramOrg = mod.data) THEN  Texts.WriteString(W, "; data section found"); Texts.WriteLn(W)
           ELSE
             ok := FALSE;

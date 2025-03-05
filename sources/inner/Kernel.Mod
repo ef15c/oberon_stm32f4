@@ -176,7 +176,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
 (* ---------- Disk storage management ----------*)
 
-  PROCEDURE InitSecMap*;
+  PROCEDURE InitSecMap;
     CONST NofReservedSectors = (BootReservedSize + SectorLength - 1) DIV SectorLength + 2;
     VAR i, r: INTEGER;
   BEGIN NofSectors := 0; i := 0;
@@ -330,7 +330,7 @@ END Kernel.
 
 OM4Tool.DecSym Kernel.sm4
 decode Kernel.sm4
-Kernel 19C8EDE5  1
+Kernel FC60F94D  1
    1 SectorLength [^4]    1024
    1 VarORG0 [^4]-803205120
    5 Sector [15  form = 12 [^1]  len = 1024  size = 1024]()
@@ -350,22 +350,21 @@ Kernel 19C8EDE5  1
    1 Mark [0  form = 10 [^9]( class = 2 [^4])]      13
    1 Scan [0  form = 10 [^9]()]      14
    1 Coalesce [0  form = 10 [^9]()]      15
-   1 InitSecMap [0  form = 10 [^9]()]      16
-   1 MarkSector [0  form = 10 [^9]( class = 2 [^4])]      17
-   1 FreeSector [0  form = 10 [^9]( class = 2 [^4])]      18
-   1 AllocSector [0  form = 10 [^9]( class = 3 [^4] class = 2 [^4])]      19
-   1 GetSector [0  form = 10 [^9]( class = 3 [^15] class = 2 [^4])]      20
-   1 PutSector [0  form = 10 [^9]( class = 3 [^15] class = 2 [^4])]      21
-   1 Time [0  form = 10 [^4]()]      22
-   1 Clock [0  form = 10 [^4]()]      23
-   1 SetClock [0  form = 10 [^9]( class = 2 [^4])]      24
-   1 Install [0  form = 10 [^9]( class = 2 [^4] class = 2 [^4])]      25
-   1 DisableAbortHandler [0  form = 10 [^9]()]      26
-   1 EnableAbortHandler [0  form = 10 [^9]()]      27
+   1 MarkSector [0  form = 10 [^9]( class = 2 [^4])]      16
+   1 FreeSector [0  form = 10 [^9]( class = 2 [^4])]      17
+   1 AllocSector [0  form = 10 [^9]( class = 3 [^4] class = 2 [^4])]      18
+   1 GetSector [0  form = 10 [^9]( class = 3 [^15] class = 2 [^4])]      19
+   1 PutSector [0  form = 10 [^9]( class = 3 [^15] class = 2 [^4])]      20
+   1 Time [0  form = 10 [^4]()]      21
+   1 Clock [0  form = 10 [^4]()]      22
+   1 SetClock [0  form = 10 [^9]( class = 2 [^4])]      23
+   1 Install [0  form = 10 [^9]( class = 2 [^4] class = 2 [^4])]      24
+   1 DisableAbortHandler [0  form = 10 [^9]()]      25
+   1 EnableAbortHandler [0  form = 10 [^9]()]      26
 
 OM4Tool.DecObj Kernel.m4c
 decode Kernel.m4c
-Kernel 19C8EDE5   2  12696
+Kernel FC60F94D   2  12676
 imports:
 	BSP 17BE1E3B
 	SDCard 4A193F90
@@ -379,11 +378,10 @@ code
 commands:
 	Scan 00000452
 	Coalesce 00000642
-	InitSecMap 00000836
 	DisableAbortHandler 00000E3A
 	EnableAbortHandler 00000E68
 entries
- 00001036 00000000 00000000 00000004 00000008 0000000C 00000010 00000014 00000018 00000020 00000024 00000028 0000002C 00000334 00000452 00000642 00000836 000008EC 0000094E 000009B0 00000A92 00000ACE 00000B0A 00000B1C 00000C00 00000D4A 00000E3A 00000E68
+ 00001036 00000000 00000000 00000004 00000008 0000000C 00000010 00000014 00000018 00000020 00000024 00000028 0000002C 00000334 00000452 00000642 000008EC 0000094E 000009B0 00000A92 00000ACE 00000B0A 00000B1C 00000C00 00000D4A 00000E3A 00000E68
 pointer refs
 
 fixP =  00000EFE
@@ -1241,7 +1239,7 @@ entry =  00001036
  00000852	     9801	LDR R0 [ SP + 4 ]
  00000854	 F5B06F00	CMP R0 #2048
  00000858	     BF28	IT CS
- 0000085A	 EC03A401	TrapCS 1 at pos 7488
+ 0000085A	 EC03A3F1	TrapCS 1 at pos 7487
  0000085E	 10000011	MOV R1 lower 16-bits base(0), next at  0000083C
  00000862	 00000030	MOVT R1 higher 16-bits var + 48
  00000866	 EB110080	ADDS R0 R1 R0 LSL #2
@@ -1259,7 +1257,7 @@ entry =  00001036
  00000884	     9801	LDR R0 [ SP + 4 ]
  00000886	 F5B06F00	CMP R0 #2048
  0000088A	     BF28	IT CS
- 0000088C	 EC03B191	TrapCS 1 at pos 7577
+ 0000088C	 EC03B181	TrapCS 1 at pos 7576
  00000890	 10000019	MOV R1 lower 16-bits base(0), next at  0000085E
  00000894	 00000030	MOVT R1 higher 16-bits var + 48
  00000898	 EB110080	ADDS R0 R1 R0 LSL #2
@@ -1278,7 +1276,7 @@ entry =  00001036
  000008C0	     9801	LDR R0 [ SP + 4 ]
  000008C2	 F5B06F00	CMP R0 #2048
  000008C6	     BF28	IT CS
- 000008C8	 EC03B5F1	TrapCS 1 at pos 7647
+ 000008C8	 EC03B5E1	TrapCS 1 at pos 7646
  000008CC	 1000001E	MOV R1 lower 16-bits base(0), next at  00000890
  000008D0	 00000030	MOVT R1 higher 16-bits var + 48
  000008D4	 EB110080	ADDS R0 R1 R0 LSL #2
@@ -1304,12 +1302,12 @@ entry =  00001036
  00000902	     9901	LDR R1 [ SP + 4 ]
  00000904	     4281	CMP R1 R0
  00000906	     BF18	IT NE
- 00000908	 EC03C787	TrapNE 7 at pos 7800
+ 00000908	 EC03C777	TrapNE 7 at pos 7799
  0000090C	     9802	LDR R0 [ SP + 8 ]
  0000090E	     1140	ASRS R0 R0 #5
  00000910	 F5B06F00	CMP R0 #2048
  00000914	     BF28	IT CS
- 00000916	 EC03D171	TrapCS 1 at pos 7831
+ 00000916	 EC03D161	TrapCS 1 at pos 7830
  0000091A	 10000027	MOV R1 lower 16-bits base(0), next at  000008CC
  0000091E	 00000030	MOVT R1 higher 16-bits var + 48
  00000922	 EB110080	ADDS R0 R1 R0 LSL #2
@@ -1341,12 +1339,12 @@ entry =  00001036
  00000964	     9901	LDR R1 [ SP + 4 ]
  00000966	     4281	CMP R1 R0
  00000968	     BF18	IT NE
- 0000096A	 EC03E3D7	TrapNE 7 at pos 7997
+ 0000096A	 EC03E3C7	TrapNE 7 at pos 7996
  0000096E	     9802	LDR R0 [ SP + 8 ]
  00000970	     1140	ASRS R0 R0 #5
  00000972	 F5B06F00	CMP R0 #2048
  00000976	     BF28	IT CS
- 00000978	 EC03E5C1	TrapCS 1 at pos 8028
+ 00000978	 EC03E5B1	TrapCS 1 at pos 8027
  0000097C	 10000022	MOV R1 lower 16-bits base(0), next at  00000938
  00000980	 00000030	MOVT R1 higher 16-bits var + 48
  00000984	 EB110080	ADDS R0 R1 R0 LSL #2
@@ -1378,7 +1376,7 @@ entry =  00001036
  000009C6	     9901	LDR R1 [ SP + 4 ]
  000009C8	     4281	CMP R1 R0
  000009CA	     BF18	IT NE
- 000009CC	 EC0404D7	TrapNE 7 at pos 8269
+ 000009CC	 EC0404C7	TrapNE 7 at pos 8268
  000009D0	     9803	LDR R0 [ SP + 12 ]
  000009D2	     9004	STR R0 [ SP + 16 ]
  000009D4	     9804	LDR R0 [ SP + 16 ]
@@ -1395,7 +1393,7 @@ entry =  00001036
  000009F0	     1149	ASRS R1 R1 #5
  000009F2	 F5B16F00	CMP R1 #2048
  000009F6	     BF28	IT CS
- 000009F8	 EC0413F1	TrapCS 1 at pos 8383
+ 000009F8	 EC0413E1	TrapCS 1 at pos 8382
  000009FC	 20000031	MOV R2 lower 16-bits base(0), next at  0000099A
  00000A00	 00000030	MOVT R2 higher 16-bits var + 48
  00000A04	 EB120181	ADDS R1 R2 R1 LSL #2
@@ -1413,7 +1411,7 @@ entry =  00001036
  00000A22	     1149	ASRS R1 R1 #5
  00000A24	 F5B16F00	CMP R1 #2048
  00000A28	     BF28	IT CS
- 00000A2A	 EC0417D1	TrapCS 1 at pos 8445
+ 00000A2A	 EC0417C1	TrapCS 1 at pos 8444
  00000A2E	 20000019	MOV R2 lower 16-bits base(0), next at  000009FC
  00000A32	 00000030	MOVT R2 higher 16-bits var + 48
  00000A36	 EB120181	ADDS R1 R2 R1 LSL #2
@@ -1421,12 +1419,12 @@ entry =  00001036
  00000A3C	     1C40	ADDS R0 R0 #1
  00000A3E	     41C1	RORS R1 R1 R0
  00000A40	     BF48	IT MI
- 00000A42	 EC042007	TrapMI 7 at pos 8448
+ 00000A42	 EC0417F7	TrapMI 7 at pos 8447
  00000A46	     9804	LDR R0 [ SP + 16 ]
  00000A48	     1140	ASRS R0 R0 #5
  00000A4A	 F5B06F00	CMP R0 #2048
  00000A4E	     BF28	IT CS
- 00000A50	 EC0421D1	TrapCS 1 at pos 8477
+ 00000A50	 EC0421C1	TrapCS 1 at pos 8476
  00000A54	 10000013	MOV R1 lower 16-bits base(0), next at  00000A2E
  00000A58	 00000030	MOVT R1 higher 16-bits var + 48
  00000A5C	 EB110080	ADDS R0 R1 R0 LSL #2
@@ -1463,7 +1461,7 @@ entry =  00001036
  00000AA8	     9901	LDR R1 [ SP + 4 ]
  00000AAA	     4281	CMP R1 R0
  00000AAC	     BF18	IT NE
- 00000AAE	 EC043627	TrapNE 7 at pos 8674
+ 00000AAE	 EC043617	TrapNE 7 at pos 8673
  00000AB2	     9803	LDR R0 [ SP + 12 ]
  00000AB4	     0040	LSLS R0 R0 #1
  00000AB6	 F5102000	ADDS R0 R0 #524288
@@ -1488,7 +1486,7 @@ entry =  00001036
  00000AE4	     9901	LDR R1 [ SP + 4 ]
  00000AE6	     4281	CMP R1 R0
  00000AE8	     BF18	IT NE
- 00000AEA	 EC045797	TrapNE 7 at pos 8953
+ 00000AEA	 EC045787	TrapNE 7 at pos 8952
  00000AEE	     9803	LDR R0 [ SP + 12 ]
  00000AF0	     0040	LSLS R0 R0 #1
  00000AF2	 F5102000	ADDS R0 R0 #524288

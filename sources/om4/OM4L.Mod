@@ -1,7 +1,6 @@
 MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20 / CS 25.02.25*)
-  IMPORT SYSTEM, Kernel, A := OM4A, Files, Modules, Texts, Oberon;
-  CONST versionkey = 1X; versionkey0 = 0X; 
-    DescSize = 80; BootSec = 2;
+  IMPORT SYSTEM, Kernel, A := OM4A, Files, Modules, Texts, Oberon, L := SystemLog;
+  CONST DescSize = 80; BootSec = 2;
     noerr = 0; nofile = 1; badversion = 2; badkey = 3; badfile = 4; nospace = 5; nofit = 6;
     MemLim = 0D0800000H; stackOrg = 10010000H;
     HeapOrg = 0D0500000H;
@@ -82,7 +81,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
   BEGIN INC(s.cur, sz);
   END allocate;
 
-  PROCEDURE LinkOne(name: ARRAY OF CHAR; VAR newmod: Modules.Module; VAR code, data, const: Segment);
+   PROCEDURE LinkOne(name: ARRAY OF CHAR; VAR newmod: Modules.Module; VAR code, var, const: Segment);
     (*search module in list; if not found, link module.
       res = noerr: already present or linked;
       res = nofile: file not available;
@@ -91,12 +90,22 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       res = badfile: corrupted file;
       res = nospace: insufficient space
       res = nofit: insufficient space in section
+
+      Object code V2 file format:
+      CodeFile    = name key version size imports typedesc varsize strings code commands entries ptrrefs fixP fixV fixC fixT body "O".
+      imports      = {modname key} 0X.
+      typedesc    = nof {byte}.
+      strings        = nof {char}
+      code          = nof {word}.
+      commands = {comname offset} 0X.
+      entries       = nof {word}.
+      ptrrefs        = {word} 0.
     *)
     VAR mod!, impmod!: Modules.Module;
       i, n, key, impkey, mno, nofimps, size: INTEGER;
       startMod, w: INTEGER;  (*addresses*)
-      ch: CHAR;
-      fixorgP, fixorgD, fixorgT: INTEGER;
+      ch: CHAR; version: BYTE;
+      fixorgP, fixorgV, fixorgC, fixorgT: INTEGER;
       disp, adr, inst, pno, vno, dest, offset: INTEGER;
       name1, impname: Modules.ModuleName;
       F!: Files.File; R!: Files.Rider;
@@ -107,13 +116,13 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       Check(name);
       IF res = noerr THEN F := ThisFile(name) ELSE F := NIL END ;
       IF F # NIL THEN
-        Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key); Files.Read(R, ch);
+        Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key); Files.ReadByte(R, version);
         Files.ReadInt(R, size); importing := name1;
-        IF (ch = versionkey) (*regular module*) THEN
+        IF (version = 1) OR (version = 2) (*regular module*) THEN
           Files.ReadString(R, impname);   (*imports*)
           WHILE (impname[0] # 0X) & (res = noerr) DO
             Files.ReadInt(R, impkey);
-            LinkOne(impname, impmod, code, data, const); import[nofimps] := impmod; importing := name1;
+            LinkOne(impname, impmod, code, var, const); import[nofimps] := impmod; importing := name1;
             IF res = noerr THEN
               IF impmod.key = impkey THEN INC(impmod.refcnt); INC(nofimps)
               ELSE error(badkey, name1); imported := impname
@@ -140,15 +149,21 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         mod.name := name; 
         i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
         mod.key := key; mod.refcnt := 0;
-        mod.data := data.cur;  (*data*) mod.const := mod.data; (*TODO \E0 modifier pour version 2*)
+        mod.const := const.cur;
         Files.ReadInt(R, n);
         WHILE n > 0 DO Files.ReadInt(R, w); put(const, w); DEC(n, 4) END ;  (*type descriptors*)
-        Files.ReadInt(R, n);
-        IF data.start = 0 THEN allocate(data, n) (*variable space*)
-        ELSE WHILE n > 0 DO put(data, 0); DEC(n, 4) END
+        IF version = 2 THEN Files.ReadInt(R, n); (*strings are stored before variables*)
+         WHILE n > 0 DO Files.Read(R, ch); putByte(const, ORD(ch)); DEC(n) END ;
+          mod.data := var.cur
+        ELSE mod.data := mod.const
         END;
-        Files.ReadInt(R, n);
-        WHILE n > 0 DO Files.Read(R, ch); putByte(const, ORD(ch)); DEC(n) END ;   (*strings*)
+        Files.ReadInt(R, n); (*variables*)
+        IF var.start = 0 THEN allocate(var, n) (*variable space*)
+        ELSE WHILE n > 0 DO put(var, 0); DEC(n, 4) END
+        END;
+        IF version < 2 THEN Files.ReadInt(R, n); (*strings are stored after variables*)
+          WHILE n > 0 DO Files.Read(R, ch); putByte(const, ORD(ch)); DEC(n) END
+        END;
         mod.code := code.cur;  (*program*)
         Files.ReadInt(R, n); (*In Cortex M4 implementation, program size is counted in bytes*)
         WHILE n > 0 DO Files.ReadInt(R, w); put(code, w); DEC(n, 4) END ;  (*program code*)
@@ -169,9 +184,10 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         WHILE n > 0 DO Files.ReadInt(R, w); put(const, w); DEC(n) END ;
         mod.ptr := const.cur;  (*pointer references*)
         Files.ReadInt(R, w);
-        WHILE w >= 0 DO put(const, mod.const + w + const.org); Files.ReadInt(R, w) END ;
+        WHILE w >= 0 DO put(const, mod.data + w + var.org); Files.ReadInt(R, w) END ;
         put(const, 0);
-        Files.ReadInt(R, fixorgP); Files.ReadInt(R, fixorgD); Files.ReadInt(R, fixorgT);
+        Files.ReadInt(R, fixorgP); Files.ReadInt(R, fixorgV);
+        IF version = 2 THEN Files.ReadInt(R, fixorgC) END; Files.ReadInt(R, fixorgT);
         Files.ReadInt(R, w); tail.body := SYSTEM.VAL(INTEGER, mod.code + w);
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
@@ -192,7 +208,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           adr := adr - disp
         END ;
         (*fixup of MOV/MOVT*)
-        adr := mod.code + fixorgD;
+        adr := mod.code + fixorgV; (*variable chain*)
         WHILE adr # mod.code DO
           SYSTEM.GET(code.start + adr, inst);
           inst := thumbSwap(inst); (*Put bytes in the right order*)
@@ -202,17 +218,40 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           SYSTEM.GET(code.start + adr+4, inst);
           inst := thumbSwap(inst); (*Put bytes in the right order*)
           IF mno = 0 THEN (*global*)
-            dest := mod.data + inst MOD 1000000H + data.org
+            dest := mod.data + inst MOD 1000000H + var.org
           ELSE (*import*)  vno := inst MOD 100H;
-            SYSTEM.GET(const.start + mod.imp + (mno-1)*4, impmod);
-            SYSTEM.GET(const.start + impmod.ent + vno*4, offset);
+            SYSTEM.GET(var.start + mod.imp + (mno-1)*4, impmod);
+            SYSTEM.GET(var.start + impmod.ent + vno*4, offset);
             IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 + code.org (*thumb execution state*)
-            ELSE dest := impmod.data + offset + data.org END (*todo: traiter le cas const*)
+            ELSE dest := impmod.data + offset + var.org END
           END;
           SYSTEM.PUT(code.start + adr, thumbSwap(A.MOVIT3 + A.formatImm16(pno, dest MOD 10000H)));
           SYSTEM.PUT(code.start + adr+4, thumbSwap(A.MOVT + A.formatImm16(pno, dest DIV 10000H MOD 10000H)));
           adr := adr - disp
-        END ;
+        END;
+        IF version = 2 THEN
+          adr := mod.code + fixorgC; (*constant chain*)
+          WHILE adr # mod.code DO
+            SYSTEM.GET(code.start + adr, inst);
+            inst := thumbSwap(inst); (*Put bytes in the right order*)
+            pno := inst DIV 10000000H MOD 10H; (*destination register*)
+            mno := inst DIV 1000000H MOD 10H;
+            disp := inst MOD 1000000H*2;
+            SYSTEM.GET(code.start + adr+4, inst);
+            inst := thumbSwap(inst); (*Put bytes in the right order*)
+            IF mno = 0 THEN (*global*)
+              dest := mod.const + inst MOD 1000000H + const.org
+            ELSE (*import*)  vno := inst MOD 100H;
+              SYSTEM.GET(var.start + mod.imp + (mno-1)*4, impmod);
+              SYSTEM.GET(var.start + impmod.ent + vno*4, offset);
+              IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 + code.org (*thumb execution state*)
+              ELSE dest := impmod.const + offset + const.org END
+            END;
+            SYSTEM.PUT(code.start + adr, thumbSwap(A.MOVIT3 + A.formatImm16(pno, dest MOD 10000H)));
+            SYSTEM.PUT(code.start + adr+4, thumbSwap(A.MOVT + A.formatImm16(pno, dest DIV 10000H MOD 10000H)));
+            adr := adr - disp
+          END;
+        END;
         (*fixup of type descriptors*)
         adr := mod.data + fixorgT*4;
         WHILE adr # mod.data DO
