@@ -326,22 +326,31 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     END
   END GC;
 
+  PROCEDURE module(t: Task): Modules.Module;
+    VAR adr: INTEGER; mod!: Modules.Module;
+  BEGIN adr := SYSTEM.VAL(INTEGER, t.handle); mod := Modules.root;
+    WHILE (mod # NIL) & ((mod.name[0] = 0X) OR (adr < mod.code) OR (adr >= mod.imp)) DO mod := mod.next END
+
+    RETURN mod
+  END module;
+
   PROCEDURE NewTask*(h: Handler; period: INTEGER): Task;
     VAR t!: Task;
   BEGIN NEW(t); t.state := off; t.next := t; t.handle := h; t.period := period; RETURN t
   END NewTask;
   
   PROCEDURE Install* (T: Task);
-  BEGIN
-    IF T.state = off THEN
+    VAR mod!: Modules.Module;
+  BEGIN mod := module(T);
+    IF (mod # NIL) & (T.state = off) THEN Modules.IncRefcnt(mod, 1);
       T.next := CurTask.next; CurTask.next := T; T.state := idle; T.nextTime := 0; INC(NofTasks)
     END
   END Install;
 
   PROCEDURE Remove* (T: Task);
-    VAR t!: Task;
+    VAR t!: Task; mod!: Modules.Module;
   BEGIN
-    IF T.state # off THEN t := T;
+    IF T.state # off THEN t := T; mod := module(T); IF mod # NIL THEN Modules.IncRefcnt(mod, -1) END;
       WHILE t.next # T DO t := t.next END ;
       t.next := T.next; T.state := off; T.next := NIL; CurTask := t; DEC(NofTasks)
     END
