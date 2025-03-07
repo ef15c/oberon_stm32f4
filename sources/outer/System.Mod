@@ -361,11 +361,11 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     size := Kernel.heapLim - Kernel.heapOrg;
     Texts.WriteInt(W, (Kernel.allocated * 100 + size DIV 2) DIV size, 4); Texts.Write(W, "%"); EndLine;
     Texts.WriteString(W, "  Disk sectors "); Texts.WriteInt(W, Kernel.NofSectors, 4);
-    Texts.WriteInt(W, Kernel.NofSectors * 100 DIV 10000H, 4); Texts.WriteString(W, "%, read errors: "); Texts.WriteInt(W, SDCard.hsd.readErrors, 1);
-    Texts.WriteString(W, ", write errors: "); Texts.WriteInt(W, SDCard.hsd.writeErrors, 1); Texts.WriteString(W, ", unrecoverable: ");
+    Texts.WriteInt(W, Kernel.NofSectors * 100 DIV 10000H, 4); Texts.WriteString(W, "%, read errors "); Texts.WriteInt(W, SDCard.hsd.readErrors, 1);
+    Texts.WriteString(W, ", write errors "); Texts.WriteInt(W, SDCard.hsd.writeErrors, 1); Texts.WriteString(W, ", unrecoverable ");
     Texts.WriteInt(W, SDCard.hsd.unrecoverableErrors, 1); EndLine;
     Texts.WriteString(W, "  Tasks"); Texts.WriteInt(W, Oberon.NofTasks, 4); EndLine;
-    Texts.WriteString(W, "  Time"); Texts.WriteInt(W, Kernel.Time(), 11); EndLine
+    Texts.WriteString(W, "  MSP high water mark   "); Texts.WriteHex(W, Kernel.SPHWM); EndLine
   END Watch;
 
   PROCEDURE ShowModules*;
@@ -471,7 +471,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       BSP.led(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(CFSR, cfsr*UFSR_Mask) (*reset UFSR flags*)
+    SYSTEM.PUT(CFSR, cfsr*UFSR_Mask); (*reset UFSR flags*) Kernel.setSPHWM
   END Trap;
 
   PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
@@ -483,7 +483,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(CFSR, cfsr*BFSR_Mask) (*reset BFSR flags*)
+    SYSTEM.PUT(CFSR, cfsr*BFSR_Mask); (*reset BFSR flags*) Kernel.setSPHWM
   END BusFaultHandler;
 
   (*Handle abort key press*)
@@ -492,7 +492,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   BEGIN cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(PR, {BSP.B1Pin}); (* Clear pending IRQ*)
+    SYSTEM.PUT(PR, {BSP.B1Pin}); (* Clear pending IRQ*) Kernel.setSPHWM
   END AbortHandler;
 
   PROCEDURE Reset;
@@ -543,6 +543,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       ELSE stack.eos := SYSTEM.VAL(INTEGER, cf) + sz; stack.LR := cf.lr; IF 9 IN SYSTEM.VAL(SET, cf.xpsr) THEN (*stack was realigned*) INC(stack.eos, 4) END
       END; stack.len := (10010000H - stack.eos) DIV 4;
       IF (stack.eos < 10010000H) & (stack.len <= 10000H DIV 4) THEN SYSTEM.COPY(stack.eos, SYSTEM.ADR(stack.stack), stack.len) END;
+      Kernel.setSPHWM;
       (*build exception frame*)
       f := SYSTEM.VAL(Kernel.ExceptionFrame, 10010000H - sz);
       f.r0 := 0; f.r1 := 0; f.r2 := 0; f.r3 := 0; f.r12 := 0; f.lr := 0FFFFFFFFH; f.returnAddress := SYSTEM.ADR(Reset);

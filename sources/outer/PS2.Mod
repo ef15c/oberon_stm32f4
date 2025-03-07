@@ -147,7 +147,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
         END
       ELSE INC(dev.badEdge)
       END
-    END;
+    END; Kernel.setSPHWM
   END ProcessData;
 
   PROCEDURE SendByte*(VAR dev: DeviceDesc; data: BYTE): BYTE;
