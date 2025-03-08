@@ -265,10 +265,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
 
       (*T32MSK7 11 00xx101 x Load word on page A5-146*)
       LdrWord = {27..28, 22, 20};
-      T32MSK71 = {23..24}; T32MSK72 = {23..24, 11, 8}; T32MSK73 = {23..24, 8..11};
+      T32MSK71 = {23..24}; T32MSK72 = {23..24, 11, 8}; T32MSK73 = {23..24, 8..11}; T32MSK74 = {24};
       (*T32MSK71 01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
-      (*T32MSK71 0x xxxxxx: Rn = 1111: Load Register LDR (literal) on page A7-248*)
       LdrRegImmOrLit = {23};
+      (*T32MSK74 0x xxxxxx: Rn = 1111: Load Register LDR (literal) on page A7-248*)
+      LdrRegImmLit = {};
 
       (*T32MSK7 11 00xx001 x Load byte, memory hints on page A5-148*)
       LdrByteOrMemHints = {27..28, 20};
@@ -708,6 +709,17 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
+        ELSIF (op*T32MSK74 = LdrRegImmLit) & (Rn = 15) THEN
+          (*T32MSK74 0x xxxxxx: Rn = 1111: Load Register LDR (literal) on page A7-248*)
+          (*LDR<c>.W <Rt>,<label>*)
+          (*LDR<c>.W <Rt>,[PC, #-0]*)
+          WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " =");
+          IF (ORD(op) MOD A.C12 = 0) & (i MOD 4 = 0) THEN Texts.WriteHex(W, c[i]+100H*(c[i+1]+(100H*(c[i+2]+100H*c[i+3]))));
+            Texts.Write(W, "H"); Texts.WriteLn(W); INC(i, 4)
+          ELSIF (ORD(op) MOD A.C12 = 4) & (i MOD 4 = 2) THEN Texts.WriteHex(W, c[i+2]+100H*(c[i+3]+(100H*(c[i+4]+100H*c[i+5]))));
+            Texts.Write(W, "H"); Texts.WriteLn(W); INC(i, 6)
+          ELSE Texts.WriteString(W, "TODO: other LDR litteral")
+          END
         ELSE Texts.WriteString(W, "TODO: other LdrWord")
         END
       ELSIF op*T32MSK5 = BrMiscCtrl THEN
@@ -738,7 +750,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteOp(W, op, "MSR", FALSE, FALSE);
             IF b4 = 8 THEN Texts.WriteString(W, " MSP")
             ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
-            ELSE Texts.WriteString(W, "TODO SYSm="); Texts.WriteInt(W, b4, 1)
+            ELSIF b4 = 20 THEN Texts.WriteString(W, " CONTROL")
+            ELSE Texts.WriteString(W, "==> TODO SYSm="); Texts.WriteInt(W, b4, 1)
             END; WriteReg(W, Rn)
           ELSIF op*T32MSK52A = Hint THEN
             (*T32MSK52A 0x0 0111010 - Hint instructions on page A7-143*)

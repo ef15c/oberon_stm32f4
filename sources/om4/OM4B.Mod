@@ -447,4 +447,5 @@ BEGIN
   enter("COPY", SProc, noType, 123);
   enter("LDREG", SProc, noType, 142);
   enter("MBI", SProc, noType, 151);
+  enter("JUMP", SProc, noType, 161)
 END OM4B.

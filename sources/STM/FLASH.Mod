@@ -3,7 +3,7 @@ MODULE FLASH;
  * This module shouls not be statically linked and loaded on STM32 FLASH, 
  *   in order to avoid any risk of erasing itself
  *)
-  IMPORT SYSTEM, BSP, L := SystemLog;
+  IMPORT SYSTEM, BSP;
 
   CONST FLASH_START* = 08000000H; FLASH_END* = 081FFFFFH; NB_SECTORS = 24;
 

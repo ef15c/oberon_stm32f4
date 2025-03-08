@@ -188,7 +188,7 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
             IF S.class = Texts.Int THEN
               org := S.i; Texts.Scan(S);
               IF S.class = Texts.Int THEN
-                vtsize := S.i; Texts.Scan(S);
+                vtsize := S.i; Texts.Scan(S); ASSERT((org+vtsize) MOD 4 = 0); (*code must be aligned on multiple of 4*)
                 IF S.class = Texts.Int THEN lah := LSR(org, 16); r.t := ELAR; r.l := 2; r.a[0] := 0; r.a[1] := 0; (*extended linear address record*)
                   r.d[0] := LSR(lah, 8); r.d[1] := lah MOD 100H; WriteIntelHex(Rg, r); SetAddress(r.a, org); r.t := DATA; (*prepare for data record*)
                   IntToByteArray(S.i, r.d, 0, TRUE); IntToByteArray(org + vtsize + 1, r.d, 4, TRUE); r.l := 8; WriteIntelHex(Rg, r);
