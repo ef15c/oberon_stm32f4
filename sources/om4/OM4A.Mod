@@ -42,12 +42,12 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     (*|1111/0Sco/nd i/mm6 /10J0/J   / imm/11  |
                              1  2             *)
     BT4*     = 0F0009000H;
-    (*|11110S   imm10  10J1J   imm11   |
-      |                  1 2           |
+    (*|1111/0S  /im10/    /10J1/J   /im11/    |
+      |                      1  2             |
       B.W T4*)
     BL*      = 0F000D000H;
     (*|1111/0S  /im10/    /11J1/J   /im11/    |
-                             1  2
+      |                      1  2             |
       BL<c><q> <label>*)
     BLX*     = 4780H;
     (*|0100/0111/1 Rm/ 000|
@@ -403,7 +403,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     RETURN 0 + b*C16 + a*C8 + c
   END format3Reg4;
   
-  PROCEDURE formatPUWImm8(p, u, w: BOOLEAN; imm8: INTEGER): INTEGER;
+  PROCEDURE formatPUWImm8*(p, u, w: BOOLEAN; imm8: INTEGER): INTEGER;
   BEGIN
     ASSERT((imm8 >= 0) & (imm8 < C8));
     RETURN ORD(p)*C10 + ORD(u)*C9 + ORD(w)*C8 + imm8

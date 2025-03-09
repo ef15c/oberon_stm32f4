@@ -2,9 +2,9 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
   IMPORT SYSTEM, Kernel, A := OM4A, Files, Modules, Texts, Oberon, L := SystemLog;
   CONST DescSize = 80; BootSec = 2;
     noerr = 0; nofile = 1; badversion = 2; badkey = 3; badfile = 4; nospace = 5; nofit = 6;
-    MemLim = 0D0800000H; stackOrg = 10010000H;
+    MemLim = 0D0800000H; stackOrg = 10010000H; SDCard = 200001ACH;
     HeapOrg = 0D0500000H;
-    DestAdr = 8; MemAdr = 12; AllocAdr = 16; RootAdr = 20; StackAdr = 24; HeapOrgAdr = 28;
+    SDHandleAdr = 4; DestAdr = 8; MemAdr = 12; AllocAdr = 16; RootAdr = 20; StackAdr = 24; HeapOrgAdr = 28;
     ModAdr = 32;
  
     TYPE ModulesList = POINTER TO ModulesListDesc;
@@ -306,10 +306,11 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           tail := tail.next
         END;
         SYSTEM.PUT(sdram.start + DestAdr, sdram.org);  (*destination address of the prelinked, executable binary*)
-        SYSTEM.PUT(sdram.start + MemAdr, MemLim);  (*limit of available memory, typically overwritten by the boot loader*)
+        SYSTEM.PUT(sdram.start + SDHandleAdr, SDCard);  (*address of the SD card description*)
+        SYSTEM.PUT(sdram.start + MemAdr, MemLim);  (*limit of available memory*)
         SYSTEM.PUT(sdram.start + AllocAdr, sdram.cur + sdram.org);  (*address of the end of the module space loaded*)
         SYSTEM.PUT(sdram.start + RootAdr, SYSTEM.VAL(INTEGER, root) - sdram.start + sdram.org);  (*current root of the links of loaded modules*)
-        SYSTEM.PUT(sdram.start + StackAdr, stackOrg);  (*current limit of the module area, typically overwritten by the boot loader*)
+        SYSTEM.PUT(sdram.start + StackAdr, stackOrg);  (*current limit of the module area*)
         SYSTEM.PUT(sdram.start + HeapOrgAdr, HeapOrg);  (*start of heeap area*)
         MakeFileName(name, S.s, ".bin"); F := Files.New(name); Files.Set(R, F, 0); i := sdram.start;
         WHILE i < sdram.cur + sdram.start DO SYSTEM.GET(i, x); Files.WriteInt(R, x); INC(i, 4) END ;
@@ -329,6 +330,74 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
     END ;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); root := NIL; modules := NIL
   END Link;
+
+  PROCEDURE LinkEF*;  (*link multiple object files together and create a single FLASH boot file M.efb from them*)
+    VAR i, x, pc: INTEGER;
+      F!: Files.File; R!: Files.Rider;
+      S!: Texts.Scanner;
+      M!, p!: Modules.Module;
+      name: Modules.ModuleName;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
+    IF S.class = Texts.Name THEN root := NIL; flash.start := Modules.AllocPtr; flash.cur := 0;
+      sram.start := 0; sram.cur := 0;
+      i := 0; WHILE i < ModAdr DO put(flash, 0); INC(i, 4) END;
+      REPEAT LinkOne(S.s, M, flash, sram, flash); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
+      IF res = noerr THEN p := root; Texts.WriteString(W, "  linking");
+        WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
+          M := p; p := p.next;
+          IF p # NIL THEN M.next := SYSTEM.VAL(Modules.Module, SYSTEM.VAL(INTEGER, p) - flash.start + flash.org) END ;
+          INC(M.const, flash.org);
+          INC(M.data, sram.org);
+          INC(M.code, flash.org);
+          i := M.imp;
+          WHILE i < M.cmd DO SYSTEM.GET(i + flash.start, x); SYSTEM.PUT(i + flash.start, x - flash.start + flash.org); INC(i, 4) END ;
+          INC(M.imp, flash.org);
+          INC(M.cmd, flash.org);
+          INC(M.ent, flash.org);
+          INC(M.ptr, flash.org)
+        END ;
+        SYSTEM.PUT(flash.start, thumbSwap(A.BT4 + A.formatEvenImm25(flash.cur - 4)));  (*branch instruction to the initialization sequence*)
+        ASSERT(sram.cur MOD 4 = 0);
+        IF sram.cur > 0 THEN
+          putByte(flash, 0); putByte(flash, 20H); (* MOVS R0, #0*)
+          put(flash, thumbSwap(A.MOVIT3 + A.formatImm16(1, sram.org MOD 10000H)));
+          put(flash, thumbSwap(A.MOVT + A.formatImm16(1, sram.org DIV 10000H MOD 10000H))); (* MOV R1, <sram.org>*)
+          put(flash, thumbSwap(A.MOVIT3 + A.formatImm16(2, sram.cur DIV 4 MOD 10000H)));
+          put(flash, thumbSwap(A.MOVT + A.formatImm16(2, sram.cur DIV 40000H MOD 10000H))); (* MOV R2, <sram.cur DIV 4>*)
+          pc := flash.cur; put(flash, thumbSwap(A.STRIT4 + A.C16 + A.formatPUWImm8(FALSE, TRUE, TRUE, 4)));  (*STR R0, [R1],#4*) 
+          putByte(flash, 1); putByte(flash, 3AH); (*SUB R3, #1*);
+          putByte(flash, (pc - flash.cur - 4) DIV 2 MOD A.C8); putByte(flash, A.BCT1 + A.NE*A.C8) (*BNE <pc>*)
+        END;
+        tail := modules; (*generate initilization sequence*)
+        WHILE tail # NIL DO (*call each module body in order*)
+          put(flash, thumbSwap(A.BL + A.formatEvenImm25(tail.body - 4 - flash.cur)));
+          tail := tail.next
+        END;
+        SYSTEM.PUT(flash.start + DestAdr, flash.org);  (*destination address of the prelinked, executable binary*)
+        SYSTEM.PUT(flash.start + SDHandleAdr, SDCard);  (*address of the SD card description*)
+        SYSTEM.PUT(flash.start + MemAdr, MemLim);  (*limit of available memory*)
+        SYSTEM.PUT(flash.start + AllocAdr, flash.cur + flash.org);  (*address of the end of the module space loaded*)
+        SYSTEM.PUT(flash.start + RootAdr, SYSTEM.VAL(INTEGER, root) - flash.start + flash.org);  (*current root of the links of loaded modules*)
+        SYSTEM.PUT(flash.start + StackAdr, stackOrg);  (*current limit of the module area*)
+        SYSTEM.PUT(flash.start + HeapOrgAdr, HeapOrg);  (*start of heeap area*)
+        MakeFileName(name, S.s, ".efb"); F := Files.New(name); Files.Set(R, F, 0); i := flash.start;
+        WHILE i < flash.cur + flash.start DO SYSTEM.GET(i, x); Files.WriteInt(R, x); INC(i, 4) END ;
+        Texts.WriteInt(W, flash.cur, 8); Files.Register(F)
+      ELSE
+        Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
+        IF res = nofile THEN Texts.WriteString(W, " module not found")
+        ELSIF res = badversion THEN Texts.WriteString(W, " bad version")
+        ELSIF res = badkey THEN Texts.WriteString(W, " imports ");
+          Texts.WriteString(W, imported); Texts.WriteString(W, " with bad key")
+        ELSIF res = badfile THEN Texts.WriteString(W, " corrupted obj file")
+        ELSIF res = nospace THEN Texts.WriteString(W, " insufficient space")
+        ELSIF res = nofit THEN Texts.WriteString(W, " insufficient space in section")
+        END
+      END
+    ELSE Texts.WriteString(W, "Usage: OM4L.Link [module...] topmodule")
+    END ;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); root := NIL; modules := NIL
+  END LinkEF;
 
   PROCEDURE Load*;  (*load prelinked boot file M.bin onto the boot area of the local disk*)
     VAR i, secno: INTEGER; b: BYTE;
@@ -361,5 +430,5 @@ BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.
   IF limit = 0 THEN limit := Kernel.stackOrg - Kernel.stackSize END; (*Hack if ran on RISC-5 machine*)
   sdram.org := 0D0201000H; sdram.size := limit - sdram.org; (*usable SDRAM area between system variables and heap*)
   flash.org := 08004000H; flash.size := 200000H - 4000H; (*usable flash area after the bootloader*)
-  sram.org := 20000600H; sram.size := 30000H - 700H; (*usable sram area between sdcard buffer and main stack*)
+  sram.org := 20000600H; sram.size := 30000H - 600H - 100H; (*usable sram area between sdcard buffer and main stack*)
 END OM4L.

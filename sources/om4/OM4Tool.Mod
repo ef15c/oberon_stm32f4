@@ -10,7 +10,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
     BootParams = POINTER TO BootParamsList;
     BootParamsList = RECORD
       BranchToRootInit: ARRAY 4 OF BYTE;
-      unused, BootfileLoadAOrg, MemLim, 
+      SDHandle, BootfileLoadAOrg, MemLim, 
       BootfileLoadEnd, RootModule, StackOrg, HeapOrg : INTEGER
     END;
     
@@ -314,7 +314,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
         ramOrg := bp.BootfileLoadAOrg; root := bp.RootModule;
         n := 0; Texts.WriteHex(W, n+ramOrg); Texts.Write(W, 9X);
         OM4D.opcode(W, bp.BranchToRootInit, n, ramOrg); Texts.WriteLn(W);
-        EmitWord(W, bp.unused, n, ramOrg, "unused"); EmitWord(W, bp.BootfileLoadAOrg, n, ramOrg, "RAM origin");
+        EmitWord(W, bp.SDHandle, n, ramOrg, "SD card description"); EmitWord(W, bp.BootfileLoadAOrg, n, ramOrg, "RAM origin");
         EmitWord(W, bp.MemLim, n, ramOrg, "RAM end"); EmitWord(W, bp.BootfileLoadEnd, n, ramOrg, "Boot file load end");
         EmitWord(W, bp.RootModule, n, ramOrg, "Root module descriptor"); EmitWord(W, bp.StackOrg, n, ramOrg, "Stack origin"); 
         EmitWord(W, bp.HeapOrg, n, ramOrg, "Heap origin");
