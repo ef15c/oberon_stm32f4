@@ -253,10 +253,13 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*RTC*)
     RTC_BASE* =  40002800H; 
-    TR* = 0; RTC_DR* = 4; RTC_CR* = 8; PRER* = 10H; SSR* = 28H; WPR* = 24H;
-
+    TR* = 0; RTC_DR* = 4; RTC_CR* = 8;
     ISR* = 0CH; INIT* = 7; INITF* = 6; RSF* = 5;(*flags*)
     rtcInit* = PeriphBBAlias + (RTC_BASE + ISR - PeriphBase + INIT DIV 8)*32 + INIT MOD 8*4;
+
+    PRER* = 10H; WUTR* = 14H; CALIBR* = 18H; ALRMAR* = 1CH; ALRMBR* = 20H; WPR* = 24H; SSR* = 28H;
+    SHIFTR* = 2CH; TSTR* = 30H; TSDR* = 34H; TSSSR* = 38H; CALR* = 3CH; TAFCR* = 40H; ALRMASSR* = 44H;
+    ALRMBSSR* = 48H; BKPxR* = 50H;
 
     (*SDIO*)
     SDIO_BASE* = 40012C00H;

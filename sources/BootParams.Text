@@ -23,16 +23,22 @@ Paramètres de boot
 
 2/ STM32F429
 ------------
+Pour permettre le stockage des modules dans la mémoire flash embarquée du microcontroleur,
+il faut pouvoir placer les paramètres de boot dans la mémoire flash.
+
+la position du bloc des paramètres de boot n'est donc plus fixée à l'adresse D0201000
+et sera initialisée par le boot loader dans le registre RTC_BKP1R situé à
+l'adresse 40002850.
 
 Paramètres de boot
- Adresse   Contenu
- D0201000 ( 0)  xxxxxxxx ; Instruction de saut vers la procédure d'initialisation du module racine.
- D0201004 ( 4)  200001AC ; Adresse du bloc de contrôle SDIO
- D0201008 ( 8)  D0201000 ; Adresse de début de chargement du ficher de boot
- D020100C (12)  D0800000 ; Adresse de fin de la mémoire
- D0201010 (16)  D020xxxx ; Adresse de fin de chargement du ficher de boot
- D0201014 (20)  D020xxxx ; Adresse du descripteur du module racine
- D0201018 (24)  10010000 ; Adresse d'initialisation du pointeur de pile
- D020101C (28)  D0500000 ; Adresse de début du tas
+ Position    Contenu
+    0        xxxxxxxx ; Instruction de saut vers la procédure d'initialisation du module racine.
+    4        200001AC ; Adresse du bloc de contrôle SDIO
+    8        D0201000 ; Adresse de début de chargement du ficher de boot
+   12        D0800000 ; Adresse de fin de la mémoire
+   16        D020xxxx ; Adresse de fin de chargement du ficher de boot
+   20        D020xxxx ; Adresse du descripteur du module racine
+   24        10010000 ; Adresse d'initialisation du pointeur de pile
+   28        D0500000 ; Adresse de début du tas
 
 Pas de table des modules.

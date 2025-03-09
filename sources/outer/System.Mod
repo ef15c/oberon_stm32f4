@@ -29,6 +29,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     pat: ARRAY 32 OF CHAR;
     TrappedAdr: INTEGER; cfsr: SET;
     stack*: StackDump;
+    modBase: INTEGER;
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
     VAR T!: Texts.Text; beg, end, time: INTEGER;
@@ -353,9 +354,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   PROCEDURE Watch*;
     VAR modUsed, size: INTEGER;
   BEGIN Texts.WriteString(W, "System.Watch"); Texts.WriteLn(W);
-    modUsed := Modules.AllocPtr - Kernel.VarORG0;
+    modUsed := Modules.AllocPtr - modBase;
     Texts.WriteString(W, "  Modules space (bytes)"); Texts.WriteInt(W, modUsed, 8);
-    size := Kernel.heapOrg - Kernel.VarORG0;
+    size := Kernel.heapOrg - modBase;
     Texts.WriteInt(W, (modUsed * 100 + size DIV 2) DIV size, 4); Texts.Write(W, "%"); EndLine;
     Texts.WriteString(W, "  Heap space"); Texts.WriteInt(W, Kernel.allocated, 8);
     size := Kernel.heapLim - Kernel.heapOrg;
@@ -496,7 +497,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   END AbortHandler;
 
   PROCEDURE Reset;
-    VAR inst, w, base, i: INTEGER; mod!: Modules.Module;
+    VAR inst, w, i: INTEGER; code: INTEGER; mod!: Modules.Module;
   BEGIN
     IF NOCP IN cfsr THEN (*Trap*)      
       SYSTEM.GET(TrappedAdr, inst);
@@ -511,9 +512,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
     ELSIF INVSTATE IN cfsr THEN w := 5 (*probably illegal procedure call*)
     ELSIF STKERR IN cfsr THEN w := 9; (*Bus Fault: stack overflow*)
-      (*trying to find nearest return adress*)
-      SYSTEM.GET(Kernel.VarORG0 + 16, base); i := 0;
-      REPEAT TrappedAdr := stack.stack[i] - 1; INC(i) UNTIL ((TrappedAdr >= base) & (TrappedAdr < Modules.AllocPtr)) OR (i >= stack.len);
+      (*trying to find nearest return adress*) i := 0;
+      REPEAT TrappedAdr := stack.stack[i] - 1; INC(i) UNTIL ((TrappedAdr >= modBase) & (TrappedAdr < Modules.AllocPtr)) OR (i >= stack.len);
       IF i >=  stack.len THEN TrappedAdr := 0 END
     ELSIF PRECISERR IN cfsr THEN w := 8 (*Bus Fault: data access precise error*)
     ELSIF ABORTKEY IN cfsr THEN w := 10 (*User pressed the abort key*)
@@ -521,10 +521,10 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END;
     Texts.WriteString(W, "  TRAP"); Texts.WriteInt(W, w, 4);
     IF TrappedAdr # 0 THEN
-      base := 0; mod := Modules.root;
+      code := 0; mod := Modules.root;
       WHILE (mod # NIL) & ((mod.name[0] = 0X) OR (TrappedAdr < mod.code) OR (TrappedAdr >= mod.imp)) DO mod := mod.next END ;
-      IF mod # NIL THEN base := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
-      Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - base);
+      IF mod # NIL THEN code := mod.code; Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
+      Texts.WriteString(W, " at"); Texts.WriteHex(W, TrappedAdr - code);
       stack.PC := TrappedAdr; TrappedAdr := 0
     END; stack.cause := w; Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); cfsr := {}; Oberon.Reset
   END Reset;
@@ -565,13 +565,13 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     SYSTEM.PUT(BSP.SCB_BASE + BSP.SHCSR, reg + {BSP.USGFAULTENA, BSP.BUSFAULTENA});
   END activateHandlers;
 
-BEGIN Texts.OpenWriter(W);
+BEGIN SYSTEM.GET(Kernel.bootParams+16, modBase);
+  Texts.OpenWriter(W);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
   Kernel.Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);
   Kernel.Install(SYSTEM.ADR(BusFaultHandler), BSP.VecTabBase+BSP.BusFaultExcNum*4);
   installAbortHandler;
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
-  Kernel.Install(SYSTEM.ADR(Reset), Kernel.VarORG0+0);
   activateHandlers;
   stack := SYSTEM.VAL(StackDump, (*20000600H*) 0D0110000H); stack.len := 0; stack.cause := 0;
   stack.cfsr := {}; stack.bfar := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0
