@@ -1284,7 +1284,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             END;
             itB.mask[itB.nofinst] := 0X;
             Texts.WriteString(W, " "); Texts.WriteString(W, mnemo1[b3])
-          ELSE Texts.WriteString(W, "TODO: not If-Then")
+          ELSIF b2 = 0 THEN
+            (*0000 0000 No Operation hint NOP on page A7-306*)
+            WriteOp(W, op, "NOP", FALSE, FALSE)
+          ELSE Texts.WriteString(W, "TODO: Other If-Then, and hints on page A5-135")
           END
         ELSIF op*T16MSK45 = PushMultRegsT1 THEN
           (*T16MSK45 010xxxx: Push Multiple Registers PUSH on page A7-322*)

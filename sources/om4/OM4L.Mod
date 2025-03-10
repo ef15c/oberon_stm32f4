@@ -366,7 +366,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           put(flash, thumbSwap(A.MOVT + A.formatImm16(2, sram.cur DIV 40000H MOD 10000H))); (* MOV R2, <sram.cur DIV 4>*)
           pc := flash.cur; put(flash, thumbSwap(A.STRIT4 + A.C16 + A.formatPUWImm8(FALSE, TRUE, TRUE, 4)));  (*STR R0, [R1],#4*) 
           putByte(flash, 1); putByte(flash, 3AH); (*SUB R3, #1*);
-          putByte(flash, (pc - flash.cur - 4) DIV 2 MOD A.C8); putByte(flash, A.BCT1 + A.NE*A.C8) (*BNE <pc>*)
+          putByte(flash, (pc - flash.cur - 4) DIV 2 MOD A.C8); putByte(flash, A.BCT1 DIV A.C8 + A.NE) (*BNE <pc>*)
         END;
         tail := modules; (*generate initilization sequence*)
         WHILE tail # NIL DO (*call each module body in order*)
@@ -376,10 +376,11 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         SYSTEM.PUT(flash.start + DestAdr, flash.org);  (*destination address of the prelinked, executable binary*)
         SYSTEM.PUT(flash.start + SDHandleAdr, SDCard);  (*address of the SD card description*)
         SYSTEM.PUT(flash.start + MemAdr, MemLim);  (*limit of available memory*)
-        SYSTEM.PUT(flash.start + AllocAdr, flash.cur + flash.org);  (*address of the end of the module space loaded*)
+        SYSTEM.PUT(flash.start + AllocAdr, sdram.org);  (*address of the first free module space*)
         SYSTEM.PUT(flash.start + RootAdr, SYSTEM.VAL(INTEGER, root) - flash.start + flash.org);  (*current root of the links of loaded modules*)
         SYSTEM.PUT(flash.start + StackAdr, stackOrg);  (*current limit of the module area*)
         SYSTEM.PUT(flash.start + HeapOrgAdr, HeapOrg);  (*start of heeap area*)
+        IF flash.cur MOD 4 # 0 THEN putByte(flash, 0); putByte(flash, 0BFH) (*padding NOP*) END; ASSERT(flash.cur MOD 4 = 0);
         MakeFileName(name, S.s, ".efb"); F := Files.New(name); Files.Set(R, F, 0); i := flash.start;
         WHILE i < flash.cur + flash.start DO SYSTEM.GET(i, x); Files.WriteInt(R, x); INC(i, 4) END ;
         Texts.WriteInt(W, flash.cur, 8); Files.Register(F)
