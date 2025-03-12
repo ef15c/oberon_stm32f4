@@ -1,7 +1,7 @@
 MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
   on Cortex M4 CS 12/12/2023*)
   IMPORT SYSTEM, Kernel, Files;
-  CONST versionkey = 1X; DescSize = 80;
+  CONST DescSize = 80;
 
     (*Powers of two*)
     C31=80000000H; C30=40000000H; C28=10000000H; C27=8000000H; C26=4000000H;
@@ -85,25 +85,6 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
       + w DIV 10000H MOD 100H
   END thumbSwap;
     
-  (* Get unaligned words *)
-  PROCEDURE GetWordAt(adr: INTEGER): INTEGER;
-    VAR b1, b2, b3, b4: BYTE;
-  BEGIN
-    SYSTEM.GET(adr, b4); SYSTEM.GET(adr+1, b3); SYSTEM.GET(adr+2, b2); SYSTEM.GET(adr+3, b1);
-    RETURN 0+b4+100H*(b3+100H*(b2+100H*b1))
-  END GetWordAt;
-  
-  (* Put unaligned words *)
-  PROCEDURE PutWordAt(adr, val: INTEGER);
-    VAR b1, b2, b3, b4: BYTE;
-  BEGIN
-    b4 := val MOD 100H; val := val DIV 100H;
-    b3 := val MOD 100H; val := val DIV 100H;
-    b2 := val MOD 100H; val := val DIV 100H;
-    b1 := val MOD 100H;
-    SYSTEM.PUT(adr, b4); SYSTEM.PUT(adr+1, b3); SYSTEM.PUT(adr+2, b2); SYSTEM.PUT(adr+3, b1)
-  END PutWordAt;
-  
   PROCEDURE ThisFile(name: ARRAY OF CHAR): Files.File;
     VAR i: INTEGER;
       filename: ModuleName;
@@ -129,7 +110,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
   END Check;
 
   PROCEDURE IncRefcnt*(VAR mod: Module; v: INTEGER);
-  BEGIN INC(mod.refcnt, v)
+  BEGIN IF mod.refcnt # -1 THEN INC(mod.refcnt, v) END
   END IncRefcnt;
 
   PROCEDURE Load*(name: ARRAY OF CHAR; VAR newmod: Module);
@@ -156,7 +137,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key); Files.Read(R, ch);
         Files.ReadInt(R, size); importing := name1;
-        IF ch = versionkey THEN
+        IF ch = 1X THEN
           Files.ReadString(R, impname);   (*imports*)
           WHILE (impname[0] # 0X) & (res = 0) DO
             Files.ReadInt(R, impkey);
@@ -189,7 +170,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
       IF res = 0 THEN (*read file*)
         INC(p, DescSize); (*allocate descriptor*)
         mod.name := name; mod.key := key; mod.refcnt := 0;
-        mod.data := p;  (*data*)
+        mod.data := p;  (*data*); mod.const := mod.data;
         Files.ReadInt(R, n);
         WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*type descriptors*)
         Files.ReadInt(R, n);
@@ -227,7 +208,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
         noftrps := 0; trpbase := p; (*trampoline area*)
         adr := mod.code + fixorgP;
         WHILE adr # mod.code DO
-          inst := GetWordAt(adr);
+          SYSTEM.GET(adr, inst);
           inst := thumbSwap(inst); (*Put bytes in the right order*)
           mno := inst DIV 10000000H MOD 10H;
           pno := inst DIV 100000H MOD 100H;
@@ -248,19 +229,19 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
             dest := u; (*branch to trampoline*)
             offset := dest - adr - 4 (* Offset in bytes *)
           END;
-          PutWordAt(adr, thumbSwap(BL + formatEvenImm25(offset)));
+          SYSTEM.PUT(adr, thumbSwap(BL + formatEvenImm25(offset)));
           adr := adr - disp
         END ;
         INC(p, noftrps*8);
         (*fixup of MOV/MOVT*)
         adr := mod.code + fixorgD;
         WHILE adr # mod.code DO
-          inst := GetWordAt(adr);
+          SYSTEM.GET(adr, inst);
           inst := thumbSwap(inst); (*Put bytes in the right order*)
           pno := inst DIV 10000000H MOD 10H; (*destination register*)
           mno := inst DIV 1000000H MOD 10H;
           disp := inst MOD 1000000H*2;
-          inst := GetWordAt(adr+4);
+          SYSTEM.GET(adr+4, inst);
           inst := thumbSwap(inst); (*Put bytes in the right order*)
           IF mno = 0 THEN (*global*)
             dest := mod.data + inst MOD 1000000H
@@ -270,8 +251,8 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
             IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 (*thumb execution state*)
             ELSE dest := impmod.data + offset END
           END;
-          PutWordAt(adr, thumbSwap(MOVIT3 + formatImm16(pno, dest MOD 10000H)));
-          PutWordAt(adr+4, thumbSwap(MOVT + formatImm16(pno, dest DIV 10000H MOD 10000H)));
+          SYSTEM.PUT(adr, thumbSwap(MOVIT3 + formatImm16(pno, dest MOD 10000H)));
+          SYSTEM.PUT(adr+4, thumbSwap(MOVT + formatImm16(pno, dest DIV 10000H MOD 10000H)));
           adr := adr - disp
         END ;
         (*fixup of type descriptors*)
@@ -298,6 +279,188 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
     newmod :=  mod
   END Load;
 
+  PROCEDURE fixupMOV(VAR mod: Module; chain: INTEGER; varchain: BOOLEAN);
+    VAR disp, adr, inst, mno, pno, vno, dest, offset: INTEGER;
+      impmod!: Module; base: INTEGER;
+  BEGIN 
+    adr := mod.code + chain; (*chain root address*)
+    WHILE adr # mod.code DO
+      SYSTEM.GET(adr, inst);
+      inst := thumbSwap(inst); (*Put bytes in the right order*)
+      pno := inst DIV 10000000H MOD 10H; (*destination register*)
+      mno := inst DIV 1000000H MOD 10H;
+      disp := inst MOD 1000000H*2;
+      SYSTEM.GET(adr+4, inst);
+      inst := thumbSwap(inst); (*Put bytes in the right order*)
+      IF mno = 0 THEN (*global*) IF varchain THEN base := mod.data ELSE base := mod.const END;
+        dest := base + inst MOD 1000000H
+      ELSE (*import*)  vno := inst MOD 100H;
+        SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
+        SYSTEM.GET(impmod.ent + vno*4, offset);
+        IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 (*thumb execution state*)
+        ELSE IF varchain THEN base := impmod.data ELSE base := impmod.const END; dest := base + offset END
+      END;
+      SYSTEM.PUT(adr, thumbSwap(MOVIT3 + formatImm16(pno, dest MOD 10000H)));
+      SYSTEM.PUT(adr+4, thumbSwap(MOVT + formatImm16(pno, dest DIV 10000H MOD 10000H)));
+      adr := adr - disp
+    END;
+  END fixupMOV;
+
+ PROCEDURE Load2*(name: ARRAY OF CHAR; VAR newmod: Module);
+    (*search module in list; if not found, load module.
+      res = 0: already present or loaded; res = 1: file not available;
+      res = 2: bad file version; res = 3: key conflict;
+      res = 4: corrupted file; res = 7: no space*)
+    VAR mod!, impmod!: Module;
+      i, n, key, impkey, mno, nofimps, size: INTEGER;
+      p, u, v, w: INTEGER;  (*addresses*)
+      b, version: BYTE;
+      ch: CHAR;
+      shrinkable: BOOLEAN;
+      body: Command;
+      fixorgP, fixorgV, fixorgC, fixorgT: INTEGER;
+      disp, adr, inst, pno, vno, dest, offset, trpbase, noftrps: INTEGER;
+      name1, impname: ModuleName;
+      F!: Files.File; R!: Files.Rider;
+      import!: ARRAY 16 OF Module;
+  BEGIN mod := root; error(0, name); nofimps := 0; shrinkable := FALSE;
+    WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
+    IF mod = NIL THEN (*load*)
+      Check(name);
+      IF res = 0 THEN F := ThisFile(name) ELSE F := NIL END ;
+      IF F # NIL THEN
+        Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key); Files.ReadByte(R, version);
+        Files.ReadInt(R, size); importing := name1;
+        IF version IN {1, 2} THEN
+          Files.ReadString(R, impname);   (*imports*)
+          WHILE (impname[0] # 0X) & (res = 0) DO
+            Files.ReadInt(R, impkey);
+            Load2(impname, impmod); import[nofimps] := impmod; importing := name1;
+            IF res = 0 THEN
+              IF impmod.key = impkey THEN IncRefcnt(impmod, 1); INC(nofimps)
+              ELSE error(3, name1); imported := impname
+              END
+            END ;
+            Files.ReadString(R, impname)
+          END
+        ELSE error(2, name1)
+        END
+      ELSE error(1, name)
+      END ;
+      IF res = 0 THEN (*search for a hole in the list allocate and link*)
+        INC(size, DescSize); mod := root;
+        WHILE (mod # NIL) & ~((mod.name[0] = 0X) & (mod.size >= size)) DO mod := mod.next END ;
+        IF mod = NIL THEN (*no large enough hole was found*)
+          IF AllocPtr + size < limit THEN (*allocate*)
+            shrinkable := TRUE;
+            p := AllocPtr; mod := SYSTEM.VAL(Module, p);
+            AllocPtr := (p + size + 3) DIV 4 * 4; mod.size := AllocPtr - p; mod.num := root.num + 1;
+            mod.next := root; root := mod
+          ELSE error(7, name1)
+          END
+        ELSE (*fill hole*) p := SYSTEM.VAL(INTEGER, mod)
+        END
+      END ;
+      IF res = 0 THEN (*read file*)
+        INC(p, DescSize); (*allocate descriptor*)
+        mod.name := name; mod.key := key; mod.refcnt := 0;
+        mod.const := p; (*constants*)
+        Files.ReadInt(R, n);
+        WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*type descriptors*)
+        IF version = 2 THEN Files.ReadInt(R, n); (*strings are stored before variables*)
+         WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END;
+          mod.data := p (*variables*)
+        ELSE mod.data := mod.const
+        END;
+        Files.ReadInt(R, n);
+        WHILE n > 0 DO SYSTEM.PUT(p, 0); INC(p, 4); DEC(n, 4) END ;  (*variable space*)
+        IF version < 2 THEN Files.ReadInt(R, n); (*strings are stored after variables*)
+          WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END  (*strings*)
+        END;
+        mod.code := p;  (*program*)
+        Files.ReadInt(R, n); (*In Cortex M4 implementation, program size is counted in bytes*)
+        WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*program code*)
+        mod.imp := p;  (*copy imports*)
+        i := 0;
+        WHILE i < nofimps DO
+          SYSTEM.PUT(p, import[i]); INC(p, 4); INC(i)
+        END ;
+        mod.cmd := p;  (*commands*) Files.Read(R, ch);
+        WHILE ch # 0X DO
+          REPEAT SYSTEM.PUT(p, ch); INC(p); Files.Read(R, ch) UNTIL ch = 0X;
+          REPEAT SYSTEM.PUT(p, 0X); INC(p) UNTIL p MOD 4 = 0;
+          Files.ReadInt(R, n); SYSTEM.PUT(p, n); INC(p, 4); Files.Read(R, ch)
+        END ;
+        REPEAT SYSTEM.PUT(p, 0X); INC(p) UNTIL p MOD 4 = 0;
+        mod.ent := p;  (*entries*)
+        Files.ReadInt(R, n);
+        WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n) END ;
+        mod.ptr := p;  (*pointer references*)
+        Files.ReadInt(R, w);
+        WHILE w >= 0 DO SYSTEM.PUT(p, mod.data + w); INC(p, 4); Files.ReadInt(R, w) END ;
+        SYSTEM.PUT(p, 0); INC(p, 4);
+        Files.ReadInt(R, fixorgP); Files.ReadInt(R, fixorgV);
+        IF version = 2 THEN Files.ReadInt(R, fixorgC) END; Files.ReadInt(R, fixorgT);
+        Files.ReadInt(R, w); body := SYSTEM.VAL(Command, mod.code + w + 1);
+        Files.Read(R, ch);
+        IF ch # "O" THEN (*corrupted file*)  mod := NIL; error(4, name) END
+      END ;
+      IF res = 0 THEN (*fixup of BL*)
+        noftrps := 0; trpbase := p; (*trampoline area*)
+        adr := mod.code + fixorgP;
+        WHILE adr # mod.code DO
+          SYSTEM.GET(adr, inst);
+          inst := thumbSwap(inst); (*Put bytes in the right order*)
+          mno := inst DIV 10000000H MOD 10H;
+          pno := inst DIV 100000H MOD 100H;
+          disp := inst MOD 100000H*2;
+          SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
+          SYSTEM.GET(impmod.ent + pno*4, dest); dest := dest + impmod.code;
+          (*dest contains the absolute address of the called procedure*)
+          offset := dest - adr - 4; (* Offset in bytes *)
+          IF (offset < -16777216) OR (offset >= 16777216) THEN
+            (*The destination is out of reachable range. Install trampoline AKA veneer code in ARM world*)
+            i := 0; u := trpbase;
+            SYSTEM.GET(u+4, w);
+            WHILE (i < noftrps) & (dest # w) DO INC(u, 8); SYSTEM.GET(u+4, w); INC(i) END;
+            IF i >= noftrps THEN (*Create trampoline, u is aligned to 4 bytes boundary*)
+              (*0F8DFF000H is object code for ldr pc, [pc] when pc MOD 4 = 0*)
+              INC(noftrps); SYSTEM.PUT(u, thumbSwap(0F8DFF000H)); SYSTEM.PUT(u+4, dest+1)
+            END;
+            dest := u; (*branch to trampoline*)
+            offset := dest - adr - 4 (* Offset in bytes *)
+          END;
+          SYSTEM.PUT(adr, thumbSwap(BL + formatEvenImm25(offset)));
+          adr := adr - disp
+        END ;
+        INC(p, noftrps*8);
+        (*fixup of MOV/MOVT*)
+        fixupMOV(mod, fixorgV, TRUE);
+        IF version = 2 THEN fixupMOV(mod, fixorgC, FALSE) END;
+        (*fixup of type descriptors*)
+        adr := mod.const + fixorgT*4;
+        WHILE adr # mod.const DO
+          SYSTEM.GET(adr, inst);
+          mno := inst DIV 1000000H MOD 10H;
+          vno := inst DIV 1000H MOD 1000H;
+          disp := inst MOD 1000H;
+          IF mno = 0 THEN (*global*) inst := mod.const + vno
+          ELSE (*import*)
+            SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
+            SYSTEM.GET(impmod.ent + vno*4, offset);
+            inst := impmod.const + offset
+          END ;
+          SYSTEM.PUT(adr, inst); adr := adr - disp*4
+        END ;
+        body;   (*initialize module*)
+        IF shrinkable & (AllocPtr > p) THEN DEC(mod.size, AllocPtr - p); AllocPtr := p END (*remove trampoline unused space*)
+      ELSIF res >= 3 THEN importing := name;
+        WHILE nofimps > 0 DO DEC(nofimps); IncRefcnt(import[nofimps], -1) END
+      END 
+    END ;
+    newmod :=  mod
+  END Load2;
+
   PROCEDURE ThisCommand*(mod: Module; name: ARRAY OF CHAR): Command;
     VAR k, adr, w: INTEGER; ch: CHAR;
       s: ARRAY 32 OF CHAR;
@@ -322,7 +485,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
     IF mod # NIL THEN
       IF mod.refcnt = 0 THEN
         mod.name[0] := 0X; p := mod.imp; q := mod.cmd;
-        WHILE p < q DO SYSTEM.GET(p, imp); DEC(imp.refcnt); INC(p, 4) END;
+        WHILE p < q DO SYSTEM.GET(p, imp); IncRefcnt(imp, -1); INC(p, 4) END;
         WHILE root.name[0] = 0X DO (*deallocate freed modules at end of module space*)
           AllocPtr := SYSTEM.VAL(INTEGER, root); root := root.next
         END

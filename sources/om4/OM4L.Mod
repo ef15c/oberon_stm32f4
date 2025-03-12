@@ -118,7 +118,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key); Files.ReadByte(R, version);
         Files.ReadInt(R, size); importing := name1;
-        IF (version = 1) OR (version = 2) (*regular module*) THEN
+        IF version IN {1, 2} (*regular module*) THEN
           Files.ReadString(R, impname);   (*imports*)
           WHILE (impname[0] # 0X) & (res = noerr) DO
             Files.ReadInt(R, impkey);
@@ -220,8 +220,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           IF mno = 0 THEN (*global*)
             dest := mod.data + inst MOD 1000000H + var.org
           ELSE (*import*)  vno := inst MOD 100H;
-            SYSTEM.GET(var.start + mod.imp + (mno-1)*4, impmod);
-            SYSTEM.GET(var.start + impmod.ent + vno*4, offset);
+            SYSTEM.GET(const.start + mod.imp + (mno-1)*4, impmod);
+            SYSTEM.GET(const.start + impmod.ent + vno*4, offset);
             IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 + code.org (*thumb execution state*)
             ELSE dest := impmod.data + offset + var.org END
           END;
@@ -242,8 +242,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
             IF mno = 0 THEN (*global*)
               dest := mod.const + inst MOD 1000000H + const.org
             ELSE (*import*)  vno := inst MOD 100H;
-              SYSTEM.GET(var.start + mod.imp + (mno-1)*4, impmod);
-              SYSTEM.GET(var.start + impmod.ent + vno*4, offset);
+              SYSTEM.GET(const.start + mod.imp + (mno-1)*4, impmod);
+              SYSTEM.GET(const.start + impmod.ent + vno*4, offset);
               IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 + code.org (*thumb execution state*)
               ELSE dest := impmod.const + offset + const.org END
             END;
@@ -253,8 +253,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           END;
         END;
         (*fixup of type descriptors*)
-        adr := mod.data + fixorgT*4;
-        WHILE adr # mod.data DO
+        adr := mod.const + fixorgT*4;
+        WHILE adr # mod.const DO
           SYSTEM.GET(const.start + adr, inst);
           mno := inst DIV A.C24 MOD A.C4;
           vno := inst DIV A.C12 MOD A.C12;
@@ -267,7 +267,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           END ;
           SYSTEM.PUT(const.start + adr, inst); adr := adr - disp*4
         END ;
-        mod.size := (const.cur - startMod + 3) DIV 4*4; (*TODO: \E0 modifier pour version 2*)
+        mod.size := (const.cur - startMod + 3) DIV 4*4
       ELSIF res >= badkey THEN importing := name;
         WHILE nofimps > 0 DO DEC(nofimps); DEC(import[nofimps].refcnt) END
       END
@@ -354,7 +354,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           INC(M.imp, flash.org);
           INC(M.cmd, flash.org);
           INC(M.ent, flash.org);
-          INC(M.ptr, flash.org)
+          INC(M.ptr, flash.org);
+          M.refcnt := -1; (*cannot be unloaded*)
         END ;
         SYSTEM.PUT(flash.start, thumbSwap(A.BT4 + A.formatEvenImm25(flash.cur - 4)));  (*branch instruction to the initialization sequence*)
         ASSERT(sram.cur MOD 4 = 0);
@@ -383,7 +384,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         IF flash.cur MOD 4 # 0 THEN putByte(flash, 0); putByte(flash, 0BFH) (*padding NOP*) END; ASSERT(flash.cur MOD 4 = 0);
         MakeFileName(name, S.s, ".efb"); F := Files.New(name); Files.Set(R, F, 0); i := flash.start;
         WHILE i < flash.cur + flash.start DO SYSTEM.GET(i, x); Files.WriteInt(R, x); INC(i, 4) END ;
-        Texts.WriteInt(W, flash.cur, 8); Files.Register(F)
+        Texts.WriteInt(W, flash.cur, 8); Texts.WriteInt(W, sram.cur, 8); Files.Register(F)
       ELSE
         Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
         IF res = nofile THEN Texts.WriteString(W, " module not found")

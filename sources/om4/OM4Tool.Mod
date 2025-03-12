@@ -1,6 +1,6 @@
 MODULE OM4Tool;  (*NW 18.2.2013
   C. Schoffit 25.02.25*)
-  IMPORT SYSTEM, Files, Texts, Oberon, OM4B, OM4A, OM4D, Modules;
+  IMPORT SYSTEM, Files, Texts, TextsEx, Oberon, OM4B, OM4A, OM4D, Modules;
 
   TYPE
     ExternalRefMap = RECORD
@@ -295,7 +295,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   END EmitString;
   
   PROCEDURE DecBin*;   (*decode binary boot file*)
-    VAR i, n, modLoc, root, ramOrg, data: INTEGER; b: BYTE;
+    VAR i, n, modLoc, root, ramOrg, data, next: INTEGER; b: BYTE;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp!: BootParams;
@@ -314,8 +314,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
         ramOrg := bp.BootfileLoadAOrg; root := bp.RootModule;
         n := 0; Texts.WriteHex(W, n+ramOrg); Texts.Write(W, 9X);
         OM4D.opcode(W, bp.BranchToRootInit, n, ramOrg); Texts.WriteLn(W);
-        EmitWord(W, bp.SDHandle, n, ramOrg, "SD card description"); EmitWord(W, bp.BootfileLoadAOrg, n, ramOrg, "RAM origin");
-        EmitWord(W, bp.MemLim, n, ramOrg, "RAM end"); EmitWord(W, bp.BootfileLoadEnd, n, ramOrg, "Boot file load end");
+        EmitWord(W, bp.SDHandle, n, ramOrg, "SD card description"); EmitWord(W, bp.BootfileLoadAOrg, n, ramOrg, "Modules origin");
+        EmitWord(W, bp.MemLim, n, ramOrg, "RAM end"); EmitWord(W, bp.BootfileLoadEnd, n, ramOrg, "Modules allocation pointer");
         EmitWord(W, bp.RootModule, n, ramOrg, "Root module descriptor"); EmitWord(W, bp.StackOrg, n, ramOrg, "Stack origin"); 
         EmitWord(W, bp.HeapOrg, n, ramOrg, "Heap origin");
         REPEAT (* Decode module information *)
@@ -342,9 +342,10 @@ MODULE OM4Tool;  (*NW 18.2.2013
             Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
             Texts.WriteLn(W)
           END;
+          IF (mod.data >= mod.const) & (mod.data <= mod.code) THEN next := mod.data ELSE next := mod.code END;
           IF ok THEN
             i := 0;
-            WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.data) DO 
+            WHILE (n - modLoc < mod.size) & (n+ramOrg # next) DO 
               Files.ReadInt(R, data);
               IF data # 0 THEN
                 IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
@@ -360,29 +361,31 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
             END;
           END;
-          IF ok & (n+ramOrg = mod.data) THEN  Texts.WriteString(W, "; data section found"); Texts.WriteLn(W)
-          ELSE
-            ok := FALSE;
-            Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
-            Texts.WriteLn(W)
-          END;
-          IF ok THEN
-            i := 0;
-            WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.code) DO 
-              Files.ReadInt(R, data);
-              IF data # 0 THEN
-                IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
-                  Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
-                  Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W); i := 0;
-                END;
-                EmitWord(W, data, n, ramOrg, "")
-              ELSE i := i+1; INC(n, 4)
+          IF next = mod.data THEN
+            IF ok & (n+ramOrg = mod.data) THEN  Texts.WriteString(W, "; data section found"); Texts.WriteLn(W)
+            ELSE
+              ok := FALSE;
+              Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
+              Texts.WriteLn(W)
+            END;
+            IF ok THEN
+              i := 0;
+              WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.code) DO 
+                Files.ReadInt(R, data);
+                IF data # 0 THEN
+                  IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
+                    Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
+                    Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W); i := 0;
+                  END;
+                  EmitWord(W, data, n, ramOrg, "")
+                ELSE i := i+1; INC(n, 4)
+                END
+              END;
+              IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
+                Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
+                Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
               END
-            END;
-            IF i # 0 THEN Texts.WriteHex(W, ramOrg+n-4*i); Texts.Write(W, 9X);
-              Texts.WriteString(W, "    .fill "); Texts.WriteInt(W, i, 1);
-              Texts.WriteString(W, ", 4, 0"); Texts.WriteLn(W)
-            END;
+            END
           END;
           IF ok & (n+ramOrg = mod.code) THEN Texts.WriteString(W, "; code section found"); Texts.WriteLn(W)
           ELSE
@@ -486,6 +489,29 @@ MODULE OM4Tool;  (*NW 18.2.2013
       Texts.Append(Oberon.Log, W.buf)
     END
   END DecBin;
+
+  PROCEDURE DecMod*;
+    VAR mod!: Modules.Module; S!: TextsEx.Scanner;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); mod := NIL;
+    IF S.class = Texts.Int THEN mod := SYSTEM.VAL(Modules.Module, S.i)
+    ELSIF S.class = TextsEx.LongInt THEN  mod := SYSTEM.VAL(Modules.Module, S.l)
+    ELSE Texts.WriteString(W, "Usage: OM4Tool.DecMod <module address>"); Texts.WriteLn(W)
+    END;
+    IF mod # NIL THEN Texts.WriteString(W, "Module "); Texts.WriteString(W, mod.name); Texts.WriteLn(W);
+       Texts.WriteString(W, "next "); Texts.WriteHex(W, ORD(mod.next)); Texts.WriteLn(W);
+       Texts.WriteString(W, "key "); Texts.WriteHex(W, mod.key); Texts.WriteLn(W);
+       Texts.WriteString(W, "num "); Texts.WriteInt(W, mod.num, 1); Texts.WriteLn(W);
+       Texts.WriteString(W, "size "); Texts.WriteInt(W, mod.size, 1); Texts.WriteLn(W);
+       Texts.WriteString(W, "data "); Texts.WriteHex(W, mod.data); Texts.WriteLn(W);
+       Texts.WriteString(W, "code "); Texts.WriteHex(W, mod.code); Texts.WriteLn(W);
+       Texts.WriteString(W, "imp "); Texts.WriteHex(W, mod.imp); Texts.WriteLn(W);
+       Texts.WriteString(W, "cmd "); Texts.WriteHex(W, mod.cmd); Texts.WriteLn(W);
+       Texts.WriteString(W, "ent "); Texts.WriteHex(W, mod.ent); Texts.WriteLn(W);
+       Texts.WriteString(W, "ptr "); Texts.WriteHex(W, mod.ptr); Texts.WriteLn(W);
+       Texts.WriteString(W, "const "); Texts.WriteHex(W, mod.const); Texts.WriteLn(W);
+    END;
+    Texts.Append(Oberon.Log, W.buf)
+  END DecMod;
 
   PROCEDURE DecRAO*;
     VAR F!: Files.File; R!: Files.Rider;
