@@ -623,7 +623,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SYSTEM.GET(EXTI_BASE + RTSR, reg); SYSTEM.PUT(EXTI_BASE + RTSR, reg + {B1Pin});
     SYSTEM.GET(EXTI_BASE + EMR, reg); SYSTEM.PUT(EXTI_BASE + EXTI_IMR, reg + {B1Pin});
     (*PC14, 15 and 13 as push buttons 1, 2 and 4*)
-    configureGPIO(GPIOC, maskC_1b, maskE_2b, {}, {}, LSL(OUTPUT_MODE, 1*2) + LSL(OUTPUT_MODE, 2*2) + LSL(OUTPUT_MODE, 3*2),
+    configureGPIO(GPIOC, maskC_1b, maskC_2b, {}, {}, LSL(OUTPUT_MODE, 1*2) + LSL(OUTPUT_MODE, 2*2) + LSL(OUTPUT_MODE, 3*2),
       {}, {}, LSL(PULL_UP, 13*2) + LSL(PULL_UP, 14*2) + LSL(PULL_UP, 15*2), {}, {});
     (*PD12 and 13 as LED 6 and 5*)
     configureGPIO(GPIOD, maskD_1b, maskD_2b, {}, {}, LSL(OUTPUT_MODE, 12*2) + LSL(OUTPUT_MODE, 13*2), {}, {}, {}, {}, {});
