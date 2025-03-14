@@ -822,14 +822,14 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
     configureGPIO(BSP.GPIOC, maskC_1b, maskC_2b, {}, {}, {}, {}, {}, LSL(BSP.PULL_UP, 14*2), {}, {})
   END initGPIOs;
 
-  PROCEDURE getSW1(): BOOLEAN;
-    VAR sw1: BOOLEAN;
-  BEGIN SYSTEM.GET(BSP.PB1In, sw1)
-    RETURN sw1
-  END getSW1;
+  PROCEDURE bootFromFlash(): BOOLEAN;
+    VAR bff: BOOLEAN; SDd, MO: INTEGER;
+  BEGIN SYSTEM.GET(BSP.PB1In, bff); SYSTEM.GET(FlashORG0+4, SDd); SYSTEM.GET(FlashORG0+8, MO);
+    RETURN bff & (SDd = 200001ACH) & (MO = FlashORG0)
+  END bootFromFlash;
 
 BEGIN SystemInit; SystemClockInit; CYCNTInit; SDRAMInit; MPUInit; RTCInit; initGPIOs;
-  IF ~getSW1() THEN LoadFromDisk;
+  IF ~bootFromFlash() THEN LoadFromDisk;
     SYSTEM.PUT(BSP.RTC_BASE + BSP.BKPxR + 0, VarORG0);
     SYSTEM.LDREG(PSP, stackOrg); (*initialize process stack*) SYSTEM.LDREG(CONTROL, 2); (*switch to process stack in thread mode*); SYSTEM.MBI(3); (*ISB*)
     SYSTEM.JUMP(VarORG0+1)
