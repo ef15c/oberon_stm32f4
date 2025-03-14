@@ -335,7 +335,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
   END Init;
 
 BEGIN Init; Load("Oberon", M);
-    LED(res); REPEAT UNTIL FALSE  (*only if load fails*)
+    IF M.refcnt > 0 THEN LED(res); REPEAT UNTIL FALSE  (*only if load fails*) END
 END Modules.
 
 OM4Tool.DecObj Modules.m4c

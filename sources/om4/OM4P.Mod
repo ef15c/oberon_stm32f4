@@ -13,7 +13,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     END ;
   
   VAR sym: INTEGER;   (*last symbol read*)
-    dc: INTEGER;    (*data counter*)
+    vc, cc: INTEGER;    (*variable counter, const counter*)
     level, exno, version: INTEGER;
     newSF, initmode: BOOLEAN;  (*option flag*)
     expression: PROCEDURE (VAR x: G.Item);  (*to avoid forward reference*)
@@ -494,6 +494,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 14 THEN G.LDREG(x, y)
       ELSIF pno = 15 THEN CheckConst(x); CheckInt(x); G.MBI(x.a) (*Memory barrier instructions*)
+      ELSIF pno = 16 THEN CheckConst(x); CheckInt(x); G.Jump(x.a) (*Jump to absolute address*)
       END
     ELSE S.Mark("wrong nof parameters")
     END
@@ -882,7 +883,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
             IF obj.name = ptbase.name THEN ptbase.type.base := obj.type END ;
             ptbase := ptbase.next
           END ;
-          IF level = 0 THEN G.BuildTD(tp, dc) END    (*type descriptor; len used as its address*)
+          IF level = 0 THEN G.BuildTD(tp, cc) END    (*type descriptor; len used as its address*)
         END ;
         Check(S.semicolon, "; missing")
       END
@@ -995,7 +996,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR key, oldCol: INTEGER;
   BEGIN Texts.WriteString(W, "  compiling "); S.Get(sym);
     IF sym = S.module THEN
-      S.Get(sym); dc := 0;
+      S.Get(sym); vc := 0; cc := 0;
       IF sym = S.times THEN version := 0; Texts.Write(W, "*"); S.Get(sym) ELSE version := 1 END;
       initmode := FALSE;
       B.Init; B.OpenScope;
@@ -1010,7 +1011,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         WHILE sym = S.comma DO S.Get(sym); Import END ;
         Check(S.semicolon, "; missing")
       END ;
-      G.Open(version); Declarations(dc); G.SetDataSize((dc + 3) DIV 4 * 4);
+      G.Open(version); Declarations(vc); G.SetDataSize((vc + 3) DIV 4 * 4, (cc + 3) DIV 4 * 4);
       WHILE sym = S.procedure DO ProcedureDecl; Check(S.semicolon, "no ;") END ;
       initmode := TRUE;
       G.Header;
@@ -1027,7 +1028,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         IF newSF THEN Texts.WriteString(W, " new symbol file") END
       END ;
       IF S.errcnt = 0 THEN
-        Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, dc, 8); Texts.WriteHex(W, key);
+        Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, vc, 8); Texts.WriteInt(W, cc, 8);; Texts.WriteHex(W, key);
         G.Close(modid, key, exno)
       ELSE Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol 
       END ;

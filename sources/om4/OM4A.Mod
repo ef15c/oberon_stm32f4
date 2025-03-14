@@ -314,7 +314,15 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   
   (*instruction assemblers*)
 
-  PROCEDURE modify*(VAR c: ModuleCode; at: INTEGER; with: INTEGER);
+  PROCEDURE PutLE(VAR c: ModuleCode; data: INTEGER);
+  BEGIN
+    c.code[c.pc+3] := data DIV C24 MOD C8;
+    c.code[c.pc+2]   := data DIV C16 MOD C8;
+    c.code[c.pc+1] := data DIV C8 MOD C8;
+    c.code[c.pc] := data MOD C8; INC(c.pc, 4)
+  END PutLE;
+
+  PROCEDURE modify*(VAR c: ModuleCode; at, with: INTEGER);
   BEGIN
     c.code[at+1] := with DIV C24 MOD C8;
     c.code[at]   := with DIV C16 MOD C8;
@@ -461,6 +469,13 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
 
     RETURN val DIV C11 MOD C1*C26 + val DIV C8 MOD C3*C12 + val MOD C8
   END formatImm12;
+
+  PROCEDURE encJumpImm32*(VAR c: ModuleCode; adr: INTEGER);
+  BEGIN
+    IF c.pc MOD 4 = 0 THEN Put0(c, memimm12map[LDR] + LSL(15, 16) + LSL(15, 12))
+    ELSE Put0(c, memimm12map[LDR] + LSL(15, 16) + LSL(15, 12) + 4); Put1(c, 0)
+    END; PutLE(c, adr)
+  END encJumpImm32;
 
   PROCEDURE encMOVImm32*(VAR c: ModuleCode; reg: BYTE; val: INTEGER; setFlags: SET);
   VAR halfw, tmiCode: INTEGER; opc: SET;
