@@ -490,36 +490,42 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END DecBin;
 
-  (* OM4Tool.DecMod 0D026091CH Hilbert *)
   PROCEDURE DecMod*;
     VAR mod!: Modules.Module; S!: TextsEx.Scanner; i, d: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); mod := NIL;
-    IF S.class = Texts.Int THEN mod := SYSTEM.VAL(Modules.Module, S.i)
-    ELSIF S.class = TextsEx.LongInt THEN  mod := SYSTEM.VAL(Modules.Module, S.l)
+    IF S.class = Texts.Name THEN mod := Modules.root;
+      WHILE (mod # NIL) & (mod.name # S.s) DO mod := mod.next END
     ELSE Texts.WriteString(W, "Usage: OM4Tool.DecMod <module address>"); Texts.WriteLn(W)
     END;
     IF mod # NIL THEN Texts.WriteString(W, "Module "); Texts.WriteString(W, mod.name); Texts.WriteLn(W);
-       Texts.WriteString(W, "next "); Texts.WriteHex(W, ORD(mod.next)); Texts.WriteLn(W);
-       Texts.WriteString(W, "key "); Texts.WriteHex(W, mod.key); Texts.WriteLn(W);
-       Texts.WriteString(W, "num "); Texts.WriteInt(W, mod.num, 1); Texts.WriteLn(W);
-       Texts.WriteString(W, "size "); Texts.WriteInt(W, mod.size, 1); Texts.WriteLn(W);
-       Texts.WriteString(W, "data "); Texts.WriteHex(W, mod.data); Texts.WriteLn(W);
-       Texts.WriteString(W, "code "); Texts.WriteHex(W, mod.code); Texts.WriteLn(W);
-       Texts.WriteString(W, "imp "); Texts.WriteHex(W, mod.imp); Texts.WriteLn(W);
-       Texts.WriteString(W, "cmd "); Texts.WriteHex(W, mod.cmd); Texts.WriteLn(W);
-       Texts.WriteString(W, "ent "); Texts.WriteHex(W, mod.ent); Texts.WriteLn(W);
-       Texts.WriteString(W, "ptr "); Texts.WriteHex(W, mod.ptr); Texts.WriteLn(W);
-       Texts.WriteString(W, "const "); Texts.WriteHex(W, mod.const); Texts.WriteLn(W);
-    END;
-    IF mod.const = mod.data THEN i := mod.data;
-      WHILE i < mod.code DO SYSTEM.GET(i, d); EmitWord(W, d, i, 0, ""); INC(i, 4) END
-    END;
-    i := mod.code; mcode.pc := 0;
-    WHILE i < mod.imp DO SYSTEM.GET(i, mcode.code[mcode.pc]); INC(mcode.pc); INC(i) END;
-    i := 0;
-    WHILE i < mcode.pc DO
-      Texts.WriteHex(W, mod.code + i); Texts.Write(W, 9X); OM4D.opcode(W, mcode.code, i, mod.code);
-      Texts.WriteLn(W)
+      Texts.WriteString(W, "next "); Texts.WriteHex(W, ORD(mod.next)); Texts.WriteLn(W);
+      Texts.WriteString(W, "key "); Texts.WriteHex(W, mod.key); Texts.WriteLn(W);
+      Texts.WriteString(W, "num "); Texts.WriteInt(W, mod.num, 1); Texts.WriteLn(W);
+      Texts.WriteString(W, "size "); Texts.WriteInt(W, mod.size, 1); Texts.WriteLn(W);
+      Texts.WriteString(W, "data "); Texts.WriteHex(W, mod.data); Texts.WriteLn(W);
+      Texts.WriteString(W, "code "); Texts.WriteHex(W, mod.code); Texts.WriteLn(W);
+      Texts.WriteString(W, "imp "); Texts.WriteHex(W, mod.imp); Texts.WriteLn(W);
+      Texts.WriteString(W, "cmd "); Texts.WriteHex(W, mod.cmd); Texts.WriteLn(W);
+      Texts.WriteString(W, "ent "); Texts.WriteHex(W, mod.ent); Texts.WriteLn(W);
+      Texts.WriteString(W, "ptr "); Texts.WriteHex(W, mod.ptr); Texts.WriteLn(W);
+      Texts.WriteString(W, "const "); Texts.WriteHex(W, mod.const); Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf);
+
+      i := mod.const; Texts.WriteString(W, " ; const "); Texts.WriteLn(W); WHILE i < mod.code DO SYSTEM.GET(i, d); EmitWord(W, d, i, 0, "") END;
+      Texts.Append(Oberon.Log, W.buf);
+(*      i := mod.data; Texts.WriteString(W, " ; data "); Texts.WriteLn(W); WHILE i < mod.code DO SYSTEM.GET(i, d); EmitWord(W, d, i, 0, "") END;*)
+      Texts.Append(Oberon.Log, W.buf);
+      i := mod.code; mcode.pc := 0;
+      WHILE i < mod.imp DO SYSTEM.GET(i, mcode.code[mcode.pc]); INC(mcode.pc); INC(i) END;
+      i := 0; Texts.WriteString(W, " ; code "); Texts.WriteLn(W);
+      WHILE i < mcode.pc DO
+        Texts.WriteHex(W, mod.code + i); Texts.Write(W, 9X); OM4D.opcode(W, mcode.code, i, mod.code);
+        Texts.WriteLn(W)
+      END;
+      Texts.Append(Oberon.Log, W.buf);
+      i := mod.imp; Texts.WriteString(W, " ; imports "); Texts.WriteLn(W); WHILE i < mod.cmd DO SYSTEM.GET(i, d); EmitWord(W, d, i, 0, "") END;
+      Texts.Append(Oberon.Log, W.buf);
+    ELSE Texts.WriteString(W, "module not found"); Texts.WriteLn(W)
     END;
     Texts.Append(Oberon.Log, W.buf)
   END DecMod;

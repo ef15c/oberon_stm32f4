@@ -29,7 +29,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     pat: ARRAY 32 OF CHAR;
     TrappedAdr: INTEGER; cfsr: SET;
     stack*: StackDump;
-    modBase: INTEGER;
+    modBase: INTEGER; Mod: Modules.Module; 
 
   PROCEDURE GetArg(VAR S: Texts.Scanner);
     VAR T!: Texts.Text; beg, end, time: INTEGER;
@@ -574,5 +574,9 @@ BEGIN SYSTEM.GET(Kernel.bootParams+16, modBase);
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   activateHandlers;
   stack := SYSTEM.VAL(StackDump, (*20000600H*) 0D0110000H); stack.len := 0; stack.cause := 0;
-  stack.cfsr := {}; stack.bfar := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0
+  stack.cfsr := {}; stack.bfar := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0;
+  Modules.Load("OnStartup", Mod);
+
+  Oberon.Loop
+
 END System.

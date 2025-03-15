@@ -32,7 +32,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       dest*: CircularBuffer; buf: CircularBufferDesc
     END;
 
-  VAR mkb*: MKB; mkbBlock: MKDataBlock; keyboard: Device;
+  VAR mkb*: MKB; mkbBlock: MKDataBlock; keyboard*: Device;
     KBLeds: SET;
 
   PROCEDURE^3 PutByteInFIFOBuffer(VAR dev: DeviceDesc);
@@ -159,7 +159,8 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   PROCEDURE SetCapsLock*(state: BOOLEAN);
     VAR rc: INTEGER;
-  BEGIN IF keyboard # NIL THEN
+  BEGIN
+    IF keyboard # NIL THEN BSP.Delayus(10000);
       IF state THEN INCL(KBLeds, 2) ELSE EXCL(KBLeds, 2) END;
       SendByteAsync(keyboard^, 0EDH);
       IF WaitForAnswer(keyboard^, 35) = 0FAH THEN
@@ -238,3 +239,32 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
 BEGIN mkb := SYSTEM.VAL(MKB, SYSTEM.ADR(mkbBlock));
 END PS2.
+
+OM4Tool.DecSym PS2.sm4
+decode PS2.sm4
+PS2 65F39FC1  1
+   1 SUCCESS [^4]       0
+   1 IN_PROGRESS [^4]       1
+   1 FRAME_ERROR [^4]       2
+   1 PARITY_ERROR [^4]       3
+   1 NAK [^4]       4
+   1 NO_ANSWER [^4]       5
+   1 NO_DEVICE [^4]       0
+   1 KEYBOARD [^4]       1
+   1 MOUSE [^4]       2
+   1 BUFFERSIZE [^4]      16
+   5 CircularBuffer [15  form = 7 [16  form = 13 [^9]  exno = 1  extlev = 0  size = 24 { buffer [0  form = 12 [^1]  len = 16  size = 16]   8 tail [^4]   4 head [^4]   0}]]()
+   5 CircularBufferDesc [^16]( ->  15)
+   5 MKB [17  form = 7 [18  form = 13 [^9]  exno = 2  extlev = 0  size = 36 { MH [^4]  32 MW [^4]  28 MD [^4]  24 KB [^16]   0}]]()
+   5 MKDataBlock [^18]( ->  17)
+   5 Device [19  form = 7 [20  form = 13 [^9]  exno = 3  extlev = 0  size = 88 { dest [^15]  60 badEdge [^4]  56 keyboardLED [^4]  36 mouseLED [^4]  32 data_Out [^4]  24 clock_Out [^4]  20 data_In [^4]  16 clock_In [^4]  12 parityEnabled [^2]   7 clockPin [^1]   4 connectedDevice [^1]   3 statusOut [^1]   2 statusIn [^1]   1}]]()
+   5 DeviceDesc [^20]( ->  19)
+   2 mkb [^17]     4
+   2 keyboard [^19]     5
+   1 SendByteAsync [0  form = 10 [^9]( class = 2 [^1] class = 3 [^20])]       6
+   1 WaitForAnswer [0  form = 10 [^4]( class = 2 [^4] class = 3 [^20])]       7
+   1 ProcessData [0  form = 10 [^9]( class = 3 [^20])]       8
+   1 SendByte [0  form = 10 [^1]( class = 2 [^1] class = 3 [^20])]       9
+   1 SetCapsLock [0  form = 10 [^9]( class = 2 [^2])]      10
+   1 InitDevice [0  form = 10 [^9]( class = 3 [^20])]      11
+

@@ -78,7 +78,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
   END checkSize;
 
   PROCEDURE allocate(VAR s: Segment; sz: INTEGER);
-  BEGIN INC(s.cur, sz);
+  BEGIN IF s.cur + sz <= s.size THEN INC(s.cur, sz) ELSE res := nofit END
   END allocate;
 
    PROCEDURE LinkOne(name: ARRAY OF CHAR; VAR newmod: Modules.Module; VAR code, var, const: Segment);
@@ -332,7 +332,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
   END Link;
 
   PROCEDURE LinkEF*;  (*link multiple object files together and create a single FLASH boot file M.efb from them*)
-    VAR i, x, pc: INTEGER;
+    VAR i, x, pc, count: INTEGER;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       M!, p!: Modules.Module;
@@ -342,8 +342,9 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       sram.start := 0; sram.cur := 0;
       i := 0; WHILE i < ModAdr DO put(flash, 0); INC(i, 4) END;
       REPEAT LinkOne(S.s, M, flash, sram, flash); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
-      IF res = noerr THEN p := root; Texts.WriteString(W, "  linking");
+      IF res = noerr THEN p := root; Texts.WriteString(W, "  linking"); count := 0;
         WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
+          INC(count); IF count MOD 8 =  0 THEN count := 0; Texts.WriteLn(W) END;
           M := p; p := p.next;
           IF p # NIL THEN M.next := SYSTEM.VAL(Modules.Module, SYSTEM.VAL(INTEGER, p) - flash.start + flash.org) END ;
           INC(M.const, flash.org);
@@ -431,24 +432,28 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       buf: ARRAY 32 OF INTEGER;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
-    IF S.class = Texts.Name THEN
-      Texts.WriteString(W, "  loading "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
-      IF F # NIL THEN Files.Set(R, F, 8); Files.ReadInt(R, d);
-        IF d = 08004000H THEN Texts.WriteString(W, " onto module area"); Texts.WriteInt(W, Files.Length(F), 7);
-          FLASH.Open; adr := d; i := 0; Files.Set(R, F, 0); Files.ReadInt(R, d); res := noerr;
-          WHILE ~R.eof DO buf[i] := d; INC(i);
-            IF i = LEN(buf) THEN FLASH.Write(adr, buf, i); INC(adr, LEN(buf)*4); i := 0 END;
-            Files.ReadInt(R, d)
-          END ;
-          IF i > 0 THEN FLASH.Write(adr, buf, i) END;
-          FLASH.Close
-        ELSE Texts.WriteString(W, " bad format")
+  BEGIN
+    IF Kernel.bootParams DIV A.C24 # 08H THEN
+      Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
+      IF S.class = Texts.Name THEN
+        Texts.WriteString(W, "  loading "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
+        IF F # NIL THEN Files.Set(R, F, 8); Files.ReadInt(R, d);
+          IF d = 08004000H THEN Texts.WriteString(W, " onto module area"); Texts.WriteInt(W, Files.Length(F), 7);
+            FLASH.Open; adr := d; i := 0; Files.Set(R, F, 0); Files.ReadInt(R, d); res := noerr;
+            WHILE ~R.eof DO buf[i] := d; INC(i);
+              IF i = LEN(buf) THEN FLASH.Write(adr, buf, i); INC(adr, LEN(buf)*4); i := 0 END;
+              Files.ReadInt(R, d)
+            END ;
+            IF i > 0 THEN FLASH.Write(adr, buf, i) END;
+            FLASH.Close
+          ELSE Texts.WriteString(W, " bad format")
+          END
+        ELSE Texts.WriteString(W, " not found")
         END
-      ELSE Texts.WriteString(W, " not found")
+      ELSE Texts.WriteString(W, "Usage: OM4L.LoadEF M.efb")
       END
-    ELSE Texts.WriteString(W, "Usage: OM4L.LoadEF M.efb")
-    END ;
+    ELSE Texts.WriteString(W, "Reboot while pressing SW1 for entering flash update mode")
+    END;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END LoadEF;
 
