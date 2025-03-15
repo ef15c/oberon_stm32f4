@@ -1,42 +1,99 @@
 MODULE testBug;
-  IMPORT SYSTEM, TextsEx, Modules;
+  IMPORT Display;
 
- VAR y: Modules.Module; S: TextsEx.Scanner;
+  PROCEDURE test*;
+    VAR f!: Display.Frame;
+  BEGIN NEW(f)
+  END test;
 
-BEGIN SYSTEM.GET(S.l, y)
 END testBug.
+
+OM4P1.Compile testBug.Mod ~
+
+System.Free testBug ~ testBug.test
 
 OM4Tool.DecObj testBug.m4c
 decode testBug.m4c
-testBug FFC4B609   2    204
+testBug 34B6AA54   1     64
 imports:
-	TextsEx 133E09A6
-	Fonts AA480AE7
-	Texts 854A4CE2
-	Modules E75F0FA2
+	Display 722EE7B9
 type descriptors
 
+data     0
 strings
 
-data   124
 code
 commands:
+	test 00000000
 entries
- 00000000
+ 00000018 00000000
 pointer refs
-     0    52    40    20     8
+
 fixP =  00000000
-fixV =  00000010
-fixC =  00000000
+fixD =  00000006
 fixT =  00000000
-entry =  00000000
- 00000000	     B500	PUSH LR
- 00000002	 00000001	MOV R0 lower 16-bits base(0), next at  00000000
- 00000006	 00000074	MOVT R0 higher 16-bits var + 116
- 0000000A	 E9D00100	LDRD R0 R1 [ R0 + 0 ]
- 0000000E	     6800	LDR R0 [ R0 + 0 ]
- 00000010	 10000007	MOV R1 lower 16-bits base(0), next at  00000002
- 00000014	 00000000	MOVT R1 higher 16-bits var + 0
- 00000018	     6008	STR R0 [  R1 + 0 ]
+entry =  00000018
+ 00000000	     B081	SUB SP SP #4
+ 00000002	     B500	PUSH LR
+ 00000004	     A801	ADD R0 SP #4
+ 00000006	 11000003	MOV R1 lower 16-bits base(1), next at  00000000
+ 0000000A	 00000002	MOVT R1 higher 16-bits var(2)
+ 0000000E	     DF00	SVC #0
+ 00000010	 F85DEB04	LDR LR [ SP ] + 4
+ 00000014	     B001	ADD SP SP #4
+ 00000016	     4770	BX LR
+ 00000018	     B500	PUSH LR
  0000001A	 F85DEB04	LDR LR [ SP ] + 4
  0000001E	     4770	BX LR
+
+OM4Tool.DecMod 0D0266DA8H MAUVAIS
+Module testBug
+next  D0224394
+key  34B6AA54
+num 30
+size 144
+data  D0266DF8
+code  D0266DF8
+imp  D0266E18
+cmd  D0266E1C
+ent  D0266E2C
+ptr  D0266E34
+const  D0266DF8
+ D0266DF8	     B081	SUB SP SP #4
+ D0266DFA	     B500	PUSH LR
+ D0266DFC	     A801	ADD R0 SP #4
+ D0266DFE	 F64211E0	MOV R1 #10720
+ D0266E02	 F2CD0120	MOVT R1 #53280
+ D0266E06	     DF00	SVC #0
+ D0266E08	 F85DEB04	LDR LR [ SP ] + 4
+ D0266E0C	     B001	ADD SP SP #4
+ D0266E0E	     4770	BX LR
+ D0266E10	     B500	PUSH LR
+ D0266E12	 F85DEB04	LDR LR [ SP ] + 4
+ D0266E16	     4770	BX LR
+
+OM4Tool.DecMod 0D02A8B30H BON
+Module testBug
+next  D02A25A0
+key  34B6AA54
+num 32
+size 144
+data  D02A8B80
+code  D02A8B80
+imp  D02A8BA0
+cmd  D02A8BA4
+ent  D02A8BB4
+ptr  D02A8BBC
+const  D02A8B80
+ D02A8B80	     B081	SUB SP SP #4
+ D02A8B82	     B500	PUSH LR
+ D02A8B84	     A801	ADD R0 SP #4
+ D02A8B86	 F242517C	MOV R1 #9596
+ D02A8B8A	 F2CD0120	MOVT R1 #53280
+ D02A8B8E	     DF00	SVC #0
+ D02A8B90	 F85DEB04	LDR LR [ SP ] + 4
+ D02A8B94	     B001	ADD SP SP #4
+ D02A8B96	     4770	BX LR
+ D02A8B98	     B500	PUSH LR
+ D02A8B9A	 F85DEB04	LDR LR [ SP ] + 4
+ D02A8B9E	     4770	BX LR

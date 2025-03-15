@@ -722,6 +722,8 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       keysum: SET;
       fnt!: Fonts.Font;
       col, voff: INTEGER;
+      R!: Texts.Reader; ch: CHAR;
+      lines: ARRAY 100 OF INTEGER; top, idx, nl, cl: INTEGER;
   BEGIN
     IF X < F.X + Min(F.left, barW) THEN  (*scroll bar*)
       Oberon.DrawMouse(ScrollMarker, X, Y); keysum := Keys;
@@ -748,9 +750,20 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       ELSIF Keys = {0} THEN   (*MR, scroll down*)
         TrackLine(F, X, Y, pos, keysum);
         IF keysum = {0} THEN
+          nl := F.H DIV lsp - 3;
+          top := pos - 120*nl; IF top < 0 THEN top := 0 END;
+          Texts.OpenReader(R, F.text, top);
+          IF top # 0 THEN REPEAT Texts.Read(R, ch); UNTIL (ch = CR) OR (Texts.Pos(R) >= pos); top := Texts.Pos(R) + 1 END;
+          lines[0] := top; idx := 1; cl := 1;
+          WHILE Texts.Pos(R) < pos DO
+            IF ch = CR THEN IF cl > nl THEN top := lines[idx] ELSE INC(cl) END;
+              lines[idx] := Texts.Pos(R) + 1; INC(idx); IF idx > nl THEN idx := 0 END;
+            END;
+            Texts.Read(R, ch)
+          END; 
           SetChangeMark(F, FALSE);
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
-          Show(F, F.org*2 - pos - 100)
+          Show(F, top)
         END
       END
     ELSE  (*text area*)

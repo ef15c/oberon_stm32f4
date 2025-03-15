@@ -171,7 +171,10 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
             Files.ReadInt(R, impkey);
             Load(impname, impmod); import[nofimps] := impmod; importing := name1;
             IF res = 0 THEN
-              IF impmod.key = impkey THEN IncRefcnt(impmod, 1); INC(nofimps)
+              IF impmod.key = impkey THEN 
+                IF (version = 2) OR (impmod.data = impmod.const) THEN IncRefcnt(impmod, 1); INC(nofimps)
+                ELSE error(2, name1)
+                END
               ELSE error(3, name1); imported := impname
               END
             END ;

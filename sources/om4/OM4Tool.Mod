@@ -490,8 +490,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END DecBin;
 
+  (* OM4Tool.DecMod 0D026091CH Hilbert *)
   PROCEDURE DecMod*;
-    VAR mod!: Modules.Module; S!: TextsEx.Scanner;
+    VAR mod!: Modules.Module; S!: TextsEx.Scanner; i, d: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); mod := NIL;
     IF S.class = Texts.Int THEN mod := SYSTEM.VAL(Modules.Module, S.i)
     ELSIF S.class = TextsEx.LongInt THEN  mod := SYSTEM.VAL(Modules.Module, S.l)
@@ -509,6 +510,16 @@ MODULE OM4Tool;  (*NW 18.2.2013
        Texts.WriteString(W, "ent "); Texts.WriteHex(W, mod.ent); Texts.WriteLn(W);
        Texts.WriteString(W, "ptr "); Texts.WriteHex(W, mod.ptr); Texts.WriteLn(W);
        Texts.WriteString(W, "const "); Texts.WriteHex(W, mod.const); Texts.WriteLn(W);
+    END;
+    IF mod.const = mod.data THEN i := mod.data;
+      WHILE i < mod.code DO SYSTEM.GET(i, d); EmitWord(W, d, i, 0, ""); INC(i, 4) END
+    END;
+    i := mod.code; mcode.pc := 0;
+    WHILE i < mod.imp DO SYSTEM.GET(i, mcode.code[mcode.pc]); INC(mcode.pc); INC(i) END;
+    i := 0;
+    WHILE i < mcode.pc DO
+      Texts.WriteHex(W, mod.code + i); Texts.Write(W, 9X); OM4D.opcode(W, mcode.code, i, mod.code);
+      Texts.WriteLn(W)
     END;
     Texts.Append(Oberon.Log, W.buf)
   END DecMod;
