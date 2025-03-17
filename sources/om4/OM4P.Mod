@@ -876,13 +876,14 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         Type(tp);
         B.NewObj(obj, id, B.Typ); obj.type := tp; obj.expo := expo; obj.lev := level;
         IF tp.typobj = NIL THEN tp.typobj := obj END ;
-        IF expo & (obj.type.form = B.Record) THEN obj.exno := exno; INC(exno) ELSE obj.exno := 0 END ;
+        IF expo & (tp.form = B.Pointer) & (tp.base # NIL) & (tp.base.typobj.exno = 0) THEN obj.exno := exno; INC(exno) ELSE obj.exno := 0 END ;
         IF tp.form = B.Record THEN
           ptbase := pbsList;  (*check whether this is base of a pointer type; search and fixup*)
           WHILE ptbase # NIL DO
-            IF obj.name = ptbase.name THEN ptbase.type.base := obj.type END ;
+            IF obj.name = ptbase.name THEN ptbase.type.base := obj.type; IF ptbase.type.typobj.expo THEN expo := FALSE END END ;
             ptbase := ptbase.next
           END ;
+          IF expo THEN obj.exno := exno; INC(exno) ELSE obj.exno := 0 END ;
           IF level = 0 THEN G.BuildTD(tp, cc) END    (*type descriptor; len used as its address*)
         END ;
         Check(S.semicolon, "; missing")
@@ -1081,8 +1082,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  05.02.25");
-  Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  17.03.25");
+  Texts.WriteLn(W); IF Oberon.Log # NIL THEN Texts.Append(Oberon.Log, W.buf) END;
   NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0
 END OM4P.

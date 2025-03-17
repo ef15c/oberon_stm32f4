@@ -1610,9 +1610,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     Files.Write(R, 0X);
     Files.WriteInt(R, nofent); Files.WriteInt(R, entry);
-    obj := B.topScope.next;
+    obj := B.topScope.next; i := 1;
     WHILE obj # NIL DO  (*entries*)
-      IF obj.exno # 0 THEN
+      IF obj.exno # 0 THEN ASSERT(obj.exno = i); INC(i);
         IF (obj.class = B.Const) & (obj.type.form = B.Proc) OR (obj.class = B.Var) THEN Files.WriteInt(R, obj.val)
         ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN Files.WriteInt(R, obj.val MOD 10000H + varsize)
         ELSIF obj.class = B.Typ THEN
@@ -1645,7 +1645,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     Files.Register(F)
   END Close;
 
-BEGIN
+BEGIN NEW(mcode);
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.LT; 
   relmap[3] := A.LE; relmap[4] := A.GT; relmap[5] := A.GE
 END OM4G.
+
+OM4Tool.DecSym OM4G2.sm4

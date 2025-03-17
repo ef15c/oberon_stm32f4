@@ -271,8 +271,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     (*Memory operations*)
     LDR*=0; LDRB*=1; STR*=2; STRB*=3;
 
-  TYPE    
-    ModuleCode* = RECORD
+  TYPE
+    ModuleCode* = POINTER TO ModuleCodeDesc;
+    ModuleCodeDesc = RECORD
       pc*: INTEGER; (*program counter*)
       nbRmnITBlockInsts: INTEGER; (*Number of remaining instructions in current IT block*)
       lastInstrSetFlags*: BOOLEAN; (*TRUE if last instructions set flags*)
@@ -984,8 +985,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   END RestoreFPRegs;
   
   PROCEDURE Init*(VAR c: ModuleCode);
-  BEGIN
-    c.pc := 0;  c.lastInstrSetFlags := FALSE; c.nbRmnITBlockInsts := 0
+  BEGIN c.pc := 0;  c.lastInstrSetFlags := FALSE; c.nbRmnITBlockInsts := 0
   END Init;
 
 BEGIN
@@ -1050,3 +1050,7 @@ BEGIN
   memimm5map[STRB] := 7000H; memimm8map[STRB] := 0H;     memPUWimm8map[STRB] := STRBIT3; memimm12map[STRB] := 0F8800000H;
   memimm5shift[STRB] := 0; (*offset = ZeroExtend(imm5, 32);*)
 END OM4A.
+
+OM4Tool.DecSym OM4A2.sm4
+
+OM4Tool.DecObj OM4A2.m4c

@@ -256,7 +256,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN Files.WriteByte(R, x)
   END Write;
 
-  PROCEDURE OutType(VAR R: Files.Rider; t: Type);
+  PROCEDURE OutType(VAR R: Files.Rider; t: Type; exno: BYTE);
     VAR obj!, mod!, fld!, bot!: Object;
 
     PROCEDURE OutPar(VAR R: Files.Rider; par: Object; n: INTEGER);
@@ -266,7 +266,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         OutPar(R, par.next, n-1); cl := par.class;
         Write(R, cl);
         IF par.rdo THEN Write(R, 1) ELSE Write(R, 0) END ;
-        OutType(R, par.type)
+        OutType(R, par.type, 0)
       END
     END OutPar;
 
@@ -286,22 +286,22 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     ELSE obj := t.typobj;
       IF obj # NIL THEN Write(R, Ref); t.ref := Ref; INC(Ref) ELSE (*anonymous*) Write(R, 0) END ;
       Write(R, t.form);
-      IF t.form = Pointer THEN OutType(R, t.base)
-      ELSIF t.form = Array THEN OutType(R, t.base); Files.WriteNum(R, t.len); Files.WriteNum(R, t.size)
+      IF t.form = Pointer THEN OutType(R, t.base, obj.exno)
+      ELSIF t.form = Array THEN OutType(R, t.base, 0); Files.WriteNum(R, t.len); Files.WriteNum(R, t.size)
       ELSIF t.form = Record THEN
-        IF t.base # NIL THEN OutType(R, t.base); bot := t.base.dsc ELSE OutType(R, noType); bot := NIL END ;
-        IF obj # NIL THEN Files.WriteNum(R, obj.exno) ELSE Write(R, 0) END ;
+        IF t.base # NIL THEN OutType(R, t.base, 0); bot := t.base.dsc ELSE OutType(R, noType, 0); bot := NIL END ;
+        IF (obj # NIL) & (exno = 0) THEN exno := obj.exno END; Files.WriteNum(R, exno);
         Files.WriteNum(R, t.nofpar); Files.WriteNum(R, t.size);
         fld := t.dsc;
         WHILE fld # bot DO  (*fields*)
           IF fld.expo THEN
-            Write(R, Fld); Files.WriteString(R, fld.name); OutType(R, fld.type); FilesEx.WriteLongNum(R, fld.val) (*offset*)
+            Write(R, Fld); Files.WriteString(R, fld.name); OutType(R, fld.type, 0); FilesEx.WriteLongNum(R, fld.val) (*offset*)
           ELSE FindHiddenPointers(R, fld.type, fld.val)
           END ;
           fld := fld.next
         END ;
         Write(R, 0)
-      ELSIF t.form = Proc THEN OutType(R, t.base); OutPar(R, t.dsc, t.nofpar); Write(R, 0)
+      ELSIF t.form = Proc THEN OutType(R, t.base, 0); OutPar(R, t.dsc, t.nofpar); Write(R, 0)
       END ;
       IF (t.mno > 0) & (obj # NIL) THEN  (*re-export, output name*)
         mod := topScope.next;
@@ -328,7 +328,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     WHILE obj # NIL DO
       IF obj.expo THEN
         Write(R, obj.class); Files.WriteString(R, obj.name);
-        OutType(R, obj.type);
+        OutType(R, obj.type, 0);
         IF obj.class = Typ THEN
           IF obj.type.form = Record THEN
             obj0 := topScope.next;  (*check whether this is base of previously declared pointer types*)
