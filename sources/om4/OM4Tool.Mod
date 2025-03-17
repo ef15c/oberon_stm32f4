@@ -547,6 +547,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
     END
   END DecRAO;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 25.02.25");
+BEGIN NEW(mcode);
+  Texts.OpenWriter(W); Texts.WriteString(W, "OM4Tool 25.02.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
 END OM4Tool.

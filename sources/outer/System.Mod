@@ -575,8 +575,4 @@ BEGIN SYSTEM.GET(Kernel.bootParams+16, modBase);
   activateHandlers;
   stack := SYSTEM.VAL(StackDump, (*20000600H*) 0D0110000H); stack.len := 0; stack.cause := 0;
   stack.cfsr := {}; stack.bfar := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0;
-  Modules.Load("OnStartup", Mod);
-
-  Oberon.Loop
-
 END System.

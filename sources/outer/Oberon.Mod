@@ -457,6 +457,17 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   END installPS2IrqHandlers;
 
+  PROCEDURE initModules(m: Modules.Module);
+    VAR body: Modules.Command;
+      ba: INTEGER;
+  BEGIN
+    IF m.name # "Oberon" THEN initModules(m.next);
+      IF m.refcnt = -1 (*resident module*) THEN SYSTEM.GET(m.ent, ba);
+        body := SYSTEM.VAL(Modules.Command, m.code + ba + 1); body
+      END;
+    END
+  END initModules;
+
 BEGIN User[0] := 0X;
   Arrow.Fade := FlipArrow; Arrow.Draw := FlipArrow;
   Star.Fade := FlipStar; Star.Draw := FlipStar;
@@ -486,7 +497,12 @@ BEGIN User[0] := 0X;
   ps2[1].keyboardLED := BSP.LD3Out; ps2[1].mouseLED := BSP.LD4Out;
   PS2.InitDevice(ps2[1]);
 
-  Modules.Load("System", Mod); Mod := NIL;
+  (*Since we'll never exit this initilization block, we need to perform here
+     the initilization of the remaining resident modules*)
+  initModules(Modules.root);
+  Modules.Load("System", Mod);   Modules.Load("OnStartup", Mod); Mod := NIL;
+  Loop
+
 END Oberon.
 
 OM4Tool.DecObj Oberon.m4c

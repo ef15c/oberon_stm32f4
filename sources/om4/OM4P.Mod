@@ -1083,7 +1083,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   END Compile;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  17.03.25");
-  Texts.WriteLn(W); IF Oberon.Log # NIL THEN Texts.Append(Oberon.Log, W.buf) END;
+  Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0
 END OM4P.
