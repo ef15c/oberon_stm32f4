@@ -1,5 +1,5 @@
 MODULE AOC2024Day11;
-  IMPORT Texts, TE := TextsEx2, Oberon, System, UT := UTHash, U := AOCUtils;
+  IMPORT Texts, TE := TextsEx, Oberon, System, UT := UTHash, U := AOCUtils;
 
   TYPE
     StoneDesc = RECORD(UT.LongintHashDesc)
@@ -85,7 +85,7 @@ MODULE AOC2024Day11;
 BEGIN Texts.OpenWriter(W)
 END AOC2024Day11.
 
-OM4P2.Compile AOC2024Day11.Mod/s ~ System.Free AOC2024Day11 UTHash ~ SystemLog AOCUtils ~
+OM4P.Compile AOC2024Day11.Mod/s ~ System.Free AOC2024Day11 UTHash ~ SystemLog AOCUtils ~
 
 Partie 1: nombre de pierres = 55312
 AOC2024Day11.run 25

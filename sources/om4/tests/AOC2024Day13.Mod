@@ -1,5 +1,5 @@
 MODULE AOC2024Day13;
-  IMPORT Texts, TE := TextsEx2, Oberon, U := AOCUtils;
+  IMPORT Texts, TE := TextsEx, Oberon, U := AOCUtils;
 
   TYPE ProcessProc = PROCEDURE(dxa, dya, dxb, dyb, px, py: LONGINT);
   VAR W: Texts.Writer;
@@ -115,7 +115,7 @@ MODULE AOC2024Day13;
 BEGIN Texts.OpenWriter(W)
 END AOC2024Day13.
 
-OM4P2.Compile AOC2024Day13.Mod/s ~ System.Free AOC2024Day13 ~
+OM4P.Compile AOC2024Day13.Mod/s ~ System.Free AOC2024Day13 ~
 OM4Tool.DecObj AOC2024Day13.m4c
 
 Partie 1: jetons = 480

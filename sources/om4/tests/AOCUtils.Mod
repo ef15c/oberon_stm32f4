@@ -1,5 +1,5 @@
 MODULE AOCUtils;
-  IMPORT Texts, TE := TextsEx2, L := SystemLog;
+  IMPORT Texts, TE := TextsEx;
 
   CONST LONG_MAX* = LSL(1L, 63) - 1; BYTE_MAX* = LSL(1, 8);
 

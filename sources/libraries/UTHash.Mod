@@ -1,5 +1,5 @@
 MODULE UTHash;
-  IMPORT SYSTEM, CRC32, L := SystemLog;
+  IMPORT SYSTEM, CRC32;
   (*
   Copyright (c) 2003-2022, Troy D. Hanson  https://troydhanson.github.io/uthash/
   All rights reserved.

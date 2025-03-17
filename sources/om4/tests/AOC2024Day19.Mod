@@ -1,5 +1,5 @@
 MODULE AOC2024Day19;
-  IMPORT Texts, TE := TextsEx2, Oberon, System, U := AOCUtils, UT := UTHash, L := SystemLog;
+  IMPORT Texts, TE := TextsEx, Oberon, System, U := AOCUtils, UT := UTHash;
 
   TYPE
     Displays = POINTER TO DisplaysDesc; 
@@ -12,6 +12,10 @@ MODULE AOC2024Day19;
   VAR W: Texts.Writer; t: INTEGER;
     patterns: ARRAY 1000, 32 OF CHAR; nbp: INTEGER;
     dp, skey, freelist: Displays;
+
+  PROCEDURE init;
+  BEGIN Texts.OpenWriter(W); NEW(skey)
+  END init;
 
   PROCEDURE getHash(d: UT.Hash): INTEGER;
     VAR r: INTEGER;
@@ -69,7 +73,9 @@ PROCEDURE possible(d: ARRAY OF CHAR; pos: INTEGER): LONGINT;
     VAR S!: TE.Scanner; disp: ARRAY 100 OF CHAR; l: INTEGER; ch: CHAR;
       nbpd, i: INTEGER; nb, nbpos: LONGINT;
       de!: Displays; t!, t2!: UT.Hash;
-  BEGIN i := 0; parsePatterns(S); Texts.Read(S, ch); nbpd := 0; nbpos := 0;
+      stime: INTEGER;
+  BEGIN stime := Kernel.Time();
+    i := 0; parsePatterns(S); Texts.Read(S, ch); nbpd := 0; nbpos := 0;
     REPEAT l := 0; WHILE (ch >= "a") & (ch <= "z") DO disp[l] := ch; INC(l); Texts.Read(S, ch) END; disp[l] := 0X;
       IF l # 0 THEN nb := possible(disp, 0); INC(nbpos, nb); IF (nb # 0) THEN INC(nbpd) END END;
       (*delete non accessed elements from hash*)
@@ -85,14 +91,14 @@ PROCEDURE possible(d: ARRAY OF CHAR; pos: INTEGER): LONGINT;
     UNTIL ~((ch >= "a") & (ch <= "z"));
     Texts.WriteString(W, "Partie 1: nbpd = "); Texts.WriteInt(W, nbpd, 1); Texts.WriteLn(W);
     Texts.WriteString(W, "Partie 2: nbpos = "); TE.WriteLongInt(W, nbpos, 1); Texts.WriteLn(W);
-    Texts.Append(Oberon.Log, W.buf); dp := NIL; System.Collect
+    Texts.WriteInt(W, Kernel.Time() - stime, 1); Texts.WriteString(W, " ms"); Texts.WriteLn(W);
+    Texts.Append(Oberon.Log, W.buf); dp := NIL; System.Collect;
   END parts;
 
-BEGIN Texts.OpenWriter(W);
-  NEW(skey);
+BEGIN init
 END AOC2024Day19.
 
-OM4P2.Compile AOC2024Day19.Mod/s ~ System.Free AOC2024Day19 ~ AOC2024Day11 AOCUtils UTHash SystemLog ~
+OM4P.Compile AOC2024Day19.Mod/s ~ System.Free AOC2024Day19 ~ AOC2024Day11 AOCUtils UTHash SystemLog ~
 OM4Tool.DecObj AOC2024Day19.m4c
 
 Partie 1: nbpd = 6
@@ -112,6 +118,8 @@ bbrgwb
 
 Partie 1: nbpd = 285
 Partie 2: nbpos = 636483903099279
+136257 ms (exécution en SDRAM)
+17493 ms (exécution en Flash, données en SRAM, 8 fois plus rapide)
 AOC2024Day19.parts
 ububwuu, ub, gbwbgr, rrur, ggbuwg, uuubrwb, bww, brug, bgb, ugrbb, ggwuu, uur, wbwr, gug, gbgub, rru, urwbw, bgwgu, gguguu, wbgguuw, buubuuu, bgugrbr, wrwbr, ug, rrww, ugug, urr, ugbgbw, rugg, wrguuw, rwwbwwww, wgwbbr, bbur, wwgwr, rrug, rugugr, bbrw, wbgruw, urwbbw, bgrwgb, rgwgrr, wuruur, bruub, wg, wwguwu, bggbubbg, bu, urb, rugwuuu, gwgww, wubbg, gbb, urw, bgwrb, rrwwu, gurbrg, ggubgu, rub, rgub, buwug, rbguwwb, bgrur, bguuguu, uggbu, rug, rgrw, wr, wbbrw, ugwrwb, bugbubg, uwrb, gwwwuu, rgw, uw, grbrr, ugbwbgg, ubrr, wug, rrbgw, buru, bwb, rgwrg, gwrwubb, buruurw, bwgwg, gwbruuw, bwbr, gw, br, wgugg, gurwb, www, rgggg, rgu, grwgrwr, uru, uwu, wwuugbr, gbr, gbbwgw, wwbbrb, uubg, brgwbrr, gww, ubbg, g, bwwg, rrbb, bug, uburg, guu, rubruw, rrbr, rgwrrug, urbwrub, rubggrgb, uggw, wgu, ugw, bubbw, uwbu, wrgg, ubgub, wbu, bgrrb, gwbb, rgbu, grgu, rgb, wbw, bbbb, gbwbwbw, bur, wu, gub, wub, brg, gbrw, gwu, ru, uugw, ggwbrb, ruu, rgru, rb, ubuu, gurgbu, urww, gru, uwbb, wburw, ugbbrwgr, gg, wur, bwgbb, bgggr, wrur, buwub, uwwguuu, uww, bugb, bbg, bugbu, rubg, wuu, grgbug, wrbg, ggw, uugu, rburug, bgru, bbwuwg, gbubg, urwwgw, buu, wwb, rguu, brb, wwrwg, grb, gwbrgw, ugu, wbruu, ubb, rubgw, grrbr, r, ubbwub, urrg, rgbgu, gbwrggwb, wrg, rrr, rw, guw, wrbruurg, rgr, grrub, rrgguug, rrw, uwuu, grwu, uug, rr, ubu, gggrr, guburg, guwrb, wgwrugb, rbbgu, ugbru, buwwbur, rwwr, wwgr, bwg, rgwgg, gbgrur, wguwg, ggbrb, wgguwgg, bwr, grgur, gbwuggr, gu, urrgrw, uburu, wrbrwbwu, gruwgr, wgbgubrw, gbbg, ubw, grwwrbu, wbgw, rrbgr, rwr, ggu, bgbbwu, ww, ur, ubuuwr, wwugb, urrb, grr, grrw, rwg, wwgurwr, grbr, uub, rguurrg, uurg, urrggbu, rbrw, uwg, rgrrubgb, grbur, grgb, rurg, ugrbr, rww, bwrugu, bgwg, uguw, uwwu, ggrgbg, grg, wwu, rbgr, rggrbwuw, bgr, bwrw, wbuu, wrwbwu, wgr, ugwwwg, gggu, rwwrbrb, rrg, wrrr, rurb, wubruruw, brr, ugubw, gbuuwr, uu, gwb, bwru, wbwggug, bgu, gggrbrrg, wubu, grw, gbu, ruuu, bbwb, bw, wuw, ugrw, brurb, wuwrbr, wrb, brw, rbg, bgurb, uuw, uwur, rwwruwgu, gbuuug, urwrwugr, bgrr, gwr, wgwr, ggugu, wburwrb, rggur, ggg, rbb, gguu, wb, rwwgu, rbw, grrbuuu, rrgg, wrw, wwbg, wwg, wrww, gbug, bwubwuu, wru, ubrguu, wggg, rg, wwwb, ubr, bbw, rgwwbwwr, urbwub, rwb, urub, gguug, rburru, u, rgwr, ruwurru, rggwg, wbg, ugwbbwb, ruub, wbuw, ggr, gwwgb, bbbrru, rbub, rur, rwubbrru, bruuwg, rrrw, gwggww, rwu, rggw, gubuuw, gugbbggw, ubg, wgw, bwug, wwuruu, wbb, ubguub, rgg, brrwr, wwrgb, brrbg, uwb, w, gubuu, uggbbr, uwr, ugwg, ggwbww, bwu, ubgbu, rbbbu, brgr, bwub, uuwgu, gb, bbu, urg, rurwrbrr, rrb, ugbbru, grwrw, wwr, wbbbg, ggurbgu, rrbgrbur, rbu, gbg, rwwwr, ugr, ugrrb, uwwbugu, gbuuwg, rguubu, urruu, brgub, gwg, uuu, bgw, rgrgb, rrurb, uggr, rgbbrg, burr, wbru, wuug, rwgubuww, ugb, gggr, ugg, ruuug, brrg, wuur, wuwb, grgrrb, wgb, bb, bbr, bbrgbw, grgbr, urbb, gbw, bub, ruw, ggb, bru, wbr, wgg, grrwug, uwwgr, brru, gggbgrw, rrurbgu, wruw, wrr, ubbgb, bgguwb
 --

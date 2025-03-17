@@ -1,12 +1,10 @@
 MODULE AOC2024Day17;
-  IMPORT Texts, TE := TextsEx2, Oberon, U := AOCUtils, L := SystemLog;
+  IMPORT Texts, TE := TextsEx, Oberon, U := AOCUtils;
 
   TYPE Regs = RECORD A, B, C: LONGINT; PC: INTEGER END;
     OutProc = PROCEDURE(v: INTEGER; next: BOOLEAN; a: INTEGER): BOOLEAN;
 
    VAR W: Texts.Writer; digit: ARRAY 1024 OF INTEGER;
-
-  (*PROCEDURE pow2(n: INTEGER) = LSL(1L, n)*)
 
   PROCEDURE combine(i: INTEGER; a: LONGINT; p: ARRAY OF INTEGER);
     VAR j: INTEGER;
@@ -92,7 +90,7 @@ MODULE AOC2024Day17;
 BEGIN  Texts.OpenWriter(W)
 END AOC2024Day17.
 
-OM4P2.Compile AOC2024Day17.Mod/s ~ System.Free AOC2024Day17 SystemLog ~
+OM4P.Compile AOC2024Day17.Mod/s ~ System.Free AOC2024Day17 SystemLog ~
 OM4Tool.DecObj AOC2024Day17.m4c
 
 4,6,3,5,6,3,5,2,1,0
