@@ -160,7 +160,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   PROCEDURE SetCapsLock*(state: BOOLEAN);
     VAR rc: INTEGER;
   BEGIN
-    IF keyboard # NIL THEN BSP.Delayus(10000);
+    IF keyboard # NIL THEN BSP.Delayus(20000);
       IF state THEN INCL(KBLeds, 2) ELSE EXCL(KBLeds, 2) END;
       SendByteAsync(keyboard^, 0EDH);
       IF WaitForAnswer(keyboard^, 35) = 0FAH THEN
