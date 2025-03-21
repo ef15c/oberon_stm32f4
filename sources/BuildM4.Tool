@@ -17,17 +17,15 @@ Commands for generation of outer core
 OM4P.Compile PS2.Mod InputAzerty.Mod Display.Mod Viewers.Mod Fonts.Mod Texts.Mod
   Oberon.Mod MenuViewers.Mod TextFrames.Mod System.Mod Edit.Mod OnStartup.Mod ~
 ** optional **
-OM4L.LinkEF Modules Oberon System ~
+OM4L.LinkEF System ~
 OM4L.LoadEF System.efb OM4L.CompareEF System.efb
-OM4L.LinkEF Modules Oberon ~
-OM4L.LoadEF Oberon.efb OM4L.CompareEF Oberon.efb
 
 Commands for generation of the compiler
 OM4P.Compile TextsEx.Mod CRC32.Mod FilesEx.Mod OM4S.Mod OM4B.Mod OM4A.Mod OM4G.Mod OM4P.Mod
   OM4X.Mod FLASH.Mod OM4L.Mod OM4D.Mod OM4Tool.Mod StackTrace.Mod ~
 ** optional **
-OM4L.LinkEF Modules Oberon OM4P Edit System ~
-OM4L.LoadEF System.efb OM4L.CompareEF System.efb
+OM4L.LinkEF Modules System Edit OM4P ~
+OM4L.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
 
 Commands for generation of net
 OM4P.Compile SCC.Mod Net.Mod ~
