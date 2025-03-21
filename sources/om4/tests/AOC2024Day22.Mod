@@ -1,5 +1,5 @@
 MODULE AOC2024Day22;
-  IMPORT Texts, TE := TextsEx2, Oberon, System, U := AOCUtils, UT := UTHash, L := SystemLog;
+  IMPORT Texts, TE := TextsEx, Oberon, System, U := AOCUtils, UT := UTHash;
 
   TYPE GainDesc = RECORD(UT.IntHashDesc)
       lastBuyer, gain: INTEGER
@@ -75,7 +75,7 @@ MODULE AOC2024Day22;
 BEGIN Texts.OpenWriter(W); NEW(skey);
 END AOC2024Day22.
 
-OM4P2.Compile AOC2024Day22.Mod/s ~ System.Free AOC2024Day21 AOC2024Day20 AOC2024Day19 AOC2024Day11 AOC2024Day22 UTHash ~ testLongInt AOCUtils SystemLog ~
+OM4P.Compile AOC2024Day22.Mod/s ~ System.Free AOC2024Day21 AOC2024Day20 AOC2024Day19 AOC2024Day11 AOC2024Day22 UTHash ~ testLongInt AOCUtils SystemLog ~
 OM4Tool.DecObj AOC2024Day22.m4c
 
 Partie 1: sum = 37327623
@@ -86,6 +86,7 @@ AOC2024Day22.part1
 2024
 ~
 
+Partie 2: nb bananes = 23
 AOC2024Day22.part2
 1
 2

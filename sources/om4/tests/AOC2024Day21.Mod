@@ -1,5 +1,5 @@
 MODULE AOC2024Day21;
-  IMPORT Texts, TE := TextsEx2, Oberon, System, U := AOCUtils, UT := UTHash, L := SystemLog;
+  IMPORT Texts, TE := TextsEx, Oberon, System, U := AOCUtils, UT := UTHash;
 
   CONST ASCII_MAX = LSL(1, 7);
     MOVES_SIZE = 200;
@@ -264,7 +264,7 @@ BEGIN Texts.OpenWriter(W); NEW(skey);
 
 END AOC2024Day21.
 
-OM4P2.Compile AOC2024Day21.Mod/s ~ System.Free AOC2024Day21 testLongInt AOCUtils UTHash SystemLog ~
+OM4P.Compile AOC2024Day21.Mod/s ~ System.Free AOC2024Day21 testLongInt AOCUtils UTHash SystemLog ~
 OM4Tool.DecObj AOC2024Day21.m4c
 
 Partie 1: sc = 126384

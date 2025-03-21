@@ -1,5 +1,5 @@
 MODULE AOC2024Day20;
-  IMPORT CRC32, Texts, TE := TextsEx2, Oberon, System, U := AOCUtils, L := SystemLog;
+  IMPORT Files, FilesEx, CRC32, Texts, TE := TextsEx, Oberon, System, U := AOCUtils;
 
   CONST MAZE_SIZE = 200;
 
@@ -61,7 +61,6 @@ MODULE AOC2024Day20;
       END;
       Texts.Read(S, ch)
     END; distComputed := FALSE;
-    L.DebugInt("mazeXlen", mazeXlen, 1); L.DebugInt("mazeXlen", mazeXlen, 1);
   END parse;
 
   PROCEDURE findFlag(f: CHAR; VAR r: U.Vector);
@@ -92,7 +91,7 @@ MODULE AOC2024Day20;
       UNTIL ip = NIL;
       ip := nip;
     UNTIL ip = NIL;
-    L.DebugLongInt("Dist entr\E9e", dist(pi), 1); distComputed := TRUE
+    distComputed := TRUE
   END computeDistance;
 
   PROCEDURE storeDist*;
@@ -152,7 +151,7 @@ MODULE AOC2024Day20;
 BEGIN Texts.OpenWriter(W);
 END AOC2024Day20.
 
-OM4P2.Compile AOC2024Day20.Mod/s ~ System.Free AOC2024Day20 AOCUtils UTHash SystemLog ~
+OM4P.Compile AOC2024Day20.Mod/s ~ System.Free AOC2024Day20 AOCUtils UTHash SystemLog ~
 
 AOC2024Day20.loadDist AOC2024Day1Ex.dist
 AOC2024Day20.count20
