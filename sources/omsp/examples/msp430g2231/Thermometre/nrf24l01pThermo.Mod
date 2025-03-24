@@ -1,9 +1,9 @@
 MODULE nrf24l01pThermo;
   IMPORT M := msp430g2231, Delay := msp430delay;
 (*
- * nrrf24l01p.c
+ * nrrf24l01p.Mod
  *
- *  Created on: 1 déc. 2013
+ *  Created on: 1 dec. 2013
  *      Author: C. Schoffit
  * Oberon portage 17.03.25
 
@@ -31,6 +31,9 @@ This file is part of nrf24l01+ for msp430 project.
     (* Sorties *)
     PO_CE = M.P1OUT; CE = {4}; (* CE P1.4 *)
     PO_CSN =  M.P1OUT; CSN = {0}; (* CSN P1.0 *)
+
+    (* Interruptions *)
+    PF_IRQ* = M.P1IFG; IRQ* = {3}; (* IRQ P1.3 *)
 
     (* Commandes *)
     NOP* =  0FFH;
@@ -69,22 +72,19 @@ This file is part of nrf24l01+ for msp430 project.
     RX_DR* = {6};
     RX_EMPTY* = {0};
 
-    (* Interruptions *)
-    PF_IRQ* = M.P1IFG; IRQ* = {3}; (* IRQ P1.3 *)
-
     CPU_FREQ* = 1; (* MHz *)
 
   VAR ready*: BOOLEAN; (* Flag that indicates if the device is ready to send data *)
 
   PROCEDURE talk*(sz: INTEGER*; cmd, rep: PBYTE*);
-  (** Envoie une commande au nRF24l01p et récupère la réponse
-   *  Paramètres :
-   *  sz  (entrée) : longueur en octets de la commande et de la réponse
-   *  cmd (entrée) : pointeur sur la séquence d'octets de commande \E0 envoyer au module
-   *  rep (sortie) : pointeur sur séquence d'octets de réponse renvoyés par le module *)
+  (** Envoie une commande au nRF24l01p et recupere la reponse
+   *  Parametres :
+   *  sz  (entree) : longueur en octets de la commande et de la reponse
+   *  cmd (entree) : pointeur sur la sequence d'octets de commande a envoyer au module
+   *  rep (sortie) : pointeur sur sequence d'octets de reponse renvoyes par le module *)
     VAR i: INTEGER*;
   BEGIN
-	(* Sélection de la communication SPI avec le module *)
+	(* Selection de la communication SPI avec le module *)
 	BIC(PO_CSN^, CSN); (* CSN is going LOW *)
 
 	FOR i := sz TO 1 BY -1 DO REPEAT UNTIL M.USICNT^ = {}; (* Wait for USI availability *)
@@ -93,7 +93,7 @@ This file is part of nrf24l01+ for msp430 project.
       IF rep # NIL THEN rep^ := M.USISRL^; INC(ORD(rep)) END
       END; (* USI transmission terninated *)
 
-	(* Libération de la communication SPI avec le module *)
+	(* Liberation de la communication SPI avec le module *)
 	BIS(PO_CSN^, CSN); (* CSN is going HIGH *)
   END talk;
 
@@ -125,7 +125,9 @@ END nrf24l01pThermo.
 
 OMSPTool.DecSym nrf24l01pThermo.sms
 decode nrf24l01pThermo.sms
-nrf24l01pThermo 91FDB45D  1
+nrf24l01pThermo B74D2B31  1
+   1 PF_IRQ [^18]      35
+   1 IRQ [^6]       8
    1 NOP [^4]     255
    1 R_REGISTER [^4]       0
    1 W_REGISTER [^4]      32
@@ -157,12 +159,10 @@ nrf24l01pThermo 91FDB45D  1
    1 TX_DS [^6]      32
    1 RX_DR [^6]      64
    1 RX_EMPTY [^6]       1
-   1 PF_IRQ [^18]      35
-   1 IRQ [^6]       8
    1 CPU_FREQ [^4]       1
    2 ready [^2]     1
    1 talk [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R6 [^14] class = 2 R5 [^14] class = 2 R4 [^4])]       2
-   1 pulse [0  form = 10  size = 2 [^9] UR 0010()]       3
+   1 pulseCE [0  form = 10  size = 2 [^9] UR 0010()]       3
    1 setCE [0  form = 10  size = 2 [^9] UR 0000()]       4
    1 resetCE [0  form = 10  size = 2 [^9] UR 0000()]       5
    1 setReady [0  form = 10  size = 2 [^9] UR 0000()]       6
