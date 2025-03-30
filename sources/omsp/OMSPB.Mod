@@ -11,7 +11,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   CONST versionkey* = 1; maxTypTab = 64;
     (* class values*) Head* = 0;
       Const* = 1; Var* = 2; Par* = 3; Fld* = 4; Typ* = 5;
-      SProc* = 6; SFunc* = 7; Mod* = 8;
+      SProc* = 6; SFunc* = 7; Mod* = 8; StoredConst* = 9;
 
     (* form values*)
       Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; Set* = 6;

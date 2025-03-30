@@ -6,7 +6,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      Procedure Close writes code-files*)
 
   CONST WordSize* = 2;
-    maxStrx = 3000; maxGD = 200; maxTD = 160; maxFOS = 1000;
+    maxCox = 3000; maxGD = 200; maxTD = 160; maxFOS = 1000;
     Register* = TRUE; Stack* = FALSE;
     
     Reg = 10; RegI = 11; Cond = 12; Absol = 13; (*internal item modes*)
@@ -20,14 +20,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END ;
 
   (* Item forms and meaning of fields:
-    mode    c           a           b                      
-    ----------------------------
-    Const   -        value                           (proc adr) or (immediate or runtime value)
-    Var     base      off           -                 (direct adr)
-    Par      -          off0        off1              (indirect adr)
-    Reg     -           -            -
-    RegI    -          off           -
-    Cond   cond   Fchain  Tchain
+  mode   c       a        b
+  ----------------------------
+  Const  -     value             (proc adr) or (immediate or runtime value)
+  Var   base    off       -      (direct adr)
+  Par    -      off0     off1    (indirect adr)
+  Reg    -       -        -
+  RegI   -      off       -
+  Cond  cond   Fchain  Tchain
  
     regno is now always in reg field
  *)
@@ -49,10 +49,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     FixupAction = PROCEDURE(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN); (*fixup action*)
 
   VAR varsize: INTEGER;   (*data index*)
-    tdx, strx, mstrx, nofstrs: INTEGER;
+    tdx, cox, mcox, nofcos: INTEGER; (*object index, user tracking data index, number of stored objects*)
     gvdata: ARRAY maxGD OF FixData; (*global variables references tracking*)
     tddata: ARRAY maxTD OF INTEGER; (*type descriptors data*)
-    strdata: ARRAY maxStrx OF CHAR;
+    codata: ARRAY maxCox OF BYTE;
     entry: INTEGER;   (*main entry point*)
     AllocUp: BOOLEAN; (*if true, registers are in allocated in ascending or from R4 to R15, if false in descending order from R15 to R4*)
     RIU*, VRS: SET;      (*currently in use and variable + parameter register sets*)
@@ -240,8 +240,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       o := x.obj; ofs := x.ofs; a := x.a; c := x.c;
       IF (c = 0) & (ofs >= A.C17) THEN (*global constants with address encoded in offset*) a := ofs - A.C17; ofs := A.C16 END;
       IF (c = 0) & (ofs > A.C16) THEN (*global strings with index encoded in offset*)
-        a := ofs - A.C16; res := ORD(strdata[a]) + ORD(strdata[a + 1]) * 100H;
-        strdata[a] := CHR(mcode.pc MOD 100H); strdata[a + 1] := CHR(mcode.pc DIV 100H)
+        a := ofs - A.C16; res := codata[a] + codata[a + 1] * 100H;
+        codata[a] := mcode.pc MOD 100H; codata[a + 1] := mcode.pc DIV 100H
       ELSIF ofs >= A.C16 THEN
         IF ((x.mode = B.Var) OR (x.mode = B.Const) & (o # NIL) & (o.type.form # B.Proc)) &
           (c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
@@ -464,26 +464,42 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
 
-  PROCEDURE GetStringAddress(usedat: INTEGER): INTEGER;
-    VAR adr, ua: INTEGER;
-  BEGIN adr := 0; ua := maxStrx - WordSize; adr := 0;
-    WHILE (adr <  strx) & (ua # usedat) DO
-      WHILE strdata[adr] # 0X DO INC(adr) END; INC(adr); WHILE adr MOD WordSize # 0 DO INC(adr) END;
-      DEC(ua, WordSize)
-    END;
+  (* strdata array was initially designed to hold constant string values.
+     With the adoption of stored constants, it has been generalized to
+     hold objects that can be strings or stored constant, and renamed to codata.
+     For each object, an usage tracking descriptor is backward allocated at
+     the end of the codata array. Each descriptor has a 4 bytes length, and is 
+     composed of two words field. The first word contains the type and length
+     of the objet: the value is -1 for deduplicated zero terminated string or is
+     the length of the object (always an even number) for a stored constant. *)
+
+  PROCEDURE nextConstObject(VAR sx, msx: INTEGER);
+  BEGIN ASSERT(sx < cox);
+    IF codata[msx] = 0FFH THEN (*string*)
+      WHILE codata[sx] # 0 DO INC(sx) END; REPEAT INC(sx) UNTIL sx MOD WordSize = 0 (*skip current string*)
+    ELSE INC(sx, codata[msx] + codata[msx + 1] * 100H) (*skip current stored object*)
+    END; DEC(msx, 2*WordSize)
+  END nextConstObject;
+
+  PROCEDURE GetObjectAddress(usedat: INTEGER): INTEGER;
+    VAR adr, utdx: INTEGER;
+  BEGIN adr := 0; utdx := maxCox - 2*WordSize;
+    WHILE utdx + 2 # usedat DO nextConstObject(adr, utdx) END;
 
     RETURN adr
-  END GetStringAddress;
+  END GetObjectAddress;
 
   PROCEDURE stringFound(str: ARRAY OF CHAR; VAR usedat: INTEGER): BOOLEAN;
    (*if the string exists in table, return TRUE with the position in parameter pos*)
-    VAR found: BOOLEAN; i, pos: INTEGER;
+    VAR found: BOOLEAN; i, pos, utdx: INTEGER;
   BEGIN found := FALSE;
-    pos := 0; usedat := maxStrx;
-    WHILE ~found & (pos < strx) DO DEC(usedat, WordSize);
-      i := 0; WHILE (str[i] # 0X) & (str[i] = strdata[pos + i]) DO INC(i) END;
-      IF str[i] = strdata[pos + i] THEN found := TRUE ELSE WHILE strdata[pos + i] # 0X DO INC(i) END END;
-      INC(pos, i + 1); WHILE pos MOD WordSize # 0 DO INC(pos) END
+    pos := 0; utdx := maxCox - 2*WordSize;
+    WHILE ~found & (pos < cox) DO
+      IF codata[utdx] = 0FFH THEN (*this is a string*)
+        i := 0; WHILE (str[i] # 0X) & (str[i] = CHR(codata[pos + i])) DO INC(i) END;
+        IF str[i] = CHR(codata[pos + i]) THEN found := TRUE; usedat := utdx + 2 ELSE nextConstObject(pos, utdx) END
+      ELSE nextConstObject(pos, utdx)
+      END
     END
 
     RETURN found
@@ -494,37 +510,43 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN x.mode := B.Const; x.type := B.strType; x.b := len; x.c := 0 (*global string*);
     x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF ~stringFound(str, x.a) THEN
-      IF strx + len  + WordSize < mstrx THEN
-        FOR i := 1 TO WordSize DO DEC(mstrx); strdata[mstrx] := 0X END; (*reserve room for usage tracking data*); x.a := mstrx;
-        i := 0; WHILE len > 0 DO strdata[strx] := str[i]; INC(strx); INC(i); DEC(len) END;
-        WHILE strx MOD WordSize # 0 DO strdata[strx] := 0X; INC(strx) END; INC(nofstrs)
+      IF cox + len  + 2*WordSize < mcox THEN
+        FOR i := 1 TO WordSize DO DEC(mcox); codata[mcox] := 0 END; x.a := mcox; (*reserve room for usage tracking data*)
+        FOR i := 1 TO WordSize DO DEC(mcox); codata[mcox] := 0FFH END; (*type of string is -1*)
+        i := 0; WHILE len > 0 DO codata[cox] := ORD(str[i]); INC(cox); INC(i); DEC(len) END;
+        WHILE cox MOD WordSize # 0 DO codata[cox] := 0; INC(cox) END; INC(nofcos)
       ELSE S.Mark("too many strings")
       END
     END
   END stringPut;
 
   PROCEDURE stringPop(x: Item; VAR xs: ARRAY OF CHAR);
-    VAR sx, sxno, i: INTEGER;
-  BEGIN sxno := (maxStrx - x.a) DIV WordSize - 1; sx := 0;
-    WHILE sxno > 0 DO
-      WHILE strdata[sx] # 0X DO INC(sx) END; REPEAT INC(sx) UNTIL sx MOD WordSize = 0; (*skip current string*)
-      DEC(sxno)
+    VAR sx, msx, sxno, i: INTEGER;
+  BEGIN sxno := ((maxCox + WordSize) - x.a) DIV (2*WordSize); sx := 0; msx := maxCox - 2*WordSize;
+    WHILE sxno > 1 DO nextConstObject(sx, msx); DEC(sxno) END;
+    IF (x.a = mcox + WordSize) & (codata[mcox] = 0FFH) (*string object*) &
+      (codata[x.a] + codata[x.a + 1]*100H = 0) THEN (*string can be removed from table*)
+      cox := sx; INC(mcox, 2*WordSize); DEC(nofcos)
     END;
-    IF (x.a = mstrx) & (ORD(strdata[mstrx]) + ORD(strdata[mstrx + 1])*100H = 0) THEN (*string can be removed from table*)
-      strx := sx; INC(mstrx, 2); DEC(nofstrs)
-    END;
-    i := 0; DEC(sx); REPEAT INC(sx); xs[i] := strdata[sx]; INC(i) UNTIL strdata[sx] = 0X (*copy string in dest*)
+    i := 0; DEC(sx); REPEAT INC(sx); xs[i] := CHR(codata[sx]); INC(i) UNTIL codata[sx] = 0 (*copy string in dest*)
   END stringPop;
 
   PROCEDURE MakeStringItem*(VAR x: Item); (*copies string from OMSPS-buffer to OMSPG-string array*)
   BEGIN stringPut(x, S.str, S.slen)
   END MakeStringItem;
 
+  PROCEDURE MakeConstObject*(VAR obj: B.Object); (*allocate space for a constant object in objdata*)
+    VAR i: INTEGER;
+  BEGIN FOR i := 1 TO obj.type.size DO codata[cox] := 0FFH; INC(cox) END;
+    FOR i := 1 TO WordSize DO DEC(mcox); codata[mcox] := 0 END; obj.val := mcox; (*reserve room for usage tracking data*)
+    DEC(mcox, WordSize); codata[mcox] := obj.type.size MOD 100H; codata[mcox + 1] := obj.type.size DIV 100H;
+    INC(nofcos)
+  END MakeConstObject;
+
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: INTEGER);
-  BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.c := y.lev;
+  BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.c := y.lev; x.b := 0;
     x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
-    IF (y.class IN {B.Var, B.Par}) THEN
-      x.b := 0; x.c := y.lev;
+    IF (y.class IN {B.Var, B.Par}) THEN x.c := y.lev;
       IF y.register # 0FFH THEN
         x.reg := y.register;
         IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI END
@@ -545,6 +567,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSIF x.mode = RegI THEN INC(x.a, y.val)
     ELSIF x.mode = B.Par THEN INC(x.b, y.val)
+    ELSIF x.mode = B.StoredConst THEN x.b := y.val
     END
   END Field;
 
@@ -946,13 +969,22 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation of Assignments *)
 
   PROCEDURE StrToChar*(VAR x: Item);
-  BEGIN ASSERT(x.b = 2); x.type := B.charType;
-    DEC(strx, WordSize); INC(mstrx, WordSize); DEC(nofstrs); (*remove string from strdata table*)
-    x.a := ORD(strdata[strx])
+    VAR sc: ARRAY 2 OF CHAR;
+  BEGIN ASSERT(x.b = 2);
+    stringPop(x, sc); x.type := B.charType; x.a := ORD(sc[0])
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
-   BEGIN PutDO(A.MOV, y, x); free(y); free(x)
+    VAR adr, i: INTEGER;
+   BEGIN
+    IF x.mode = B.StoredConst THEN IF y.mode # B.Const THEN S.Mark("expression not constant") END;
+      adr := GetObjectAddress(x.a) + x.b;
+      IF y.type.form = B.Int THEN
+        FOR i := 1 TO y.type.size DO codata[adr] := y.a MOD 100H; y.a := y.a DIV 100H; INC(adr) END
+      ELSE (* TODO*) S.Mark("not implemented")
+      END
+    ELSE PutDO(A.MOV, y, x); free(y); free(x)
+    END
   END Store;
 
   PROCEDURE distance(x, y: Item; VAR d: INTEGER): BOOLEAN;
@@ -1320,7 +1352,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     FOR i := 0 TO LEN(traps) - 1 DO traps[i] := NIL END;
     FOR i := 0 TO LEN(arith) - 1 DO arith[i] := NIL END;
     FOR i := 0 TO LEN(vector) - 1 DO vector[i] := 0FFFFH END;
-    tdx := 0; strx := 0; mstrx := maxStrx; nofstrs := 0; RIU := {};
+    tdx := 0; cox := 0; mcox := maxCox; nofcos := 0; RIU := {};
     rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL; rh.mode := Reg; rh.type := B.intType;
     SetAllocationMode(Stack)
   END Open;
@@ -1422,7 +1454,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: INTEGER; codeseg: BYTE);
     VAR obj!: B.Object;
-      i, sx, suax, nofimps, fixadr, flashSize: INTEGER;
+      i, sx, utdx, nofimps, fixadr, flashSize: INTEGER;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET);
@@ -1433,7 +1465,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       obj := obj.next
     END;
     
-    flashSize := tdx*WordSize + strx + mcode.pc;
+    flashSize := tdx*WordSize + cox + mcode.pc;
     
     B.MakeFileName(name, modid, ".mpc"); (*write code file*)
     F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.WriteByte(R, codeseg);
@@ -1448,8 +1480,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     i := 0;
     WHILE i < tdx DO WriteWord(R, tddata[i]); INC(i) END ; (*type descriptors*)
     WriteWord(R, varsize);  (*data*)
-    WriteWord(R, strx);
-    FOR i := 0 TO strx-1 DO Files.Write(R, strdata[i]) END ;  (*strings*)
+    WriteWord(R, cox);
+    FOR i := 0 TO cox-1 DO Files.WriteByte(R, codata[i]) END ;  (*strings*)
     WriteWord(R, mcode.pc);  (*code len*)
     FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
     Files.WriteByte(R, LEN(vector));  (*Vectors table*)
@@ -1461,7 +1493,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF (obj.class = B.Const) & (obj.type.form IN {B.Proc, B.Handler}) THEN Files.Write(R, "c"); (*code section*) WriteWord(R, obj.val)
         ELSIF obj.class = B.Var THEN Files.Write(R, "d"); (*data section*) WriteWord(R, obj.val)
         ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN Files.Write(R, "k"); (*const section (string)*)
-          WriteWord(R, GetStringAddress(obj.val MOD 10000H))
+          WriteWord(R, GetObjectAddress(obj.val MOD 10000H))
         ELSIF obj.class = B.Typ THEN Files.Write(R, "k"); (*const sesction (tag)*)
           IF obj.type.form = B.Record THEN WriteWord(R, obj.type.len)
           ELSIF (obj.type.form = B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
@@ -1476,11 +1508,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     i := 0; WHILE gvdata[i].adr # -1 DO WriteWord(R, gvdata[i].usedat); Files.WriteByte(R, 0); WriteWord(R, gvdata[i].adr); INC(i) END; (*global variables fixup data*)
     WriteFixup(R, varFixupCond, objFixupAction); (*variable fixup data*)
     (*local strings fixup data*)
-    suax := maxStrx; sx := 0;
-    FOR i := 1 TO nofstrs DO
-      DEC(suax, 2); fixadr := ORD(strdata[suax]) + ORD(strdata[suax + 1])*100H;
+    utdx := maxCox - 2*WordSize; sx := 0;
+    FOR i := 1 TO nofcos DO
+      fixadr := codata[utdx + 2] + codata[utdx + 3]*100H;
       IF fixadr # 0 THEN WriteWord(R, fixadr); Files.WriteByte(R, 0); WriteWord(R, sx + tdx*WordSize (*skip td*)) END;
-      WHILE strdata[sx] # 0X DO INC(sx) END; REPEAT INC(sx) UNTIL sx MOD WordSize = 0
+      IF i < nofcos THEN nextConstObject(sx, utdx) END
     END;
     WriteFixup(R, constFixupCond, constFixupAction); (*fixup data for references to constants in code*)
     WriteFixup(R, typFixupCond, typFixupAction); (*fixup data for type extension*)

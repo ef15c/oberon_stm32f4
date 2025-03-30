@@ -329,8 +329,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       REPEAT S.Get(sym) UNTIL (sym >= S.char) & (sym <= S.for) OR (sym >= S.then)
     END;
     IF sym = S.ident THEN
-      qualident(obj); IF initmode & (obj.lev = 0) THEN obj.rdo := FALSE END;
-      G.MakeItem(x, obj, level); selector(x); x.rdo := TRUE;
+      qualident(obj); G.MakeItem(x, obj, level); selector(x); x.rdo := TRUE;
       IF sym = S.lparen THEN
         S.Get(sym);
         IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
@@ -514,7 +513,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         REPEAT S.Get(sym) UNTIL (sym >= S.ident)
       END ;
       IF sym = S.ident THEN
-        qualident(obj); G.MakeItem(x, obj, level);
+        qualident(obj);  IF initmode & (obj.lev = 0) THEN obj.rdo := FALSE END;
+        G.MakeItem(x, obj, level);
         IF x.mode = B.SProc THEN StandProc(obj.val)
         ELSE selector(x);
           IF sym = S.becomes THEN (*assignment*)
@@ -917,17 +917,20 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF level = 0 THEN unsafe := FALSE ELSE unsafe := containsPointer(tp) END; (*check for unsafe pointers*)
         obj := first; umm := FALSE; umf := FALSE;
         WHILE obj # NIL DO
-          IF unsafe & ~obj.unsafe THEN umm := TRUE END;
-          IF ~unsafe & obj.unsafe THEN umf := TRUE END;
           obj.type := tp; obj.lev := level;
-          IF inreg & (tp.size > 4) THEN S.Mark("reg alloc forbidden"); inreg := FALSE END;
-          IF inreg THEN obj.register := G.AllocR(); nbregs := tp.size DIV G.WordSize;
-            WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
-          ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
-            obj.register := 0FFH; obj.val := varsize; INC(varsize, tp.size)
+          IF onetimeinit THEN obj.rdo := TRUE; obj.class := B.StoredConst;
+            obj.register := 0FFH; G.MakeConstObject(obj);
+          ELSE
+            IF unsafe & ~obj.unsafe THEN umm := TRUE END;
+            IF ~unsafe & obj.unsafe THEN umf := TRUE END;
+            IF inreg & (tp.size > 4) THEN S.Mark("reg alloc forbidden"); inreg := FALSE END;
+            IF inreg THEN obj.register := G.AllocR(); nbregs := tp.size DIV G.WordSize;
+              WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
+            ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
+              obj.register := 0FFH; obj.val := varsize; INC(varsize, tp.size)
+            END;
           END;
-          IF onetimeinit THEN obj.rdo := TRUE END;
-          IF obj.expo THEN obj.exno := exno; INC(exno) END ;
+          IF obj.expo THEN obj.exno := exno; INC(exno) END;
           obj := obj.next
         END ;
         IF umm THEN S.Mark("mark unsafe vars with an exclamation mark") 
