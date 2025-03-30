@@ -157,28 +157,33 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     RETURN dev.statusIn
   END SendByte;
 
-  PROCEDURE SetCapsLock*(state: BOOLEAN);
-    VAR rc: INTEGER;
-  BEGIN
-    IF keyboard # NIL THEN BSP.Delayus(20000);
-      IF state THEN INCL(KBLeds, 2) ELSE EXCL(KBLeds, 2) END;
-      SendByteAsync(keyboard^, 0EDH);
-      IF WaitForAnswer(keyboard^, 35) = 0FAH THEN
-        SendByteAsync(keyboard^, ORD(KBLeds));
-        rc := WaitForAnswer(keyboard^, 35)
-      END
-    END    
-  END SetCapsLock;
-
-  PROCEDURE ReadId(VAR dev: DeviceDesc);
+  PROCEDURE StopReporting(VAR dev: DeviceDesc): INTEGER;
     VAR nbTries, res: INTEGER;
   BEGIN nbTries := 3;
     (*Stop reporting*)
     REPEAT DEC(nbTries);
-      SendByteAsync(dev, 0F5H);
-      res := WaitForAnswer(dev, 35)
-    UNTIL (nbTries = 0) OR (res = 0FAH);
-    nbTries := 3;
+      SendByteAsync(dev, 0F5H); res := WaitForAnswer(dev, 70)
+    UNTIL (nbTries = 0) OR (res = 0FAH)
+
+    RETURN res
+  END StopReporting;
+
+  PROCEDURE SetCapsLock*(state: BOOLEAN);
+    VAR rc: INTEGER;
+  BEGIN
+    IF (keyboard # NIL) & (StopReporting(keyboard^) = 0FAH) THEN
+      IF state THEN INCL(KBLeds, 2) ELSE EXCL(KBLeds, 2) END;
+      SendByteAsync(keyboard^, 0EDH);
+      IF WaitForAnswer(keyboard^, 35) = 0FAH THEN
+        SendByteAsync(keyboard^, ORD(KBLeds)); rc := WaitForAnswer(keyboard^, 35)
+      END;
+      SendByteAsync(keyboard^, 0F4H); rc := WaitForAnswer(keyboard^, 35) (*Enable data reporting*)
+    END
+  END SetCapsLock;
+
+  PROCEDURE ReadId(VAR dev: DeviceDesc);
+    VAR nbTries, res: INTEGER;
+  BEGIN res := StopReporting(dev);
     (*Send the read ID command*)
     REPEAT DEC(nbTries);
       SendByteAsync(dev, 0F2H);
@@ -227,7 +232,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   PROCEDURE InitDevice*(VAR dev: DeviceDesc);
   BEGIN (*Inhibit device data transmission*) SYSTEM.PUT(dev.clock_Out, LOW); BSP.Delayus(150);
-     dev.connectedDevice := NO_DEVICE; dev.direction := NONE; dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(dev.buf));
+    dev.connectedDevice := NO_DEVICE; dev.direction := NONE; dev.dest := SYSTEM.VAL(CircularBuffer, SYSTEM.ADR(dev.buf));
     dev.buf.head := 0; dev.buf.tail := 0;
     dev.activityLED := 0;
     dev.nofBitsToBeRead := 11;

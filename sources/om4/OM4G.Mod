@@ -128,12 +128,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     implemented as the trap procedure of the System module.
   *)
   VAR pos: INTEGER;
-  BEGIN 
-    IF cond # A.AL THEN A.IfThen(mcode, "", cond) END;
-    pos := S.Pos();
-    ASSERT(pos < A.C20);
-    ASSERT(num < A.C4);
-    A.Put0(mcode, A.CoP + pos DIV A.C7*A.C12 + pos MOD A.C7*A.C4 + num)
+  BEGIN
+    IF cond = A.NV THEN S.Mark("no effect")
+    ELSE
+      IF cond # A.AL THEN A.IfThen(mcode, "", cond) END;
+      pos := S.Pos();
+      ASSERT(pos < A.C20);
+      ASSERT(num < A.C4);
+      A.Put0(mcode, A.CoP + pos DIV A.C7*A.C12 + pos MOD A.C7*A.C4 + num)
+    END
   END Trap;
 
   (*  Format of pseudo operations for accessing static vars and procs
