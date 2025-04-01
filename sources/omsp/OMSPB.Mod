@@ -181,8 +181,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     ELSE NEW(t); T := t; typtab[ref] := t; t.mno := thismod.lev;
       Read(R, form); t.form := form; Files.ReadNum(R, t.size);
       IF form = Pointer THEN InType(R, thismod, t.base);
-      ELSIF form = Array THEN
-        InType(R, thismod, t.base); Files.ReadNum(R, t.len)
+      ELSIF form = Array THEN InType(R, thismod, t.base); Files.ReadNum(R, t.len)
       ELSIF form = Record THEN
         InType(R, thismod, t.base);
         IF t.base.form = NoTyp THEN t.base := NIL; obj := NIL ELSE obj := t.base.dsc END ;

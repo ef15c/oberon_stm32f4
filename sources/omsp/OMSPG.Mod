@@ -568,10 +568,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Field*(VAR x: Item; y: B.Object);   (* x := x.y *)
   BEGIN
-    IF x.mode = B.Var THEN
-      IF x.c >= 0 THEN INC(x.a, y.val)
-      ELSE (*loadAdr(x, 0FFH); x.mode := RegI; x.a := y.val*) INC(x.b,  y.val)
-      END
+    IF x.mode = B.Var THEN IF x.c >= 0 THEN INC(x.a, y.val) ELSE INC(x.b,  y.val) END
     ELSIF x.mode = RegI THEN INC(x.a, y.val)
     ELSIF x.mode IN {B.Par, B.StoredConst} THEN INC(x.b, y.val)
     END
@@ -586,12 +583,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF (y.mode = B.Const) & ((traps[1] = NIL) OR (lim >= 0)) THEN
         IF (y.a < 0) OR (lim >= 0) & (y.a >= lim) THEN S.Mark("bad index") END ;
-        IF (x.type.form # B.String) & ((x.mode # B.Var) OR (x.c >= 0) OR (y.a = 0)) THEN
-          IF x.mode IN {B.Var, RegI} THEN INC(x.a, y.a * s)
-          ELSIF x.mode = B.Par THEN x.b := y.a * s + x.b
+        IF (x.type.form # B.String) (*& ((x.mode # B.Var) OR (x.c >= 0) OR (y.a = 0))*) THEN
+          IF x.mode = B.Var THEN IF x.c >= 0 THEN INC(x.a, y.a*s) ELSE INC(x.b,  y.a*s) END
+          ELSIF x.mode = RegI THEN INC(x.a, y.a*s)
+          ELSIF x.mode = B.Par THEN INC(x.b, y.a*s)
           END
-        ELSE loadAdr(x, 0FFH) (*x.am := A.Immediate; x.ofs := A.C16; x.reg := 0; rh.reg := AllocR(); A.PutDO(mcode, A.MOV, x, rh, A.Word);
-          x.reg := rh.reg; x.mode := RegI; x.a := y.a * s; x.am := A.Register; x.ofs := 0; x.tmp := TRUE *)
+(*        ELSE typ := x.type; loadAdr(x, 0FFH); x.mode := RegI; x.a := y.a * s; x.type := typ *)
         END
       ELSE
         IF traps[1] # NIL THEN  (*check array bounds*)
