@@ -130,7 +130,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
         dest := base + inst MOD 1000000H
       ELSE (*import*)  vno := inst MOD 100H;
         SYSTEM.GET(mod.imp + (mno-1)*4, impmod);
-        SYSTEM.GET(impmod.ent + vno*4, offset);
+        SYSTEM.GET(impmod.ent + vno*4, offset); INC(offset, ASR(inst, 9));
         IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 (*thumb execution state*)
         ELSE IF varchain THEN base := impmod.data ELSE base := impmod.const END; dest := base + offset END
       END;

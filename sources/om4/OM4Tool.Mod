@@ -142,6 +142,9 @@ MODULE OM4Tool;  (*NW 18.2.2013
           Texts.WriteInt(W, 0+b4+100H*(b3+100H*b2), 1)
         ELSE IF ext = 2 THEN Texts.WriteString(W, "var(") ELSE Texts.WriteString(W, "const(") END; Texts.WriteInt(W, b4, 1);
           Texts.WriteString(W, ")");
+          IF ASR(ORD(op), 9) # 0 THEN Texts.Write(W, " ");
+            IF ASR(ORD(op), 9) > 0 THEN Texts.Write(W, "+") END; Texts.WriteInt(W, ASR(ORD(op), 9), 1)
+          END;
           IF ODD(b3) THEN Texts.WriteString(W, " Prog based") END
         END
       ELSIF ext = 3 THEN (*BL Call external procedure*)

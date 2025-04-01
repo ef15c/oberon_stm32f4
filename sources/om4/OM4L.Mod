@@ -221,7 +221,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
             dest := mod.data + inst MOD 1000000H + var.org
           ELSE (*import*)  vno := inst MOD 100H;
             SYSTEM.GET(const.start + mod.imp + (mno-1)*4, impmod);
-            SYSTEM.GET(const.start + impmod.ent + vno*4, offset);
+            SYSTEM.GET(const.start + impmod.ent + vno*4, offset); INC(offset, ASR(inst, 9));
             IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 + code.org (*thumb execution state*)
             ELSE dest := impmod.data + offset + var.org END
           END;
@@ -243,7 +243,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
               dest := mod.const + inst MOD 1000000H + const.org
             ELSE (*import*)  vno := inst MOD 100H;
               SYSTEM.GET(const.start + mod.imp + (mno-1)*4, impmod);
-              SYSTEM.GET(const.start + impmod.ent + vno*4, offset);
+              SYSTEM.GET(const.start + impmod.ent + vno*4, offset); INC(offset, ASR(inst, 9));
               IF ODD(inst DIV 100H) THEN dest := impmod.code + offset + 1 + code.org (*thumb execution state*)
               ELSE dest := impmod.const + offset + const.org END
             END;

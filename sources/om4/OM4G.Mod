@@ -159,9 +159,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     MOVT a, #imm16
      
     if nnnn < 0
-    0000/0000/0000/0000/0000/000p/vvvv/vvvv
-    a:    specified in previous instruction
-    p:    program based procedure
+    oooo/oooo/oooo/oooo/oooo/ooop/vvvv/vvvv
+    o23:  offset in bytes from the beginning of the variable,
+             between -8388608 and 8388607
+    a:      specified in previous instruction
+    p:      program based procedure
     vvv8: number of the variable or procedure
     
     else if nnnn = 0, object cannot be a constant procedure
@@ -189,9 +191,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (* MOV a, #imm16 *)
     A.Put0(mcode, a*A.C28 + (-x.r)*A.C24 + (mcode.pc-chain) DIV A.C1);
     chain := mcode.pc-4;
-    IF (x.type.form = B.Proc) & (x.r < 0) THEN progbaseIndic := A.C8 END;
+    IF x.r < 0 THEN IF x.type.form = B.Proc THEN progbaseIndic := A.C8 END;
+      INC(progbaseIndic, LSL(x.b, 9))
+    END;
     (* MOVT a, #imm16 *)
-    A.Put0(mcode, x.a)
+    A.Put0(mcode, progbaseIndic + x.a)
   END GetStaticVarAddress;
   
   PROCEDURE NilCheck(a: BYTE);
@@ -324,7 +328,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE loadTypTagAdr(T: B.Type);
     VAR x!: Item;
-  BEGIN ASSERT(T.form = B.Record); x.mode := B.Const; x.type := T; x.a := T.len; x.r := -T.mno; loadAdr(x)
+  BEGIN ASSERT(T.form = B.Record); x.mode := B.Const; x.type := T; x.a := T.len; x.b := 0; x.r := -T.mno; loadAdr(x)
   END loadTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
@@ -354,9 +358,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END MakeStringItem;
 
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: INTEGER);
-  BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.r := y.lev; x.dip :=FALSE;
-    IF y.class = B.Par THEN x.b := 0
-    ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN
+  BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.b := 0; x.rdo := y.rdo; x.r := y.lev; x.dip :=FALSE;
+    IF (y.class = B.Const) & (y.type.form = B.String) THEN
       x.a := y.val MOD 10000H; x.b := y.val DIV 10000H MOD 10000H (*len*)
     END;
     IF (y.lev > 0) & (y.lev # curlev) & (y.class # B.Const) THEN S.Mark("not accessible ") END
@@ -367,9 +370,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Field*(VAR x: Item; y: B.Object);   (* x := x.y *)
   BEGIN
     IF x.mode = B.Var THEN
-      IF x.r >= 0 THEN x.a := x.a + y.val
-      ELSE loadAdr(x); x.mode := RegI; x.a := y.val
-      END
+      IF x.r >= 0 THEN INC(x.a, y.val) ELSE (*loadAdr(x); x.mode := RegI; x.a := y.val*) INC(x.b, y.val) END
     ELSIF x.mode = RegI THEN x.a := x.a + y.val
     ELSIF x.mode = B.Par THEN x.b := x.b + y.val
     END; x.type := y.type;
@@ -401,12 +402,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       lim := x.type.len;
       IF (y.mode = B.Const) & (lim >= 0) THEN
         IF (y.a < 0) OR (y.a >= lim) THEN S.Mark("bad index") END ;
-        IF (x.mode # B.Var) OR (x.r >= 0) OR (y.a = 0) THEN
-          IF x.mode IN {B.Var, RegI} THEN INC(x.a, y.a * s)
+        (*IF (x.mode # B.Var) OR (x.r >= 0) OR (y.a = 0) THEN *)
+          IF x.mode = B.Var THEN IF x.r >= 0 THEN INC(x.a, y.a * s) ELSE INC(x.b, y.a * s) END
+          ELSIF x.mode = RegI THEN INC(x.a, y.a * s)
           ELSIF x.mode = B.Par THEN INC(x.b, y.a * s)
           END
-        ELSE GetStaticVarAddress(fixORGV, x, RH); x.mode := RegI; x.r := RH; x.a := y.a * s;
-        END
+        (*ELSE GetStaticVarAddress(fixORGV, x, RH); x.mode := RegI; x.r := RH; x.a := y.a * s;
+        END*)
       ELSE convertInt(y, B.intType); load(y);
         IF check THEN  (*check array bounds*)
           IF lim >= 0 THEN A.encCMPImm(mcode, y.r, RH, lim)
