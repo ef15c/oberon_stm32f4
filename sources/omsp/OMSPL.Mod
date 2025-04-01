@@ -76,13 +76,13 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
   (*destbase: start address of the destination, relative to flash or RAM origin
      fixbase: start address of the elements to be fixed, relative to Flash.origin*)
   PROCEDURE fixupFlash(VAR R: Files.Rider; import: ARRAY OF Module; destbase, fixbase: INTEGER);
-    VAR adr, dest, nadr: INTEGER; mno: BYTE; impmod!: Module;
+    VAR adr, ofs, dest, nadr: INTEGER; mno: BYTE; impmod!: Module;
   BEGIN
     FilesEx.ReadHalfWord(R, adr);
-    WHILE adr # 0 DO Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, dest);
+    WHILE adr # 0 DO Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, dest); FilesEx.ReadHalfWord(R, ofs);
       IF mno = 0 THEN (*current module*) INC(dest, destbase)
       ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.ent[dest]
-      END;
+      END; INC(dest, ofs);
       REPEAT INC(adr, fixbase);
         nadr := GetWordAt(adr); PutWordAt(adr, dest); adr := nadr
       UNTIL nadr = 0;
@@ -101,7 +101,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       i, n, key, impkey, nofimps, flashSize: INTEGER;
       f, w: INTEGER;  (*addresses*)
       ch: CHAR;
-      adr, nadr, dest: INTEGER;
+      adr, ofs, nadr, dest: INTEGER;
       name1, impname: ModuleName;
       F!: Files.File; R!: Files.Rider;
       import!: ARRAY 16 OF Module;
@@ -166,7 +166,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         fixupFlash(R, import, mod.codeexe, mod.codesto); (*fixup procedures*)
 
         FilesEx.ReadHalfWord(R, i); (*fixup handlers*)
-        WHILE i # 0 DO Files.ReadByte(R, mno); ASSERT(mno = 0); FilesEx.ReadHalfWord(R, dest); INC(dest, mod.codeexe);
+        WHILE i # 0 DO Files.ReadByte(R, mno); ASSERT(mno = 0); FilesEx.ReadHalfWord(R, dest);
+          FilesEx.ReadHalfWord(R, ofs); ASSERT(ofs = 0); INC(dest, mod.codeexe);
           REPEAT DEC(i, 100H);
             IF vector[i] # 0FFFFH THEN
               Texts.WriteString(W, "interrupt vector number"); Texts.WriteInt(W, i, 3); error(duphandler, name1)
@@ -177,10 +178,10 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         END;
 
         FilesEx.ReadHalfWord(R, adr); (*fixup data*)
-        WHILE adr # 0 DO Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, dest);
+        WHILE adr # 0 DO Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, dest); FilesEx.ReadHalfWord(R, ofs);
           IF mno = 0 THEN (*current module*) INC(dest, mod.data)
           ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.ent[dest]
-          END;
+          END; INC(dest, ofs);
           REPEAT INC(adr, mod.codesto);
             nadr := GetWordAt(adr); PutWordAt(adr, dest); adr := nadr
           UNTIL adr = 0;

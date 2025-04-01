@@ -6,7 +6,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      Procedure Close writes code-files*)
 
   CONST WordSize* = 2;
-    maxCox = 3000; maxGD = 200; maxTD = 160; maxFOS = 1000;
+    maxCox = 3000; maxTD = 160; maxFOS = 1000;
     Register* = TRUE; Stack* = FALSE;
     
     Reg = 10; RegI = 11; Cond = 12; Absol = 13; (*internal item modes*)
@@ -27,7 +27,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   Par    -      off0     off1    (indirect adr)
   Reg    -       -        -
   RegI   -      off       -
-  Cond  cond   Fchain  Tchain
+  Cond  cond   Fchain   Tchain
  
     regno is now always in reg field
  *)
@@ -41,8 +41,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       Segs: ARRAY maxFOS OF FrameOffsetSegment
     END;
 
-    FixData = RECORD
-      adr, usedat: INTEGER
+    FixData = POINTER TO FixDataDesc;
+    FixDataDesc = RECORD
+      adr, ofs, mno, usedat: INTEGER;
+      next: FixData
     END;
 
     FixupCond = PROCEDURE(obj: B.Object; local:BOOLEAN): BOOLEAN; (*fixup selection criteria*)
@@ -50,7 +52,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   VAR varsize: INTEGER;   (*data index*)
     tdx, cox, mcox, nofcos: INTEGER; (*object index, user tracking data index, number of stored objects*)
-    gvdata: ARRAY maxGD OF FixData; (*global variables references tracking*)
+(*TODO supprimer mcox, le bricolage associ\E9 et utiliser le m\EAme m\E9canisme de tracking que pour les donn\E9es (voir gvdata)*)
+    gvdata: FixData; (*global variables references tracking*)
     tddata: ARRAY maxTD OF INTEGER; (*type descriptors data*)
     codata: ARRAY maxCox OF BYTE;
     entry: INTEGER;   (*main entry point*)
@@ -234,20 +237,20 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END AssertionChecked;
 
   PROCEDURE GetOffset(x: A.Item): INTEGER;
-    VAR res, ofs, a, c, i: INTEGER; o!: B.Object;
+    VAR res, ofs, a, b, c: INTEGER; o!: B.Object; fd!: FixData;
   BEGIN CASE x OF
     Item:
-      o := x.obj; ofs := x.ofs; a := x.a; c := x.c;
+      o := x.obj; ofs := x.ofs; a := x.a; b := x.b; c := x.c;
       IF (c = 0) & (ofs >= A.C17) THEN (*global constants with address encoded in offset*) a := ofs - A.C17; ofs := A.C16 END;
       IF (c = 0) & (ofs > A.C16) THEN (*global strings with index encoded in offset*)
         a := ofs - A.C16; res := codata[a] + codata[a + 1] * 100H;
         codata[a] := mcode.pc MOD 100H; codata[a + 1] := mcode.pc DIV 100H
       ELSIF ofs >= A.C16 THEN
         IF ((x.mode = B.Var) OR (x.mode = B.Const) & (o # NIL) & (o.type.form # B.Proc)) &
-          (c = 0) & (o.class # B.Typ) THEN (*global variable*) i := 0;
-          WHILE (gvdata[i].adr # -1) & (gvdata[i].adr # a) DO INC(i) END;
-          IF gvdata[i].adr = -1 THEN gvdata[i].adr := a; gvdata[i].usedat := 0; gvdata[i+1].adr := -1 END;
-          res := gvdata[i].usedat; gvdata[i].usedat := mcode.pc
+          (c <= 0) & (o.class # B.Typ) THEN (*global or external variable*) fd := gvdata;
+          WHILE (fd # NIL) & ((fd.adr # a) OR (fd.ofs # x.b) OR (fd.mno # -x.c)) DO fd := fd.next END;
+          IF fd = NIL THEN NEW(fd); fd.adr := a; fd.ofs := b; fd.mno := -x.c; fd.next := gvdata; gvdata := fd END;
+          res := fd.usedat; fd.usedat := mcode.pc
         ELSE (*Imported variable or other object type*) res := o.usedat; o.usedat := mcode.pc END
       ELSE res := ofs
       END
@@ -290,6 +293,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END
       ELSE t.ofs := x.a; A.PutDO(mcode, A.MOV, t, x, A.Word)
       END
+    ELSIF x.mode = B.StoredConst THEN alloc(x, pr);
+      sva.am := A.Absolute; x.ofs := A.C16+x.a; A.PutDO(mcode, A.MOV, sva, rh, bw)
     ELSIF x.mode = B.Var THEN alloc(x, pr);
       IF x.c > 0 THEN (*local*) ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, bw)
       ELSE  sva.am := A.Absolute; A.PutDO(mcode, A.MOV, sva, rh, bw)
@@ -331,7 +336,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF i.mode = B.Par THEN rh.reg := AllocR(); INCL(nba, rh.reg);
       ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
       A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
-    ELSE load(i, 0FFH)
+    ELSIF i.mode = Cond THEN load(i, 0FFH)
+    ELSIF i.mode = B.StoredConst THEN i.reg := 0; i.am := A.Absolute; i.ofs := A.C16+i.a (*use index encoded in offset mode*)
+    ELSE S.Mark("bad mode in setRAO"); load(i, 0FFH)
     END
   END setRAO;
 
@@ -562,12 +569,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Field*(VAR x: Item; y: B.Object);   (* x := x.y *)
   BEGIN
     IF x.mode = B.Var THEN
-      IF x.c >= 0 THEN x.a := x.a + y.val
-      ELSE loadAdr(x, 0FFH); x.mode := RegI; x.a := y.val
+      IF x.c >= 0 THEN INC(x.a, y.val)
+      ELSE (*loadAdr(x, 0FFH); x.mode := RegI; x.a := y.val*) INC(x.b,  y.val)
       END
     ELSIF x.mode = RegI THEN INC(x.a, y.val)
-    ELSIF x.mode = B.Par THEN INC(x.b, y.val)
-    ELSIF x.mode = B.StoredConst THEN x.b := y.val
+    ELSIF x.mode IN {B.Par, B.StoredConst} THEN INC(x.b, y.val)
     END
   END Field;
 
@@ -977,7 +983,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
     VAR adr, i: INTEGER;
    BEGIN
-    IF x.mode = B.StoredConst THEN IF y.mode # B.Const THEN S.Mark("expression not constant") END;
+    IF x.mode = B.StoredConst THEN IF y.mode # B.Const THEN S.Mark("not allowed") END;
       adr := GetObjectAddress(x.a) + x.b;
       IF y.type.form = B.Int THEN
         FOR i := 1 TO y.type.size DO codata[adr] := y.a MOD 100H; y.a := y.a DIV 100H; INC(adr) END
@@ -1348,7 +1354,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Open*;
     VAR i: INTEGER;
-  BEGIN A.Init(mcode); gvdata[0].adr := -1; curImport := 0; frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
+  BEGIN A.Init(mcode); gvdata := NIL; curImport := 0; frmOfsSegs.NofSegs := 0; frmOfsSegs.Segs[0].ofsptos := 0;
     FOR i := 0 TO LEN(traps) - 1 DO traps[i] := NIL END;
     FOR i := 0 TO LEN(arith) - 1 DO arith[i] := NIL END;
     FOR i := 0 TO LEN(vector) - 1 DO vector[i] := 0FFFFH END;
@@ -1414,7 +1420,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE objFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
   BEGIN WriteWord(R, obj.usedat); Files.WriteByte(R, -obj.lev); (*module number*)
-    WriteWord(R, obj.val) (*local object relative address or imported object number*)
+    WriteWord(R, obj.val); (*local object relative address or imported object number*)
+    WriteWord(R, 0) (*offset*)
   END objFixupAction;
 
   PROCEDURE constFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
@@ -1422,12 +1429,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF local THEN Files.WriteByte(R, 0); (*local type*); WriteWord(R, obj.type.len) (*relative address*)
     ELSIF obj.class = B.Typ THEN Files.WriteByte(R, obj.type.mno); (*module number*); WriteWord(R, obj.type.len)
     ELSE (*exported string*) Files.WriteByte(R, -obj.lev); (*module number*); WriteWord(R, obj.val MOD 10000H) (*object number*)
-    END
+    END;
+    WriteWord(R, 0) (*offset*)
   END constFixupAction;
 
   PROCEDURE typFixupAction(VAR R: Files.Rider; obj: B.Object; local:BOOLEAN);
   BEGIN WriteWord(R, obj.val); Files.WriteByte(R, obj.type.mno); (*module number*)
-    WriteWord(R, obj.type.len) (*local object relative address or imported object number*)
+    WriteWord(R, obj.type.len); (*local object relative address or imported object number*)
+    WriteWord(R, 0) (*offset*)
   END typFixupAction;
 
   PROCEDURE WriteFixup(VAR R: Files.Rider; cond: FixupCond; action: FixupAction);
@@ -1454,7 +1463,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: INTEGER; codeseg: BYTE);
     VAR obj!: B.Object;
-      i, sx, utdx, nofimps, fixadr, flashSize: INTEGER;
+      i, sx, utdx, nofimps, fixadr, flashSize: INTEGER; fd!: FixData;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET);
@@ -1505,13 +1514,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END ;
     WriteFixup(R, procFixupCond, objFixupAction); (*procedures fixup data*)
     WriteFixup(R, handlerFixupCond, objFixupAction); (*interrupt handlers fixup data*)
-    i := 0; WHILE gvdata[i].adr # -1 DO WriteWord(R, gvdata[i].usedat); Files.WriteByte(R, 0); WriteWord(R, gvdata[i].adr); INC(i) END; (*global variables fixup data*)
+    fd := gvdata;
+    WHILE fd # NIL DO WriteWord(R, fd.usedat); Files.WriteByte(R, fd.mno); WriteWord(R, fd.adr);
+      WriteWord(R, fd.ofs); fd := fd.next END; (*global variables fixup data*)
     WriteFixup(R, varFixupCond, objFixupAction); (*variable fixup data*)
     (*local strings fixup data*)
     utdx := maxCox - 2*WordSize; sx := 0;
     FOR i := 1 TO nofcos DO
       fixadr := codata[utdx + 2] + codata[utdx + 3]*100H;
-      IF fixadr # 0 THEN WriteWord(R, fixadr); Files.WriteByte(R, 0); WriteWord(R, sx + tdx*WordSize (*skip td*)) END;
+      IF fixadr # 0 THEN WriteWord(R, fixadr); Files.WriteByte(R, 0);
+        WriteWord(R, sx + tdx*WordSize (*skip td*)); WriteWord(R, 0) (*offset*) END;
       IF i < nofcos THEN nextConstObject(sx, utdx) END
     END;
     WriteFixup(R, constFixupCond, constFixupAction); (*fixup data for references to constants in code*)

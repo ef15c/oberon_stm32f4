@@ -119,7 +119,10 @@ MODULE OMSPTool;  (*NW 18.2.2013
     ReadWord(R, data);
     WHILE data # 0 DO TextsEx.WriteHexVLen(W, data, 4, FALSE);
       Files.ReadByte(R, mno); Texts.WriteInt(W, mno, 6); Texts.Write(W, 9X);
-      ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
+      ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE);
+      ReadWord(R, data);
+      IF data # 0 THEN IF data > 0 THEN Texts.Write(W, 9X); Texts.Write(W, "+") END; Texts.WriteInt(W, data, 1) END;
+      Texts.WriteLn(W);
       ReadWord(R, data)
     END
   END fixup;
