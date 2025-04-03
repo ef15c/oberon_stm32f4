@@ -136,7 +136,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 1 THEN (*ODD*) CheckInt(x); G.Odd(x)
       ELSIF fct = 4 THEN (*ORD*)
         IF x.type.form <= B.Proc THEN G.Ord(x); IF x.type.size = 1 THEN restyp := B.byteType END
-        ELSIF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x)
+        ELSIF (x.type.form = B.String) & (G.Length(x) = 2) THEN G.StrToChar(x)
         ELSE S.Mark("bad type")
         END
       ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
@@ -269,7 +269,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           (par.type.base.form = B.Char) & (par.type.len < 0) THEN G.StringParam(x, par)
       ELSIF ~varpar & (par.type.form = B.Int) & (x.type.form = B.Int) THEN G.ValueParam(x, par)  (*BYTE*)
       ELSIF ~varpar & (par.type.form = B.Set) & (x.type.form = B.Set) THEN G.ValueParam(x, par)  (*byte SET*)
-      ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
+      ELSIF (x.type.form = B.String) & (G.Length(x) = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
         G.StrToChar(x); G.ValueParam(x, par)
       ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
           (par.type.len >= 0) & (par.type.size = x.type.size) THEN
@@ -416,9 +416,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
             ((yf = B.String) OR (yf = B.Array) & (y.type.base.form = B.Char))
           OR (yf = B.Array) & (y.type.base.form = B.Char) & (xf = B.String) THEN
         G.StringRelation(rel, x, y)
-      ELSIF (xf = B.Char) & (yf = B.String) & (y.b = 2) THEN
+      ELSIF (xf = B.Char) & (yf = B.String) & (G.Length(y) = 2) THEN
         G.StrToChar(y); G.IntRelation(rel, x, y)
-      ELSIF (yf = B.Char) & (xf = B.String) & (x.b = 2) THEN
+      ELSIF (yf = B.Char) & (xf = B.String) & (G.Length(x) = 2) THEN
         G.StrToChar(x); G.IntRelation(rel, x, y)
       ELSIF (xf = B.Int) & (yf = B.Int) THEN G.IntRelation(rel,  x, y)  (*BYTE*)
       ELSIF (xf = B.Set) & (yf = B.Set) THEN
@@ -529,7 +529,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
               G.CopyString(x, y)
             ELSIF (x.type.form = B.Int) & (y.type.form = B.Int) THEN G.Store(x, y)  (*BYTE*)
             ELSIF (x.type.form = B.Set) & (y.type.form = B.Set) THEN G.Store(x, y)  (*byte SET*)
-            ELSIF (x.type.form = B.Char) & (y.type.form = B.String) & (y.b = 2) THEN
+            ELSIF (x.type.form = B.Char) & (y.type.form = B.String) & (G.Length(y) = 2) THEN
               G.StrToChar(y); G.Store(x, y)
             ELSE S.Mark("illegal assignment")
             END
@@ -868,11 +868,11 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         S.CopyId(id); S.Get(sym); CheckExport(expo);
         IF sym = S.eql THEN S.Get(sym) ELSE S.Mark("= ?") END;
         expression(x);
-        IF (x.type.form = B.String) & (x.b = 2) THEN G.StrToChar(x) END ;
+        IF (x.type.form = B.String) & (G.Length(x) = 2) THEN G.StrToChar(x) END ;
         B.NewObj(obj, id, B.Const); obj.expo := expo;
         IF x.mode = B.Const THEN
-          IF x.type.form = B.String THEN ASSERT(x.a < 10000H); ASSERT(x.b < 10000H); IF obj.expo THEN obj.exno := exno; INC(exno) END;
-            obj.val := x.a MOD 10000H + x.b*10000H; (*for string constants, encode address and length in obj.val*)
+          IF x.type.form = B.String THEN ASSERT(x.a < 10000H); IF obj.expo THEN obj.exno := exno; INC(exno) END;
+            obj.val := x.a + G.Length(x)*10000H; (*for string constants, encode address and length in obj.val*)
           ELSE obj.val := x.a
           END; obj.type := x.type; obj.lev := x.c
         ELSE S.Mark("expression not constant"); obj.type := B.intType
