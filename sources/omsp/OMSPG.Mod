@@ -42,8 +42,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
 
     FixData = POINTER TO FixDataDesc;
-    FixDataDesc = RECORD type: B.Type;
-      adr, ofs, mno, usedat: INTEGER;
+    FixDataDesc = RECORD adr, ofs, mno: INTEGER;
+      isString: BOOLEAN; usedat: INTEGER;
       next: FixData
     END;
 
@@ -235,13 +235,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   RETURN traps[7] # NIL
   END AssertionChecked;
 
-  PROCEDURE GetFixData(VAR list: FixData; type: B.Type; adr, ofs, mno: INTEGER): FixData;
+  PROCEDURE GetFixData(VAR list: FixData; adr, ofs, mno: INTEGER): FixData;
     VAR fd!: FixData;
-  BEGIN fd := list;
-    WHILE (fd # NIL) & ((fd.type # type) OR (fd.adr # adr) OR (fd.ofs # ofs) OR (fd.mno # mno)) DO
-      fd := fd.next
-    END;
-    IF fd = NIL THEN NEW(fd); fd.type := type; fd.adr := adr; fd.ofs := ofs; fd.mno := mno; fd.next := list; list := fd END
+  BEGIN ASSERT(LSR(adr, 16) = 0); fd := list;
+    WHILE (fd # NIL) & ((fd.adr # adr) OR (fd.ofs # ofs) OR (fd.mno # mno)) DO fd := fd.next END;
+    IF fd = NIL THEN NEW(fd); fd.adr := adr; fd.ofs := ofs; fd.mno := mno; fd.next := list; list := fd END
 
     RETURN fd
   END GetFixData;
@@ -251,11 +249,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN CASE x OF
     Item:
       o := x.obj; ofs := x.ofs; a := x.a; b := x.b; c := x.c; t := x.type;
-      IF ofs > ORD({16}) THEN a := ofs - ORD({16}); ofs := ORD({16}) END; (*globals or externals with address encoded in offset*)
-      IF ofs = ORD({16}) THEN (*objects at absolute addresses*)
+      ASSERT((ofs >= -LSL(1, 15)) & (ofs < LSL(1, 16)) OR (ofs >= ORD({16})) & (ofs < ORD({16,18})));
+      IF ofs >= ORD({18}) THEN  (*globals or externals vars with address encoded in offset*)
+        fd := GetFixData(gvfix, ofs - ORD({18}), b, -c); res := fd.usedat; fd.usedat := mcode.pc
+      ELSIF ofs >= ORD({17}) THEN (*globals or externals const with address encoded in offset*)
+        fd := GetFixData(cofix, ofs - ORD({17}), b MOD 10000H, -c); res := fd.usedat; fd.usedat := mcode.pc
+      ELSIF ofs = ORD({16}) THEN (*objects at absolute addresses*)
         IF (x.mode = B.Const) & (x.type.form # B.Proc) OR (x.mode = B.StoredConst) THEN
-          fd := GetFixData(cofix, t, a, b MOD 10000H, -c); res := fd.usedat; fd.usedat := mcode.pc
-        ELSIF x.mode = B.Var THEN (*global or external variable*) fd := GetFixData(gvfix, t, a, b, -c);
+          fd := GetFixData(cofix, a MOD 10000H, b MOD 10000H, -c); res := fd.usedat; fd.usedat := mcode.pc
+        ELSIF x.mode = B.Var THEN (*global or external variable*) fd := GetFixData(gvfix, a, b, -c);
           res := fd.usedat; fd.usedat := mcode.pc
         ELSE (*Imported variable or other object type*) res := o.usedat; o.usedat := mcode.pc
         END
@@ -345,7 +347,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
       A.PutDO(mcode, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
     ELSIF i.mode = Cond THEN load(i, 0FFH)
-    ELSIF i.mode = B.StoredConst THEN i.reg := 0; i.am := A.Absolute; i.ofs := ORD({16}) (*use index encoded in offset mode*)
+    ELSIF i.mode = B.StoredConst THEN i.reg := 0; i.am := A.Absolute; i.ofs := ORD({16})
     ELSE S.Mark("bad mode in setRAO"); load(i, 0FFH)
     END
   END setRAO;
@@ -385,6 +387,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END
       ELSE t.ofs := x.a; A.PutSO(mcode, A.PUSH, t, bw)
       END
+    ELSIF x.mode = B.StoredConst THEN
+      sva.am := A.Absolute; A.PutSO(mcode, A.PUSH, sva,bw)
     ELSIF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*) ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutSO(mcode, A.PUSH, ti, bw)
       ELSE sva.am := A.Absolute; A.PutSO(mcode, A.PUSH, sva, bw)
@@ -409,13 +413,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE); x.mode := Reg; x.reg := A.SP; x.rdo := TRUE;
         IF x.a + frame # 0 THEN t.a := x.a + frame; PutDO(A.ADD, t, x) END
-      ELSE (*global or imported*) x.mode := B.Const; INC(x.a, ORD({16}))
+      ELSE (*global or imported*) x.mode := B.Const; INC(x.a, ORD({18}))
       END
     ELSIF x.mode = B.Par THEN x.mode := B.Var;
       IF x.b # 0 THEN t.a := x.b; PutDO(A.ADD, t, x) END
     ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) & (x.c <= 0) THEN x.a := ORD({16}) (*use runtime proc address*)
-    ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN INC(x.a, ORD({16}))
-    ELSIF x.mode = B.StoredConst THEN INC(x.a, ORD({16}))
+    ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN INC(x.a, ORD({17}))
+    ELSIF x.mode = B.StoredConst THEN INC(x.a, ORD({17}))
     ELSIF x.mode = RegI THEN x.mode := Reg;
       IF x.a # 0 THEN t.a := x.a; PutDO(A.ADD, t, x) END
     ELSE S.Mark("not addressable")
@@ -481,7 +485,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR found: BOOLEAN; i: INTEGER;
   BEGIN found := FALSE; fd := cofix;
     WHILE ~found & (fd # NIL) DO
-      IF fd.type = B.strType THEN
+      IF fd.isString THEN
         i := 0; WHILE (str[i] # 0X) & (str[i] = CHR(codata[fd.adr + i])) DO INC(i) END;
         IF str[i] = CHR(codata[fd.adr + i]) THEN found := TRUE END
       END;
@@ -506,8 +510,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN x.mode := B.Const; x.type := B.strType; x.b := LSL(len, 16); x.c := 0 (*global string*);
     x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF ~stringFound(str, fd) THEN
-      IF cox + len < maxCox THEN NEW(fd); fd.type := x.type; fd.adr := cox;
-        fd.next := cofix; cofix := fd;
+      IF cox + len < maxCox THEN fd := GetFixData(cofix, cox, 0, 0); fd.isString := TRUE;
         i := 0; WHILE len > 0 DO codata[cox] := ORD(str[i]); INC(cox); INC(i); DEC(len) END;
         WHILE cox MOD WordSize # 0 DO codata[cox] := 0; INC(cox) END; INC(nofcos)
       ELSE S.Mark("too many strings")
@@ -518,8 +521,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE stringPop(x: Item; VAR xs: ARRAY OF CHAR);
     VAR i: INTEGER; fd!: FixData;
-  BEGIN fd := GetFixData(cofix, x.type, x.a, 0, 0);
-    IF (x.type = B.strType) (*string object*) & (fd.usedat = 0) THEN (*string can be removed from table*)
+  BEGIN fd := GetFixData(cofix, x.a, 0, 0); ASSERT(fd.isString);
+    IF fd.usedat = 0 THEN (*string can be removed from table*)
       ASSERT(fd = cofix); cox := fd.adr; cofix := fd.next; DEC(nofcos)
     END;
     i := 0; DEC(fd.adr); REPEAT INC(fd.adr); xs[i] := CHR(codata[fd.adr]); INC(i) UNTIL codata[fd.adr] = 0 (*copy string in dest*)
@@ -530,9 +533,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END MakeStringItem;
 
   PROCEDURE MakeConstObject*(VAR obj: B.Object); (*allocate space for a constant object in codata*)
-    VAR i: INTEGER; fd!: FixData;
-  BEGIN NEW(fd); fd.adr := cox; fd.next := cofix; cofix := fd;
-    FOR i := 1 TO obj.type.size DO codata[cox] := 0FFH; INC(cox) END;
+    VAR i: INTEGER;
+  BEGIN obj.val := cox; FOR i := 1 TO obj.type.size DO codata[cox] := 0FFH; INC(cox) END;
     INC(nofcos)
   END MakeConstObject;
 
@@ -547,7 +549,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSIF (y.class = B.Const) & (y.type.form = B.String) THEN
       x.a := y.val MOD 10000H (*adr or exno*); x.b := LSL(LSR(y.val, 16), 16) (*len*);
-      fd := GetFixData(cofix, x.type, x.a, -x.c, 0) (*create fix data entry if necessary*)
+      fd := GetFixData(cofix, x.a, -x.c, 0); fd.isString := TRUE (*create fix data entry if necessary*)
     END;
     IF (y.lev > 0) & (y.lev # curlev) & (y.class # B.Const) THEN S.Mark("not accessible ") END
   END MakeItem;
@@ -556,9 +558,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Field*(VAR x: Item; y: B.Object);   (* x := x.y *)
   BEGIN
-    IF x.mode = B.Var THEN IF x.c >= 0 THEN INC(x.a, y.val) ELSE INC(x.b,  y.val) END
+    IF x.mode IN {B.Var, B.StoredConst} THEN IF x.c >= 0 THEN INC(x.a, y.val) ELSE INC(x.b,  y.val) END
     ELSIF x.mode = RegI THEN INC(x.a, y.val)
-    ELSIF x.mode IN {B.Par, B.StoredConst} THEN INC(x.b, y.val)
+    ELSIF x.mode = B.Par THEN INC(x.b, y.val)
     END
   END Field;
 
@@ -571,13 +573,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF (y.mode = B.Const) & ((traps[1] = NIL) OR (lim >= 0)) THEN
         IF (y.a < 0) OR (lim >= 0) & (y.a >= lim) THEN S.Mark("bad index") END ;
-        IF (x.type.form # B.String) (*& ((x.mode # B.Var) OR (x.c >= 0) OR (y.a = 0))*) THEN
-          IF x.mode = B.Var THEN IF x.c >= 0 THEN INC(x.a, y.a*s) ELSE INC(x.b,  y.a*s) END
-          ELSIF x.mode = RegI THEN INC(x.a, y.a*s)
-          ELSIF x.mode = B.Par THEN INC(x.b, y.a*s)
-          END
-(*        ELSE typ := x.type; loadAdr(x, 0FFH); x.mode := RegI; x.a := y.a * s; x.type := typ *)
-          ELSE ASSERT(FALSE)
+        IF (x.mode IN {B.Var, B.StoredConst}) OR (x.type.form = B.String) THEN
+          IF x.c >= 0 THEN INC(x.a, y.a*s) ELSE INC(x.b,  y.a*s) END
+        ELSIF x.mode = RegI THEN INC(x.a, y.a*s)
+        ELSIF x.mode = B.Par THEN INC(x.b, y.a*s)
         END
       ELSE
         IF traps[1] # NIL THEN  (*check array bounds*)
@@ -987,7 +986,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF y.mode = B.Par THEN oy := y.b ELSE oy := y.a END;
       d := ox - oy
     ELSIF (x.mode = B.Var) & (y.mode = B.Var) & (x.obj.lev >= 0) & (x.obj.lev = y.obj.lev) THEN d := x.a - y.a
-    ELSIF (x.mode = B.Const) & (y.mode = B.Const) & (x.c = 0) & (x.a >= ORD({16})) & (y.a >= ORD({16})) THEN d := x.a - y.a
+    ELSIF (x.mode = B.Const) & (y.mode = B.Const) & (x.c = 0) & (x.a >= ORD({17})) & (y.a >= ORD({17})) THEN d := x.a - y.a
     ELSE res := FALSE
     END
 
@@ -1487,13 +1486,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF obj.exno # 0 THEN
         IF (obj.class = B.Const) & (obj.type.form IN {B.Proc, B.Handler}) THEN Files.Write(R, "c"); (*code section*) WriteWord(R, obj.val)
         ELSIF obj.class = B.Var THEN Files.Write(R, "d"); (*data section*) WriteWord(R, obj.val)
-        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN Files.Write(R, "k"); (*const section (string)*)
-          WriteWord(R, obj.val MOD 10000H)
+        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) OR (obj.class = B.StoredConst) THEN Files.Write(R, "k"); (*const section (string, stored object)*)
+          WriteWord(R, obj.val MOD 10000H + tdx*WordSize (*skip td*))
         ELSIF obj.class = B.Typ THEN Files.Write(R, "k"); (*const sesction (tag)*)
           IF obj.type.form = B.Record THEN WriteWord(R, obj.type.len)
           ELSIF (obj.type.form = B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
             WriteWord(R,  obj.type.base.len)
           END
+        ELSE S.Mark("Unknown entry type")
         END
       END ;
       obj := obj.next
