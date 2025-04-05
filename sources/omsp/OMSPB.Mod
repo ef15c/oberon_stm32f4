@@ -247,7 +247,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           ELSE
             IF class = Const THEN IF obj.type.form = String THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END;
               IF obj.type.form = Proc THEN regRTProc(obj) END
-            ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.usedat := 0; obj.register := 0FFH
+            ELSIF class IN {Var, StoredConst} THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.usedat := 0; obj.register := 0FFH
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
@@ -351,7 +351,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           ELSIF obj.type.form = String THEN Files.WriteInt(R, obj.val DIV 10000H*10000H + obj.exno)
           ELSE Files.WriteNum(R, obj.val)
           END
-        ELSIF obj.class = Var THEN Files.WriteNum(R, obj.exno)
+        ELSIF obj.class IN {Var, StoredConst} THEN Files.WriteNum(R, obj.exno)
         END
       END ;
       obj := obj.next

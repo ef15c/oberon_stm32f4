@@ -971,7 +971,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = B.StoredConst THEN IF y.mode # B.Const THEN S.Mark("not allowed") END;
       adr := x.a + x.b;
       IF y.type.form = B.Int THEN
-        FOR i := 1 TO y.type.size DO codata[adr] := y.a MOD 100H; y.a := y.a DIV 100H; INC(adr) END
+        FOR i := 1 TO y.type.size DO IF codata[adr] # 0FFH THEN S.Mark("already set") END;
+         codata[adr] := y.a MOD 100H; y.a := y.a DIV 100H; INC(adr)
+        END
       ELSE (* TODO*) S.Mark("not implemented")
       END
     ELSE PutDO(A.MOV, y, x); free(y); free(x)
