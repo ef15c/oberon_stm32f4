@@ -2,6 +2,7 @@ MODULE Tools;   (*NW 22.2.2014*)
   IMPORT SYSTEM, Kernel, Files, Modules, Input, Texts, Viewers, MenuViewers, TextFrames, Oberon;
 
   CONST UIDRegAdr = 1FFF7A10H; (*Unique device ID register (96 bits)*)
+    DBGMCU_IDCODE = 0E0042000H; (*MCU device ID code*)
 
   VAR T: Texts.Text; V: MenuViewers.Viewer; W: Texts.Writer;
 
@@ -103,13 +104,19 @@ MODULE Tools;   (*NW 22.2.2014*)
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); Texts.Scan(S)
   END Convert;
 
-  PROCEDURE Id*;
+  PROCEDURE UId*;
   VAR data: INTEGER;
   BEGIN SYSTEM.GET(UIDRegAdr, data); Texts.WriteHex(W, data); 
     SYSTEM.GET(UIDRegAdr + 4, data); Texts.WriteHex(W, data); 
     SYSTEM.GET(UIDRegAdr + 8, data); Texts.WriteHex(W, data); 
     Texts.WriteLn(W); Texts.Append(T, W.buf)
-  END Id;
+  END UId;
+
+  PROCEDURE MCUId*;
+  VAR data: INTEGER;
+  BEGIN SYSTEM.GET(DBGMCU_IDCODE, data); Texts.WriteHex(W, data);
+    Texts.WriteLn(W); Texts.Append(T, W.buf)
+  END MCUId;
 
 BEGIN Texts.OpenWriter(W); T := TextFrames.Text(""); OpenViewer(T, "Tools.Text")
 END Tools.
@@ -120,4 +127,5 @@ Tools.Inspect adr len
 Tools.Sector secno
 Tools.ShowFile filename  (in hex)
 Tools.Convert filename  (selected text to txt-format)
-Tools.Id   (processor id)
+Tools.UId   (processor unique id)
+Tools.MCUId (MCU device ID code)
