@@ -554,7 +554,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE MakeConstObject*(VAR obj: B.Object); (*allocate space for a constant object in codata*)
     VAR i: INTEGER;
-  BEGIN obj.val := cox; FOR i := 1 TO obj.type.size DO codata[cox] := 0FFH; INC(cox) END;
+  BEGIN IF obj.type.size > 1 THEN WHILE cox MOD WordSize # 0 DO codata[cox] := 0FFH; INC(cox) END END;
+    obj.val := cox; FOR i := 1 TO obj.type.size DO codata[cox] := 0FFH; INC(cox) END;
     INC(nofcos)
   END MakeConstObject;
 
@@ -1026,7 +1027,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE StoreStruct*(VAR x, y: Item); (* x := y *)
     VAR s, pc0, pc1, d: INTEGER; t!, ti!: Item; oneReg: BOOLEAN; xtyp!, ytyp!: B.Type;
-  BEGIN IF x.mode = B.StoredConst THEN S.Mark("not implemented in StoreStruct") END;
+  BEGIN ASSERT(~ODD(x.type.size)); ASSERT(~ODD(y.type.size));
+    IF x.mode = B.StoredConst THEN S.Mark("not implemented in StoreStruct") END;
     t.mode := B.Const; t.type := B.intType; t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti := y;
     pc0 := -1; xtyp := x.type; ytyp := y.type;
     oneReg := distance(x, y, d);
@@ -1057,7 +1059,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE CopyString*(VAR x, y: Item);  (* x := y *)
      VAR len, pc0, i, dadr, sadr: INTEGER; t!,ti!, x1!: Item; ys: ARRAY S.stringBufSize OF CHAR;
-  BEGIN len := x.type.len; 
+  BEGIN ASSERT(~ODD(x.type.size));
+    len := x.type.len; 
     IF x.mode = B.StoredConst THEN
       IF (y.mode = B.Const) & (y.type.form = B.String) & (y.mode # 0) THEN
         IF len < Length(y) THEN S.Mark("string too long")

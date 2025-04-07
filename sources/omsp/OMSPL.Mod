@@ -147,8 +147,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         IF RAMAllocPtr >= RAMLimit THEN error(nospace, name1) END
       END;
       IF res = noerr THEN (*continue reading*)
-        FilesEx.ReadHalfWord(R, n); (*size of strings*)
-        WHILE n > 0 DO Files.Read(R, ch); Flash.m[f] := ORD(ch); INC(f); DEC(n) END;   (*strings*)
+        FilesEx.ReadHalfWord(R, n); (*size of stored constants*)
+        WHILE n > 0 DO Files.Read(R, ch); Flash.m[f] := ORD(ch); INC(f); DEC(n) END;
+        WHILE f MOD G.WordSize # 0 DO Flash.m[f] := 0FFH; INC(f) END; (*align to G.WordSize*)
         FilesEx.ReadHalfWord(R, n); (*In MSP430 implementation, program size is counted in bytes*)
         mod.codesto := f; mod.codesize := n;
         IF codeseg = 1 THEN mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, n)
