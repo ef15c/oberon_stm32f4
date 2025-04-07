@@ -692,14 +692,14 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END ;
       Check(S.colon, "colon expected"); Type(tp);
       IF (tp.form = B.Array) & (tp.len < 0) THEN S.Mark("dyn array not allowed") END ;
-(*Suppress alignment for record fields      IF tp.size > 1 THEN offset := (offset + (G.WordSize-1)) DIV G.WordSize * G.WordSize END ;*)
+      IF tp.size > 1 THEN offset := (offset + (G.WordSize-1)) DIV G.WordSize * G.WordSize END ;
       offset := offset + n * tp.size; off := offset; obj0 := obj;
       WHILE obj0 # bot DO obj0.type := tp; obj0.lev := 0; off := off - tp.size; obj0.val := off; obj0 := obj0.next END ;
       bot := obj;
       IF sym = S.semicolon THEN S.Get(sym) ELSIF sym # S.end THEN S.Mark(" ; or END") END
    END ;
     typ.form := B.Record; typ.dsc := bot;
-    typ.size := offset (*Suppress alginment for record size (offset + (G.WordSize - 1)) DIV G.WordSize * G.WordSize*);
+    typ.size := (offset + (G.WordSize - 1)) DIV G.WordSize * G.WordSize;
     type := typ
   END RecordType;
 
