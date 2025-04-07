@@ -188,8 +188,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
           FilesEx.ReadHalfWord(R, adr) (*go to next chain*)
         END;
 
-        fixupFlash(R, import, Flash.origin + mod.conststo, mod.codesto); (*fixup constants*)
-        fixupFlash(R, import, Flash.origin + mod.conststo, mod.conststo); (*fixup types*)
+        fixupFlash(R, import, Flash.origin + mod.conststo, mod.codesto); (*fixup constants in code space*)
+        fixupFlash(R, import, mod.data, mod.conststo); (*fixup variables in constant space*)
+        fixupFlash(R, import, Flash.origin + mod.conststo, mod.conststo); (*fixup constants in constants space*)
 
         FilesEx.ReadHalfWord(R, w);
         IF GetWordAt(mod.codesto + w) = 4130H THEN (*module init is empty*)

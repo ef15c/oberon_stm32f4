@@ -179,11 +179,12 @@ MODULE OMSPTool;  (*NW 18.2.2013
         END ;
         Texts.WriteLn(W);
       (* Sync(R); *)
-      fixup("procedures", R);
-      fixup("handlers", R);
-      fixup("data", R);
-      fixup("constants", R);
-      fixup("types", R);
+      fixup("procedures in code space", R);
+      fixup("handlers in vector space", R);
+      fixup("data in code space", R);
+      fixup("constants in code space", R);
+      fixup("variables in constant space", R);
+      fixup("constants in constant space", R);
         ReadWord(R, data); Texts.WriteString(W, "entry = "); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
         Files.Read(R, ch);
         IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
