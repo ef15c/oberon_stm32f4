@@ -136,7 +136,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 1 THEN (*ODD*) CheckInt(x); G.Odd(x)
       ELSIF fct = 4 THEN (*ORD*)
         IF x.type.form <= B.Proc THEN G.Ord(x); IF x.type.size = 1 THEN restyp := B.byteType END
-        ELSIF (x.type.form = B.String) & (G.Length(x) = 2) THEN G.StrToChar(x)
+        ELSIF (x.type.form = B.String) & (G.Length(x) = 2) THEN G.StrToChar(x); restyp := B.byteType
         ELSE S.Mark("bad type")
         END
       ELSIF fct = 5 THEN (*CHR*) CheckInt(x); G.Ord(x)
@@ -181,7 +181,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         Check(S.rbrak, "no ]")
       ELSIF sym = S.period THEN S.Get(sym);
         IF sym = S.ident THEN
-          IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base END ;
+          IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base; x.rdo := FALSE END ;
           IF x.type.form = B.Record THEN
             obj := B.thisfield(x.type); S.Get(sym);
             IF obj # NIL THEN G.Field(x, obj); x.type := obj.type
@@ -193,7 +193,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       ELSIF sym = S.arrow THEN
         S.Get(sym);
-        IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base
+        IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base; x.rdo := FALSE
         ELSE S.Mark("not a pointer")
         END
       ELSIF (sym = S.lparen) & (x.type.form IN {B.Record, B.Pointer}) THEN (*type guard*)
@@ -475,6 +475,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {21, 22} THEN 
         IF isInt THEN G.LogicalSROnExit(pno-21, x) ELSE S.Mark("not allowed here") END
       ELSIF pno = 23 THEN CheckInt(x); G.Swpb(x)
+      ELSIF pno = 24 THEN (*check if x can be a pointer on y*)
+        IF (x.type.form # B.Pointer) OR (x.type.base # y.type) THEN S.Mark("incompatible types") END;
+        G.Adr(y); G.Store(x, y)
       ELSE ASSERT(FALSE)
       END
     ELSE S.Mark("wrong nof parameters")

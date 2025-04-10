@@ -428,13 +428,14 @@ BEGIN
   enter("AND", SProc, noType, 82); (*91, 101 and 123 are in SYSTEM pseudo-module*)
   enter("CLRC", SProc, noType, 130);
   enter("NOP", SProc, noType, 140);
-  enter("ADC", SProc, intType, 152);
-  enter("SBC", SProc, intType, 162);
-  enter("RLA", SProc, intType, 172);
-  enter("RLC", SProc, intType, 181);
-  enter("RRA", SProc, intType, 192);
-  enter("RRC", SProc, intType, 201); (*211 and 221 are in SYSTEM pseudo-module*)
+  enter("ADC", SProc, noType, 152);
+  enter("SBC", SProc, noType, 162);
+  enter("RLA", SProc, noType, 172);
+  enter("RLC", SProc, noType, 181);
+  enter("RRA", SProc, noType, 192);
+  enter("RRC", SProc, noType, 201); (*211 and 221 are in SYSTEM pseudo-module*)
   enter("SWPB", SProc, intType, 231);
+  enter("PTR", SProc, noType, 242);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BYTESET", Typ, byteSetType, 0);
   enter("BOOLEAN", Typ, boolType, 0);

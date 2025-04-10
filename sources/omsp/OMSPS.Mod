@@ -13,7 +13,7 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   
   CONST IdLen* = 32;
     NKW = 34;  (*nof keywords*)
-    maxExp = 38; stringBufSize* = 256;
+    maxExp = 38; stringBufSize* = 1024;
   
     (*lexical symbols*)
     null = 0; times* = 1; rdiv* = 2; div* = 3; mod* = 4;
@@ -120,7 +120,7 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
       ELSIF ("A" <= ch) & (ch <= "F") THEN n := ORD(ch) - 37H
       ELSE n := 0; Mark("hexdig expected")
       END ;
-      IF i < stringBufSize THEN str[i] := CHR(m*10H + n); INC(i) ELSE Mark("string too long") END ;
+      IF i < stringBufSize THEN str[i] := CHR(m*10H + n); INC(i) ELSE Mark("hex string too long") END ;
       Texts.Read(R, ch)
     END ;
     Texts.Read(R, ch); slen := i  (*no 0X appended!*)

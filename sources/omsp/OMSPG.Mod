@@ -6,7 +6,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      Procedure Close writes code-files*)
 
   CONST WordSize* = 2;
-    maxCox = 3000; maxTD = 160; maxFOS = 1000;
+    maxCox = 10000; maxTD = 160; maxFOS = 1000;
     Register* = TRUE; Stack* = FALSE;
 
     Reg = 10; RegI = 11; Cond = 12; Absol = 13; (*internal item modes*)
@@ -348,8 +348,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba, bw: SET);
     VAR ti!: Item;
-  BEGIN IF (op = A.PUSH) OR (op = A.CALL) THEN dst := FALSE END;
-    IF ~((dst OR (i.type.size = 2) OR (bw = A.Byte))) THEN S.Mark("move byte to int") END;
+  BEGIN IF ~dst & (i.type.size = 1) & (bw = A.Word) THEN S.Mark("move byte to int") END;
+    IF (op = A.PUSH) OR (op = A.CALL) THEN dst := FALSE END;
     IF i.type.size = 1 THEN bw := A.Byte END;
     IF dst & i.rdo & ((i.mode = B.Const) OR (op # A.CMP) & (op # A.BIT)) THEN load(i, 0FFH)
     ELSIF i.mode = B.Var THEN
@@ -390,14 +390,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE push(VAR x: Item; dsize: INTEGER);
     VAR pc0, pc1: INTEGER; bw: SET; t!, ti!, sva!: Item;
-  BEGIN
-    bw := A.Word;
+  BEGIN bw := A.Word;
     IF x.type.size = 1 THEN
       IF dsize = 1 THEN bw := A.Byte ELSE (*convert byte to word before push*) load(x, 0FFH); x.type := B.intType END
     END;
     adjFrmOfs(WordSize); t := x; t.reg := 0; t.am := A.Immediate;
     ti.am := A.Indexed; ti.obj := NIL; sva := x; sva.ofs := ORD({16});
-  (*  IF x.type.size = 1 THEN bw := A.Byte ELSE bw := A.Word END; *)
     IF x.mode = Reg THEN PutSO(A.PUSH, x)
     ELSIF x.mode = B.Const THEN
       IF x.type.form = B.Proc THEN
