@@ -417,6 +417,7 @@ BEGIN
   enter("LEN", SFunc, intType, 61);
   enter("TOSET", SFunc, setType, 71);
   enter("BIT", SFunc, boolType, 142);
+  enter("PTR", SFunc, noType, 152);
   enter("INC", SProc, noType, 1); (*procedures*)
   enter("DEC", SProc, noType, 11);
   enter("INCL", SProc, noType, 22);
@@ -435,7 +436,6 @@ BEGIN
   enter("RRA", SProc, noType, 192);
   enter("RRC", SProc, noType, 201); (*211 and 221 are in SYSTEM pseudo-module*)
   enter("SWPB", SProc, intType, 231);
-  enter("PTR", SProc, noType, 242);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BYTESET", Typ, byteSetType, 0);
   enter("BOOLEAN", Typ, boolType, 0);
@@ -454,7 +454,7 @@ BEGIN
   enter("CMP", SFunc, boolType, 223);
   enter("SIZE", SFunc, intType, 181);
   enter("ADR", SFunc, intType, 171);
-  enter("VAL", SFunc, intType, 162);
+  enter("VAL", SFunc, noType, 162);
   enter("BIC_SR", SProc, noType, 91); (*procedures*)
   enter("BIS_SR", SProc, noType, 101);
   enter("COPY", SProc, noType, 123);

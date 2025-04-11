@@ -145,9 +145,14 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 7 THEN (*TOSET*) CheckInt(x)
       ELSIF fct = 14 THEN (*BIT*)
         IF (x.type.form IN {B.Int, B.Set}) & (y.type.form IN {B.Int, B.Set}) THEN G.Bit(x, y) ELSE S.Mark("bad type") END
+      ELSIF fct = 15 THEN (*PTR: make a type checked pointer of type x pointing on y*)
+        IF x.mode # B.Typ THEN S.Mark("first op is not a type")
+        ELSIF x.type.base # y.type THEN S.Mark("incompatible types")
+        ELSE restyp := x.type; G.Adr(y); x :=  y
+        END
       ELSIF fct = 16 THEN (*VAL*)
         IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; G.Val(y, restyp); x := y;
-          IF x.obj # NIL THEN x.rdo := x.obj.rdo END; (*allow updating of the parameter*)
+          IF x.obj # NIL THEN x.rdo := x.obj.rdo END (*allow updating of the parameter*)
         ELSE S.Mark("casting not allowed")
         END
       ELSIF fct = 17 THEN (*ADR*) G.Adr(x)
@@ -475,9 +480,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {21, 22} THEN 
         IF isInt THEN G.LogicalSROnExit(pno-21, x) ELSE S.Mark("not allowed here") END
       ELSIF pno = 23 THEN CheckInt(x); G.Swpb(x)
-      ELSIF pno = 24 THEN (*check if x can be a pointer on y*)
-        IF (x.type.form # B.Pointer) OR (x.type.base # y.type) THEN S.Mark("incompatible types") END;
-        G.Adr(y); G.Store(x, y)
       ELSE ASSERT(FALSE)
       END
     ELSE S.Mark("wrong nof parameters")
