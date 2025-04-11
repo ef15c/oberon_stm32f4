@@ -263,7 +263,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END test5;
 *)
 
-BEGIN BSP.InitDisplay;
+BEGIN (*BSP.InitDisplay;*)
   arrow := SYSTEM.ADR($ 0F00 0F00
      00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
      00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00

@@ -648,7 +648,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   PROCEDURE InitDisplay*;
     VAR reg: SET;
       i: INTEGER; r, g, b: BYTE;
-  BEGIN Display_InitGPIOs;
+  BEGIN Display_InitGPIOs; reg := {0, 2, 5, 8, 10, 13, 16, 18, 21, 24, 26, 29};
+    FOR i := 0 TO Display_Height*Display_Pitch - 4 BY 4 DO SYSTEM.PUT(Display_FBA + i, reg) END; (*CLear screen*)
     (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
     SYSTEM.GET(RCC_BASE + PLLSAICFGR, reg);
     SYSTEM.PUT(RCC_BASE + PLLSAICFGR, reg - (PLLSAINm + PLLSAIRm) + SYSTEM.VAL(SET, LSL(160, 6) + LSL(2, 28))); (*PLLSAIN = 160, PLLSAIR = 2*)
