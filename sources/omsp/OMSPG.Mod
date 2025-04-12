@@ -140,9 +140,19 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN A.FixOne(mcode, at)
   END FixOne;
 
-  PROCEDURE FixLink*(L: INTEGER);
+  PROCEDURE FixLinkWith*(L, dst: INTEGER);
+    VAR L1: INTEGER;
   BEGIN
-    A.FixLink(mcode, L)
+    IF A.enabled THEN
+      WHILE L # 0 DO L1 := L - (mcode.code[L+1] MOD ORD({2})*ORD({8}) + mcode.code[L])*2;
+        A.fix(mcode, L, dst-L-2);
+        IF L = L1 THEN L := 0 (*force exit*) ELSE L := L1 END;
+      END
+    END
+  END FixLinkWith;
+
+  PROCEDURE FixLink*(L: INTEGER);
+  BEGIN FixLinkWith(L, mcode.pc)
   END FixLink;
 
   PROCEDURE SetAllocationMode*(mode: BOOLEAN);
@@ -597,6 +607,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.c >= 0 THEN INC(x.a, y.a*s) ELSE INC(x.b,  y.a*s) END
         ELSIF x.mode = RegI THEN INC(x.a, y.a*s)
         ELSIF x.mode = B.Par THEN INC(x.b, y.a*s)
+        ELSE S.Mark("bad mode in index")
         END
       ELSE
         IF traps[1] # NIL THEN  (*check array bounds*)
@@ -610,7 +621,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           Trap(A.C, 1) (*MSP430 inverts the carry with SUB and CMP instructions*)
         END;
         IF s # 1 THEN t.mode := B.Const; t.type := B.intType; t.a := s; PutDO(A.MUL, t, y) END;
-        IF (x.mode = B.Var) OR (x.type.form = B.String) THEN load(y, 0FFH); y.type := B.intType; typ := x.type;
+        IF (x.mode IN {B.Var, B.StoredConst}) OR (x.type.form = B.String) THEN
+          load(y, 0FFH); y.type := B.intType; typ := x.type;
           IF x.c > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
           ELSE Adr(x); PutDO(A.ADD, x, y); x.a := 0
           END;
@@ -618,8 +630,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         ELSIF x.mode = B.Par THEN load(y, 0FFH); t.mode := B.Var;
           t.c := x.c; t.a := x.a; t.tmp := FALSE; t.obj := x.obj; t.type := B.intType; PutDO(A.ADD, t, y); free(t);
           free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.tmp := TRUE
-        ELSIF x.mode = RegI THEN x.mode := Reg; t := x; t.type := B.intType; PutDO( A.ADD, t, y);
-          free(x); x.mode := RegI; x.reg := y.reg; x.tmp := TRUE
+        ELSIF x.mode IN {RegI, Absol} THEN t := x;
+           IF (x.mode = RegI) THEN t.mode := Reg ELSE t.mode := B.Const END;
+           t.type := B.intType; PutDO( A.ADD, t, y); free(x);
+           x.mode := RegI; x.reg := y.reg; x.a := 0; x.tmp := TRUE
+        ELSE S.Mark("bad mode in index")
         END
       END
     END
@@ -627,9 +642,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF (x.mode IN {B.Var, B.Par, RegI}) THEN load(x, 0FFH); NilCheck(x.reg); x.mode := RegI; x.a := 0
+    IF (x.mode IN {B.Var, B.StoredConst, B.Par, RegI}) THEN load(x, 0FFH); NilCheck(x.reg); x.mode := RegI; x.a := 0
     ELSIF x.mode = Reg THEN x.mode := RegI; x.a := 0
-    ELSIF x.type.form = B.Pointer THEN x.mode := Absol; x.b := 0
+    ELSIF (x.mode = B.Const) & (x.type.form = B.Pointer) THEN x.mode := Absol
     ELSE S.Mark("bad mode in DeRef")
     END; x.b := 0
   END DeRef;
@@ -689,11 +704,17 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     x.c := A.negated(x.c); t := x.a; x.a := x.b; x.b := t
   END Not;
 
+  PROCEDURE PutJFix(cond: BYTE; adr: INTEGER);
+    VAR offset: INTEGER;
+  BEGIN IF adr = 0 THEN offset := 0 ELSE offset := mcode.pc - adr END;
+    A.PutJ(mcode, cond, offset)
+  END PutJFix;
+
   PROCEDURE And1*(VAR x: Item);   (* x := x & *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.PutJ(mcode, A.negated(x.c), x.a);
-    x.a := mcode.pc-2; A.FixLink(mcode, x.b); x.b := 0
+    PutJFix(A.negated(x.c), x.a);
+    x.a := mcode.pc-2; FixLink(x.b); x.b := 0
   END And1;
 
   PROCEDURE And2*(VAR x, y: Item);
@@ -705,8 +726,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Or1*(VAR x: Item);   (* x := x OR *)
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    A.PutJ(mcode, x.c, x.b);
-    x.b := mcode.pc-2; A.FixLink(mcode, x.a); x.a := 0
+    PutJFix(x.c, x.b);
+    x.b := mcode.pc-2; FixLink(x.a); x.a := 0
   END Or1;
 
   PROCEDURE Or2*(VAR x, y: Item);
@@ -1157,7 +1178,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF w.a < 0 THEN PutDO(A.CMP, z, x)
     ELSE S.Mark("zero increment")
     END;
-    L := mcode.pc; A.PutJ(mcode, A.L, 0); free(z)
+    L := mcode.pc; PutJFix(A.L, 0); free(z)
   END For1;
 
   PROCEDURE For2*(VAR x, y, w: Item);
@@ -1172,14 +1193,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Here;
 
   PROCEDURE FJump*(VAR L: INTEGER);
-  BEGIN A.PutJ(mcode, A.AL, L); L := mcode.pc - 2
+  BEGIN PutJFix(A.AL, L); L := mcode.pc - 2
   END FJump;
 
   PROCEDURE CFJump*(VAR x: Item);
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
-    IF x.c # A.AL THEN A.PutJ(mcode, A.negated(x.c), x.a); x.a := mcode.pc - 2 END;
-    A.FixLink(mcode, x.b)
+    IF x.c # A.AL THEN PutJFix(A.negated(x.c), x.a); x.a := mcode.pc - 2 END;
+    FixLink(x.b)
   END CFJump;
 
   PROCEDURE BJump*(L: INTEGER);
@@ -1190,11 +1211,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF x.mode # Cond THEN loadCond(x) END;
     IF x.c # A.AL THEN A.PutJ(mcode, A.negated(x.c), L - mcode.pc - 2) END;
-    A.FixLink(mcode, x.b); A.FixLinkWith(mcode, x.a, L)
+    FixLink(x.b); FixLinkWith(x.a, L)
   END CBJump;
 
   PROCEDURE Fixup*(VAR x: Item);
-  BEGIN A.FixLink(mcode, x.a)
+  BEGIN FixLink(x.a)
   END Fixup;
 
   PROCEDURE Enter*(size: INTEGER; int: BOOLEAN; savedregs: SET);
@@ -1254,9 +1275,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       pc0 := 0;
       IF x.mode # Cond THEN loadCond(x) END;
       IF x.a = 0 THEN cond := A.negated(x.c);
-      ELSE pc0 := mcode.pc; A.PutJ(mcode, x.c, 0); A.FixLink(mcode, x.a); cond := A.AL
+      ELSE pc0 := mcode.pc; PutJFix(x.c, 0); FixLink(x.a); cond := A.AL
       END;
-      Trap(cond, 7); A.FixLink(mcode, x.b);
+      Trap(cond, 7); FixLink(x.b);
       IF pc0 # 0 THEN A.fix(mcode, pc0, mcode.pc - pc0 - 2) END
     END
   END Assert;

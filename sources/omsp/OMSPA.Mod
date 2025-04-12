@@ -80,7 +80,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     FreeRegisterProc* = PROCEDURE(r: INTEGER);
 
   VAR getOfs : GetOffsetProc; allocR: AllocRegisterProc; freeR: FreeRegisterProc;
-    enabled: BOOLEAN;
+    enabled*: BOOLEAN;
     PutSO0: PROCEDURE(VAR c: ModuleCode; op: INTEGER; ds: Item; params: SET);
 
   PROCEDURE SetProcs*(ofsp: GetOffsetProc; ar: AllocRegisterProc; fr: FreeRegisterProc);
@@ -219,8 +219,10 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     |opcC/nd  /   o/ffse/t   | *)
 
   PROCEDURE PutJ*(VAR c: ModuleCode; cond: BYTE; offset: INTEGER);
-  BEGIN (*emit jump instruction*) IF cond = NV THEN S.Mark("invalid cond code"); enabled := FALSE END; ASSERT (cond <= 8); ASSERT(~ODD(offset));
-    IF enabled THEN offset := LSR(offset, 1);
+  BEGIN (*emit jump instruction*) ASSERT (cond <= 8);
+    ASSERT(~ODD(offset)); offset := LSR(offset, 1); ASSERT(offset >= - ORD({9})); ASSERT(offset < ORD({9}));
+    IF cond = NV THEN S.Mark("invalid cond code"); enabled := FALSE END;
+    IF enabled THEN
       c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8) MOD 4;
       c.code[c.pc]   := offset MOD ORD({8});
       c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
@@ -265,23 +267,6 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   BEGIN 
     IF enabled THEN fix(c, at, c.pc-at-2) END
   END FixOne;
-
-  PROCEDURE FixLink*(VAR c: ModuleCode; L: INTEGER);
-    VAR L1: INTEGER;
-  BEGIN
-    IF enabled THEN WHILE L # 0 DO L1 := (c.code[L+1] MOD ORD({2})*ORD({8}) + c.code[L])*2; fix(c, L, c.pc-L-2); L := L1 END END
-  END FixLink;
-
-  PROCEDURE FixLinkWith*(VAR c: ModuleCode; L0, dst: INTEGER);
-    VAR L1: INTEGER;
-  BEGIN
-    IF enabled THEN
-      WHILE L0 # 0 DO
-        L1 := (c.code[L0+1] MOD ORD({2})*ORD({8}) + c.code[L0])*2;
-        fix(c, L0, dst-L0-2); L0 := L1
-      END
-    END
-  END FixLinkWith;
 
   PROCEDURE merged*(VAR c: ModuleCode; L0, L1: INTEGER): INTEGER;
     VAR L2, L3: INTEGER;
