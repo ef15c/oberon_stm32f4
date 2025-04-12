@@ -154,7 +154,6 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
       END;
       IF Text.hasCar THEN pos := Text.carloc.pos ELSE pos := 0 END;
       len := Text.text.len;
-ASSERT(pos >= 0);
       Texts.OpenReader(R, Text.text, pos);
       Forward(M, R, buf); pos := pos + M;
       j := M;
