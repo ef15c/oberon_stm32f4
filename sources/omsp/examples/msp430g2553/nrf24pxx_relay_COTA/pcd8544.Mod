@@ -1,5 +1,5 @@
 MODULE pcd8544;
-  IMPORT M := msp430g2553;
+  IMPORT M := msp430g2553, MP := MultiPrecisionArith;
   (*
    *
    *  Created on: 24 avr. 2013
@@ -23,7 +23,8 @@ MODULE pcd8544;
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *)
 
-  CONST PO_NCE = M.P2OUT; NCE = {5}; (*P2.5*) PO_DC = M.P2OUT; DC = {6}; (*P2.6*)
+  CONST PO_NCE = M.P2OUT; NCE = {5}; (*LCD selection pin*)
+    (*P2.5*) PO_DC = M.P2OUT; DC = {6}; (*P2.6*)
     PO_NRST* = M.P2OUT; NRST* = {7}; (*P2.7*) PO_NLIGHT* = M.P1OUT; NLIGHT* = {0}; (*P1.0*)
 
 (*
@@ -102,13 +103,14 @@ MODULE pcd8544;
   VAR (*Store LCD state cannot be queried from the device, so must be memorized*)
     XAddr, YAddr: BYTE; FunctionSet: BYTESET;
 
-  PROCEDURE send(d: SET);
+  PROCEDURE send(d: SET*);
   (*send a command or data to LCD*)
-  BEGIN (*Memorize state of LCD screen*)
+  BEGIN BIC(PO_NCE^, NCE); (*Select LCD for SPI communication*)
+    (*Memorize state of LCD screen*)
     IF d*FUNCTION_SET_MASK = FUNCTION_SET THEN FunctionSet := d
-	ELSIF ~(H IN FunctionSet) & (d*SET_Y_ADDRESS_MASK = SET_Y_ADDRESS) THEN
+    ELSIF ~(H IN FunctionSet) & (d*SET_Y_ADDRESS_MASK = SET_Y_ADDRESS) THEN
       YAddr := ORD(d*(SET_Y_ADDRESS_MASK/INVERT))
-	ELSIF ~(H IN FunctionSet) & (d*SET_X_ADDRESS_MASK = SET_X_ADDRESS) THEN
+    ELSIF ~(H IN FunctionSet) & (d*SET_X_ADDRESS_MASK = SET_X_ADDRESS) THEN
       XAddr := ORD(d*(SET_X_ADDRESS_MASK/INVERT))
     ELSIF DATA IN d THEN (*Send data : need to update X and Y addresses*)
       IF  V IN FunctionSet THEN INC(YAddr); (*One bank down to the bottom*)
@@ -124,8 +126,9 @@ MODULE pcd8544;
 
     IF DATA IN d THEN BIS(PO_DC^, DC) ELSE BIC(PO_DC^, DC) END; (*Set Data/Command line for Nokia 5110 LCD*)
     REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (*Wait for USCI availability*)
-	M.UCA0TXBUF^ := ORD(d); (*USCI A is ready, send character*)
+    M.UCA0TXBUF^ := ORD(d); (*USCI A is ready, send character*)
     REPEAT UNTIL ~BIT(M.UCA0STAT^, M.UCBUSY); (*Wait for end of transmission*)
+    BIS(PO_NCE^, NCE); (*Release LCD for SPI communication*)
   END send;
 
   PROCEDURE writeChar*(car: CHAR);
@@ -136,8 +139,8 @@ MODULE pcd8544;
     IF car > 7EX (*Load accent in compose character*) THEN composeChar := car
     ELSE
       FOR i := 0 TO 4 DO (*Compose character with accent and send it to LCD*)
-        column := TOSET(ORD(font[(ORD(car) - 20H)*GLYPH_WIDTH + i]));
-        IF composeChar # 0X THEN BIS(column, composeFont[(ORD(composeChar) - 7FH)*GLYPH_WIDTH + i]) END;
+        column := TOSET(ORD(font[i + (ORD(car) - 20H)*GLYPH_WIDTH]));
+        IF composeChar # 0X THEN BIS(column, composeFont[i + (ORD(composeChar) - 7FH)*GLYPH_WIDTH]) END;
         send({DATA} + column);
       END; send({DATA}); (*Space between characters*) composeChar := 0X
     END
@@ -155,21 +158,21 @@ MODULE pcd8544;
   BEGIN oldFunctionSet := FunctionSet; (* Store current Function set in order to restore it before return *)
     IF H IN FunctionSet THEN send(FUNCTION_SET) END; (*Request basic instruction set*)
     send(SET_X_ADDRESS + TOSET(xAddr)); send(SET_Y_ADDRESS + TOSET(yAddr));
-	IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END; (*Restore previous function set*)
+    IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END; (*Restore previous function set*)
   END setAddr;
 
   PROCEDURE clear*;
     VAR i: INTEGER;
   BEGIN setAddr(0, 0); (*Set X=0, Y=0*)
-    FOR i := HPIXELS*VBANKS - 1 TO 0 DO send({DATA}) END (*Clear RAM*)
+    FOR i := HPIXELS*VBANKS - 1 TO 0 BY -1 DO send({DATA}) END (*Clear RAM*)
   END clear;
 
   PROCEDURE init*;
   BEGIN send(FUNCTION_SET + {H}); (* function set PD = 0 and V = 0, select extended instruction set (H = 1 mode) *)
-	send(TEMP_CONTROL); (*set TC = 00 *) send(BIAS_SYSTEM + TOSET(3)); (*set BS = 011*)
+    send(TEMP_CONTROL); (*set TC = 00 *) send(BIAS_SYSTEM + TOSET(3)); (*set BS = 011*)
     send(SET_VOP +  TOSET(3AH)); (* set VOP =  a+58 x b [V]*)
-	send(FUNCTION_SET); (*select normal instruction set (H = 0 mode)*)
-	send(DISPLAY_CONTROL + {D}); (*display control set normal mode (D = 1 and E = 0)*)
+    send(FUNCTION_SET); (*select normal instruction set (H = 0 mode)*)
+    send(DISPLAY_CONTROL + {D}); (*display control set normal mode (D = 1 and E = 0)*)
   END init;
 
   PROCEDURE setVop*(vop: INTEGER);

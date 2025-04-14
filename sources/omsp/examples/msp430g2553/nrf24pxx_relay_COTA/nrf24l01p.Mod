@@ -59,9 +59,9 @@ MODULE nrf24l01p;
     STATUS* = TOSET(7);
     OBSERVE_TX* = TOSET(8);
     RPD* = TOSET(9);
-    RX_ADDR_P0* = TOSET( 0AH);
+    RX_ADDR_P0* = TOSET(0AH);
     TX_ADDR* = TOSET(10H);
-    RX_PW_P0* = TOSET( 11H);
+    RX_PW_P0* = TOSET(11H);
     FIFO_STATUS* = TOSET(17H);
     DYNPD* = TOSET(1CH);
     FEATURE* = TOSET(1DH);
@@ -101,15 +101,15 @@ MODULE nrf24l01p;
 
   VAR p1InterruptMask*, p2InterruptMask*: BYTESET;
 
-  PROCEDURE talk*(instance: Instance; 
-    sz: INTEGER; cmd: ARRAY OF BYTESET; VAR rep: ARRAY OF BYTESET);
+  PROCEDURE talk*(instance: Instance*; 
+    sz: INTEGER*; cmd: ARRAY OF BYTESET*; VAR rep: ARRAY OF BYTESET*);
   (** Send a command to nRF24l01+ breakout and retrieve the answer
    *  Parameters :
    *  instance (Input) : configuration data of involved nrf24l01+ breakout
    *  sz  (input) : length in bytes of the command and the answer
    *  cmd (input) : array of command bytes to send to breakout
    *  rep (output) : array of answer bytes received from the breakout *)
-  VAR i: INTEGER;
+  VAR i: INTEGER*;
   BEGIN
     (* Select SPI communication with the breakout *)
     BIC(instance.csn.reg^, instance.csn.bit); (* CSN is going LOW*)
@@ -228,7 +228,7 @@ MODULE nrf24l01p;
       i := instance.radio.pipes_count - 1;
       REPEAT
         (* configuration of pipe i receive address *)
-        j := 1; cmd[0] := W_REGISTER + TOSET(ORD(RX_ADDR_P0) + i);
+        j := 1; cmd[0] := TOSET(ORD(W_REGISTER + RX_ADDR_P0) + i);
         REPEAT car := ORD(instance.radio.pipes[i].address[j]);
           IF car # 0 THEN cmd[j] := TOSET(car); INC(j) END
         UNTIL car = 0;
@@ -238,7 +238,7 @@ MODULE nrf24l01p;
           cmd[0] := W_REGISTER + TX_ADDR;
           talk(instance, j, cmd, empty);
         END;
-        cmd[0] := W_REGISTER + TOSET(ORD(RX_PW_P0) + i); (* payload length of pipe i *)
+        cmd[0] := TOSET(ORD(W_REGISTER + RX_PW_P0) + i); (* payload length of pipe i *)
         pll := instance.radio.pipes[i].payload_length;
         cmd[1] := TOSET(pll); (* Payload size in bytes *)
         talk(instance, 2, cmd, empty);
@@ -279,12 +279,12 @@ MODULE nrf24l01p;
     BIC(instance.ce.reg^, instance.ce.bit);
   END pulseCE;
 
-  PROCEDURE setCE*(instance: Instance);
+  PROCEDURE setCE*(instance: Instance*);
   (* Start receive *)
   BEGIN BIS(instance.ce.reg^, instance.ce.bit)
   END setCE;
 
-  PROCEDURE resetCE*(instance: Instance);
+  PROCEDURE resetCE*(instance: Instance*);
   (* Stop receive *)
   BEGIN BIC(instance.ce.reg^, instance.ce.bit)
   END resetCE;

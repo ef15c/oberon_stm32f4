@@ -21,7 +21,7 @@ MODULE minihdlc;
       frame_buffer_size*, state, context: INTEGER;
     END;
 
-  PROCEDURE init*(me: Instance; sendchar_function: SendcharProc; frame_hander_function: FrameHandlerProc; ctx: INTEGER);
+  PROCEDURE init*(me: Instance*; sendchar_function: SendcharProc*; frame_hander_function: FrameHandlerProc*; ctx: INTEGER*);
   BEGIN me.sendchar_function := sendchar_function; me.frame_handler := frame_hander_function; me.frame_position := 0;
     me.escape_character := FALSE; me.state := OUT_OF_FRAME; me.context := ctx
   END init;
@@ -81,7 +81,7 @@ MODULE minihdlc;
     END
   END buffer_push;
 
-  PROCEDURE init_frame_to_buffer*(me: Instance);
+  PROCEDURE init_frame_to_buffer*(me: Instance*);
   BEGIN me.sendchar_function := buffer_push; me.frame_buffer_size := 0
   END init_frame_to_buffer;
 
