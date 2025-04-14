@@ -127,6 +127,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR y!, z!: G.Item; n, npar: INTEGER;
   BEGIN Check(S.lparen, "no (");
     npar := fct MOD 10; fct := fct DIV 10; expression(x); n := 1;
+    IF (fct IN {4, 5, 7, 15, 16}) & (x.obj # NIL) THEN x.rdo := x.obj.rdo END;
     IF sym = S.comma THEN S.Get(sym); expression(y); n := 2;
       WHILE sym = S.comma DO S.Get(sym); expression(z); INC(n) END ;
     END;
@@ -151,8 +152,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         ELSE restyp := x.type; G.Adr(y); x :=  y
         END
       ELSIF fct = 16 THEN (*VAL*)
-        IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; G.Val(y, restyp); x := y;
-          IF x.obj # NIL THEN x.rdo := x.obj.rdo END (*allow updating of the parameter*)
+        IF (x.mode= B.Typ) & (x.type.size <= y.type.size) THEN restyp := x.type; G.Val(y, restyp); x := y
         ELSE S.Mark("casting not allowed")
         END
       ELSIF fct = 17 THEN (*ADR*) G.Adr(x)
@@ -189,7 +189,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base; x.rdo := FALSE END ;
           IF x.type.form = B.Record THEN
             obj := B.thisfield(x.type); S.Get(sym);
-            IF obj # NIL THEN G.Field(x, obj); x.type := obj.type
+            IF obj # NIL THEN G.Field(x, obj); x.type := obj.type; x.rdo := obj.rdo
             ELSE S.Mark("undef")
             END
           ELSE S.Mark("not a record"); S.Get(sym)
@@ -449,7 +449,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF npar # 0 THEN
       Check(S.lparen, "no (");
       IF (pno = 4) (*ASSERT*) & ~G.AssertionChecked() THEN G.EnableCode(FALSE) END;
-      expression(x); nap := 1; x.rdo := x.obj.rdo;
+      expression(x); nap := 1; IF x.obj # NIL THEN x.rdo := x.obj.rdo END; G.CheckWritable(x);
       IF sym = S.comma THEN S.Get(sym);
         expression(y); nap := 2; z.type := B.noType;
         WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
@@ -466,20 +466,20 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {2, 3} THEN (*INCL, EXCL*)
         CheckSet(x); CheckReadOnly(x); CheckInt(y); G.Include(pno-2, x, y)
       ELSIF pno = 4 THEN CheckBool(x); G.Assert(x)
-      ELSIF pno IN {5, 6, 7, 8} THEN G.Logical(pno-5, x, y)
+      ELSIF pno IN {5, 6, 7, 8} THEN CheckReadOnly(x); G.Logical(pno-5, x, y)
       ELSIF pno IN {9, 10} THEN G.LogicalSR(pno-9, x)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 13 THEN G.ClrC
       ELSIF pno = 14 THEN G.Nop
-      ELSIF pno = 15 THEN G.ADC(x, y)
-      ELSIF pno = 16 THEN G.SBC(x, y)
-      ELSIF pno IN {17, 19} THEN (*RLA, RRA*) CheckInt(y);
+      ELSIF pno = 15 THEN CheckReadOnly(x); G.ADC(x, y)
+      ELSIF pno = 16 THEN CheckReadOnly(x); G.SBC(x, y)
+      ELSIF pno IN {17, 19} THEN (*RLA, RRA*) CheckReadOnly(x); CheckInt(y);
         IF x.type.form IN {B.Int, B.Set} THEN G.Shift(pno-17, x, y) ELSE S.Mark("bad type") END
-      ELSIF pno IN {18, 20} THEN (*RLC, RRC*)
+      ELSIF pno IN {18, 20} THEN (*RLC, RRC*) CheckReadOnly(x); CheckInt(y);
         IF x.type.form IN {B.Int, B.Set} THEN G.Rotate(pno-18, x) ELSE S.Mark("bad type") END
       ELSIF pno IN {21, 22} THEN 
         IF isInt THEN G.LogicalSROnExit(pno-21, x) ELSE S.Mark("not allowed here") END
-      ELSIF pno = 23 THEN CheckInt(x); G.Swpb(x)
+      ELSIF pno = 23 THEN CheckReadOnly(x); CheckInt(x); G.Swpb(x)
       ELSE ASSERT(FALSE)
       END
     ELSE S.Mark("wrong nof parameters")
@@ -516,7 +516,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       IF ~((sym >= S.ident)  & (sym <= S.for) OR (sym >= S.semicolon)) THEN
         S.Mark("statement expected");
         REPEAT S.Get(sym) UNTIL (sym >= S.ident)
-      END ;
+      END;
       IF sym = S.ident THEN
         qualident(obj);  IF initmode & (obj.lev = 0) THEN obj.rdo := FALSE END;
         G.MakeItem(x, obj, level);
@@ -881,7 +881,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF x.type.form = B.String THEN ASSERT(x.a < 10000H); IF obj.expo THEN obj.exno := exno; INC(exno) END;
             obj.val := x.a + G.Length(x)*10000H; (*for string constants, encode address and length in obj.val*)
           ELSE obj.val := x.a
-          END; obj.type := x.type; obj.lev := x.c
+          END; obj.type := x.type; obj.lev := x.c; obj.rdo := TRUE
         ELSE S.Mark("expression not constant"); obj.type := B.intType
         END;
         Check(S.semicolon, "; missing")

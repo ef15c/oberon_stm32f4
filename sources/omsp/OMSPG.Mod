@@ -207,8 +207,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE freeR*(r: INTEGER);
   BEGIN
-    IF r IN RIU THEN EXCL(RIU, r)
-    ELSE S.Mark("reg wild free") END
+    IF r IN RIU THEN EXCL(RIU, r) ELSE S.Mark("reg wild free") END
   END freeR;
 
   PROCEDURE freeSet(rs: SET);
@@ -297,6 +296,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
     RETURN res
   END GetOffset;
+
+  PROCEDURE CheckWritable*(VAR x: Item);
+  BEGIN IF x.mode IN {RegI, Absol} THEN x.rdo := FALSE END
+  END CheckWritable;
 
  PROCEDURE Trap(cond, num: INTEGER);
   (*Trap is implemented as calls to functions in the Trap special module.

@@ -220,7 +220,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   PROCEDURE PutJ*(VAR c: ModuleCode; cond: BYTE; offset: INTEGER);
   BEGIN (*emit jump instruction*) ASSERT (cond <= 8);
-    ASSERT(~ODD(offset)); offset := LSR(offset, 1); ASSERT(offset >= - ORD({9})); ASSERT(offset < ORD({9}));
+    ASSERT(~ODD(offset)); offset := offset DIV 2; 
+    IF (offset < -ORD({9})) OR (offset >= ORD({9})) THEN S.Mark("jump too far"); offset := 0 END;
     IF cond = NV THEN S.Mark("invalid cond code"); enabled := FALSE END;
     IF enabled THEN
       c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8) MOD 4;
