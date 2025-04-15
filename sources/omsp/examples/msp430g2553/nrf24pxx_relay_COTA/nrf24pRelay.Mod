@@ -208,7 +208,7 @@ MODULE nrf24pRelay;
         M.FCTL1^ := M.FWKEY; (*Clear WRT bit*)
         M.FCTL3^ := M.FWKEY + M.LOCK; (*Set LOCK bit to lock flash memory*)
         applyRadioConfig;
-        LCD.setVop(config.lcd_vop); (*set VOP for LCD device; VOP is set to a+lcd_vop x b [V]*)
+        LCD.SetVop(config.lcd_vop); (*set VOP for LCD device; VOP is set to a+lcd_vop x b [V]*)
         radio_state := WAIT_FOR_HOST_NOTIFICATION
       ELSE radio_state := WAIT_FOR_NO_CHANGE_HOST_NOTIFICATION
       END
@@ -232,7 +232,7 @@ MODULE nrf24pRelay;
   END initConfCom;
 
   PROCEDURE displayStatusText(text: ARRAY OF CHAR);
-  BEGIN LCD.setAddr(0, 5); LCD.writeString(text)
+  BEGIN LCD.SetAddr(0, 5); LCD.WriteString(text)
   END displayStatusText;
 
   (*
@@ -419,12 +419,15 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
     *)
 
   M.P1SEL2^ := {1, 2, 4..7}; (* Port 1 Port Select 2 Register *)
+  M.P1REN^ := {}; (* Port 1 Resistor Enable Register *)
   M.P1OUT^ := {0}; (* Port 1 Output Register *)
   M.P1SEL^ := {1, 2, 4..7}; (* Port 1 Port Select Register *)
   M.P1DIR^ := {0}; (** Port 1 Direction Register *)
   M.P1IES^ := {}; (* Port 1 Interrupt Edge Select Register *)
   M.P1IFG^ := {}; (* Port 1 Interrupt Flag Register *)
 
+  M.P2SEL2^ := {}; (* Port 2 Port Select 2 Register *)
+  M.P2REN^ := {}; (* Port 1 Resistor Enable Register *)
   M.P2OUT^ := {2, 4, 5}; (* Port 2 Output Register *)
   M.P2SEL^ := {}; (* Port 2 Port Select Register *)
   M.P2DIR^ := {1..7}; (* Port 2 Direction Register *)
@@ -609,24 +612,24 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   M.WDTCTL^ := M.WDTPW + M.WDTTMSEL + M.WDTSSEL;
 
   (*reset LCD with a low pulse during at least 100 ns*)
-  Delay.CyclesX3(1); (* 3*62,5 = 187,5 ns *)
   BIS(LCD.PO_NRST^, LCD.NRST); (*~RESET going HIGH => Start LCD module*)
+  Delay.CyclesX3(100); (* 300*62,5 = 18750 ns *)
 
   N.registerIrq(recepteur);
   N.registerIrq(emetteur);
 
-  LCD.clear; LCD.clear; LCD.init; IF config.lcd_vop # 0FFH THEN LCD.setVop(config.lcd_vop) END;
+  LCD.Init; LCD.Clear; IF config.lcd_vop # 0FFH THEN LCD.SetVop(config.lcd_vop) END;
   BIC(LCD.PO_NLIGHT^, LCD.NLIGHT); (*turn backlight on*)
-  LCD.writeString("nRF24L01+relay");
-  IF wdtReset THEN LCD.writeString("--Wdt reset---") ELSE LCD.writeString("--------------") END;
-  LCD.writeString("r             ");
-  LCD.writeString("eOK           ");
-  LCD.writeString("eKO           ");
+  LCD.WriteString("nRF24L01+relay");
+  IF wdtReset THEN LCD.WriteString("--Wdt reset---") ELSE LCD.WriteString("--------------") END;
+  LCD.WriteString("r             ");
+  LCD.WriteString("eOK           ");
+  LCD.WriteString("eKO           ");
 
   N.init(emetteur); N.powerUp(emetteur);
   MH.init(PTR(MH.Instance, control), NIL, config_frame_handler, 0);
 
-  REPEAT LCD.writeLongint(0, nbCycles, 11, 1, 3, "-");
+  REPEAT LCD.WriteLongint(0, nbCycles, 11, 1, 3, "-");
     service_emi(); (*Process pending interrupt coming from the emitter*)
     IF radio_state = NOT_CONFIGURED THEN (*Init receiver nRF24l01+ breakout*)
       IF wdtReset OR (recepteur.radio.pipes_count <= 0) THEN initConfCom
@@ -657,9 +660,9 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
       ELSE displayStatusText("Nchg OK,->host")
       END; radio_state := HOST_NOTIFIED
     END;
-    LCD.writeLongint(nbRecush, nbRecusl, 4, 2, 10, " "); (*display receiving stats*)
-    LCD.writeLongint(nbOKh, nbOKl, 4, 3, 10, " ");
-    LCD.writeLongint(nbKOh, nbKOl, 4, 4, 10, " "); (*display transmiting stats*)
+    LCD.WriteLongint(nbRecush, nbRecusl, 4, 2, 10, " "); (*display receiving stats*)
+    LCD.WriteLongint(nbOKh, nbOKl, 4, 3, 10, " ");
+    LCD.WriteLongint(nbKOh, nbKOl, 4, 4, 10, " "); (*display transmiting stats*)
     service_rec;
     (* Entering in low power mode *)
     enablePushButton;
@@ -673,6 +676,7 @@ END nrf24pRelay.
 System.Free StackTrace OMSPP OMSPTool OMSPD OMSPG OMSPL OMSPA OMSPB OMSPS~
 OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s pcd8544.Mod/s nrf24pRelay.Mod/s ~
 OMSPL.Link 32 4000H 200H nrf24pRelay~
-  linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc MultiPrecisionArith pcd8544 nrf24pRelay, flash 7084, data  282, stack  230 bytes
+  linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc MultiPrecisionArith pcd8544 nrf24pRelay
+    flash 7088, data  282, stack  230 bytes
 
 OMSPTool.DecObj nrf24pRelay.mpc

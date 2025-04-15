@@ -27,18 +27,13 @@ MODULE pcd8544;
     (*P2.5*) PO_DC = M.P2OUT; DC = {6}; (*P2.6*)
     PO_NRST* = M.P2OUT; NRST* = {7}; (*P2.7*) PO_NLIGHT* = M.P1OUT; NLIGHT* = {0}; (*P1.0*)
 
-(*
-#define LIGHT_ON PO_NLIGHT &= ~NLIGHT;
-#define LIGHT_OFF PO_NLIGHT |= NLIGHT;
-*)
-
     HPIXELS =  84; VBANKS =  6; (*screen size*)
 
     (*Instruction flags*)
     DATA = 8; (*specify data instead of command*) INVERT = {0..8};
 
     (*instructions available in all modes*)
-    NOP = {}; NOP_MASK = {0..8}; FUNCTION_SET = {5}; FUNCTION_SET_MASK = {3..8}; H = 0; V = 1; PD = 2; (*function flags*)
+    NOp = {}; NOP_MASK = {0..8}; FUNCTION_SET = {5}; FUNCTION_SET_MASK = {3..8}; H = 0; V = 1; PD = 2; (*function flags*)
 
     (*instructions available in basic mode*)
     DISPLAY_CONTROL = {3}; DISPLAY_CONTROL_MASK = {1, 3..8}; D = 2; E = 0;
@@ -49,21 +44,6 @@ MODULE pcd8544;
     TEMP_CONTROL = {2}; TEMP_CONTROL_MASK = {2..8};
     BIAS_SYSTEM = {4}; BIAS_SYSTEM_MASK = {3..8};
     SET_VOP = {7}; SET_VOP_MASK = {7..8};
-(*
-#define IS_EXTENDED_FUNCTION_SET (_pcd8544_currentLCDFunctionSet&0x01)
-#define IS_BASIC_FUNCTION_SET (!(IS_EXTENDED_FUNCTION_SET))
-#define IS_VERTICAL_ADDRESSING (_pcd8544_currentLCDFunctionSet&0x02)
-#define IS_LCD_OFF (_pcd8544_currentLCDFunctionSet&0x04)
-#define IS_LCD_ON (!(IS_LCD_OFF))
-*)
-
-(*
-// When PUSH_LCD_POS is used, it must be followed by POP_LCD_POS in the same block
-// Otherwise, a compilation error appears to signal the mismatch problem
-
-#define PUSH_LCD_POS {unsigned char px, py; unsigned int cc; px = _pcd8544_LCDXAddr; py = _pcd8544_LCDYAddr; cc = _pcd8544_composeChar;
-#define POP_LCD_POS	_pcd8544_composeChar = cc; setAddrLCD(px, py);}
-*)
 
     (*Characters glyphs*)
     GLYPH_WIDTH = 5;
@@ -101,7 +81,7 @@ MODULE pcd8544;
       7E 7F 7F 7E 00      20 3C 7E 3C 20$;
 
   VAR (*Store LCD state cannot be queried from the device, so must be memorized*)
-    XAddr, YAddr: BYTE; FunctionSet: BYTESET;
+    XAddr, YAddr: BYTE; FunctionSet: BYTESET; composeChar: CHAR;
 
   PROCEDURE send(d: SET*);
   (*send a command or data to LCD*)
@@ -112,7 +92,12 @@ MODULE pcd8544;
       YAddr := ORD(d*(SET_Y_ADDRESS_MASK/INVERT))
     ELSIF ~(H IN FunctionSet) & (d*SET_X_ADDRESS_MASK = SET_X_ADDRESS) THEN
       XAddr := ORD(d*(SET_X_ADDRESS_MASK/INVERT))
-    ELSIF DATA IN d THEN (*Send data : need to update X and Y addresses*)
+    END;
+    IF DATA IN d THEN BIS(PO_DC^, DC) ELSE BIC(PO_DC^, DC) END; (*Set Data/Command line for Nokia 5110 LCD*)
+    REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (*Wait for USCI availability*)
+    M.UCA0TXBUF^ := ORD(d); (*USCI A is ready, send character*)
+    REPEAT UNTIL ~BIT(M.UCA0STAT^, M.UCBUSY); (*Wait for end of transmission*)
+    IF DATA IN d THEN (*Send data : need to update X and Y addresses*)
       IF  V IN FunctionSet THEN INC(YAddr); (*One bank down to the bottom*)
         IF YAddr >= VBANKS THEN YAddr := 0; INC(XAddr); (*One row to the right*)
           IF XAddr >= HPIXELS THEN XAddr := 0 END
@@ -123,17 +108,12 @@ MODULE pcd8544;
         END
       END
     END;
-
-    IF DATA IN d THEN BIS(PO_DC^, DC) ELSE BIC(PO_DC^, DC) END; (*Set Data/Command line for Nokia 5110 LCD*)
-    REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (*Wait for USCI availability*)
-    M.UCA0TXBUF^ := ORD(d); (*USCI A is ready, send character*)
-    REPEAT UNTIL ~BIT(M.UCA0STAT^, M.UCBUSY); (*Wait for end of transmission*)
-    BIS(PO_NCE^, NCE); (*Release LCD for SPI communication*)
+    BIS(PO_NCE^, NCE) (*Deselect LCD for SPI communication*)
   END send;
 
-  PROCEDURE writeChar*(car: CHAR);
+  PROCEDURE WriteChar*(car: CHAR);
     (*Write a character on LCD Screen*)
-    VAR composeChar: CHAR; i: INTEGER; column: BYTESET;
+    VAR i: INTEGER; column: BYTESET;
   BEGIN
     IF (car > 88X) OR (car < 20X) THEN (*Invalid character*) car := "?" END;
     IF car > 7EX (*Load accent in compose character*) THEN composeChar := car
@@ -144,46 +124,46 @@ MODULE pcd8544;
         send({DATA} + column);
       END; send({DATA}); (*Space between characters*) composeChar := 0X
     END
-  END writeChar;
+  END WriteChar;
 
-  PROCEDURE writeString*(string: ARRAY OF CHAR);
+  PROCEDURE WriteString*(string: ARRAY OF CHAR);
     (* Write a string on LCD Screen *)
     VAR i: INTEGER;
-  BEGIN i := 0; WHILE string[i] # 0X DO writeChar(string[i]); INC(i) END
-  END writeString;
+  BEGIN i := 0; WHILE string[i] # 0X DO WriteChar(string[i]); INC(i) END
+  END WriteString;
 
-  PROCEDURE setAddr*(xAddr, yAddr: BYTE);
+  PROCEDURE SetAddr*(xAddr, yAddr: BYTE);
     (*Set address of next LCD write*)
     VAR oldFunctionSet: BYTESET;
   BEGIN oldFunctionSet := FunctionSet; (* Store current Function set in order to restore it before return *)
     IF H IN FunctionSet THEN send(FUNCTION_SET) END; (*Request basic instruction set*)
     send(SET_X_ADDRESS + TOSET(xAddr)); send(SET_Y_ADDRESS + TOSET(yAddr));
-    IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END; (*Restore previous function set*)
-  END setAddr;
+    IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END (*Restore previous function set*)
+  END SetAddr;
 
-  PROCEDURE clear*;
+  PROCEDURE Clear*;
     VAR i: INTEGER;
-  BEGIN setAddr(0, 0); (*Set X=0, Y=0*)
+  BEGIN SetAddr(0, 0); (*Set X=0, Y=0*)
     FOR i := HPIXELS*VBANKS - 1 TO 0 BY -1 DO send({DATA}) END (*Clear RAM*)
-  END clear;
+  END Clear;
 
-  PROCEDURE init*;
+  PROCEDURE Init*;
   BEGIN send(FUNCTION_SET + {H}); (* function set PD = 0 and V = 0, select extended instruction set (H = 1 mode) *)
     send(TEMP_CONTROL); (*set TC = 00 *) send(BIAS_SYSTEM + TOSET(3)); (*set BS = 011*)
     send(SET_VOP +  TOSET(3AH)); (* set VOP =  a+58 x b [V]*)
     send(FUNCTION_SET); (*select normal instruction set (H = 0 mode)*)
     send(DISPLAY_CONTROL + {D}); (*display control set normal mode (D = 1 and E = 0)*)
-  END init;
+  END Init;
 
-  PROCEDURE setVop*(vop: INTEGER);
+  PROCEDURE SetVop*(vop: INTEGER);
     VAR oldFunctionSet: BYTESET;
   BEGIN oldFunctionSet := FunctionSet;
     IF ~(H IN FunctionSet) THEN send(FUNCTION_SET + {H}) END; (*Request extended instruction set*)
     send(SET_VOP +  TOSET(vop)*(SET_VOP_MASK/INVERT)); (*set VOP = a + vop x b volts*)
-    IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END; (*Restore previous function set*)
-  END setVop;
+    IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END (*Restore previous function set*)
+  END SetVop;
 
-  PROCEDURE writeLongint*(th, tl: INTEGER; nx, ny, nbc: INTEGER; pad: CHAR);
+  PROCEDURE WriteLongint*(th, tl: INTEGER; nx, ny, nbc: INTEGER; pad: CHAR);
     (* th, tl : value to output on display
      * nx, ny : screen coordinates in character unit
      * nbc : number of digits to output
@@ -192,14 +172,14 @@ MODULE pcd8544;
   BEGIN p := nx + nbc - 1;
     (*Display the number*)
     REPEAT dh := 0; dl := 10; MP.DivLongLong(th, tl, dh, dl); (*d : = t%10; t /= 10;*)
-      setAddr(6*p, ny); DEC(p);  (*On positionne l'adresse d'affichage*)
-      writeChar(CHR(dl + ORD("0")));
+      SetAddr(6*p, ny); DEC(p);  (*On positionne l'adresse d'affichage*)
+      WriteChar(CHR(dl + ORD("0")));
     UNTIL (th = 0) & (tl = 0);
-    setAddr(6*nx, ny); WHILE p >= nx DO DEC(p); writeChar(pad) END; (*clear heading characters*)
-	setAddr(6*(nx + nbc), ny)
-  END writeLongint;
+    SetAddr(6*nx, ny); WHILE p >= nx DO DEC(p); WriteChar(pad) END; (*clear heading characters*)
+    SetAddr(6*(nx + nbc), ny)
+  END WriteLongint;
 
-BEGIN XAddr := 0; YAddr := 0; FunctionSet := {PD}
+BEGIN XAddr := 0; YAddr := 0; FunctionSet := {PD}; composeChar := 0X
 END pcd8544.
 
 OMSPTool.DecObj pcd8544.mpc
