@@ -796,7 +796,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         PutSO(A.CALL, x); free(x)
       ELSE rh.reg := AllocR();
         IF s = 0 THEN PutSO(A.POP, rh); adjFrmOfs(-WordSize)
-        ELSE t := sp; t.mode := RegI; t.a := -x.type.size; PutDO(A.MOV, t, rh); INC(s, WordSize)
+        ELSE t := sp; t.mode := RegI; t.a := (*-x.type.size*) s; PutDO(A.MOV, t, rh); INC(s, WordSize)
         END;
         IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, rh); Trap(A.EQ, 5) END;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
