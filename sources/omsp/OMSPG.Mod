@@ -384,12 +384,19 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END setRAO;
 
+  PROCEDURE convertSize(VAR src: Item; t: B.Type): BOOLEAN;
+    VAR tmp: BOOLEAN;
+  BEGIN tmp := FALSE;
+    IF (src.type.size = 1) & (t.size = 2) THEN (*move byte to word*)
+      IF src.mode # Reg THEN load(src, 0FFH); tmp := TRUE; END; src.type := B.intType (*extend source*)
+    END
+
+    RETURN tmp
+  END convertSize;
+
   PROCEDURE PutDO(op: BYTE; VAR src, dst: Item);
     VAR bw, nba: SET; tmp: BOOLEAN;
-  BEGIN tmp := FALSE;
-    IF (src.type.size = 1) & (dst.type.size = 2) THEN (*move byte to word*)
-      IF src.mode # Reg THEN load(src, 0FFH); tmp := TRUE; END; src.type := B.intType (*extend source*)
-    END;
+  BEGIN tmp := convertSize(src, dst.type);
     nba := {}; bw := A.Word; setRAO(op, dst, TRUE, nba, bw); setRAO(op, src, FALSE, nba, bw);
     A.PutDO(mcode, op, src, dst, bw); freeSet(nba);
     IF tmp THEN free(src) END
@@ -808,11 +815,13 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Call;
 
   PROCEDURE AddOp*(op: INTEGER; VAR x, y: Item);   (* x := x +- y *)
+    VAR tmp: BOOLEAN;
   BEGIN
     IF op = S.plus THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a + y.a
       ELSIF y.mode = B.Const THEN
         IF y.a # 0 THEN PutDO(A.ADD, y, x) END
+      ELSIF (x.mode = B.Const) & (x.a = 0) THEN tmp := convertSize(y, x.type); x := y; 
       ELSE PutDO(A.ADD, y, x); free(y)
       END
     ELSE (*op = S.minus*)

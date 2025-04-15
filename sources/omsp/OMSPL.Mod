@@ -208,7 +208,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
   END LinkOne;
 
   PROCEDURE Link*;  (*link multiple object files together and create a single MSP430 TI-TXT file M.txt from them*)
-    VAR i, x, vecsize, isrtrap: INTEGER;
+    VAR i, x, vecsize, isrtrap, count: INTEGER;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       M!, p!: Module;
@@ -220,7 +220,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Name) THEN first := NIL; last := NIL;
       REPEAT LinkOne(S.s, M); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
-      IF res = noerr THEN Texts.WriteString(W, "  linking");
+      IF res = noerr THEN Texts.WriteString(W, "  linking"); count := 0;
         (*prolog*) vector[31] := Flash.origin + Flash.allocPtr; p := first;
         (*MOV RAMLimit, SP*) EmitWord(4031H); EmitWord(RAMLimit);
         WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
@@ -232,6 +232,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
             (*SUB #1,R15*) EmitWord(831FH);
             (*JNE #-4*2*) EmitWord(23FCH)
           END;
+          INC(count); IF count MOD 8 = 0 THEN count := 0; Texts.WriteLn(W) END;
           IF p.ent[0] >= 0 THEN (*init code present: CALL p.ent[0]*); EmitWord(12B0H); EmitWord(p.ent[0]) END;
           p := p.next
         END
@@ -265,7 +266,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         IF i MOD 16 # 0 THEN FilesEx.WriteLn(R) END;
         Files.Write(R, "q"); FilesEx.WriteLn(R);
         Files.Register(F);
-        Texts.WriteString(W, ", flash"); Texts.WriteInt(W, Flash.allocPtr, 5);
+        IF count MOD 8 # 0 THEN count := 0; Texts.WriteLn(W) END;
+        Texts.WriteString(W, "    flash"); Texts.WriteInt(W, Flash.allocPtr, 5);
         Texts.WriteString(W, ", data"); Texts.WriteInt(W, RAMAllocPtr - RAMOrigin, 5);
         Texts.WriteString(W, ", stack"); Texts.WriteInt(W, RAMLimit - RAMAllocPtr, 5);
         Texts.WriteString(W, " bytes")
