@@ -1,7 +1,7 @@
 MODULE testPS2;
   IMPORT SYSTEM, PS2, Texts, Oberon, TextsEx;
 
-  VAR leds: BYTE;
+  VAR leds: BYTE; keyboard: PS2.Device;
 
     W: Texts.Writer;
 
@@ -24,14 +24,12 @@ MODULE testPS2;
   END show;
 
   PROCEDURE showKB*;
-    VAR dev!: PS2.DeviceDesc;
-  BEGIN (*Workaround of a compiler bug wihch computes wrongly the address of Oberon.ps2[1] *)
-    SYSTEM.COPY(SYSTEM.ADR(Oberon.ps2) + SYSTEM.SIZE(PS2.DeviceDesc), SYSTEM.ADR(dev), SYSTEM.SIZE(PS2.DeviceDesc) DIV 4);
-    show(dev)
+    (*VAR dev!: PS2.DeviceDesc;*)
+  BEGIN show(keyboard^)
   END showKB;
 
   PROCEDURE showMouse*;
-  BEGIN show(Oberon.ps2[0])
+  BEGIN show(Oberon.ps2[1])
   END showMouse;
 
   PROCEDURE nextKBLeds*;
@@ -39,34 +37,49 @@ MODULE testPS2;
   BEGIN INC(leds); leds := leds MOD 8;
     Texts.WriteString(W, "leds "); Texts.WriteInt(W, leds,1);
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
-    Oberon.SendByteAsync(1, 0EDH);
-    rc := Oberon.WaitForAnswer(1, 35);
+    PS2.SendByteAsync(keyboard^, 0EDH);
+    rc := PS2.WaitForAnswer(keyboard^, 35);
     IF rc = 0FAH THEN
-      Oberon.SendByteAsync(1, leds);
-      rc := Oberon.WaitForAnswer(1, 35)
+      PS2.SendByteAsync(keyboard^, leds);
+      rc := PS2.WaitForAnswer(keyboard^, 35)
     END
   END nextKBLeds;
 
   PROCEDURE resetKB*;
     VAR rc: BYTE;
-  BEGIN
-    Oberon.SendByteAsync(1, 0FFH)
+  BEGIN PS2.SendByteAsync(keyboard^, 0FFH)
   END resetKB;
 
-  PROCEDURE Command*;
-    VAR S!: Texts.Scanner;
-      idx, rc: INTEGER;
+  PROCEDURE CommandKB*;
+    VAR S!: Texts.Scanner; rc: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
-    IF (S.class = Texts.Int) & (S.i >= 0) & (S.i < 2) THEN
-      idx := S.i; Texts.Scan(S); rc := 0FAH;
-      WHILE (S.class = Texts.Int) & (rc = 0FAH) DO Oberon.SendByteAsync(idx, S.i);
-        rc := Oberon.WaitForAnswer(idx, 35); Texts.Scan(S)
-      END
+    rc := 0FAH;
+    WHILE (S.class = Texts.Int) & (rc = 0FAH) DO PS2.SendByteAsync(keyboard^, S.i);
+      rc := PS2.WaitForAnswer(keyboard^, 35); Texts.Scan(S)
     END
-  END Command;
+  END CommandKB;
+
+  PROCEDURE CapsLockLedOn*;
+  BEGIN PS2.SetCapsLock(TRUE);
+  END CapsLockLedOn;
+
+  PROCEDURE CapsLockLedOff*;
+  BEGIN PS2.SetCapsLock(FALSE);
+  END CapsLockLedOff;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Test PS/2 driver CS 21.03.24"); Texts.WriteLn(W);
-  Texts.Append(Oberon.Log, W.buf)
+  Texts.Append(Oberon.Log, W.buf); keyboard := PS2.keyboard
 END testPS2.
 
+OM4P.Compile testPS2.Mod~
+System.Free testPS2~
 OM4Tool.DecObj testPS2.m4c
+
+testPS2
+testPS2.showKB
+testPS2.showMouse
+testPS2.nextKBLeds
+testPS2.resetKB
+testPS2.CommandKB 0FFH
+testPS2.CapsLockLedOn
+testPS2.CapsLockLedOff

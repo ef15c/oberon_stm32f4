@@ -416,8 +416,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE^3 ps2_2IrqHandler;
     VAR pr: SET;
-  BEGIN
-    SYSTEM.GET(PR, pr);
+  BEGIN SYSTEM.GET(PR, pr);
     IF ps2[1].clockPin IN pr THEN
       pr := {ps2[1].clockPin}; SYSTEM.PUT(PR, pr); (*clear pending IRQ*)
       PS2.ProcessData(ps2[1])
@@ -428,20 +427,6 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   BEGIN
     IF CurTask.state = active THEN Remove(CurTask) END ; Loop
   END Reset;
-
-  PROCEDURE SendByteAsync*(idx, data: BYTE);
-  BEGIN IF idx < 2 THEN
-      PS2.SendByteAsync(ps2[idx], data)
-    END
-  END SendByteAsync;
-
-  PROCEDURE WaitForAnswer*(idx: BYTE; timeout: INTEGER): INTEGER;
-    VAR res: INTEGER;
-  BEGIN IF idx < 2 THEN
-      res := PS2.WaitForAnswer(ps2[idx], timeout)
-    END;
-    RETURN res
-  END WaitForAnswer;
 
   PROCEDURE installPS2IrqHandlers;
     VAR irqNum: INTEGER;
