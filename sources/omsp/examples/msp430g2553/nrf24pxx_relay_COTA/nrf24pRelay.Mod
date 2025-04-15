@@ -632,7 +632,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   REPEAT LCD.WriteLongint(0, nbCycles, 11, 1, 3, "-");
     service_emi(); (*Process pending interrupt coming from the emitter*)
     IF radio_state = NOT_CONFIGURED THEN (*Init receiver nRF24l01+ breakout*)
-      IF wdtReset OR (recepteur.radio.pipes_count <= 0) THEN initConfCom
+      IF wdtReset OR (recepteur.radio.pipes_count = 0FFH) THEN initConfCom
         (*we don't have locally a working configuration, ask one from host*)
       ELSE applyRadioConfig; radio_state := CONFIGURED; displayStatusText("Conf applied  ")
       END
@@ -677,6 +677,6 @@ System.Free StackTrace OMSPP OMSPTool OMSPD OMSPG OMSPL OMSPA OMSPB OMSPS~
 OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s pcd8544.Mod/s nrf24pRelay.Mod/s ~
 OMSPL.Link 32 4000H 200H nrf24pRelay~
   linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc MultiPrecisionArith pcd8544 nrf24pRelay
-    flash 7088, data  282, stack  230 bytes
+    flash 7086, data  282, stack  230 bytes
 
 OMSPTool.DecObj nrf24pRelay.mpc
