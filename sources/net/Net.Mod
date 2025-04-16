@@ -377,7 +377,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   BEGIN GetPar1(S);
     IF S.class = Texts.Int THEN
       channel := S.i; GetPar(S, end);
-      IF (Texts.Pos(S) < end) & (S.class = Texts.Name) THEN
+      IF (Texts.Pos(S) < end) & (S.class IN {Texts.Name, Texts.String}) THEN
         doReset(channel, S.s)
       END
     END
