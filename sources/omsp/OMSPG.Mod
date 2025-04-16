@@ -404,8 +404,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE PutSO(op: INTEGER; VAR sd: Item);
     VAR bw, nba: SET;
-  BEGIN nba := {}; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
-    A.PutSO(mcode, op, sd, bw); freeSet(nba)
+  BEGIN
+    nba := {}; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
+    IF (op = A.CALL) & (sd.reg = A.SP) & (sd.am = A.Indexed) THEN INC(sd.ofs, WordSize) END;
+    A.PutSO(mcode, op, sd, bw); freeSet(nba);
   END PutSO;
 
   PROCEDURE push(VAR x: Item; dsize: INTEGER);
@@ -763,12 +765,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Neg;
 
   PROCEDURE PrepCall*(VAR x: Item; VAR r, or: SET; VAR am: BOOLEAN);
-    VAR xr: INTEGER;
-  BEGIN (*x.type.form = OM4B.Proc*) xr := -1; am := AllocUp;
-    IF x.mode > B.Par THEN load(x, 0FFH); xr := x.reg; EXCL(RIU, xr) END;
-    r := RIU; or := x.type.ur*RIU; (*overwritten registers currently in use by the caller*)
+(*    VAR xr: INTEGER;*)
+  BEGIN (*x.type.form = OM4B.Proc*) (* xr := -1; *) am := AllocUp;
+    (*IF x.mode > B.Par THEN load(x, 0FFH); xr := x.reg; EXCL(RIU, xr) END;*)
+    r := RIU; IF x.mode IN {Reg, RegI} THEN EXCL(r, x.reg) END;
+    or := x.type.ur*r; (*overwritten registers currently in use by the caller*)
     SaveRegs(or); RIU := RIU - or;
-    IF xr >= 0 THEN SaveRegs({xr}) END;
+    (*IF xr >= 0 THEN SaveRegs({xr}) END;*)
+    IF x.mode > B.Par THEN push(x, 2) END;
     IF x.obj.type.leaf THEN SetAllocationMode(Register) END;
     PRU := PRU + (x.type.ur - or)
   END PrepCall;
@@ -791,16 +795,18 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR rr!, t!: Item; s: INTEGER;
   BEGIN (*x.type.form = B.Proc*) s := getParSize(x.type);
     IF x.mode = B.Const THEN PutSO(A.CALL, x)
-    ELSE
-      IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
+    ELSE IF x.mode > B.Par THEN x.mode := RegI; x.reg := A.SP; x.a := s; INC(s, WordSize) END;
+      IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
+      PutSO(A.CALL, x); free(x)
+      (*IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
         PutSO(A.CALL, x); free(x)
       ELSE rh.reg := AllocR();
         IF s = 0 THEN PutSO(A.POP, rh); adjFrmOfs(-WordSize)
-        ELSE t := sp; t.mode := RegI; t.a := (*-x.type.size*) s; PutDO(A.MOV, t, rh); INC(s, WordSize)
+        ELSE t := sp; t.mode := RegI; t.a := s; PutDO(A.MOV, t, rh); INC(s, WordSize)
         END;
         IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, rh); Trap(A.EQ, 5) END;
         A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
-      END;
+      END*)
     END;
     IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr); adjFrmOfs(-s) END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(am)
