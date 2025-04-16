@@ -157,6 +157,7 @@ MODULE nrf24pRelay;
   BEGIN (*configure the pin connected to button and LCD breakout*)
     BIC(M.P2DIR^, {6}); (*P2.6 input*)
     BIS(M.P2OUT^, {6}); BIS(M.P2REN^, {6}); (*Pullup resistor enabled*)
+    REPEAT UNTIL BIT(M.P2IN^, {6});
     IF ~pushButtonEnablementPending THEN (*we can re-enable the button now*)
       BIC(M.P2IFG^, {6}); (*clear pending interrupt*)
       BIS(M.P2IES^, {6}); BIS(M.P2IE^, {6}) (*Enables falling edge interrupts*)
@@ -182,7 +183,7 @@ MODULE nrf24pRelay;
   BEGIN  config_message := SYSTEM.VAL(T.Config, SYSTEM.ADR(frame_buffer));
     IF config_message.version # MESSAGE_VERSION THEN (*Version mismatch*) radio_state := ABORT
     ELSIF (config_message.confReceiver.pipes_count > 6) OR
-      (SYSTEM.SIZE(T.Config) - 6*SYSTEM.SIZE(N.RadioPipe) +
+      (SYSTEM.SIZE(T.ConfigDesc) - 6*SYSTEM.SIZE(N.RadioPipe) +
        config_message.confReceiver.pipes_count*SYSTEM.SIZE(N.RadioPipe) # frame_length) THEN
       (*Basic tests of message consistency failed*) radio_state := MESSAGE_ERROR
     ELSE isDifferent := FALSE;
@@ -320,7 +321,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
    * P1.6: SOMI
    * P1.7: SIMO
    * P2.1: CE
-   * P2.2: CSN
+   * P2.4: CSN
    * P2.0: IRQ
    *)
   recepteur.ce.reg := M.P2OUT; recepteur.ce.bit := {1}; recepteur.csn.reg := M.P2OUT; recepteur.csn.bit := {4};
@@ -336,7 +337,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
    * P1.1: SOMI
    * P1.2: SIMO
    * P2.3: CE
-   * P2.4: CSN
+   * P2.2: CSN
    * P1.3: IRQ
    *)
   emetteur.ce.reg := M.P2OUT; emetteur.ce.bit := {3}; emetteur.csn.reg := M.P2OUT; emetteur.csn.bit := {2};
@@ -410,7 +411,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
     * P2.3: nRF24lp01+ emiter CE
     * P2.4: nRF24lp01+ receiver CSN
     * P2.5: LCD NCE
-    * P2.6: LCD DC (+ entr??e bouton poussoir)
+    * P2.6: LCD DC (+ push button input)
     * P2.7: LCD NRST
     *
     * So, there is no available input pin to connect the push button...
@@ -677,6 +678,6 @@ System.Free StackTrace OMSPP OMSPTool OMSPD OMSPG OMSPL OMSPA OMSPB OMSPS~
 OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s pcd8544.Mod/s nrf24pRelay.Mod/s ~
 OMSPL.Link 32 4000H 200H nrf24pRelay~
   linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc MultiPrecisionArith pcd8544 nrf24pRelay
-    flash 7086, data  282, stack  230 bytes
+    flash 7112, data  282, stack  230 bytes
 
 OMSPTool.DecObj nrf24pRelay.mpc

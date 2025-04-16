@@ -207,7 +207,7 @@ MODULE nrf24l01p;
       i: INTEGER; dpl, pll: BYTE;
       j: INTEGER; car: BYTE;
   BEGIN
-    IF instance.radio.pipes_count > 0 THEN (* The radio configuration is defined *)
+    IF (instance.radio.pipes_count > 0) & (instance.radio.pipes_count <= 6) THEN (* The radio configuration is defined *)
       Delay.CyclesX3(5*CPU_FREQ*1000 DIV 3); (* 5 ms delay *)
 
       powerDown(instance);
@@ -228,9 +228,9 @@ MODULE nrf24l01p;
       i := instance.radio.pipes_count - 1;
       REPEAT
         (* configuration of pipe i receive address *)
-        j := 1; cmd[0] := TOSET(ORD(W_REGISTER + RX_ADDR_P0) + i);
-        REPEAT car := ORD(instance.radio.pipes[i].address[j]);
-          IF car # 0 THEN cmd[j] := TOSET(car); INC(j) END
+        j := 0; cmd[0] := TOSET(ORD(W_REGISTER + RX_ADDR_P0) + i);
+        REPEAT car := ORD(instance.radio.pipes[i].address[j]); INC(j);
+          IF car # 0 THEN cmd[j] := TOSET(car) END
         UNTIL car = 0;
         talk(instance, j, cmd, empty);
         IF (instance.radio.direction = EMIT) & (i = 0) THEN
@@ -246,7 +246,7 @@ MODULE nrf24l01p;
         RLA(dpl, 1); IF (pll = 0) THEN INC(dpl) END; (* This pipe has a dynamic length *)
         DEC(i)
       UNTIL i < 0;
-      cmd[i] := W_REGISTER + DYNPD;
+      cmd[0] := W_REGISTER + DYNPD;
       cmd[1] := TOSET(dpl); (* Enables Dynamic Payload length on pipes with 0 in RX_PW_Px *)
       talk(instance, 2, cmd, empty);
       cmd[0] := W_REGISTER + FEATURE; (* Enables features *)
