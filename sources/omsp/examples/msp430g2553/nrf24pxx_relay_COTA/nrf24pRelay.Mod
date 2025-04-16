@@ -674,10 +674,10 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   UNTIL FALSE
 END nrf24pRelay.
 
-System.Free StackTrace OMSPP OMSPTool OMSPD OMSPG OMSPL OMSPA OMSPB OMSPS~
+System.Free StackTrace OMSPP OMSPL OMSPTool OMSPD OMSPG OMSPA OMSPB OMSPS~
 OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s pcd8544.Mod/s nrf24pRelay.Mod/s ~
 OMSPL.Link 32 4000H 200H nrf24pRelay~
   linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc MultiPrecisionArith pcd8544 nrf24pRelay
-    flash 7104, data  282, stack  230 bytes
+    flash 7084, data  282, stack  230 bytes
 
 OMSPTool.DecObj nrf24pRelay.mpc
