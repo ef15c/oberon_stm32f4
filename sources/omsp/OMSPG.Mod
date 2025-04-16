@@ -640,10 +640,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         ELSIF x.mode = B.Par THEN load(y, 0FFH); t.mode := B.Var;
           t.c := x.c; t.a := x.a; t.tmp := FALSE; t.obj := x.obj; t.type := B.intType; PutDO(A.ADD, t, y); free(t);
           free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.tmp := TRUE
-        ELSIF x.mode IN {RegI, Absol} THEN t := x;
-           IF (x.mode = RegI) THEN t.mode := Reg ELSE t.mode := B.Const END;
-           t.type := B.intType; PutDO( A.ADD, t, y); free(x);
+        ELSIF x.mode = RegI THEN t := x; t.mode := Reg; t.type := B.intType; PutDO( A.ADD, t, y); free(x);
            x.mode := RegI; x.reg := y.reg; x.tmp := TRUE
+        ELSIF x.mode = Absol THEN ASSERT(y.mode = Reg);
+          x.mode := RegI; x.reg := y.reg; x.tmp := TRUE;
         ELSE S.Mark("bad mode in index")
         END
       END
