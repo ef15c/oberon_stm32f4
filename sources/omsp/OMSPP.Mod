@@ -475,7 +475,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno = 16 THEN CheckReadOnly(x); G.SBC(x, y)
       ELSIF pno IN {17, 19} THEN (*RLA, RRA*) CheckReadOnly(x); CheckInt(y);
         IF x.type.form IN {B.Int, B.Set} THEN G.Shift(pno-17, x, y) ELSE S.Mark("bad type") END
-      ELSIF pno IN {18, 20} THEN (*RLC, RRC*) CheckReadOnly(x); CheckInt(y);
+      ELSIF pno IN {18, 20} THEN (*RLC, RRC*) CheckReadOnly(x);
         IF x.type.form IN {B.Int, B.Set} THEN G.Rotate(pno-18, x) ELSE S.Mark("bad type") END
       ELSIF pno IN {21, 22} THEN 
         IF isInt THEN G.LogicalSROnExit(pno-21, x) ELSE S.Mark("not allowed here") END

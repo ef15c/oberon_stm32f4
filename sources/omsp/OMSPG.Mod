@@ -246,7 +246,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE GetFixData(VAR list: FixData; adr, ofs, mno: INTEGER): FixData;
     VAR fd!: FixData;
-  BEGIN ASSERT(LSR(adr, 16) = 0); fd := list;
+  BEGIN ASSERT(LSR(adr, 16) = 0); ASSERT((mno >= 0) & (mno <= 64)); fd := list;
     WHILE (fd # NIL) & ((fd.adr # adr) OR (fd.ofs # ofs) OR (fd.mno # mno)) DO fd := fd.next END;
     IF fd = NIL THEN NEW(fd); fd.adr := adr; fd.ofs := ofs; fd.mno := mno; fd.next := list; list := fd END
 
@@ -342,7 +342,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSIF x.mode = B.Par THEN alloc(x, pr); ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
       ti.reg := rh.reg; ti.ofs := x.b; A.PutDO(mcode, A.MOV, ti, rh, bw)
-    ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0;
+    ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; ti.b := x.b; ti.c := x.c; x.am := A.Register; x.ofs := 0;
       IF ~x.tmp OR (pr # 0FFH) & (x.reg # pr) THEN free(x); alloc(x, pr) END;
       A.PutDO(mcode, A.MOV, ti, x, bw)
     ELSIF x.mode = Reg THEN
@@ -434,7 +434,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     ELSIF x.mode = B.Par THEN ti.reg := A.SP; ti.ofs :=  x.a + frame; A.PutDO(mcode, A.MOV, ti, rh, A.Word);
       ti.reg := rh.reg; ti.ofs := x.b; A.PutSO(mcode, A.PUSH, ti, bw)
-    ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; x.am := A.Register; x.ofs := 0; A.PutSO(mcode, A.PUSH, ti, bw)
+    ELSIF x.mode = RegI THEN ti.reg := x.reg; ti.ofs := x.a; ti.b := x.b; ti.c := x.c; (*x.am := A.Register; x.ofs := 0;*) A.PutSO(mcode, A.PUSH, ti, bw)
     ELSIF x.mode = Absol THEN t.am := A.Absolute; t.ofs := x.a; A.PutSO(mcode, A.PUSH, t, bw)
     ELSIF x.mode = Cond THEN
       pc0 := mcode.pc; A.PutJ(mcode, A.negated(x.c), 0);
@@ -451,16 +451,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN t.mode := B.Const; t.type := B.intType; t.obj := NIL;
     IF x.mode = B.Var THEN
       IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE); x.mode := Reg; x.reg := A.SP; x.rdo := TRUE;
-        IF x.a + frame # 0 THEN t.a := x.a + frame; PutDO(A.ADD, t, x) END
+        IF x.a + frame # 0 THEN t.a := x.a + frame; x.type := B.intType; PutDO(A.ADD, t, x) END
       ELSE (*global or imported*) x.mode := B.Const; INC(x.a, ORD({18}))
       END
     ELSIF x.mode = B.Par THEN x.mode := B.Var;
-      IF x.b # 0 THEN t.a := x.b; PutDO(A.ADD, t, x) END
+      IF x.b # 0 THEN t.a := x.b; x.type := B.intType; PutDO(A.ADD, t, x) END
     ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) & (x.c <= 0) THEN x.a := ORD({16}) (*use runtime proc address*)
     ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN INC(x.a, ORD({17}))
     ELSIF x.mode = B.StoredConst THEN  x.mode := B.Const; INC(x.a, ORD({17}))
     ELSIF x.mode = RegI THEN x.mode := Reg;
-      IF x.a # 0 THEN t.a := x.a; PutDO(A.ADD, t, x) END
+      IF x.a # 0 THEN t.a := x.a; x.type := B.intType; PutDO(A.ADD, t, x) END
     ELSIF x.mode = Absol THEN (*Nothing to do*)
     ELSE S.Mark("not addressable")
     END;
@@ -636,7 +636,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF (x.mode IN {B.Var, B.StoredConst}) OR (x.type.form = B.String) THEN
           load(y, 0FFH); y.type := B.intType; typ := x.type;
           IF x.c > 0 THEN A.PutDO(mcode, A.ADD, sp, y, A.Word); INC(x.a, frame)
-          ELSE Adr(x); PutDO(A.ADD, x, y); x.a := 0
+          ELSE Adr(x); IF x.mode # B.Const THEN PutDO(A.ADD, x, y); x.a := 0 END
           END;
           free(x); x.reg := y.reg; x.mode := RegI; x.tmp := TRUE; x.type := typ
         ELSIF x.mode = B.Par THEN load(y, 0FFH); t.mode := B.Var;
