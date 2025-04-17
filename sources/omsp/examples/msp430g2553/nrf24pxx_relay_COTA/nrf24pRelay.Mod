@@ -18,7 +18,7 @@ MODULE nrf24pRelay;
   VAR confEmitter: N.RadioSetup-; recepteur, emetteur: N.Instance-;
     emetteurReady, pushButtonEnablementPending, wdtReset: BOOLEAN;
     nbCycles, pos: INTEGER;
-    cmd_emi, rep_emi, cmdrep_rec: ARRAY BUFREPSZ OF BYTESET; empty: ARRAY 0 OF BYTESET;
+    cmd_emi, rep_emi, cmdrep_rec: ARRAY BUFREPSZ OF BYTESET;
     nbOKl, nbOKh, nbKOl, nbKOh, nbRecusl, nbRecush: INTEGER;
     radio_state: INTEGER; control: MH.InstanceDesc;
     confChunkNumber, ownerPipe, i: INTEGER;
@@ -29,21 +29,21 @@ MODULE nrf24pRelay;
    BEGIN
     IF ~BIT(emetteur.irq.reg^, emetteur.irq.bit) THEN (*something happened to NRF24L01+ breakout*)
       cmd[0] := N.W_REGISTER + N.STATUS; cmd[1] := N.MAX_RT + N.TX_DS + N.RX_DR;
-      N.talk(emetteur, 2, cmd, rep); (*CLear interrupts flags and read status*)
+      N.talk(emetteur, 2, PTR(PBYTESET, cmd[0]), PTR(PBYTESET, rep[0])); (*CLear interrupts flags and read status*)
       IF BIT(rep[0], N.MAX_RT) THEN (*Transmission failed*)
-        cmd[0] := N.FLUSH_TX; N.talk(emetteur, 1, cmd, rep); (*Flush TX FIFO*)
+        cmd[0] := N.FLUSH_TX; N.talk(emetteur, 1, PTR(PBYTESET, cmd[0]), PTR(PBYTESET, rep[0])); (*Flush TX FIFO*)
         INC(nbKOl); ADC(nbKOh, 0)
       ELSIF BIT(rep[0], N.TX_DS) THEN
         INC(nbOKl); ADC(nbOKh, 0);
         (*Read answer form infrastructure if any*)
         IF BIT(rep[0], N.RX_DR) THEN
           REPEAT (*The answer pipe has a Dynamic Payload Length*)
-            cmd[0] := N.R_RX_PL_WID; N.talk(emetteur, 2, cmd, rep);
+            cmd[0] := N.R_RX_PL_WID; N.talk(emetteur, 2, PTR(PBYTESET, cmd[0]), PTR(PBYTESET, rep[0]));
             eob := ORD(rep[1]) + 1;
             IF eob > 33 THEN (*The packet is orrupted and must be discarded*)
-              cmd[0] := N.FLUSH_RX; N. talk(emetteur, 1, cmd, empty);
+              cmd[0] := N.FLUSH_RX; N. talk(emetteur, 1, PTR(PBYTESET, cmd[0]), NIL);
             ELSE (*Valid payload*)
-              rep_emi[0] := N.R_RX_PAYLOAD; N.talk(emetteur, eob, rep_emi, rep_emi); (*Read RX FIFO *)
+              rep_emi[0] := N.R_RX_PAYLOAD; N.talk(emetteur, eob, PTR(PBYTESET, rep_emi[0]), PTR(PBYTESET, rep_emi[0])); (*Read RX FIFO *)
               IF ORD(rep_emi[1]) = confChunkNumber THEN
                 FOR i := 2 TO eob - 1 DO MH.char_receiver(PTR(MH.Instance, control), ORD(rep_emi[i])) END; (*Process answer*)
               ELSIF (radio_state # WAIT_FOR_HOST_NOTIFICATION) &
@@ -56,7 +56,7 @@ MODULE nrf24pRelay;
                 radio_state := ASK_FOR_NEXT_CHUNK;
               END
             END;
-            cmd[0] := N.R_REGISTER + N.FIFO_STATUS; N.talk(emetteur, 2, cmd, rep); (* Read FIFO STATUS and STATUS *)
+            cmd[0] := N.R_REGISTER + N.FIFO_STATUS; N.talk(emetteur, 2, PTR(PBYTESET, cmd[0]), PTR(PBYTESET, rep[0])); (* Read FIFO STATUS and STATUS *)
           UNTIL BIT(rep[1], N.RX_EMPTY)
         END
       END;
@@ -74,7 +74,7 @@ MODULE nrf24pRelay;
       (* __bis_SR_register(GIE);*)
       service_emi;
     END;
-    cmd_emi[0] := N.W_TX_PAYLOAD; N.talk(emetteur, pos, cmd_emi, empty); (*Write payload to nRF24l01+ module *)
+    cmd_emi[0] := N.W_TX_PAYLOAD; N.talk(emetteur, pos, PTR(PBYTESET, cmd_emi[0]), NIL); (*Write payload to nRF24l01+ module *)
     N.pulseCE(emetteur); (* Start transmission *)
     pos := 1
   END flushData;
@@ -89,7 +89,7 @@ MODULE nrf24pRelay;
   BEGIN
     (*process events coming from receiver*)
     IF ~BIT(recepteur.irq.reg^, recepteur.irq.bit) THEN (*something happened to receiver*)
-      cmdrep_rec[0] := N.NOP; N.talk(recepteur, 1, cmdrep_rec, cmdrep_rec); (*reading of status register*)
+      cmdrep_rec[0] := N.NOP; N.talk(recepteur, 1, PTR(PBYTESET, cmdrep_rec[0]), PTR(PBYTESET, cmdrep_rec[0])); (*reading of status register*)
       IF BIT(cmdrep_rec[0], N.RX_DR) THEN
         N.resetCE(recepteur); (* Exit receiving mode*)
         REPEAT
@@ -98,33 +98,33 @@ MODULE nrf24pRelay;
           IF noPipe < config.confReceiver.pipes_count THEN
             eob := config.confReceiver.pipes[noPipe].payload_length + 1;
             IF eob = 1 THEN (*This pipe has dynamic payload*)
-              cmdrep_rec[0] := N.R_RX_PL_WID; N.talk(recepteur, 2, cmdrep_rec, cmdrep_rec);
+              cmdrep_rec[0] := N.R_RX_PL_WID; N.talk(recepteur, 2, PTR(PBYTESET, cmdrep_rec[0]), PTR(PBYTESET, cmdrep_rec[0]));
               eob := ORD(cmdrep_rec[1]) + 1;
               IF eob > 33 THEN (*This packet is corrupted, discard it*)
-                cmdrep_rec[0] := N.FLUSH_RX; N.talk(recepteur, 1, cmdrep_rec, empty); eob := 0
+                cmdrep_rec[0] := N.FLUSH_RX; N.talk(recepteur, 1, PTR(PBYTESET, cmdrep_rec[0]), NIL); eob := 0
               END
             END;
             IF eob # 0 THEN (*valid payload*) INC(nbRecusl); ADC(nbRecush, 0);
               nbCycles := 3; (*Reset nbCycle counter periodically (feed the dog)*)
               transmitInt(ORD("p")); transmitInt(noPipe + ORD("0")); (*tell host what is the source pipe*)
-              cmdrep_rec[0] := N.R_RX_PAYLOAD; N.talk(recepteur, eob, cmdrep_rec, cmdrep_rec); (*Read RX FIFO*)
+              cmdrep_rec[0] := N.R_RX_PAYLOAD; N.talk(recepteur, eob, PTR(PBYTESET, cmdrep_rec[0]), PTR(PBYTESET, cmdrep_rec[0])); (*Read RX FIFO*)
               FOR i:= 1 TO eob - 1 DO (*Characters "\" and "p" must be escaped by a preceding back slash*)
                 IF (CHR(ORD(cmdrep_rec[i])) = "\") OR (CHR(ORD(cmdrep_rec[i])) = "p") THEN  transmitInt(ORD("\")) END;
                 transmitInt(ORD(cmdrep_rec[i]))
               END; flushData
             END
           ELSE (*The receiver is not configurated. Discard the packet*)
-            cmdrep_rec[0] := N.FLUSH_RX; N.talk(recepteur, 1, cmdrep_rec, empty)
+            cmdrep_rec[0] := N.FLUSH_RX; N.talk(recepteur, 1, PTR(PBYTESET, cmdrep_rec[0]), NIL)
           END;
           (* 2) clear RX_DR IRQ *)
           cmdrep_rec[0] := N.W_REGISTER + N.STATUS; cmdrep_rec[1] := N.RX_DR;
-          N.talk(recepteur, 2, cmdrep_rec, empty); (* CLear RX_DR interrupt flag and read status *)
+          N.talk(recepteur, 2, PTR(PBYTESET, cmdrep_rec[0]), NIL); (* CLear RX_DR interrupt flag and read status *)
           (* 3) read FIFO_STATUS to check if there are more payloads available in RX FIFO *)
-          cmdrep_rec[0] := N.R_REGISTER + N.FIFO_STATUS; N.talk(recepteur, 2, cmdrep_rec, cmdrep_rec)
+          cmdrep_rec[0] := N.R_REGISTER + N.FIFO_STATUS; N.talk(recepteur, 2, PTR(PBYTESET, cmdrep_rec[0]), PTR(PBYTESET, cmdrep_rec[0]))
         UNTIL BIT(cmdrep_rec[1], N.RX_EMPTY)
       END;
       cmdrep_rec[0] := N.W_REGISTER + N.STATUS; cmdrep_rec[1] := N. RX_DR + N.TX_DS + N.MAX_RT;
-      N.talk(recepteur, 2, cmdrep_rec, empty); (* CLear interrupts flags and read status *)
+      N.talk(recepteur, 2, PTR(PBYTESET, cmdrep_rec[0]), NIL); (* CLear interrupts flags and read status *)
       N.setCE(recepteur); (* Enters receive mode *)
     END;
   END service_rec;
@@ -428,9 +428,9 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   M.P1IFG^ := {}; (* Port 1 Interrupt Flag Register *)
 
   M.P2SEL2^ := {}; (* Port 2 Port Select 2 Register *)
+  M.P2SEL^ := {}; (* Port 2 Port Select Register *)
   M.P2REN^ := {}; (* Port 1 Resistor Enable Register *)
   M.P2OUT^ := {2, 4, 5}; (* Port 2 Output Register *)
-  M.P2SEL^ := {}; (* Port 2 Port Select Register *)
   M.P2DIR^ := {1..7}; (* Port 2 Direction Register *)
   M.P2IES^ := {}; (* Port 2 Interrupt Edge Select Register *)
   M.P2IFG^ := {}; (* Port 2 Interrupt Flag Register *)
@@ -506,7 +506,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
    * UCSWRST -- Enabled. USCI logic held in reset state
    *)
   M.UCA0CTL1^ := M.UCSSEL_2 + M.UCSWRST;
-  M.UCA0BR0^ := 16; (* Bit Rate Control Register 0 *)
+  M.UCA0BR0^ := 8; (* Bit Rate Control Register 0 *)
   BIC(M.UCA0CTL1^, M.UCSWRST); (* Enable USCI *)
 
   (*
@@ -535,7 +535,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
    * UCSWRST -- Enabled. USCI logic held in reset state
    *)
   M.UCB0CTL1^ := M.UCSSEL_2 + M.UCSWRST;
-  M.UCB0BR0^ := 16; (* Bit Rate Control Register 0 *)
+  M.UCB0BR0^ := 8; (* Bit Rate Control Register 0 *)
   BIC(M.UCB0CTL1^, M.UCSWRST);  (* Enable USCI *)
 
   (*
@@ -613,12 +613,11 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   M.WDTCTL^ := M.WDTPW + M.WDTTMSEL + M.WDTSSEL;
 
   (*reset LCD with a low pulse during at least 100 ns*)
-  BIS(LCD.PO_NRST^, LCD.NRST); (*~RESET going HIGH => Start LCD module*)
-  Delay.CyclesX3(100); (* 300*62,5 = 18750 ns *)
 
   N.registerIrq(recepteur);
   N.registerIrq(emetteur);
 
+  BIS(LCD.PO_NRST^, LCD.NRST); (*~RESET going HIGH => Start LCD module*)
   LCD.Init; LCD.Clear; IF config.lcd_vop # 0FFH THEN LCD.SetVop(config.lcd_vop) END;
   BIC(LCD.PO_NLIGHT^, LCD.NLIGHT); (*turn backlight on*)
   LCD.WriteString("nRF24L01+relay");
@@ -678,6 +677,6 @@ System.Free StackTrace OMSPP OMSPL OMSPTool OMSPD OMSPG OMSPA OMSPB OMSPS~
 OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s pcd8544.Mod/s nrf24pRelay.Mod/s ~
 OMSPL.Link 32 4000H 200H nrf24pRelay~
   linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc MultiPrecisionArith pcd8544 nrf24pRelay
-    flash 7084, data  282, stack  230 bytes
+    flash 6800, data  282, stack  230 bytes
 
 OMSPTool.DecObj nrf24pRelay.mpc
