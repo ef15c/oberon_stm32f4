@@ -1,6 +1,6 @@
 # MSP430 Oberon compiler
 ## Differences from previous releases
-The main point is the adding support of <b>stored objects</b>. This can be seen as immutables variables initilized at compile time and stored in flash.
+The main point is the adding support of <b>stored objects</b>. This can be seen as immutable variables initialized at compile time and stored in flash.
 Lot of bug fixes and improvements have been added.  
 Two examples Thermometre (MSP430G2231) and nRF24l01+ relay (MSP430G2553) have been added.  
   
@@ -15,7 +15,7 @@ Details:
 ### Stored objects
 The Oberon 07 language has no support for defining constants objects like records.
  In microcontroller field, is is very useful to have compile time initialized objects stored in embedded flash memory.  
- OMSP provides a way to achieve this, via the "one time initialization" concept implemented in OM4 compiler.
+ OMSP provides a way to achieve this, a concept similar as the "one time initialization" concept implemented in OM4 compiler.
   Let'see it trough a simplified example:
   
     MODULE nrf24pRelay;
@@ -39,7 +39,7 @@ The Oberon 07 language has no support for defining constants objects like record
 
 Notice the hyphen character after N.RadioSetup type in the VAR clause.
 It means that the variable `confEmitter` is immutable and will be stored in the embedded flash memory.
-The actual definition of this object is computed at compiler or link type and outputted in the
+The actual definition of this object is computed at compiler or link time and outputted in the
  constant section of the object file.  
 Because all the initialization is performed at compile/link time, no executable code is generated in the module's body.
 

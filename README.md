@@ -2,7 +2,7 @@
 Portage of Oberon system to stm32f429i-disco board<br><br>
 **Version 12 released!**
 ## MSP430:
-The main point is the adding support of <b>stored objects</b>. This can be seen as immutable variables initilized at compile time and stored in flash.
+The main point is the adding support of <b>stored objects</b>. This can be seen as immutable variables initialized at compile time and stored in flash.
 Lot of bug fixes and improvements have also been made.  
 Two examples Thermometre (MSP430G2231) and nRF24l01+ relay (MSP430G2553) have been added.  
 ## Oberon System:  
