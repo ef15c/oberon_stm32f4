@@ -39,7 +39,7 @@ The Oberon 07 language has no support for defining constants objects like record
 
 Notice the hyphen character after N.RadioSetup type in the VAR clause.
 It means that the variable `confEmitter` is immutable and will be stored in the embedded flash memory.
-The actual definition of this object is computed at compiler or link time and outputted in the
+The actual definition of this object is computed at compiler or link time and outputted to the
  constant section of the object file.  
 Because all the initialization is performed at compile/link time, no executable code is generated in the module's body.
 
@@ -72,8 +72,8 @@ This compiler is board agnostic, so **LED** is removed.
 **RRA(x, n)** is an optimized equivalent of **x := x / 2<sup>n</sup>** with x and y of numeric type  
 **RRC(x)** performs a rotate right through carry on x  
 **SWPB(x)** exchanges high and low bytes of x  
-**PTR(t, x)** is a type safe equivalent of **SYSTEM.VAL(t, SYSTEM.ADR(x))**. The compiler checks that
-t is a pointer type to the type of x  
+**PTR(t, x)** is a type safe equivalent of **SYSTEM.VAL(t, SYSTEM.ADR(x))**. In addition, the compiler checks that
+the type **t** is a pointer to the type of the expression **x**  
 #### In-line functions with different semantics
 **BIT(x, y)** is an optimized equivalent of the condition **"x*y # {}"**
 #### New SYSTEM in-line procedures
