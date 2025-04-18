@@ -2,16 +2,15 @@
 Portage of Oberon system to stm32f429i-disco board<br><br>
 **Version 12 will be released soon!**
 ## MSP430:
-The main point is the adding support of <b>stored objects</b>. This can be seen as immutables variables initilized at compile time and stored in flash.
-Lot of bug fixes and improvements have been added.  
+The main point is the adding support of <b>stored objects</b>. This can be seen as immutable variables initilized at compile time and stored in flash.
+Lot of bug fixes and improvements have also been made.  
 Two examples Thermometre (MSP430G2231) and nRF24l01+ relay (MSP430G2553) have been added.  
 ## Oberon System:  
 The compiler with 64 bits integer support is now the OM4 default compiler. All modules have been rebuilt with it.  
-Few bug fixes have been added.  
 A module named FLASH has been added for writing the embedded flash memory of the STM32F429 microcontroller.  
   
-**The 12th release containt a major improvement:** the modules code and strings can be hosted
- in the flash memory of the microcontroller and will be executed in place.
+**The 12th release contains a major improvement:** the modules code and strings can be hosted
+ in the flash memory of the microcontroller and be executed in place.
 The global data can also be placed is SRAM.  
 Previously, the modules had too be loaded in the SDRAM to be executed.  
 There are a lot of advantages doing this:  
