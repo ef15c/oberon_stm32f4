@@ -460,7 +460,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN INC(x.a, ORD({17}))
     ELSIF x.mode = B.StoredConst THEN  x.mode := B.Const; INC(x.a, ORD({17}))
     ELSIF x.mode = RegI THEN x.mode := Reg;
-      IF x.a # 0 THEN t.a := x.a; x.type := B.intType; PutDO(A.ADD, t, x) END
+      IF x.a # 0 THEN t.a := x.a; t.b := x.b; t.c := x.c; x.type := B.intType; PutDO(A.ADD, t, x) END
     ELSIF x.mode = Absol THEN (*Nothing to do*)
     ELSE S.Mark("not addressable")
     END;
