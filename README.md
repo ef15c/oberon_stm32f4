@@ -1,20 +1,42 @@
 # Oberon STM32F4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-<b>Version 11 released!</b><br>
+**Version 12 will be released soon!**
 ## MSP430:
-add example MSPEXP430G2 "Out of the box".  
-  
+The main point is the adding support of <b>stored objects</b>. This can be seen as immutables variables initilized at compile time and stored in flash.
+Lot of bug fixes and improvements have been added.  
+Two examples Thermometre (MSP430G2231) and nRF24l01+ relay (MSP430G2553) have been added.  
 ## Oberon System:  
-Add support of 64 bit integers in the candidate compiler OM4P2. LONGINT type is devoted to 64 bit signed integers and is no longer a synonym of INTEGER type.  
-Add a file comparison command System.CompareFiles.  
-System.Free command has been improved.  
-Add a Hash map module UTHash based on uthash from Troy D. Hanson.  
-Add a trace module SystemLog.  
-Add a fixed size font Mono10.Scn.Fnt  
-Correction of OM4A code generator and modules TextFrames and FontUtils  
-Add several 64 bit integer test programs based on Advent Of Code 2024  
+The compiler with 64 bits integer support is now the OM4 default compiler. All modules have been rebuilt with it.  
+Few bug fixes have been added.  
+A module named FLASH has been added for writing the embedded flash memory of the STM32F429 microcontroller.  
   
-Starting wiht the release 9, it is now easy to launch user actions immediately after system startup.
+**The 12th release containt a major improvement:** the modules code and strings can be hosted
+ in the flash memory of the microcontroller and will be executed in place.
+The global data can also be placed is SRAM.  
+Previously, the modules had too be loaded in the SDRAM to be executed.  
+There are a lot of advantages doing this:  
+
+* The code executes 8 times faster, by avoiding the competition between CPU and VGA system for SDRAM access.  
+* More SDRAM is available for madules that remains in SDRAM and for the heap.
+* If the Oberon system and the compiler are both placed in embedded flash memory,
+ the system is guaranteed to boot and compile even if incoherent recompilation has been done on vital modules.
+ 
+ To put modules in embedded flash, follow the following procedure:
+ 
+ * Prelink the modules using the command **OM4L.LinkEF**. Example: `OM4L.LinkEF Modules System Edit OM4P ~`  
+This will produce a .efb file that will be later place in the embedded flash memory.
+ * Reboot the station in legacy SDRAM mode by pressing the SW1 button on the base board and the reset button on the SMT429I-DISCO board.
+  This is mandatory because it is not safe to modify the embedded flash memory while executing it.
+ * Install the .efb file using the command **OM4L.LoadEF**. Example: `OM4L.LoadEF OM4P.efb`  
+The installation can be verified by comparing the .efb file and the content of the embedded flash,
+ using the command **OM4L.CompareEF**. Example: `OM4L.CompareEF OM4P.efb`  
+The installation is successful if the output of this command ends with the word "same".
+ * Reboot the station without pressing SW1 button. The station should now execute the Oberon system and the compiler from embedded flash.
+ This can be checked with the command **System.ShowModules**. In the window that appears,
+  all lines refering a module stored in embedded flash will end with the number -1. Example: `OM4P	 0802E7B4 0802F1F4  -1`
+
+  
+Reminder: starting wiht the release 9, it is now easy to launch user actions immediately after system startup.
 Put your code in the initialization section of the OnStartup module and compile it.
 
 ![OberonMSP430compiler](https://github.com/user-attachments/assets/6926baf1-dc6c-406c-8f0f-f2973136a3e1)
