@@ -256,9 +256,9 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         adr := mod.const + fixorgT*4;
         WHILE adr # mod.const DO
           SYSTEM.GET(const.start + adr, inst);
-          mno := inst DIV A.C24 MOD A.C4;
-          vno := inst DIV A.C12 MOD A.C12;
-          disp := inst MOD A.C12;
+          mno := inst DIV ORD({24}) MOD ORD({4});
+          vno := inst DIV ORD({12}) MOD ORD({12});
+          disp := inst MOD ORD({12});
           IF mno = 0 THEN (*global*) inst := mod.const + const.org + vno
           ELSE (*import*)
             SYSTEM.GET(const.start + mod.imp + (mno-1)*4, impmod);
@@ -366,9 +366,9 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           put(flash, thumbSwap(A.MOVT + A.formatImm16(1, sram.org DIV 10000H MOD 10000H))); (* MOV R1, <sram.org>*)
           put(flash, thumbSwap(A.MOVIT3 + A.formatImm16(2, sram.cur DIV 4 MOD 10000H)));
           put(flash, thumbSwap(A.MOVT + A.formatImm16(2, sram.cur DIV 40000H MOD 10000H))); (* MOV R2, <sram.cur DIV 4>*)
-          pc := flash.cur; put(flash, thumbSwap(A.STRIT4 + A.C16 + A.formatPUWImm8(FALSE, TRUE, TRUE, 4)));  (*STR R0, [R1],#4*) 
+          pc := flash.cur; put(flash, thumbSwap(A.STRIT4 + ORD({16}) + A.formatPUWImm8(FALSE, TRUE, TRUE, 4)));  (*STR R0, [R1],#4*)
           putByte(flash, 1); putByte(flash, 3AH); (*SUB R3, #1*);
-          putByte(flash, (pc - flash.cur - 4) DIV 2 MOD A.C8); putByte(flash, A.BCT1 DIV A.C8 + A.NE) (*BNE <pc>*)
+          putByte(flash, (pc - flash.cur - 4) DIV 2 MOD ORD({8})); putByte(flash, A.BCT1 DIV ORD({8}) + A.NE) (*BNE <pc>*)
         END;
         tail := modules; (*generate initilization sequence*)
         WHILE tail # NIL DO (*call each module body in order*)
@@ -433,7 +433,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       S!: Texts.Scanner;
       buf: ARRAY 32 OF INTEGER;
   BEGIN
-    IF Kernel.bootParams DIV A.C24 # 08H THEN
+    IF Kernel.bootParams DIV ORD({24}) # 08H THEN
       Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
       IF S.class = Texts.Name THEN
         Texts.WriteString(W, "  loading "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
@@ -480,6 +480,18 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
     END ;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END CompareEF;
+
+  PROCEDURE WipeEF*;
+    VAR adr: INTEGER; buf: ARRAY 32 OF INTEGER;
+  BEGIN
+    IF Kernel.bootParams DIV ORD({24}) # 08H THEN FOR adr := 0 TO LEN(buf) - 1 DO buf[adr] := 0FFFFFFFFH END;
+      adr := 08004000H; FLASH.Open;
+      WHILE adr < 08200000H DO FLASH.Write(adr, buf, LEN(buf)); INC(adr, LEN(buf)*4) END;
+      FLASH.Close
+    ELSE Texts.WriteString(W, "Reboot while pressing SW1 for entering flash update mode")
+    END;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END WipeEF;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.20 / CS 25.02.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); 
