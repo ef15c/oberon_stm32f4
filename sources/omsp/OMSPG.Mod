@@ -275,7 +275,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF val >= ORD({17}) THEN (*globals or externals const with address encoded in offset*)
       DEC(val, ORD({17})); CheckWord(val); fd := GetFixData(cofix, val, x.b MOD 10000H, -x.c); res := SetLastUsage(base, fd, pos)
     ELSIF val = ORD({16}) THEN (*objects at absolute addresses*)
-      IF (x.mode = B.Const) & (x.type.form # B.Proc) OR (x.mode = B.StoredConst) THEN
+      IF (x.mode = B.Const) & (x.type.form # B.Proc) & ((x.obj = NIL) OR (x.obj.class # B.Typ)) OR (x.mode = B.StoredConst) THEN
         fd := GetFixData(cofix, x.a MOD 10000H, x.b MOD 10000H, -x.c); res := SetLastUsage(base, fd, pos)
       ELSIF x.mode = B.Var THEN (*global or external variable*) fd := GetFixData(gvfix, x.a, x.b, -x.c);
         res := SetLastUsage(base, fd, pos)
@@ -503,7 +503,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
   PROCEDURE MakeTypTagAdr(VAR x: Item; T: B.Type);
-  BEGIN x.mode := B.Const; x.type := B.intType; x.a := ORD({16}); x.c := 0;
+  BEGIN x.mode := B.Const; x.type := B.intType; x.a := ORD({16}); x.b := 0; x.c := 0;
     x.rdo := TRUE; x.obj := T.typobj; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeTypTagAdr;
 
@@ -683,7 +683,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE TypeTest*(VAR x: Item; T: B.Type; varpar, isguard: BOOLEAN);
     VAR t!, pt!, tt!: Item;
-  BEGIN (*ti.am := A.Indexed; ti.obj := NIL; pt.am := A.Register; pt.ofs := 0; pt.obj := NIL; tt.am := A.Register; tt.ofs := 0; tt.obj := NIL;*)
+  BEGIN
     IF TypeChecked() OR ~isguard THEN
       IF T = NIL THEN free(x); SetCC(x, A.AL)
       ELSE rh.reg := AllocR(); (*fetch tag into RH*)
@@ -693,7 +693,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           ELSE S.Mark("error in TypeTest")
           END; PutDO(A.MOV, t, rh); free(x);
           t := rh; t.mode := RegI; t.a := T.nofpar*2; pt := t; pt.mode := Reg; pt.rdo := FALSE; PutDO(A.MOV, t, pt);
-          MakeTypTagAdr(tt, T); (*tt.reg := loadTypTagAdr(T, 0FFH) (*tag of T*); tt.mode := Reg;*) PutDO(A.CMP, tt, pt);
+          MakeTypTagAdr(tt, T); PutDO(A.CMP, tt, pt);
           freeR(pt.reg); free(tt);
           IF isguard THEN Trap(A.NE, 2) ELSE SetCC(x, A.EQ) END;
         ELSE S.Mark("pointer not allowed")
@@ -1033,7 +1033,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END StoreConstInt;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y *)
-    VAR adr, val: INTEGER; fd!: FixData;
+    VAR adr, val: INTEGER;
    BEGIN
     IF x.mode = B.StoredConst THEN adr := x.a + x.b; val := UpdateChain("k", adr, y.a, y);
       IF y.mode = B.Const THEN

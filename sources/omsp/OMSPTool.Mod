@@ -208,6 +208,6 @@ MODULE OMSPTool;  (*NW 18.2.2013
     END
   END DecObj;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSPTool 10.06.24");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSPTool 19.04.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
 END OMSPTool.

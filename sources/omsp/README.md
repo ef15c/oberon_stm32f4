@@ -70,8 +70,8 @@ This compiler is board agnostic, so **LED** is removed.
 **RLA(x, n)** is an optimized equivalent of **x := x * 2<sup>n</sup>** with x and y of numeric type  
 **RLC(x)** performs a rotate left through carry on x  
 **RRA(x, n)** is an optimized equivalent of **x := x / 2<sup>n</sup>** with x and y of numeric type  
-**RRC(x)** performs a rotate right through carry on x  
-**SWPB(x)** exchanges high and low bytes of x  
+**RRC(x)** performs a rotate right through carry on **x**  
+**SWPB(x)** exchanges high and low bytes of **x**  
 **PTR(t, x)** is a type safe equivalent of **SYSTEM.VAL(t, SYSTEM.ADR(x))**. In addition, the compiler checks that
 the type **t** is a pointer to the type of the expression **x**  
 #### In-line functions with different semantics

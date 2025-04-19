@@ -1145,7 +1145,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP Compiler  10.06.24");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP Compiler 19.04.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0

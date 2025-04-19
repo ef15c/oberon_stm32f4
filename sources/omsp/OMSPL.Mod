@@ -213,14 +213,14 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       S!: Texts.Scanner;
       M!, p!: Module;
       name: ModuleName;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := noerr;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := noerr; count := 0;
     Flash := SYSTEM.VAL(Segment, Modules.AllocPtr); FOR i := 0 TO 31 DO vector[i] := 0FFFFH END;
     IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE vecsize := 0; res := nopar END;
     IF S.class = Texts.Int THEN  limit := S.i - vecsize; Flash.origin := FlashEnd - S.i; Flash.allocPtr := 0; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Name) THEN first := NIL; last := NIL;
       REPEAT LinkOne(S.s, M); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
-      IF res = noerr THEN Texts.WriteString(W, "  linking"); count := 0;
+      IF res = noerr THEN Texts.WriteString(W, "  linking");
         (*prolog*) vector[31] := Flash.origin + Flash.allocPtr; p := first;
         (*MOV RAMLimit, SP*) EmitWord(4031H); EmitWord(RAMLimit);
         WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
@@ -288,6 +288,6 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END Link;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP linker  AP 6.8.20 / CS 31.08.2024");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP linker  AP 6.8.20 / CS 19.04.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
 END OMSPL.
