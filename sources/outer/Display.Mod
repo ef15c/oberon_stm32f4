@@ -28,13 +28,13 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   (* raster ops *)
   PROCEDURE Dot*(col, x, y, mode: INTEGER);
-    VAR a, pp: INTEGER; u, s: SET;
+    VAR a, pp: INTEGER; u, s, pattern: SET;
   BEGIN a := Base + x DIV NofPixperWord*4 + (Height-1-y)*Span; pp := x MOD NofPixperWord*NofBPP;
+    pattern := SYSTEM.VAL(SET, 0+col + 256*(col + 256*(col + 256*col)));
     s := {pp .. pp+NofBPP-1}; SYSTEM.GET(a, u);
-    IF mode = paint THEN SYSTEM.PUT(a, u + s)
-    ELSIF mode = invert THEN SYSTEM.PUT(a, u / s)
-    ELSE (*mode = replace*)
-      IF col # black THEN SYSTEM.PUT(a, u + s) ELSE SYSTEM.PUT(a, u - s) END
+    IF mode = paint THEN SYSTEM.PUT(a, u + s*pattern)
+    ELSIF mode = invert THEN SYSTEM.PUT(a, u / (s*pattern))
+    ELSE (*mode = replace*) SYSTEM.PUT(a, u - s + s*pattern)
     END
   END Dot;
 
@@ -43,7 +43,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   BEGIN al := Base + (Height-1-y)*Span;
     ar := (x+w-1) DIV NofPixperWord*4 + al; al := x DIV NofPixperWord*4 + al;
     ppl := x MOD NofPixperWord*NofBPP; ppr := (x+w-1) MOD NofPixperWord*NofBPP;
-      pattern := SYSTEM.VAL(SET, 0+col + 256*(col + 256*(col + 256*col)));
+    pattern := SYSTEM.VAL(SET, 0+col + 256*(col + 256*(col + 256*col)));
     IF ar = al THEN
       mid := {ppl .. ppr+NofBPP-1};
       a1 := al;
