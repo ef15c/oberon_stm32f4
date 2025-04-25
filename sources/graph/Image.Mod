@@ -103,12 +103,12 @@ MODULE Image;
   END ShowImage;
 
   PROCEDURE Handler(F: Display.Frame; VAR M: Display.FrameMsg);
-    VAR F0!: Display.Frame;
+    VAR F0!: Frame;
   BEGIN CASE M OF
       Oberon.InputMsg: IF M.id = Oberon.track THEN Oberon.DrawMouseArrow(M.X, M.Y) END
     | MenuViewers.ModifyMsg: F.Y := M.Y; F.H := M.H; ShowImage(F(Frame))
     | Oberon.ControlMsg: IF M.id = Oberon.neutralize THEN Oberon.RemoveMarks(F.X, F.Y, F.W, F.H) END
-    | Oberon.CopyMsg: NEW(F0); F0^ := F^; M.F := F0
+    | Oberon.CopyMsg: NEW(F0); F0^ := F(Frame)^; M.F := F0
     END
   END Handler;
 

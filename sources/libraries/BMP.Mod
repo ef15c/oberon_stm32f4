@@ -54,15 +54,19 @@ MODULE BMP;
             IF value = 0 THEN (*end of line*) j := 0; INC(i)
             ELSIF value = 1 THEN (*end of image*) i := fr.iy + fr.h
             ELSIF value = 2 THEN (*jump*) Files.ReadByte(R, value); INC(i, value); Files.ReadByte(R, value); INC(j, value)
-            ELSE (*absolute mode*)
-              FOR c := 1 TO value DO Files.ReadByte(R, pixel);
-                IF (i >= fr.iy) & (j >= fr.ix) & (j < fr.ix + fr.w) THEN Display.Dot(cm[pixel], fr.x - fr.ix + j, fr.y - fr.iy + i, Display.replace) END; INC(j)
+            ELSE (*absolute mode*) c := 0;
+              WHILE c < value DO Files.ReadByte(R, pixel);
+                IF (i >= fr.iy) & (j >= fr.ix) & (j < fr.ix + fr.w) THEN Display.Dot(cm[pixel], fr.x - fr.ix + j, fr.y - fr.iy + i, Display.replace) END;
+                INC(j); INC(c)
               END;
               WHILE c MOD 2 # 0 DO Files.ReadByte(R, pixel); INC(c) END
             END
           ELSE (*encoded mode*)
-            IF (i >= fr.iy) & (j >= fr.ix) & (j < fr.ix + fr.w) THEN c := count; IF j + c >= fr.w THEN c := fr.w - j END;
-              Display.ReplConst(cm[value], fr.x - fr.ix + j, fr.y - fr.iy + i, c, 1, Display.replace)
+            IF i >= fr.iy THEN
+              IF (j + count >= fr.ix) & (j < fr.ix + fr.w) THEN IF j < fr.ix THEN DEC(count, fr.ix - j); j := fr.ix END;
+                c := count; IF j + c >= fr.ix + fr.w THEN c := fr.ix + fr.w - j END; DEC(count, c);
+                Display.ReplConst(cm[value], fr.x - fr.ix + j, fr.y - fr.iy + i, c, 1, Display.replace); INC(j, c)
+              END
             END; INC(j, count)
           END
         END
