@@ -16,7 +16,7 @@ Details:
 The Oberon 07 language has no support for defining constants objects like records.
  In microcontroller field, is is very useful to have compile time initialized objects stored in embedded flash memory.  
  OMSP provides a way to achieve this, a concept similar as the "one time initialization" concept implemented in OM4 compiler.
-  Let'see it trough a simplified example:
+  Let's see it trough a simplified example:
   
     MODULE nrf24pRelay;
       CONST
@@ -37,7 +37,7 @@ The Oberon 07 language has no support for defining constants objects like record
       confEmitter.pipes[0].payload_length := 0; confEmitter.pipes[0].address := "RSCHO";
     END nrf24pRelay.
 
-Notice the hyphen character after N.RadioSetup type in the VAR clause.
+Notice the hyphen character after `RadioSetup` type in the VAR clause.
 It means that the variable `confEmitter` is immutable and will be stored in the embedded flash memory.
 The actual definition of this object is computed at compiler or link time and outputted to the
  constant section of the object file.  
@@ -68,7 +68,7 @@ This compiler is board agnostic, so **LED** is removed.
 **ADC(x, y)** is an optimized equivalent of **x := x + y + <carry>** with x and y of numeric type  
 **SBC(x, y)** is an optimized equivalent of **x := x - y - 1 + <carry>** with x and y of numeric type  
 **RLA(x, n)** is an optimized equivalent of **x := x * 2<sup>n</sup>** with x and y of numeric type  
-**RLC(x)** performs a rotate left through carry on x  
+**RLC(x)** performs a rotate left through carry on **x**  
 **RRA(x, n)** is an optimized equivalent of **x := x / 2<sup>n</sup>** with x and y of numeric type  
 **RRC(x)** performs a rotate right through carry on **x**  
 **SWPB(x)** exchanges high and low bytes of **x**  
