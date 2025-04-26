@@ -9,6 +9,16 @@ MODULE FilesEx;
   BEGIN res := {}
   END ResetErrors;
 
+  PROCEDURE ReadHalfWord*(VAR R: Files.Rider; VAR n: INTEGER);
+    VAR b1, b2: BYTE;
+  BEGIN Files.ReadByte(R, b1); Files.ReadByte(R, b2);
+    n := b1 + b2*100H
+  END ReadHalfWord;
+
+  PROCEDURE WriteHalfWord*(VAR R: Files.Rider; n: INTEGER);
+  BEGIN Files.WriteByte(R, n MOD 100H); Files.WriteByte(R, n DIV 100H MOD 100H)
+  END WriteHalfWord;
+
   PROCEDURE valueHexDigit(c: CHAR): BYTE;
     VAR x: BYTE;
   BEGIN
@@ -27,12 +37,6 @@ MODULE FilesEx;
   BEGIN Files.Read(R, ch); x := valueHexDigit(ch)*10H;
     Files.Read(R, ch); INC(x, valueHexDigit(ch))
   END ReadHex;
-
-  PROCEDURE ReadHalfWord*(VAR R: Files.Rider; VAR n: INTEGER);
-    VAR b1, b2: BYTE;
-  BEGIN Files.ReadByte(R, b1); Files.ReadByte(R, b2);
-    n := b1 + b2*100H
-  END ReadHalfWord;
 
   PROCEDURE WriteHex*(VAR R: Files.Rider; x: BYTE);  (*write a byte in 2 digit hex format*)
     VAR i: INTEGER; y: INTEGER;

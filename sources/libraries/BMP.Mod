@@ -1,5 +1,5 @@
 MODULE BMP;
-  IMPORT Files, FilesEx, Display, Texts, TextsEx, L := SystemLog;
+  IMPORT Files, FilesEx, Display, Texts, TextsEx;
 
   TYPE Header* = RECORD signature*: ARRAY 3 OF CHAR; filesize*, dataoffset*: INTEGER END;
     DIBHeader* = RECORD size*, width*, height*, planes*, bitcount*, compression*, imagesize*,
@@ -109,6 +109,40 @@ MODULE BMP;
       UNTIL i >= n
     END
   END DumpImage;
+
+  PROCEDURE TakeScreenShot*(VAR R: Files.Rider);
+    VAR i, j, k, r, g, b: INTEGER; l: Display.Line; count, value: INTEGER; pos: INTEGER;
+  BEGIN (*write header*)
+    Files.Write(R, "B"); Files.Write(R, "M"); Files.WriteInt(R, 0); (*placeholder for file size, offset 2*); Files.WriteInt(R, 0);
+    Files.WriteInt(R, 14 + 40 + 256*4); (*data offset*)
+    (*write DIB header*)
+    Files.WriteInt(R, 40); (*BITMAPINFOHEADER*) Files.WriteInt(R, Display.Width); Files.WriteInt(R, Display.Height);
+    FilesEx.WriteHalfWord(R, 1); FilesEx.WriteHalfWord(R, 8); Files.WriteInt(R, 1);
+    Files.WriteInt(R, 0); (*placeholder for image data size, offset 34 *) Files.WriteInt(R, 2835); Files.WriteInt(R, 2835);
+    Files.WriteInt(R, 256); Files.WriteInt(R, 256);
+    (*write palette*)
+    FOR i := 0 TO 255 DO r := LSR(i, 5) MOD 8; g := LSR(i, 2) MOD 8; b := i MOD 4;
+      Files.WriteInt(R, LSL(r*255 DIV 7, 16) + LSL(g*255 DIV 7, 8) + b*255 DIV 3)
+    END;
+    (*write image data*)
+    FOR i := 0 TO Display.Height - 1 DO Display.GetLine(i, l); j := 0;
+      WHILE j < Display.Width DO value := l[j]; count := 0;
+        REPEAT INC(count); INC(j) UNTIL (j >= Display.Width) OR (l[j] # value) OR (count = 0FFH);
+        IF count > 1 THEN Files.WriteByte(R, count); Files.WriteByte(R, value) (*encoded data*)
+        ELSE k := j; WHILE (k < Display.Width - 1) & (l[k] # l[k + 1]) & (count # 0FFH) DO INC(count); INC(k) END;
+          IF count = 1 THEN Files.WriteByte(R, count); Files.WriteByte(R, value) (*encoded data one byte*)
+          ELSE IF count = 2 THEN INC(k); count := 3 END; (*count must be 3 at least*)
+            Files.WriteByte(R, 0); Files.WriteByte(R, count);
+            IF ODD(count) THEN INC(count) END; (*padding current run to 16 bit*)
+            DEC(j); WHILE (j < Display.Width) & (j < k) DO Files.WriteByte(R, l[j]); INC(j); DEC(count) END;
+            WHILE count > 0 DO Files.WriteByte(R, 0); DEC(count) END; (*padding bytes*)
+          END
+        END
+      END; Files.WriteByte(R, 0); Files.WriteByte(R, 0) (*end of line*)
+    END; Files.WriteByte(R, 0); Files.WriteByte(R, 1); (*end of image*)
+    pos := Files.Pos(R); Files.Set(R, Files.Base(R), 2); Files.WriteInt(R, pos); (*fix file size placeholder*)
+    Files.Set(R, Files.Base(R), 34); Files.WriteInt(R, pos - 14 + 40 + 256*4) (*and image datasize placeholder*)
+  END TakeScreenShot;
 
 END BMP.
 

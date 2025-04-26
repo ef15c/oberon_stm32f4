@@ -1,5 +1,5 @@
 MODULE Image;
-  IMPORT Files, Display, Viewers, Texts, Oberon, MenuViewers, TextFrames, BMP, L := SystemLog;
+  IMPORT Files, Display, Viewers, Texts, Oberon, MenuViewers, TextFrames, BMP;
 
   CONST Menu = "System.Close  System.Copy  System.Grow";
 
@@ -129,6 +129,31 @@ MODULE Image;
     END
   END Show;
 
+  PROCEDURE toHexa(val: BYTE): CHAR;
+    VAR res: CHAR;
+  BEGIN
+    IF val<10 THEN res := CHR(val + ORD("0"))
+    ELSIF val<16 THEN res := CHR(val+(ORD("A")-10))
+    ELSE res := "?"
+	END
+
+    RETURN res
+  END toHexa;
+
+  PROCEDURE ScreenShot*;
+    VAR name: ARRAY 32 OF CHAR; F!: Files.File; R!: Files.Rider;
+      i, dt: INTEGER;
+  BEGIN name := "screenshot"; dt := Oberon.Clock(); i := 10;
+    REPEAT name[i] := toHexa(dt MOD 10H); dt := LSR(dt, 4); INC(i) UNTIL dt = 0;
+    name[i] := "."; name[i+1] := "b"; name[i+2] := "m"; name[i+3] := "p"; name[i+4] := 0X;
+    Texts.WriteString(W, name);
+    F := Files.New(name);
+    IF F # NIL THEN Files.Set(R, F, 0); BMP.TakeScreenShot(R); Files.Register(F)
+    ELSE Texts.WriteString(W, " failed")
+    END;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END ScreenShot;
+
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Image tool   C. Schoffit 19.04.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
 END Image.
@@ -140,3 +165,5 @@ Image.Infos img8bpprle.bmp
 
 Image.Show img8bpp.bmp
 Image.Infos img8bpp.bmp
+
+Image.ScreenShot
