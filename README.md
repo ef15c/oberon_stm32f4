@@ -2,7 +2,7 @@
 Portage of Oberon system to stm32f429i-disco board<br><br>
 **Version 12 released!**
 ## MSP430
-The main point is the adding support of <b>stored objects</b>. This can be seen as immutable variables initialized at compile time and stored in flash.
+The main point is adding support of <b>stored objects</b>. This can be seen as immutable variables initialized at compile time and stored in flash.
 Lot of bug fixes and improvements have also been made.  
 Two examples Thermometre (MSP430G2231) and nRF24l01+ relay (MSP430G2553) have been added.  
 ## Oberon System
@@ -23,7 +23,7 @@ There are a lot of advantages doing this:
  To put modules in embedded flash, follow this procedure:
  
  * Prelink the modules using the command **OM4L.LinkEF**. Example: `OM4L.LinkEF Modules System Edit OM4P ~`  
-This will produce a .efb file that will be later place in the embedded flash memory.
+This will produce a .efb file that will be later placed in the embedded flash memory.
  * Reboot the station in legacy SDRAM mode by pressing the SW1 button on the base board and the reset button on the SMT429I-DISCO board.
   This is mandatory because it is not safe to modify the embedded flash memory while executing it.
  * Install the .efb file using the command **OM4L.LoadEF**. Example: `OM4L.LoadEF OM4P.efb`  
