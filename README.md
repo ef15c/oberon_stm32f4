@@ -4,7 +4,7 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 ## Oberon System
 A rudimentary image manipulation module has been added. It allow to display 8bpp indexed colors BMP and can take screenshots.
   
-![Screenshot](https://github.com/ef15c/oberon_stm32/sources/graph/screenshot7C99C356.png)
+![Screenshot](https://raw.githubusercontent.com/ef15c/oberon_stm32f4/refs/heads/main/sources/graph/screenshot7C99C356.png)
   
 **The 12th release contains a major improvement:** the modules code and strings can be hosted
  in the flash memory of the microcontroller and be executed in place.
