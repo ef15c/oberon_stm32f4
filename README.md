@@ -2,7 +2,7 @@
 Portage of Oberon system to stm32f429i-disco board<br><br>
 **Version 13 released!**
 ## Oberon System
-A rudimentary image manipulation module has been added. It allow to display 8bpp indexed colors BMP and can take screenshots.
+A rudimentary image manipulation module has been added. It allows to display 8bpp indexed colors BMP and can take screenshots.
   
 ![Screenshot](https://raw.githubusercontent.com/ef15c/oberon_stm32f4/refs/heads/main/sources/graph/screenshot7C99C356.png)
   
