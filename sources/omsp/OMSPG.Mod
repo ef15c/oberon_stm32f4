@@ -291,7 +291,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR res: INTEGER;
   BEGIN CASE x OF
     Item: res := UpdateChain("c", mcode.pc, x.ofs, x)
-    | A.Item: ASSERT(FALSE)
+    | A.Item: (*ASSERT(FALSE)*) res := x.ofs
     END
 
     RETURN res
@@ -602,6 +602,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode IN {B.Var, B.StoredConst} THEN IF x.c >= 0 THEN INC(x.a, y.val) ELSE INC(x.b,  y.val) END
     ELSIF x.mode IN {RegI, Absol} THEN INC(x.a, y.val)
     ELSIF x.mode = B.Par THEN INC(x.b, y.val)
+    ELSIF (x.mode = B.Const) & (y.type.form = B.Proc) THEN INC(x.a, y.val); x.mode := Absol
     ELSE S.Mark("not implemented"); S.DebugHex("x.mode", x.mode)
     END
   END Field;
@@ -798,15 +799,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE IF x.mode > B.Par THEN x.mode := RegI; x.reg := A.SP; x.a := s; INC(s, WordSize) END;
       IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
       PutSO(A.CALL, x); free(x)
-      (*IF x.mode <= B.Par THEN IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
-        PutSO(A.CALL, x); free(x)
-      ELSE rh.reg := AllocR();
-        IF s = 0 THEN PutSO(A.POP, rh); adjFrmOfs(-WordSize)
-        ELSE t := sp; t.mode := RegI; t.a := s; PutDO(A.MOV, t, rh); INC(s, WordSize)
-        END;
-        IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, rh); Trap(A.EQ, 5) END;
-        A.PutSO(mcode, A.CALL, rh, A.Word); freeR(rh.reg)
-      END*)
     END;
     IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr); adjFrmOfs(-s) END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(am)
@@ -843,8 +835,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!, p!, x0!, y0!: Item; r, or: SET; pau: BOOLEAN;
   BEGIN t.reg := 0; t.am := A.Immediate; t.obj := NIL;
     IF (x.mode = B.Const) & (y.mode = B.Const) THEN x.a := x.a * y.a
-    ELSIF (y.mode = B.Const)  & (y.a >= 2) THEN load(x, 0FFH); t.ofs := y.a; A.PutDO(mcode, A.MUL, t, x, A.Word)
-    ELSIF (x.mode = B.Const) & (x.a >= 2) THEN load(y, 0FFH); t.ofs := x.a; A.PutDO(mcode, A.MUL, t, y, A.Word);
+    ELSIF (y.mode = B.Const) (* & (y.a >= 2) *)THEN load(x, 0FFH); t.ofs := y.a; A.PutDO(mcode, A.MUL, t, x, A.Word)
+    ELSIF (x.mode = B.Const) (* & (x.a >= 2) *)THEN load(y, 0FFH); t.ofs := x.a; A.PutDO(mcode, A.MUL, t, y, A.Word);
       x.mode := Reg; x.reg := y.reg; x.am := A.Register; x.ofs := 0; x.tmp := TRUE
     ELSE
       IF arith[0] = NIL THEN S.Mark("import Arith.mul16 function")

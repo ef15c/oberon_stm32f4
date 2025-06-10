@@ -147,6 +147,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   PROCEDURE PutDO*(VAR c: ModuleCode; op: INTEGER; s, d: Item; params: SET);
     VAR emitSOff, emitDOff: BOOLEAN; t, ts, td: Item;
+      e: INTEGER;
   BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
     ts := s; td := d;
     IF op = MUL THEN 
@@ -164,7 +165,13 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
           END
         END
       END
-    ELSIF op IN {DIv, MOd} THEN S.Mark("not implemented")
+    ELSIF op IN {DIv, MOd} THEN
+      IF (s.am = Immediate) & (s.ofs < ORD({16})) & (log2(s.ofs, e) = 1) THEN
+        IF op = DIv THEN WHILE e > 0 DO PutSO0(c, RRA, d, params); DEC(e) END
+        ELSE (*op = MOd*) t.reg := 0; t.am := Immediate; t.ofs := LSL(1, e) - 1; PutDO(c, AND, t, d, params)
+        END
+      ELSE S.Mark("not implemented")
+      END
     ELSE ASSERT(op < 10H);
       encSrc(op, ts.reg, ts.am, ts.ofs, emitSOff, params);
 

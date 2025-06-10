@@ -15,12 +15,17 @@ BEGIN
   UNTIL FALSE
 END testRAMcode.
 
+OMSPP.Compile testRAMcode.Mod ~
+OMSPL.Link 32 4000H 200H testRAMcode ~
+  linking msp430g2553 testRAMcode*
+    flash   64, data   36, stack  476 bytes
+
 OMSPTool.DecObj testRAMcode.mpc
 decode testRAMcode.mpc
 testRAMcode 633E8DCC Flash    34
 code executed from RAM
 imports:
-	msp430g2553 8250CA0E
+	msp430g2553 F10488DC
 type descriptors
 
 data     2
@@ -32,12 +37,13 @@ vector table
 
 entries
  c 0000
-fixup procedures chains
-fixup handlers chains
-fixup data chains
+fixup procedures in code space chains
+fixup handlers in vector space chains
+fixup data in code space chains
  001A     0	 0000
-fixup constants chains
-fixup types chains
+fixup constants in code space chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  0000
 code    34
  0000	     40B2	MOV #23168,&288
@@ -54,6 +60,6 @@ code    34
  0016	     0012
  0018	     9382	CMP #0,&22
  001A	     0016
- 001C	     23FB	JNE #-5, goes to  0014
- 001E	     3FF5	JMP #-11, goes to  000A
+ 001C	     23FB	JNE $-8, goes to  0014
+ 001E	     3FF5	JMP $-20, goes to  000A
  0020	     4130	RET
