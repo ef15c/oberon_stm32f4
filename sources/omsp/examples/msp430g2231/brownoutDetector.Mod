@@ -113,6 +113,7 @@ MODULE brownoutDetector;
      * Note: ~<BIT> indicates that <BIT> has value zero
      *)
     M.USICNT^ := M.USIIFGCC;
+    i2c_state := IDLE;
 
     BIC(M.USICTL0^, M.USISWRST); (* Enable USI *)
   END USI_graceInit;
@@ -261,7 +262,6 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog during initial start-up*
     BIC(M.IFG1^, M.WDTIFG);
   ELSE registers[3] := 0
   END;
-  i2c_state := IDLE;
   
   (*
    *  ======== GPIO_graceInit ========
