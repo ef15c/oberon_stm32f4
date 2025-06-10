@@ -80,7 +80,7 @@ MODULE bootloader;
     (* Write remaining characters to flash memory *)
   BEGIN
     IF nbElt > 0 THEN
-      MSPFlash.flashBlock(SYSTEM.VAL(PINTEGER, SYSTEM.ADR(buffer)), SYSTEM.VAL(PINTEGER, address), nbElt);
+      MSPFlash.flashBlock(SYSTEM.VAL(PINTEGER, PTR(PBYTE, buffer[0])), SYSTEM.VAL(PINTEGER, address), nbElt);
      (* flashBlock is also used by sDiary *)
       INC(SYSTEM.VAL(INTEGER, address), nbElt); (* Move address pointer just after the last byte written *)
       nbElt := 0;
