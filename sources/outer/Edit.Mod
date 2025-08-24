@@ -118,7 +118,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Int THEN
       voff := S.i; Oberon.GetSelection(T, beg, end, time);
-      IF time >= 0 THEN Texts.ChangeLooks(T, beg, end, {2}, NIL, voff, 0) END
+      IF time >= 0 THEN Texts.ChangeLooks(T, beg, end, {2}, NIL, 0, voff) END
     END
   END ChangeOffset;
 
