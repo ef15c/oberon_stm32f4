@@ -2,6 +2,7 @@ MODULE bootloader;
   IMPORT SYSTEM, M := msp430g2553, MSPFlash, Types, Delay := msp430delay;
 
   CONST APP_RESET_VECTOR = SYSTEM.VAL(Types.PPROC, 0FFE2H);
+    APP_START = SYSTEM.VAL(PBYTE, 0C400H);
     BUF_SIZE = 64;
 
   VAR cc: CHAR; byte: BYTE; add, nbElt: INTEGER; address: PBYTE; buffer: ARRAY BUF_SIZE OF BYTE;
@@ -54,7 +55,7 @@ MODULE bootloader;
   END sendKO;
 
   PROCEDURE prompt;
-  BEGIN serialOutString(SYSTEM.VAL(PBYTE, SYSTEM.ADR("sDBoot2 ready"+0DX+0AX)))
+  BEGIN serialOutString(SYSTEM.VAL(PBYTE, SYSTEM.ADR("sDBoot3 ready"+0DX+0AX)))
   END prompt;
 
   PROCEDURE serialInChar;
@@ -123,44 +124,34 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD;
 
     BIC(M.P1OUT^, {0}); (*Turn main LED on to signal ready to flash state*)
     BIC(M.IFG1^, M.WDTIFG); (* Reset Watchdog Interrupt Flag *)
-    prompt;
-    REPEAT (* wait for first @ character on the firmware image *)
-      REPEAT BIC(M.P1OUT^, {6}); (* turn overrun LED off *)
-        serialInChar;
-        IF cc = "e" THEN (* Erase command*)
-          getHexNumber(" "); address := SYSTEM.VAL(PBYTE, add);
-          getHexNumber(" "); (* get number of blocks to erase *)
-          IF ~BIT(M.P1OUT^, {6}) THEN (* Execute flash erase *)
-            waitFlash; M.FCTL3^ := M.FWKEY; (* Clear Flash memory lock *)
-            WHILE add > 0 DO M.FCTL1^ := M.FWKEY + M.ERASE; (* Enable segment erase *)
-              address^ := 0; (* Dummy write to erase segment *)
-              INC(SYSTEM.VAL(INTEGER, address), 512); DEC(add); waitFlash
-            END;
-            sendOK
-          END
-        ELSIF cc = "i" THEN prompt
-        END
-      UNTIL cc = "@";
-      nbElt := 0; (* First char of firmware received *)
-      REPEAT (* we should be hera at the beginning of a firmware text line *)
-        BIC(M.P1OUT^, {6}); (* turn overrun LED off*)
-        IF cc = "@" THEN (* Address *)
-          flushBuffer; getHexNumber(0DX); address := SYSTEM.VAL(PBYTE, add); sendOK
-        ELSIF cc = "r" THEN (* Read data from flash *)
-          getHexNumber(" "); (* get the number of bytes to read *)
-          WHILE add > 0 DO serialOutChar(toHexa(address^ DIV 10H)); serialOutChar(toHexa(address^ MOD 10H));
-            INC(SYSTEM.VAL(INTEGER, address)); serialOutChar(" "); DEC(add)
-          END
-        ELSIF cc = "q" THEN (* End of file, finish flash write and reboot transfer control to the new appli *)
-          flushBuffer; M.FCTL1^ := {}; (* Reboot application via flash PW fault*)
-        ELSE (* line of data *)
-          WHILE cc # 0DX DO byte := hexa(cc)*10H; serialInChar; INC(byte, hexa(cc));
-            addByteInBuffer(byte); serialInChar;
-            IF cc = " " THEN serialInChar END
-          END
+    prompt; address := APP_START; nbElt := 0; (* No firmware charater received yet *)
+    serialInChar; 
+    REPEAT
+      IF cc = "z" THEN (* Erase command*)
+        getHexNumber(" "); (* get number of blocks to erase *)
+        waitFlash; M.FCTL3^ := M.FWKEY; (* Clear Flash memory lock *)
+        WHILE add > 0 DO M.FCTL1^ := M.FWKEY + M.ERASE; (* Enable segment erase *)
+          address^ := 0; (* Dummy write to erase segment *)
+          INC(SYSTEM.VAL(INTEGER, address), 512); DEC(add); waitFlash
         END;
-        serialInChar; (* Skip \r *) IF cc = 0AX THEN serialInChar (* Skip \n *) END
-      UNTIL FALSE
+        sendOK
+      ELSIF cc = "i" THEN prompt
+      ELSIF cc = "@" THEN (* Address *)
+        flushBuffer; getHexNumber(0DX); address := SYSTEM.VAL(PBYTE, add); sendOK
+      ELSIF cc = "r" THEN (* Read data from flash *)
+        getHexNumber(" "); (* get the number of bytes to read *)
+        WHILE add > 0 DO serialOutChar(toHexa(address^ DIV 10H)); serialOutChar(toHexa(address^ MOD 10H));
+          INC(SYSTEM.VAL(INTEGER, address)); serialOutChar(" "); DEC(add)
+        END
+      ELSIF cc = "q" THEN (* End of file, finish flash write and reboot to transfer control to the new appli *)
+        flushBuffer; M.FCTL1^ := {}; (* Reboot application via flash PW fault*)
+      ELSE (* line of data *)
+        WHILE (cc # 0DX) & (cc # 0AX) DO byte := hexa(cc)*10H; serialInChar; INC(byte, hexa(cc));
+          addByteInBuffer(byte); serialInChar;
+          IF cc = " " THEN serialInChar END
+        END
+      END;
+      serialInChar; (* get next char or skip \r *) IF cc = 0AX THEN serialInChar (* Skip \n *) END
     UNTIL FALSE
   END;
   APP_RESET_VECTOR.p; (* Start user application *)
@@ -169,11 +160,11 @@ END bootloader.
 OMSPP.Compile MSPFlash.Mod bootloader.Mod~
 OMSPL.Link 32 4000H 200H bootloader~
   linking msp430g2553 MSPFlash* Types msp430delay bootloader
-    flash 1020, data  166, stack  346 bytes
+    flash  990, data  166, stack  346 bytes
 
 OMSPTool.DecObj bootloader.mpc
 decode bootloader.mpc
-bootloader 9CFADC3C Flash   880
+bootloader 9CFADC3C Flash   850
 imports:
 	msp430g2553 F10488DC
 	MSPFlash 950E56FD
@@ -185,7 +176,7 @@ data    72
 strings
 OK
 ||KO
-||sDBoot2 ready
+||sDBoot3 ready
 |
 vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
@@ -194,29 +185,29 @@ vector table
 entries
  c 012E
 fixup procedures in code space chains
- 02C0     0	 0006
- 02D0     0	 001A
+ 029C     0	 0006
+ 02AC     0	 001A
  0060     0	 0026
- 027C     0	 0042
+ 0258     0	 0042
  0070     0	 004E
- 024A     0	 005A
- 0342     0	 0066
- 0312     0	 0086
- 0236     0	 00A6
- 02E4     0	 00AE
- 031E     0	 00D6
- 028E     0	 00F2
+ 0236     0	 005A
+ 0326     0	 0066
+ 02F6     0	 0086
+ 0222     0	 00A6
+ 02C0     0	 00AE
+ 0302     0	 00D6
+ 026A     0	 00F2
  00C4     2	 0001
  018E     4	 0001
 fixup handlers in vector space chains
  0111     0	 0000
 fixup data in code space chains
- 031A     0	 0001
- 02D4     0	 0002
- 02C8     0	 0006
+ 02FE     0	 0001
+ 02B0     0	 0002
+ 02A4     0	 0006
  00DE     0	 0008
- 0256     0	 0004
- 033C     0	 0000
+ 01DE     0	 0004
+ 0320     0	 0000
 fixup constants in code space chains
  005C     0	 000C
  0050     0	 0006
@@ -224,7 +215,7 @@ fixup constants in code space chains
 fixup variables in constant space chains
 fixup constants in constant space chains
 entry =  012E
-code   852
+code   822
  0000	     4382	MOV #0,&288
  0002	     0120
  0004	     1300	RETI
@@ -393,7 +384,7 @@ code   852
  014A	     2003	JNE $+8, goes to  0152
  014C	     B2F2	BIT.B #8,&32
  014E	     0020
- 0150	     20FB	JNE $+504, goes to  0348
+ 0150	     20EC	JNE $+474, goes to  032A
  0152	     40B2	MOV #-23189,&298
  0154	     A56B
  0156	     012A
@@ -460,194 +451,179 @@ code   852
  01D0	     0002
  01D2	     12B0	CALL #0
  01D4	     0000
- 01D6	     C0F2	BIC.B #64,&33
- 01D8	     0040
- 01DA	     0021
- 01DC	     12B0	CALL #296
- 01DE	     0128
- 01E0	     90F2	CMP.B #101,&284
- 01E2	     0065
- 01E4	     011C
- 01E6	     202C	JNE $+90, goes to  0240
- 01E8	     1270	PUSH.B #32
- 01EA	     0020
- 01EC	     12B0	CALL #0
- 01EE	     0000
- 01F0	     5321	ADD #2,SP
- 01F2	     4292	MOV &292,&202
- 01F4	     0124
- 01F6	     00CA
- 01F8	     1270	PUSH.B #32
- 01FA	     0020
- 01FC	     12B0	CALL #494
- 01FE	     01EE
- 0200	     5321	ADD #2,SP
- 0202	     B0F2	BIT.B #64,&33
- 0204	     0040
- 0206	     0021
- 0208	     201A	JNE $+54, goes to  023E
- 020A	     12B0	CALL #0
- 020C	     0000
- 020E	     40B2	MOV #-23296,&300
- 0210	     A500
- 0212	     012C
- 0214	     430F	MOV #0,R15
- 0216	     921F	CMP &500,R15
- 0218	     01F4
- 021A	     340F	JGE $+32, goes to  023A
- 021C	     40B2	MOV #-23294,&296
- 021E	     A502
- 0220	     0128
- 0222	     421F	MOV &502,R15
- 0224	     01F6
- 0226	     43CF	MOV.B #0,0(R15)
- 0228	     0000
- 022A	     50B2	ADD #512,&548
- 022C	     0200
- 022E	     0224
- 0230	     8392	SUB #1,&536
- 0232	     0218
- 0234	     12B0	CALL #524
- 0236	     020C
- 0238	     3FED	JMP $-36, goes to  0214
- 023A	     12B0	CALL #210
- 023C	     00D2
- 023E	     3C06	JMP $+14, goes to  024C
- 0240	     90F2	CMP.B #105,&484
- 0242	     0069
- 0244	     01E4
- 0246	     2002	JNE $+6, goes to  024C
- 0248	     12B0	CALL #468
- 024A	     01D4
- 024C	     90F2	CMP.B #64,&580
- 024E	     0040
- 0250	     0244
- 0252	     23C1	JNE $-124, goes to  01D6
- 0254	     4382	MOV #0,&232
- 0256	     00E8
- 0258	     C0F2	BIC.B #64,&33
- 025A	     0040
- 025C	     0021
- 025E	     90F2	CMP.B #64,&592
- 0260	     0040
- 0262	     0250
- 0264	     200D	JNE $+28, goes to  0280
- 0266	     12B0	CALL #238
- 0268	     00EE
- 026A	     1270	PUSH.B #13
- 026C	     000D
- 026E	     12B0	CALL #510
- 0270	     01FE
- 0272	     5321	ADD #2,SP
- 0274	     4292	MOV &562,&558
- 0276	     0232
- 0278	     022E
- 027A	     12B0	CALL #572
- 027C	     023C
- 027E	     3C5A	JMP $+182, goes to  0334
- 0280	     90F2	CMP.B #114,&610
- 0282	     0072
- 0284	     0262
- 0286	     2029	JNE $+84, goes to  02DA
- 0288	     1270	PUSH.B #32
- 028A	     0020
- 028C	     12B0	CALL #624
- 028E	     0270
- 0290	     5321	ADD #2,SP
- 0292	     430F	MOV #0,R15
- 0294	     921F	CMP &630,R15
- 0296	     0276
- 0298	     341F	JGE $+64, goes to  02D8
- 029A	     4214	MOV &632,R4
- 029C	     0278
- 029E	     4464	MOV.B @R4,R4
- 02A0	     1104	RRA R4
- 02A2	     1104	RRA R4
- 02A4	     1104	RRA R4
- 02A6	     1104	RRA R4
- 02A8	     4405	MOV R4,R5
- 02AA	     12B0	CALL #0
- 02AC	     0000
- 02AE	     12B0	CALL #56
- 02B0	     0038
- 02B2	     4214	MOV &668,R4
- 02B4	     029C
- 02B6	     4464	MOV.B @R4,R4
- 02B8	     F034	AND #15,R4
- 02BA	     000F
- 02BC	     4405	MOV R4,R5
- 02BE	     12B0	CALL #684
- 02C0	     02AC
- 02C2	     12B0	CALL #688
- 02C4	     02B0
- 02C6	     5392	ADD #1,&692
- 02C8	     02B4
- 02CA	     4034	MOV #32,R4
- 02CC	     0020
- 02CE	     12B0	CALL #708
- 02D0	     02C4
- 02D2	     8392	SUB #1,&662
- 02D4	     0296
- 02D6	     3FDD	JMP $-68, goes to  0292
- 02D8	     3C2D	JMP $+92, goes to  0334
- 02DA	     90F2	CMP.B #113,&644
- 02DC	     0071
- 02DE	     0284
- 02E0	     2005	JNE $+12, goes to  02EC
- 02E2	     12B0	CALL #616
- 02E4	     0268
- 02E6	     4382	MOV #0,&296
- 02E8	     0128
- 02EA	     3C24	JMP $+74, goes to  0334
- 02EC	     90F2	CMP.B #13,&734
- 02EE	     000D
- 02F0	     02DE
- 02F2	     2420	JEQ $+66, goes to  0334
- 02F4	     4255	MOV.B &752,R5
- 02F6	     02F0
- 02F8	     12B0	CALL #288
- 02FA	     0120
- 02FC	     5404	ADD R4,R4
- 02FE	     5404	ADD R4,R4
- 0300	     5404	ADD R4,R4
- 0302	     5404	ADD R4,R4
- 0304	     44C2	MOV.B R4,&0
- 0306	     0000
- 0308	     12B0	CALL #478
- 030A	     01DE
- 030C	     4255	MOV.B &758,R5
- 030E	     02F6
- 0310	     12B0	CALL #762
- 0312	     02FA
- 0314	     54C2	ADD.B R4,&774
- 0316	     0306
- 0318	     1252	PUSH.B &790
- 031A	     0316
- 031C	     12B0	CALL #0
- 031E	     0000
- 0320	     5321	ADD #2,SP
- 0322	     12B0	CALL #778
- 0324	     030A
- 0326	     90F2	CMP.B #32,&782
- 0328	     0020
- 032A	     030E
- 032C	     2002	JNE $+6, goes to  0332
- 032E	     12B0	CALL #804
- 0330	     0324
- 0332	     3FDC	JMP $-70, goes to  02EC
- 0334	     12B0	CALL #816
- 0336	     0330
- 0338	     90F2	CMP.B #10,&810
- 033A	     000A
- 033C	     032A
- 033E	     2002	JNE $+6, goes to  0344
- 0340	     12B0	CALL #822
- 0342	     0336
- 0344	     3F89	JMP $-236, goes to  0258
- 0346	     3F47	JMP $-368, goes to  01D6
- 0348	     1212	PUSH &65506
- 034A	     FFE2
- 034C	     1291	CALL 2(SP)
- 034E	     0002
- 0350	     5321	ADD #2,SP
- 0352	     4130	RET
+ 01D6	     40B2	MOV #-15360,&202
+ 01D8	     C400
+ 01DA	     00CA
+ 01DC	     4382	MOV #0,&232
+ 01DE	     00E8
+ 01E0	     12B0	CALL #296
+ 01E2	     0128
+ 01E4	     90F2	CMP.B #122,&284
+ 01E6	     007A
+ 01E8	     011C
+ 01EA	     2020	JNE $+66, goes to  022C
+ 01EC	     1270	PUSH.B #32
+ 01EE	     0020
+ 01F0	     12B0	CALL #0
+ 01F2	     0000
+ 01F4	     5321	ADD #2,SP
+ 01F6	     12B0	CALL #0
+ 01F8	     0000
+ 01FA	     40B2	MOV #-23296,&300
+ 01FC	     A500
+ 01FE	     012C
+ 0200	     430F	MOV #0,R15
+ 0202	     921F	CMP &292,R15
+ 0204	     0124
+ 0206	     340F	JGE $+32, goes to  0226
+ 0208	     40B2	MOV #-23294,&296
+ 020A	     A502
+ 020C	     0128
+ 020E	     421F	MOV &474,R15
+ 0210	     01DA
+ 0212	     43CF	MOV.B #0,0(R15)
+ 0214	     0000
+ 0216	     50B2	ADD #512,&528
+ 0218	     0200
+ 021A	     0210
+ 021C	     8392	SUB #1,&516
+ 021E	     0204
+ 0220	     12B0	CALL #504
+ 0222	     01F8
+ 0224	     3FED	JMP $-36, goes to  0200
+ 0226	     12B0	CALL #210
+ 0228	     00D2
+ 022A	     3C76	JMP $+238, goes to  0318
+ 022C	     90F2	CMP.B #105,&488
+ 022E	     0069
+ 0230	     01E8
+ 0232	     2003	JNE $+8, goes to  023A
+ 0234	     12B0	CALL #468
+ 0236	     01D4
+ 0238	     3C6F	JMP $+224, goes to  0318
+ 023A	     90F2	CMP.B #64,&560
+ 023C	     0040
+ 023E	     0230
+ 0240	     200D	JNE $+28, goes to  025C
+ 0242	     12B0	CALL #238
+ 0244	     00EE
+ 0246	     1270	PUSH.B #13
+ 0248	     000D
+ 024A	     12B0	CALL #498
+ 024C	     01F2
+ 024E	     5321	ADD #2,SP
+ 0250	     4292	MOV &542,&538
+ 0252	     021E
+ 0254	     021A
+ 0256	     12B0	CALL #552
+ 0258	     0228
+ 025A	     3C5E	JMP $+190, goes to  0318
+ 025C	     90F2	CMP.B #114,&574
+ 025E	     0072
+ 0260	     023E
+ 0262	     2029	JNE $+84, goes to  02B6
+ 0264	     1270	PUSH.B #32
+ 0266	     0020
+ 0268	     12B0	CALL #588
+ 026A	     024C
+ 026C	     5321	ADD #2,SP
+ 026E	     430F	MOV #0,R15
+ 0270	     921F	CMP &594,R15
+ 0272	     0252
+ 0274	     341F	JGE $+64, goes to  02B4
+ 0276	     4214	MOV &596,R4
+ 0278	     0254
+ 027A	     4464	MOV.B @R4,R4
+ 027C	     1104	RRA R4
+ 027E	     1104	RRA R4
+ 0280	     1104	RRA R4
+ 0282	     1104	RRA R4
+ 0284	     4405	MOV R4,R5
+ 0286	     12B0	CALL #0
+ 0288	     0000
+ 028A	     12B0	CALL #56
+ 028C	     0038
+ 028E	     4214	MOV &632,R4
+ 0290	     0278
+ 0292	     4464	MOV.B @R4,R4
+ 0294	     F034	AND #15,R4
+ 0296	     000F
+ 0298	     4405	MOV R4,R5
+ 029A	     12B0	CALL #648
+ 029C	     0288
+ 029E	     12B0	CALL #652
+ 02A0	     028C
+ 02A2	     5392	ADD #1,&656
+ 02A4	     0290
+ 02A6	     4034	MOV #32,R4
+ 02A8	     0020
+ 02AA	     12B0	CALL #672
+ 02AC	     02A0
+ 02AE	     8392	SUB #1,&626
+ 02B0	     0272
+ 02B2	     3FDD	JMP $-68, goes to  026E
+ 02B4	     3C31	JMP $+100, goes to  0318
+ 02B6	     90F2	CMP.B #113,&608
+ 02B8	     0071
+ 02BA	     0260
+ 02BC	     2005	JNE $+12, goes to  02C8
+ 02BE	     12B0	CALL #580
+ 02C0	     0244
+ 02C2	     4382	MOV #0,&296
+ 02C4	     0128
+ 02C6	     3C28	JMP $+82, goes to  0318
+ 02C8	     90F2	CMP.B #13,&698
+ 02CA	     000D
+ 02CC	     02BA
+ 02CE	     2424	JEQ $+74, goes to  0318
+ 02D0	     90F2	CMP.B #10,&716
+ 02D2	     000A
+ 02D4	     02CC
+ 02D6	     2420	JEQ $+66, goes to  0318
+ 02D8	     4255	MOV.B &724,R5
+ 02DA	     02D4
+ 02DC	     12B0	CALL #288
+ 02DE	     0120
+ 02E0	     5404	ADD R4,R4
+ 02E2	     5404	ADD R4,R4
+ 02E4	     5404	ADD R4,R4
+ 02E6	     5404	ADD R4,R4
+ 02E8	     44C2	MOV.B R4,&0
+ 02EA	     0000
+ 02EC	     12B0	CALL #482
+ 02EE	     01E2
+ 02F0	     4255	MOV.B &730,R5
+ 02F2	     02DA
+ 02F4	     12B0	CALL #734
+ 02F6	     02DE
+ 02F8	     54C2	ADD.B R4,&746
+ 02FA	     02EA
+ 02FC	     1252	PUSH.B &762
+ 02FE	     02FA
+ 0300	     12B0	CALL #0
+ 0302	     0000
+ 0304	     5321	ADD #2,SP
+ 0306	     12B0	CALL #750
+ 0308	     02EE
+ 030A	     90F2	CMP.B #32,&754
+ 030C	     0020
+ 030E	     02F2
+ 0310	     2002	JNE $+6, goes to  0316
+ 0312	     12B0	CALL #776
+ 0314	     0308
+ 0316	     3FD8	JMP $-78, goes to  02C8
+ 0318	     12B0	CALL #788
+ 031A	     0314
+ 031C	     90F2	CMP.B #10,&782
+ 031E	     000A
+ 0320	     030E
+ 0322	     2002	JNE $+6, goes to  0328
+ 0324	     12B0	CALL #794
+ 0326	     031A
+ 0328	     3F5D	JMP $-324, goes to  01E4
+ 032A	     1212	PUSH &65506
+ 032C	     FFE2
+ 032E	     1291	CALL 2(SP)
+ 0330	     0002
+ 0332	     5321	ADD #2,SP
+ 0334	     4130	RET

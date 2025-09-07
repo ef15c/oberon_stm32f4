@@ -104,3 +104,8 @@ code    96
  005A	     012C
  005C	     4130	RET
  005E	     4130	RET
+
+OMSPTool.DecSym MSPFlash.sms
+decode MSPFlash.sms
+MSPFlash 950E56FD  1
+   1 flashBlock [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R6 [^4] class = 2 R5 [^7] class = 2 R4 [^7])]       1
