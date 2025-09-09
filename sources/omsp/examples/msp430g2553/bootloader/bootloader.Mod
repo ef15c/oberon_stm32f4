@@ -2,7 +2,7 @@ MODULE bootloader;
   IMPORT SYSTEM, M := msp430g2553, MSPFlash, Types, Delay := msp430delay;
 
   CONST APP_RESET_VECTOR = SYSTEM.VAL(Types.PPROC, 0FFE2H);
-    APP_START = SYSTEM.VAL(PBYTE, 0C400H);
+    NOWHERE = SYSTEM.VAL(PBYTE, 0A000H); (*non mapped address*)
     BUF_SIZE = 64;
 
   VAR cc: CHAR; byte: BYTE; add, nbElt: INTEGER; address: PBYTE; buffer: ARRAY BUF_SIZE OF BYTE;
@@ -124,7 +124,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD;
 
     BIC(M.P1OUT^, {0}); (*Turn main LED on to signal ready to flash state*)
     BIC(M.IFG1^, M.WDTIFG); (* Reset Watchdog Interrupt Flag *)
-    prompt; address := APP_START; nbElt := 0; (* No firmware charater received yet *)
+    prompt; address := NOWHERE; nbElt := 0; (* No firmware charater received yet *)
     serialInChar; 
     REPEAT
       IF cc = "z" THEN (* Erase command*)
@@ -451,8 +451,8 @@ code   822
  01D0	     0002
  01D2	     12B0	CALL #0
  01D4	     0000
- 01D6	     40B2	MOV #-15360,&202
- 01D8	     C400
+ 01D6	     40B2	MOV #-24576,&202
+ 01D8	     A000
  01DA	     00CA
  01DC	     4382	MOV #0,&232
  01DE	     00E8
