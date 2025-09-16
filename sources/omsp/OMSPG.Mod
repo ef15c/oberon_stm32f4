@@ -69,8 +69,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     rh: Item;
     curImport: INTEGER;
 
-    mcode: A.ModuleCode;
+    mcode: A.ModuleCode; flagsObj: B.Object;
     frmOfsSegs: FrameOffset;
+
+  PROCEDURE SetFCO(x: A.Item; state: BOOLEAN);
+  BEGIN
+    CASE x OF
+      Item: IF state THEN flagsObj := x.obj ELSE flagsObj := NIL END
+    END;
+  END SetFCO;
 
   PROCEDURE CheckRTImport*(impid: S.Ident);
   BEGIN
@@ -979,14 +986,19 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE IntRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
   BEGIN
     IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
-    AdjustSize(x); AdjustSize(y);
-    IF x.type.size # y.type.size THEN
-      IF x.type.size = 1 THEN IF x.mode # B.Const THEN load(x, 0FFH) END; x.type := B.intType
-      ELSE IF y.mode # B.Const THEN load(y, 0FFH) END; y.type := B.intType
-      END (*convert to word*)
-    END;
-    IF op < S.gtr THEN PutDO(A.CMP, y, x); IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.eql]) ELSE SetCC(x, relmap[op - S.eql]) END
-    ELSE PutDO(A.CMP, x, y); IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.gtr + 2]) ELSE SetCC(x, relmap[op - S.gtr + 2]) END
+    IF (y.mode = B.Const) & (y.a = 0) &
+      (flagsObj # NIL) & (flagsObj = x.obj) & (op < S.gtr) THEN
+      IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.eql]) ELSE SetCC(x, relmap[op - S.eql]) END
+    ELSE
+      AdjustSize(x); AdjustSize(y);
+      IF x.type.size # y.type.size THEN
+        IF x.type.size = 1 THEN IF x.mode # B.Const THEN load(x, 0FFH) END; x.type := B.intType
+        ELSE IF y.mode # B.Const THEN load(y, 0FFH) END; y.type := B.intType
+        END (*convert to word*)
+      END;
+      IF op < S.gtr THEN PutDO(A.CMP, y, x); IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.eql]) ELSE SetCC(x, relmap[op - S.eql]) END
+      ELSE PutDO(A.CMP, x, y); IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.gtr + 2]) ELSE SetCC(x, relmap[op - S.gtr + 2]) END
+      END
     END;
     free(y); free(x)
   END IntRelation;
@@ -1625,7 +1637,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     c.mode := Reg; c.tmp := FALSE; c.a := 0
   END initReg;
 
-BEGIN A.SetProcs(GetOffset, AllocR, freeR);
+BEGIN A.SetProcs(GetOffset, AllocR, freeR, SetFCO);
   initConst(cm1, -1); initConst(c0, 0); initConst(c1, 1); initConst(c2, 2);
   initReg(pc, A.PC); initReg(sp, A.SP); initReg(sr, A.SR); initReg(cg2, 3); initReg(r4, 4); initReg(r15, 15);
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.L; relmap[3] := A.GE;

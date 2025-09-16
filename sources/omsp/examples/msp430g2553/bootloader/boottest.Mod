@@ -20,11 +20,11 @@ END boottest.
 OMSPP.Compile boottest.Mod~
 OMSPL.Link 32 3C00H 200H boottest~
   linking msp430g2553 msp430delay boottest
-    flash   68, data  102, stack  410 bytes
+    flash   64, data  102, stack  410 bytes
 
 OMSPTool.DecObj boottest.mpc
 decode boottest.mpc
-boottest E114F654 Flash    48
+boottest E114F654 Flash    44
 imports:
 	msp430g2553 F10488DC
 	msp430delay EE6A4099
@@ -43,12 +43,12 @@ fixup procedures in code space chains
  0018     2	 0001
 fixup handlers in vector space chains
 fixup data in code space chains
- 0026     0	 0064
+ 0022     0	 0064
 fixup constants in code space chains
 fixup variables in constant space chains
 fixup constants in constant space chains
 entry =  0000
-code    48
+code    44
  0000	     40B2	MOV #23168,&288
  0002	     5A80
  0004	     0120
@@ -67,9 +67,7 @@ code    48
  001E	     0021
  0020	     83D2	SUB.B #1,&16
  0022	     0010
- 0024	     93C2	CMP.B #0,&34
- 0026	     0022
- 0028	     23F4	JNE $-22, goes to  0012
- 002A	     4382	MOV #0,&288
- 002C	     0120
- 002E	     4130	RET
+ 0024	     23F6	JNE $-18, goes to  0012
+ 0026	     4382	MOV #0,&288
+ 0028	     0120
+ 002A	     4130	RET

@@ -73,18 +73,19 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       code*: ARRAY maxCode OF BYTE;   (*MSP instructions are multiple of 16bit words, but this size does not exists in Oberon 07 cross compiler*)
       pos*: ARRAY maxCode DIV 2 OF INTEGER
     END;
-
     Item* = RECORD reg*, am*: BYTE; ofs*: INTEGER END;
+
     GetOffsetProc* = PROCEDURE(x: Item): INTEGER;
     AllocRegisterProc* = PROCEDURE(): INTEGER;
     FreeRegisterProc* = PROCEDURE(r: INTEGER);
+    SetFlagsCurrentItemProc* = PROCEDURE(x: Item; state: BOOLEAN);
 
-  VAR getOfs : GetOffsetProc; allocR: AllocRegisterProc; freeR: FreeRegisterProc;
+  VAR getOfs : GetOffsetProc; allocR: AllocRegisterProc; freeR: FreeRegisterProc; setFCI: SetFlagsCurrentItemProc;
     enabled*: BOOLEAN;
     PutSO0: PROCEDURE(VAR c: ModuleCode; op: INTEGER; ds: Item; params: SET);
 
-  PROCEDURE SetProcs*(ofsp: GetOffsetProc; ar: AllocRegisterProc; fr: FreeRegisterProc);
-  BEGIN getOfs := ofsp; allocR := ar; freeR := fr
+  PROCEDURE SetProcs*(ofsp: GetOffsetProc; ar: AllocRegisterProc; fr: FreeRegisterProc; sfci: SetFlagsCurrentItemProc);
+  BEGIN getOfs := ofsp; allocR := ar; freeR := fr; setFCI := sfci
   END SetProcs;
 
   PROCEDURE log2*(m: INTEGER; VAR e: INTEGER): INTEGER;
@@ -186,7 +187,11 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       Put1(c, op, ts.reg, td.reg, params);
       IF emitSOff THEN Emit(c, getOfs(s)) END;
       IF emitDOff THEN Emit(c, getOfs(d)) END
-    END
+    END;
+    IF op IN {ADD, ADDC, SUBC, SUB, XOR, AND} THEN setFCI(d, TRUE) 
+    ELSIF op IN {DADD} THEN setFCI(d, FALSE)
+    (*else c.lastInstrSetFlags is not changed*)
+    END;
   END PutDO;
 
   (*single operand instructions format (II):
@@ -219,7 +224,12 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ASSERT(tds.reg < 16);
       Put2(c, op, tds.reg, params);
       IF emitDSOff THEN Emit(c, getOfs(ds)) END
-    END
+    END;
+    IF (op = RRC) OR (op = RRA) OR (op = SXT) THEN setFCI(ds, TRUE) 
+    ELSIF (op = SWPB) OR (op = CALL) OR (op = RETI) OR (op = POP) THEN setFCI(ds, FALSE)
+    (*else c.lastInstrSetFlags is not changed*)
+    END;
+
   END PutSO;
 
   (*jump instructions:
