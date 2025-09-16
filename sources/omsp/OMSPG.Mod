@@ -76,6 +76,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     CASE x OF
       Item: IF state THEN flagsObj := x.obj ELSE flagsObj := NIL END
+    | A.Item: flagsObj := NIL
     END;
   END SetFCO;
 
@@ -159,7 +160,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END FixLinkWith;
 
   PROCEDURE FixLink*(L: INTEGER);
-  BEGIN FixLinkWith(L, mcode.pc)
+  BEGIN FixLinkWith(L, mcode.pc); flagsObj := NIL
   END FixLink;
 
   PROCEDURE SetAllocationMode*(mode: BOOLEAN);
@@ -1211,6 +1212,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Branches, procedure calls, procedure prolog and epilog *)
 
   PROCEDURE Here*(): INTEGER;
+  BEGIN flagsObj := NIL (*this location will likely be referenced*)
   RETURN mcode.pc
   END Here;
 

@@ -190,7 +190,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     END;
     IF op IN {ADD, ADDC, SUBC, SUB, XOR, AND} THEN setFCI(d, TRUE) 
     ELSIF op IN {DADD} THEN setFCI(d, FALSE)
-    (*else c.lastInstrSetFlags is not changed*)
+    (*else no change*)
     END;
   END PutDO;
 
@@ -226,16 +226,16 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       IF emitDSOff THEN Emit(c, getOfs(ds)) END
     END;
     IF (op = RRC) OR (op = RRA) OR (op = SXT) THEN setFCI(ds, TRUE) 
-    ELSIF (op = SWPB) OR (op = CALL) OR (op = RETI) OR (op = POP) THEN setFCI(ds, FALSE)
-    (*else c.lastInstrSetFlags is not changed*)
-    END;
-
+    ELSIF (op = SWPB) OR (op = CALL) OR (op = POP) THEN setFCI(ds, FALSE)
+    (*else no change*)
+    END
   END PutSO;
 
   (*jump instructions:
     |opcC/nd  /   o/ffse/t   | *)
 
   PROCEDURE PutJ*(VAR c: ModuleCode; cond: BYTE; offset: INTEGER);
+    VAR dummy: Item;
   BEGIN (*emit jump instruction*) ASSERT (cond <= 8);
     ASSERT(~ODD(offset)); offset := offset DIV 2; 
     IF (offset < -ORD({9})) OR (offset >= ORD({9})) THEN S.Mark("jump too far"); offset := 0 END;
@@ -244,14 +244,16 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8) MOD 4;
       c.code[c.pc]   := offset MOD ORD({8});
       c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
-    END
+    END;
+    setFCI(dummy, FALSE)
   END PutJ;
 
   PROCEDURE PutNO*(VAR c: ModuleCode; op: INTEGER);
+    VAR dummy: Item;
   BEGIN
-    IF op = RET THEN Put1(c, MOV, SP, PC, IRAm + Rdm + Word)
+    IF op = RET THEN Put1(c, MOV, SP, PC, IRAm + Rdm + Word); setFCI(dummy, FALSE)
     ELSIF op = CLRC THEN Put1(c, BIC, CG2, SR, Im + Rdm + Word)
-    ELSIF op = RETI THEN Put2(c, op, 0, {})
+    ELSIF op = RETI THEN Put2(c, op, 0, {}); setFCI(dummy, FALSE)
     ELSE ASSERT(FALSE)
     END
   END PutNO;
