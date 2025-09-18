@@ -409,7 +409,7 @@ BEGIN
   ptrSetType := type2(PointerToSet, Pointer, 2, setType);
     
   (*initialize universe with data types and in-line procedures;
-    BIC, BIS, XOR, AND, ADC, SBC, CLRC, RLA, RLC, RRA, RRC, COND, CMP are not in language definition*)
+    BIC, BIS, XOR, AND, ADC, SBC, CLRC, RLA, RLC, RRA, RRC, NEG, SWPB, COND, CMP are not in language definition*)
   system := NIL;  (*n = procno*10 + nofpar*)
   enter("ABS", SFunc, intType, 1); (*functions*)
   enter("ODD", SFunc, boolType, 11);
@@ -437,6 +437,7 @@ BEGIN
   enter("RRA", SProc, noType, 192);
   enter("RRC", SProc, noType, 201); (*211 and 221 are in SYSTEM pseudo-module*)
   enter("SWPB", SProc, intType, 231);
+  enter("NEG", SProc, intType, 241);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BYTESET", Typ, byteSetType, 0);
   enter("BOOLEAN", Typ, boolType, 0);

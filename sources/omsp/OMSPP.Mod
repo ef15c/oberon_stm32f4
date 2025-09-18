@@ -480,6 +480,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF pno IN {21, 22} THEN 
         IF isInt THEN G.LogicalSROnExit(pno-21, x) ELSE S.Mark("not allowed here") END
       ELSIF pno = 23 THEN CheckReadOnly(x); CheckInt(x); G.Swpb(x)
+      ELSIF pno = 24 THEN CheckReadOnly(x); CheckInt(x); G.Neg(x)
       ELSE ASSERT(FALSE)
       END
     ELSE S.Mark("wrong nof parameters")
