@@ -504,7 +504,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE pushTypTagAdr(T: B.Type);
     VAR sva!: Item;
-  BEGIN sva.am := A.Immediate; sva.mode := B.Const; sva.ofs := ORD({16}); sva.obj := T.typobj;
+  BEGIN sva.am := A.Immediate; sva.mode := B.Typ; sva.ofs := ORD({16}); sva.obj := T.typobj;
     adjFrmOfs(WordSize); A.PutSO(mcode, A.PUSH, sva, A.Word)
   END pushTypTagAdr;
 
