@@ -256,7 +256,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         END;
         IF i MOD 16 # 0 THEN FilesEx.WriteLn(R) END;
 
-        i := 0; x := 32 - vecsize DIV 2; Files.Write(R, "@"); FilesEx.WriteHexHalfWord(R, FlashEnd - x*2); FilesEx.WriteLn(R); (*vector table*)
+        i := 0; x := 32 - vecsize DIV 2; Files.Write(R, "@"); FilesEx.WriteHexHalfWord(R, FlashEnd - vecsize); FilesEx.WriteLn(R); (*vector table*)
         WHILE x < 32 DO IF vector[x] = 0FFFFH THEN vector[x] := isrtrap END;
           FilesEx.WriteHex(R, vector[x] MOD 100H); Files.Write(R, " ");
           FilesEx.WriteHex(R, vector[x] DIV 100H MOD 100H); Files.Write(R, " ");
