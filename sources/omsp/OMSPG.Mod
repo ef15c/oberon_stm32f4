@@ -289,6 +289,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         res := SetLastUsage(base, fd, pos)
       ELSE (*Imported variable or other object type*) o := x.obj; res := o.usedat; o.usedat := pos
       END
+    ELSIF ~((val >= -ORD({15})) & (val < ORD({16}))) THEN S.Mark("constant out of range"); res := 0
     ELSE res := val
     END
 
