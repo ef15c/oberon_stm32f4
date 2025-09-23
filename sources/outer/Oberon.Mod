@@ -19,7 +19,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     InputMsg* = RECORD (Display.FrameMsg)
       id*: INTEGER;
       keys*: SET;
-      X*, Y*: INTEGER;
+      X*, Y*, Z*: INTEGER;
       ch*: CHAR;
       fnt*: Fonts.Font;
       col*, voff*: INTEGER
@@ -374,10 +374,10 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE Loop*;
     VAR V!: Viewers.Viewer; M!: InputMsg; N: ControlMsg;
-       prevX, prevY, X, Y, t: INTEGER; keys: SET; ch: CHAR;
-  BEGIN
+       prevX, prevY, prevZ, X, Y, Z, t: INTEGER; keys: SET; ch: CHAR;
+  BEGIN prevZ := 0;
     REPEAT
-      Input.Mouse(keys, X, Y);
+      Input.Mouse(keys, X, Y, Z);
       IF Input.Available() > 0 THEN Input.Read(ch);
         IF ch = ESC THEN
           N.id := neutralize; Viewers.Broadcast(N); FadeCursor(Pointer); LED(0)
@@ -388,14 +388,14 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
         END
       ELSIF keys # {} THEN
         M.id := track; M.X := X; M.Y := Y; M.keys := keys;
-        REPEAT V := Viewers.This(M.X, M.Y); V.handle(V, M); Input.Mouse(M.keys, M.X, M.Y)
+        REPEAT V := Viewers.This(M.X, M.Y); V.handle(V, M); Input.Mouse(M.keys, M.X, M.Y, M.Z)
         UNTIL M.keys = {};
         DEC(ActCnt)
       ELSE
-        IF (X # prevX) OR (Y # prevY) OR ~Mouse.on THEN
-          M.id := track; M.X := X; 
+        IF (X # prevX) OR (Y # prevY) OR (Z # prevZ) OR ~Mouse.on THEN
+          M.id := track; M.X := X; M.Z := Z - prevZ;
           IF Y >= Display.Height THEN Y := Display.Height END ;
-          M.Y := Y; M.keys := keys; V := Viewers.This(X, Y); V.handle(V, M); prevX := X; prevY := Y
+          M.Y := Y; M.keys := keys; V := Viewers.This(X, Y); V.handle(V, M); prevX := X; prevY := Y; prevZ := Z
         END;
         CurTask := CurTask.next; t := Kernel.Time();
         IF t >= CurTask.nextTime THEN

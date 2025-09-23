@@ -20,16 +20,16 @@ OM4P.Compile PS2.Mod InputAzerty.Mod Display.Mod Viewers.Mod Fonts.Mod Texts.Mod
 OM4L.LinkEF System ~
 OM4L.LoadEF System.efb OM4L.CompareEF System.efb
 
+Commands for generation of net
+OM4P.Compile TextsEx.Mod SCC.Mod Net.Mod ~
+OM4P.Compile RS232.Mod ~
+
 Commands for generation of the compiler
-OM4P.Compile TextsEx.Mod CRC32.Mod FilesEx.Mod OM4S.Mod OM4B.Mod OM4A.Mod OM4G.Mod OM4P.Mod
+OM4P.Compile CRC32.Mod FilesEx.Mod OM4S.Mod OM4B.Mod OM4A.Mod OM4G.Mod OM4P.Mod
   OM4X.Mod FLASH.Mod OM4L.Mod OM4D.Mod OM4Tool.Mod StackTrace.Mod ~
 ** optional **
-OM4L.LinkEF Modules System Edit OM4P ~
+OM4L.LinkEF Modules System Edit OnStartup OM4L OM4P ~
 OM4L.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
-
-Commands for generation of net
-OM4P.Compile SCC.Mod Net.Mod ~
-OM4P.Compile RS232.Mod ~
 
 Command for generation of tools
 OM4P.Compile Tools.Mod HeapTool.Mod SystemLog.Mod ~

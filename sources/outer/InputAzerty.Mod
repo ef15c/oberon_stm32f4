@@ -55,9 +55,10 @@ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-
     Circumflex := FALSE; Dieresis := FALSE; Recd := FALSE
   END Read;
 
-  PROCEDURE Mouse*(VAR keys: SET; VAR x, y: INTEGER);
+  PROCEDURE Mouse*(VAR keys: SET; VAR x, y, z: INTEGER);
   BEGIN keys := SYSTEM.VAL(SET, mkb.MD DIV 1000000H MOD 8);
     x := mkb.MD MOD 1000H; y := (mkb.MD DIV 1000H) MOD 1000H;
+    z := mkb.z
   END Mouse;
 
   PROCEDURE SetMouseLimits*(w, h: INTEGER);

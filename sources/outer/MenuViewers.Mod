@@ -105,15 +105,15 @@ MODULE MenuViewers; (*JG 26.8.90 / 16.9.93 / NW 10.3.2013*)
   PROCEDURE Change (V: Viewer; X, Y: INTEGER; Keys: SET);
     VAR Menu!, Main!: Display.Frame;
       V1!: Viewers.Viewer;
-      keysum: SET; Y0, dY, H: INTEGER;
+      keysum: SET; Y0, dY, H, Z: INTEGER;
   BEGIN (*Keys # {}*)
     Menu := V.dsc; Main := V.dsc.next;
     Oberon.DrawMouseArrow(X, Y);
     Display.ReplConst(Display.white, V.X + 1, V.Y + V.H - 1 - V.dsc.H, V.W - 2, V.dsc.H, Display.invert);
-    Y0 := Y; keysum := Keys; Input.Mouse(Keys, X, Y);
+    Y0 := Y; keysum := Keys; Input.Mouse(Keys, X, Y, Z);
     WHILE Keys # {} DO
       keysum := keysum + Keys;
-      Oberon.DrawMouseArrow(X, Y); Input.Mouse(Keys, X, Y)
+      Oberon.DrawMouseArrow(X, Y); Input.Mouse(Keys, X, Y, Z)
     END;
     Display.ReplConst(Display.white, V.X + 1, V.Y + V.H - 1 - V.dsc.H, V.W - 2, V.dsc.H, Display.invert);
     IF ~(0 IN keysum) THEN
