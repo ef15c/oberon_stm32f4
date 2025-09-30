@@ -203,13 +203,36 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   PROCEDURE Show* (F: Frame; pos: INTEGER);
     VAR R!: Texts.Reader; L!, L0!: Line;
       org: INTEGER; curY, botY, Y0: INTEGER;
+      x, h, w, dy, nt, nl: INTEGER;
   BEGIN
     IF F.trailer.next # F.trailer THEN
       Validate(F.text, pos);
-      IF pos < F.org THEN Mark(F, FALSE);
-        Display.ReplConst(F.col, F.X + F.left, F.Y, F.W - F.left, F.H, Display.replace);
-        botY := F.Y; F.Y := F.Y + F.H; F.H := 0;
-        F.org := pos; F.trailer.next := F.trailer; Extend(F, botY); Mark(F, TRUE)
+      IF pos < F.org THEN
+        org := pos; curY := F.H - F.top - asr; botY := F.bot + dsr; nt := (F.H - F.top - F.bot) DIV lsp; nl := nt;
+        WHILE (curY >= botY) & (org < F.org) DO INC(org); Validate(F.text, org); DEC(curY, lsp); DEC(nl) END;
+        (*curY is Y coordinate of  text at old org after the redraw*)
+        IF (curY >= botY) THEN
+          x := F.X + F.left;
+          dy := F.Y + F.H - F.top - nt*lsp;
+          h := nl*lsp; w := F.W - F.left;
+          Display.CopyBlock (x, F.Y + F.H - F.top - nl*lsp, w, h, x, dy , 0);
+          Display.ReplConst(F.col, x, dy + h, w, F.Y + F.H - dy - h, Display.replace);
+          L0 := F.trailer.next; L := F.trailer; org := F.org; F.org := pos;
+          Texts.OpenReader(R, F.text, pos); Texts.Read(R, nextCh); curY := F.Y + F.H - F.top - asr;
+          WHILE pos < org DO
+            NEW(L.next); DisplayLine(F, L.next, R, x, curY, 0);
+            L := L.next; DEC(curY, lsp); INC(pos, L.len)
+          END;
+          L.next := L0; INC(botY, F.Y);
+          WHILE ~L.eot & (curY >= botY) DO L := L.next; DEC(curY, lsp) END;
+          L.next := F.trailer; UpdateMark(F)
+        ELSE (*code original en jaune ci-dessous*)
+          Mark(F, FALSE);
+          Display.ReplConst(F.col, F.X + F.left, F.Y, F.W - F.left, F.H, Display.replace);
+          botY := F.Y; F.Y := F.Y + F.H; F.H := 0;
+          F.org := pos; F.trailer.next := F.trailer; Extend(F, botY);
+          Mark(F, TRUE)
+        END
       ELSIF pos > F.org THEN
         org := F.org; L := F.trailer.next; curY := F.Y + F.H - F.top - asr;
         WHILE (L.next # F.trailer) & (org < pos) DO
@@ -722,8 +745,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       keysum: SET;
       fnt!: Fonts.Font;
       col, voff: INTEGER;
-      R!: Texts.Reader; ch: CHAR;
-      lines: ARRAY 100 OF INTEGER; top, idx, nl, cl: INTEGER;
+      lines: ARRAY 100 OF INTEGER; top, idx, nl, cpos, cl: INTEGER;
   BEGIN
     IF X < F.X + Min(F.left, barW) THEN  (*scroll bar*)
       Oberon.DrawMouse(ScrollMarker, X, Y); keysum := Keys;
@@ -751,15 +773,11 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
         TrackLine(F, X, Y, pos, keysum);
         IF keysum = {0} THEN
           nl := F.H DIV lsp - 3;
-          top := pos - 120*nl; IF top < 0 THEN top := 0 END;
-          Texts.OpenReader(R, F.text, top);
-          IF top # 0 THEN REPEAT Texts.Read(R, ch); UNTIL (ch = CR) OR (Texts.Pos(R) >= pos); top := Texts.Pos(R) + 1 END;
-          lines[0] := top; idx := 1; cl := 1;
-          WHILE Texts.Pos(R) < pos DO
-            IF ch = CR THEN IF cl > nl THEN top := lines[idx] ELSE INC(cl) END;
-              lines[idx] := Texts.Pos(R) + 1; INC(idx); IF idx > nl THEN idx := 0 END;
-            END;
-            Texts.Read(R, ch)
+          top := pos - 120*nl; Validate(F.text, top);
+          lines[0] := top; idx := 1; cl := 1; cpos := top;
+          WHILE cpos < pos DO INC(cpos); Validate(F.text, cpos);
+            IF cl > nl THEN top := lines[idx] ELSE INC(cl) END;
+            lines[idx] := cpos; INC(idx); IF idx > nl THEN idx := 0 END;
           END; 
           SetChangeMark(F, FALSE);
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
