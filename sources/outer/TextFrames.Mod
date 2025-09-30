@@ -737,6 +737,22 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     SetChangeMark(F,  F.text.changed)
   END Update;
 
+  PROCEDURE PosUpLine(text: Texts.Text; pos, nl: INTEGER): INTEGER;
+    VAR top, d, cl, cpos: INTEGER;
+      lines!, L!: Line;
+  BEGIN
+    top := pos - 120*nl; Validate(text, top);
+    NEW(lines); lines.len := top; L := lines;
+    d := 0; cl := 1; cpos := top;
+    WHILE cpos < pos DO INC(cpos); Validate(text, cpos);
+      IF cl > nl THEN top := lines.len ELSE INC(cl) END;
+      NEW(L.next); L := L.next; L.len := cpos;
+      INC(d); IF d > nl THEN lines := lines.next END
+    END
+
+    RETURN top
+  END PosUpLine;
+
   PROCEDURE Edit* (F: Frame; X, Y, Z: INTEGER; Keys: SET);
     VAR M!: CopyOverMsg;
       text!: Texts.Text;
@@ -745,7 +761,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       keysum: SET;
       fnt!: Fonts.Font;
       col, voff: INTEGER;
-      lines: ARRAY 100 OF INTEGER; top, idx, nl, cpos, cl: INTEGER;
+      L!: Line;
   BEGIN
     IF X < F.X + Min(F.left, barW) THEN  (*scroll bar*)
       Oberon.DrawMouse(ScrollMarker, X, Y); keysum := Keys;
@@ -772,16 +788,9 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       ELSIF Keys = {0} THEN   (*MR, scroll down*)
         TrackLine(F, X, Y, pos, keysum);
         IF keysum = {0} THEN
-          nl := F.H DIV lsp - 3;
-          top := pos - 120*nl; Validate(F.text, top);
-          lines[0] := top; idx := 1; cl := 1; cpos := top;
-          WHILE cpos < pos DO INC(cpos); Validate(F.text, cpos);
-            IF cl > nl THEN top := lines[idx] ELSE INC(cl) END;
-            lines[idx] := cpos; INC(idx); IF idx > nl THEN idx := 0 END;
-          END; 
           SetChangeMark(F, FALSE);
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
-          Show(F, top)
+          Show(F, PosUpLine(F.text, pos, (F.H - F.top - F.bot) DIV lsp - 2))
         END
       END
     ELSE  (*text area*)
@@ -828,11 +837,15 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
             IF fnt # NIL THEN Texts.ChangeLooks(text, beg, end, {0,1,2}, fnt, col, voff) END
           END
         END
-      ELSIF Z # 0 THEN (*mouse wheel*)
-        IF (Keys = {}) & (F.org + 300*Z < F.text.len) THEN
-          SetChangeMark(F, FALSE);
-          RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
-          Show(F, F.org + 300*Z)
+      ELSIF (Keys = {}) & (Z # 0) THEN Z := Z*3; (*scroll three lines by wheel step*)
+        SetChangeMark(F, FALSE);
+        RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
+        pos := F.org;
+        IF Z < 0 THEN (*mouse wheel scroll down*)
+          Show(F, PosUpLine(F.text, pos, -Z))
+        ELSE (*Z > 0*) (*mouse wheel scroll up*) L := F.trailer.next;
+          WHILE (Z > 0) & (L # F.trailer) DO INC(pos, L.len); DEC(Z) END;
+          Show(F, pos)
         END
       END
     END

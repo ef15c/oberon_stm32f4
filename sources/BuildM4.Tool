@@ -32,7 +32,7 @@ OM4L.LinkEF Modules System Edit OnStartup OM4L OM4P ~
 OM4L.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
 
 Command for generation of tools
-OM4P.Compile Tools.Mod HeapTool.Mod SystemLog.Mod ~
+OM4P.Compile Tools.Mod HeapTool.Mod SystemLog.Mod BMP.Mod Image.Mod ~
 
 Commands for generation of graphic system
 OM4P.Compile Graphics.Mod GraphicFrames.Mod Draw.Mod Rectangles.Mod Curves.Mod
