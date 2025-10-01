@@ -339,7 +339,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         S.Get(sym);
         IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
           IF isLeaf THEN S.Mark("no call in leaf func"); ParamList(x)
-          ELSE G.PrepCall(x, rx, orx, pau); ParamList(x); G.Call(x, rx, orx, pau); x.type := x.type.base
+          ELSE G.PrepCall(x, rx, orx, pau); ParamList(x); G.Call(x, rx, orx, pau); x.type := x.type.base; selector(x)
           END;
         ELSE S.Mark("not a function"); ParamList(x)
         END
