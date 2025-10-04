@@ -1,8 +1,8 @@
 MODULE boottest;
-  IMPORT M := msp430g2553, Delay := msp430delay;
+  IMPORT preserveMSPFlash, M := msp430g2553, Delay := msp430delay;
 
-  VAR dummy: ARRAY 100 OF BYTE; (*skip the function flashBlock installed in RAM by the bootloader*)
-    nbc: BYTE;
+  VAR nbc: BYTE;
+
 BEGIN  (* Stop watchdog timer from timing out during initial start-up. *)
     M.WDTCTL^ := M.WDTPW + M.WDTHOLD;
 
@@ -19,18 +19,19 @@ END boottest.
 
 OMSPP.Compile boottest.Mod~
 OMSPL.Link 32 3C00H 200H boottest~
-  linking msp430g2553 msp430delay boottest
-    flash   64, data  102, stack  410 bytes
+  linking preserveMSPFlash msp430g2553 msp430delay boottest
+    flash   64, data   98, stack  414 bytes
 
 OMSPTool.DecObj boottest.mpc
 decode boottest.mpc
 boottest E114F654 Flash    44
 imports:
+	preserveMSPFlash 26F15285
 	msp430g2553 F10488DC
 	msp430delay EE6A4099
 type descriptors
 
-data   102
+data     2
 strings
 
 vector table
@@ -40,10 +41,10 @@ vector table
 entries
  c 0000
 fixup procedures in code space chains
- 0018     2	 0001
+ 0018     3	 0001
 fixup handlers in vector space chains
 fixup data in code space chains
- 0022     0	 0064
+ 0022     0	 0000
 fixup constants in code space chains
 fixup variables in constant space chains
 fixup constants in constant space chains
