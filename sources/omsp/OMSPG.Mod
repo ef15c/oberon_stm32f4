@@ -397,7 +397,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR tmp: BOOLEAN;
   BEGIN tmp := FALSE;
     IF (src.type.size = 1) & (t.size = 2) THEN (*move byte to word*)
-      IF src.mode # Reg THEN load(src, 0FFH); tmp := TRUE; END; src.type := B.intType (*extend source*)
+      IF ~(src.mode IN {Reg, B.Const}) THEN load(src, 0FFH); tmp := TRUE; END; src.type := B.intType (*extend source*)
     END
 
     RETURN tmp
