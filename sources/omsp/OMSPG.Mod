@@ -1043,7 +1043,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
    BEGIN
     IF x.mode = B.StoredConst THEN adr := x.a + x.b; val := UpdateChain("k", adr, y.a, y);
       IF y.mode = B.Const THEN
-        IF y.type.form IN {B.Int, B.Set, B.Pointer, B.NilTyp} THEN StoreConstInt(adr, x.type.size, val)
+        IF y.type.form IN {B.Bool, B.Int, B.Set, B.Pointer, B.NilTyp} THEN StoreConstInt(adr, x.type.size, val)
         ELSE (* TODO*) S.Mark("not implemented"); S.DebugHex("form", y.type.form);
         END
       ELSIF y.mode = Absol THEN StoreConstInt(adr, x.type.size, val)
