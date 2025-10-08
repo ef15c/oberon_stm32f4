@@ -73,6 +73,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
     ps2*: ARRAY 2 OF PS2.DeviceDesc;
 
+    prevZ: INTEGER;
+
   (*user identification*)
 
   PROCEDURE Code(VAR s: ARRAY OF CHAR): INTEGER;
@@ -374,8 +376,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE Loop*;
     VAR V!: Viewers.Viewer; M!: InputMsg; N: ControlMsg;
-       prevX, prevY, prevZ, X, Y, Z, t: INTEGER; keys: SET; ch: CHAR;
-  BEGIN prevZ := 0;
+       prevX, prevY, X, Y, Z, t: INTEGER; keys: SET; ch: CHAR;
+  BEGIN
     REPEAT
       Input.Mouse(keys, X, Y, Z);
       IF Input.Available() > 0 THEN Input.Read(ch);
@@ -453,7 +455,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     END
   END initModules;
 
-BEGIN User[0] := 0X;
+BEGIN User[0] := 0X; prevZ := 0;
   Arrow.Fade := FlipArrow; Arrow.Draw := FlipArrow;
   Star.Fade := FlipStar; Star.Draw := FlipStar;
   OpenCursor(Mouse); OpenCursor(Pointer);
