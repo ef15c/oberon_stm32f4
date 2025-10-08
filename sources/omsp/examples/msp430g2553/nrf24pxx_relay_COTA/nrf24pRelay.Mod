@@ -3,7 +3,11 @@ MODULE nrf24pRelay;
 
   CONST MESSAGE_VERSION = 2;
 
-    BUFREPSZ = 33;
+    PO_NCE = M.P2OUT; NCE = {5}; (*LCD selection pin*)
+    (*P2.5*) PO_DC = M.P2OUT; DC = {6}; (*P2.6*)
+    PO_NRST* = M.P2OUT; NRST* = {7}; (*P2.7*) PO_NLIGHT* = M.P1OUT; NLIGHT* = {0}; (*P1.0*)
+ 
+   BUFREPSZ = 33;
     NOT_CONFIGURED = 0; ASK_FOR_NEXT_CHUNK = 1; (* must immediately precede WAIT_FOR_CONFIGURATION *)
     WAIT_FOR_CONFIGURATION = 2; WAIT_FOR_NEXT_CHUNK = 3; WAIT_FOR_NEXT_CHUNK_2 = 4;
     ABORT = 5; ABORTED = 6; MESSAGE_ERROR = 7; WAIT_FOR_HOST_NOTIFICATION = 8;
@@ -22,6 +26,22 @@ MODULE nrf24pRelay;
     nbOKl, nbOKh, nbKOl, nbKOh, nbRecusl, nbRecush: INTEGER;
     radio_state: INTEGER; control: MH.InstanceDesc;
     confChunkNumber, ownerPipe, i: INTEGER;
+
+  PROCEDURE select;
+  BEGIN BIC(PO_NCE^, NCE)
+  END select;
+
+  PROCEDURE deselect;
+  BEGIN BIS(PO_NCE^, NCE)
+  END deselect;
+
+  PROCEDURE setData;
+  BEGIN BIS(PO_DC^, DC)
+  END setData;
+
+  PROCEDURE setCommand;
+  BEGIN BIC(PO_DC^, DC)
+  END setCommand;
 
   PROCEDURE service_emi;
     VAR cmd, rep: ARRAY 2 OF BYTESET;
@@ -276,7 +296,7 @@ MODULE nrf24pRelay;
   PROCEDURE* (M.PORT2_VECTOR) PORT2_ISR_HOOK;
   BEGIN IF BIT(M.P2IFG^, N.p2InterruptMask) THEN BIC(M.P2IFG^, N.p2InterruptMask) END;
     IF BIT(M.P2IE^, {6}) & BIT(M.P2IFG^, {6}) THEN (*push button pressed*)
-      XOR(M.P1OUT^, {0}); (*invert LCD back light state*)
+      XOR(PO_NLIGHT^, NLIGHT); (*invert LCD back light state*)
       BIC(M.P2IFG^, {6}); (*for debouning, we suspend button press checking for 100ms*)
       BIC(M.P2IE^, {6}); M.TA0CTL^ := M.TACLR; M.TA0CTL^ := M.TASSEL_1 + M.ID_0 + M.MC_1; (*Start 100 ms timer*)
       pushButtonEnablementPending := TRUE; (*remember that the button is waitong for reactivation*)
@@ -352,6 +372,8 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   nbOKl := 0; nbOKh := 0; nbKOl := 0; nbKOh := 0; nbRecusl := 0; nbRecush := 0;
   radio_state := NOT_CONFIGURED; pos := 1; 
   ownerPipe := -1; nbCycles := 3;
+
+  LCD.setCallbacks(select, deselect, setData, setCommand); (*register pcd8544 callbacks*)
 
   (*
    *  ======== Flash_2xx_graceInit ========
@@ -617,9 +639,9 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   N.registerIrq(recepteur);
   N.registerIrq(emetteur);
 
-  BIS(LCD.PO_NRST^, LCD.NRST); (*~RESET going HIGH => Start LCD module*)
+  BIS(PO_NRST^, NRST); (*~RESET going HIGH => Start LCD module*)
   LCD.Init; LCD.Clear; IF config.lcd_vop # 0FFH THEN LCD.SetVop(config.lcd_vop) END;
-  BIC(LCD.PO_NLIGHT^, LCD.NLIGHT); (*turn backlight on*)
+  BIC(PO_NLIGHT^, NLIGHT); (*turn backlight on*)
   LCD.WriteString("nRF24L01+relay");
   IF wdtReset THEN LCD.WriteString("--Wdt reset---") ELSE LCD.WriteString("--------------") END;
   LCD.WriteString("r             ");
@@ -676,7 +698,8 @@ END nrf24pRelay.
 System.Free StackTrace OMSPP OMSPL OMSPTool OMSPD OMSPG OMSPA OMSPB OMSPS~
 OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s pcd8544.Mod/s nrf24pRelay.Mod/s ~
 OMSPL.Link 32 4000H 200H nrf24pRelay~
-  linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc MultiPrecisionArith pcd8544 nrf24pRelay
-    flash 6774, data  282, stack  230 bytes
+  linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc Arith MultiPrecisionArith String
+ pcd8544 nrf24pRelay
+    flash 7508, data  292, stack  220 bytes
 
 OMSPTool.DecObj nrf24pRelay.mpc
