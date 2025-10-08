@@ -29,17 +29,17 @@ MODULE pcd8544;
     DATA = 8; (*specify data instead of command*) INVERT = {0..8};
 
     (*instructions available in all modes*)
-    NOp = {}; NOP_MASK = {0..8}; FUNCTION_SET = {5}; FUNCTION_SET_MASK = {3..8}; H = 0; V = 1; PD = 2; (*function flags*)
+    NOp = {}; NOP_MASK = {0..8}; FUNCTION_SET* = {5}; FUNCTION_SET_MASK = {3..8}; H* = {0}; V* = {1}; PD* = {2}; (*function flags*)
 
     (*instructions available in basic mode*)
-    DISPLAY_CONTROL = {3}; DISPLAY_CONTROL_MASK = {1, 3..8}; D = 2; E = 0;
-    SET_Y_ADDRESS = {6}; SET_Y_ADDRESS_MASK = {3..8};
-    SET_X_ADDRESS = {7}; SET_X_ADDRESS_MASK = {7..8};
+    DISPLAY_CONTROL* = {3}; DISPLAY_CONTROL_MASK = {1, 3..8}; D = 2; E = 0;
+    SET_Y_ADDRESS* = {6}; SET_Y_ADDRESS_MASK = {3..8};
+    SET_X_ADDRESS* = {7}; SET_X_ADDRESS_MASK = {7..8};
 
     (*instructions available in extended mode*)
-    TEMP_CONTROL = {2}; TEMP_CONTROL_MASK = {2..8};
-    BIAS_SYSTEM = {4}; BIAS_SYSTEM_MASK = {3..8};
-    SET_VOP = {7}; SET_VOP_MASK = {7..8};
+    TEMP_CONTROL* = {2}; TEMP_CONTROL_MASK = {2..8};
+    BIAS_SYSTEM* = {4}; BIAS_SYSTEM_MASK = {3..8};
+    SET_VOP* = {7}; SET_VOP_MASK = {7..8};
 
     (*Characters glyphs*)
     GLYPH_WIDTH = 5;
@@ -79,25 +79,25 @@ MODULE pcd8544;
   TYPE Callback = PROCEDURE {4..15};
 
   VAR (*Store LCD state cannot be queried from the device, so must be memorized*)
-    XAddr, YAddr, Vop*: BYTE; FunctionSet: BYTESET; composeChar: CHAR;
+    XAddr, YAddr, Vop*: BYTE; FunctionSet*: BYTESET; composeChar: CHAR;
     select, deselect, setData, setCommand: Callback;
 
   PROCEDURE doSend(d: SET* );
   (*do the real job*)
   BEGIN (*Memorize state of LCD screen*)
     IF d*FUNCTION_SET_MASK = FUNCTION_SET THEN FunctionSet := d
-    ELSIF ~(H IN FunctionSet) & (d*SET_Y_ADDRESS_MASK = SET_Y_ADDRESS) THEN
+    ELSIF ~BIT(FunctionSet, H) & (d*SET_Y_ADDRESS_MASK = SET_Y_ADDRESS) THEN
       YAddr := ORD(d*(SET_Y_ADDRESS_MASK/INVERT))
-    ELSIF ~(H IN FunctionSet) & (d*SET_X_ADDRESS_MASK = SET_X_ADDRESS) THEN
+    ELSIF ~BIT(FunctionSet, H) & (d*SET_X_ADDRESS_MASK = SET_X_ADDRESS) THEN
       XAddr := ORD(d*(SET_X_ADDRESS_MASK/INVERT))
-    ELSIF (H IN FunctionSet) & (d*SET_VOP_MASK = SET_VOP) THEN
+    ELSIF BIT(FunctionSet, H) & (d*SET_VOP_MASK = SET_VOP) THEN
       Vop := ORD(d*(SET_VOP_MASK/INVERT))
     END;
     REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (*Wait for USCI availability*)
     M.UCA0TXBUF^ := ORD(d); (*USCI A is ready, send character*)
     REPEAT UNTIL ~BIT(M.UCA0STAT^, M.UCBUSY); (*Wait for end of transmission*)
     IF DATA IN d THEN (*Send data : need to update X and Y addresses*)
-      IF  V IN FunctionSet THEN INC(YAddr); (*One bank down to the bottom*)
+      IF  BIT(FunctionSet, V) THEN INC(YAddr); (*One bank down to the bottom*)
         IF YAddr >= VBANKS THEN YAddr := 0; INC(XAddr); (*One row to the right*)
           IF XAddr >= HPIXELS THEN XAddr := 0 END
         END
@@ -142,7 +142,7 @@ MODULE pcd8544;
     (*Set address of next LCD write*)
     VAR oldFunctionSet: BYTESET;
   BEGIN oldFunctionSet := FunctionSet; (* Store current Function set in order to restore it before return *)
-    IF H IN FunctionSet THEN send(FUNCTION_SET) END; (*Request basic instruction set*)
+    IF BIT(FunctionSet, H) THEN send(FUNCTION_SET) END; (*Request basic instruction set*)
     send(SET_X_ADDRESS + TOSET(xAddr)); send(SET_Y_ADDRESS + TOSET(yAddr));
     IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END (*Restore previous function set*)
   END SetAddr;
@@ -159,7 +159,7 @@ MODULE pcd8544;
   END Clear;
 
   PROCEDURE Init*;
-  BEGIN send(FUNCTION_SET + {H}); (* function set PD = 0 and V = 0, select extended instruction set (H = 1 mode) *)
+  BEGIN send(FUNCTION_SET + H); (* function set PD = 0 and V = 0, select extended instruction set (H = 1 mode) *)
     Delay.CyclesX3(10);
     send(TEMP_CONTROL); (*set TC = 00 *) send(BIAS_SYSTEM + TOSET(3)); (*set BS = 011*)
     send(SET_VOP +  TOSET(3AH)); (* set VOP =  a+58 x b [V]*)
@@ -170,7 +170,7 @@ MODULE pcd8544;
   PROCEDURE SetVop*(vop: INTEGER);
     VAR oldFunctionSet: BYTESET;
   BEGIN oldFunctionSet := FunctionSet;
-    IF ~(H IN FunctionSet) THEN send(FUNCTION_SET + {H}) END; (*Request extended instruction set*)
+    IF ~BIT(FunctionSet, H) THEN send(FUNCTION_SET + H) END; (*Request extended instruction set*)
     send(SET_VOP +  TOSET(vop)*(SET_VOP_MASK/INVERT)); (*set VOP = a + vop x b volts*)
     IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END (*Restore previous function set*)
   END SetVop;
@@ -188,28 +188,39 @@ MODULE pcd8544;
   BEGIN select := sel; deselect := desel; setData := setD; setCommand := setC
   END setCallbacks;
 
-BEGIN XAddr := 0; YAddr := 0; Vop := 0; FunctionSet := {PD}; composeChar := 0X
+BEGIN XAddr := 0; YAddr := 0; Vop := 0; FunctionSet := FUNCTION_SET + PD; composeChar := 0X
 END pcd8544.
 
 OMSPP.Compile pcd8544.Mod/s~
 OMSPTool.DecSym pcd8544.sms
 decode pcd8544.sms
-pcd8544 265CBD95  1
+pcd8544 28932780  1
+   1 FUNCTION_SET [^6]      32
+   1 H [^6]       1
+   1 V [^6]       2
+   1 PD [^6]       4
+   1 DISPLAY_CONTROL [^6]       8
+   1 SET_Y_ADDRESS [^6]      64
+   1 SET_X_ADDRESS [^6]     128
+   1 TEMP_CONTROL [^6]       4
+   1 BIAS_SYSTEM [^6]      16
+   1 SET_VOP [^6]     128
    2 Vop [^1]     1
-   1 send [0  form = 10  size = 2 [^9] UR 0030( class = 2 [^6])]       2
-   1 WriteChar [0  form = 10  size = 2 [^9] UR C030( class = 2 [^3])]       3
-   1 WriteString [0  form = 10  size = 2 [^9] UR C030( class = 3# [0  form = 12  size = 4 [^3]  len = -1])]       4
-   1 SetAddr [0  form = 10  size = 2 [^9] UR 8030( class = 2 [^1] class = 2 [^1])]       5
-   1 GetAddr [0  form = 10  size = 2 [^9] leaf UR 0030( class = 3 R5 [^1] class = 3 R4 [^1])]       6
-   1 Clear [0  form = 10  size = 2 [^9] UR 8030()]       7
-   1 Init [0  form = 10  size = 2 [^9] UR 0030()]       8
-   1 SetVop [0  form = 10  size = 2 [^9] UR C030( class = 2 [^4])]       9
-   1 WriteLongint [0  form = 10  size = 2 [^9] UR DFF0( class = 2 [^3] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4])]      10
-   1 setCallbacks [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R7 [19  form = 10  size = 2 [^9] UR 0000()] class = 2 R6 [^19] class = 2 R5 [^19] class = 2 R4 [^19])]      11
+   2 FunctionSet [^16]     2
+   1 send [0  form = 10  size = 2 [^9] UR 0030( class = 2 [^6])]       3
+   1 WriteChar [0  form = 10  size = 2 [^9] UR C030( class = 2 [^3])]       4
+   1 WriteString [0  form = 10  size = 2 [^9] UR C030( class = 3# [0  form = 12  size = 4 [^3]  len = -1])]       5
+   1 SetAddr [0  form = 10  size = 2 [^9] UR 8030( class = 2 [^1] class = 2 [^1])]       6
+   1 GetAddr [0  form = 10  size = 2 [^9] leaf UR 0030( class = 3 R5 [^1] class = 3 R4 [^1])]       7
+   1 Clear [0  form = 10  size = 2 [^9] UR 8030()]       8
+   1 Init [0  form = 10  size = 2 [^9] UR 0030()]       9
+   1 SetVop [0  form = 10  size = 2 [^9] UR C030( class = 2 [^4])]      10
+   1 WriteLongint [0  form = 10  size = 2 [^9] UR DFF0( class = 2 [^3] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4])]      11
+   1 setCallbacks [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R7 [19  form = 10  size = 2 [^9] UR 0000()] class = 2 R6 [^19] class = 2 R5 [^19] class = 2 R4 [^19])]      12
 
 OMSPTool.DecObj pcd8544.mpc
 decode pcd8544.mpc
-pcd8544 265CBD95 Flash  1354
+pcd8544 28932780 Flash  1356
 imports:
 	msp430g2553 F10488DC
 	String 393F15C3
@@ -224,7 +235,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- c 0326 d 0002 c 00CA c 00EE c 0188 c 01B2 c 0200 c 020E c 023A c 0280 c 02C4 c 0314
+ c 0326 d 0002 d 0003 c 00CA c 00EE c 0188 c 01B2 c 0200 c 020E c 023A c 0280 c 02C4 c 0314
 fixup procedures in code space chains
  00E6     0	 0000
  02BC     0	 00CA
@@ -235,7 +246,7 @@ fixup procedures in code space chains
  024A     3	 0001
 fixup handlers in vector space chains
 fixup data in code space chains
- 0338     0	 0004
+ 033A     0	 0004
  031A     0	 0008
  0322     0	 000C
  031E     0	 000A
@@ -243,14 +254,14 @@ fixup data in code space chains
  0330     0	 0002
  0328     0	 0000
  032C     0	 0001
- 0334     0	 0003
+ 0336     0	 0003
 fixup constants in code space chains
  015A     0	 01DC
  013A     0	 0000
 fixup variables in constant space chains
 fixup constants in constant space chains
 entry =  0326
-code   828
+code   830
  0000	     4405	MOV R4,R5
  0002	     F035	AND #504,R5
  0004	     01F8
@@ -660,8 +671,9 @@ code   828
  032C	     0208
  032E	     43C2	MOV.B #0,&104
  0330	     0068
- 0332	     42E2	MOV.B #4,&688
- 0334	     02B0
- 0336	     43C2	MOV.B #0,&386
- 0338	     0182
- 033A	     4130	RET
+ 0332	     40F2	MOV.B #36,&688
+ 0334	     0024
+ 0336	     02B0
+ 0338	     43C2	MOV.B #0,&386
+ 033A	     0182
+ 033C	     4130	RET
