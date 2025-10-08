@@ -31,8 +31,7 @@ MODULE Image;
     IF S.class = Texts.Name THEN i := 0; WHILE S.s[i] # 0X DO name[i] := S.s[i]; INC(i) END; name[i] := 0X;
       F := Files.Old(name); IF F = NIL THEN Texts.WriteString(W, "file not found"); Texts.WriteLn(W) END
     ELSE Texts.WriteString(W, "file name missing"); Texts.WriteLn(W)
-    END;
-    Texts.Append(Oberon.Log, W.buf)
+    END
 
     RETURN F
   END getFile;
@@ -126,7 +125,8 @@ MODULE Image;
     IF F # NIL THEN Fr := New(); Files.Set(Fr.R, F, 0);
       Oberon.AllocateUserViewer(Oberon.Par.vwr.X, X, Y);
       V := MenuViewers.New(TextFrames.NewMenu(name, Menu), Fr, TextFrames.menuH, X, Y)
-    END
+    END;
+    Texts.Append(Oberon.Log, W.buf)
   END Show;
 
   PROCEDURE toHexa(val: BYTE): CHAR;
@@ -155,7 +155,7 @@ MODULE Image;
   END ScreenShot;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Image tool   C. Schoffit 19.04.25");
-  Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  Texts.WriteLn(W)
 END Image.
 
 OM4P.Compile BMP.Mod/s Image.Mod/s~

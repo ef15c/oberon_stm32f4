@@ -494,7 +494,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
   END WipeEF;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.20 / CS 25.02.25");
-  Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); 
+  Texts.WriteLn(W);
   limit := Kernel.heapOrg; (*The end of the module space is the beginning of the heap*)
   IF limit = 0 THEN limit := Kernel.stackOrg - Kernel.stackSize END; (*Hack if ran on RISC-5 machine*)
   sdram.org := 0D0201000H; sdram.size := limit - sdram.org; (*usable SDRAM area between system variables and heap*)

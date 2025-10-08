@@ -1074,16 +1074,16 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         NEW(T); Texts.Open(T, S1.s);
         IF T.len > 0 THEN Option(S1); S.Init(T, 0); Module
         ELSE Texts.WriteString(W, S1.s); Texts.WriteString(W, " not found");
-          Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
-        END ;
+          Texts.WriteLn(W)        END ;
         IF (T.len # 0) & (S.errcnt = 0) THEN Texts.Scan(S1) ELSE S1.class := 0 END
       END
     END;
+    Texts.Append(Oberon.Log, W.buf);
     Oberon.Collect(0)
   END Compile;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  17.03.25");
-  Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+  Texts.WriteLn(W);
   NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0
 END OM4P.
