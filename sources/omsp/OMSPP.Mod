@@ -34,8 +34,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE qualident(VAR obj: B.Object);
   BEGIN obj := B.thisObj(); S.Get(sym);
     IF obj = NIL THEN S.Mark("undef"); obj := dummy END ;
-    IF (sym = S.period) & (obj.class = B.Mod) THEN
-      S.Get(sym);
+    IF (sym = S.period) & (obj.class = B.Mod) THEN obj.ref := TRUE; S.Get(sym);
       IF sym = S.ident THEN obj := B.thisimport(obj); S.Get(sym);
         IF obj = NIL THEN S.Mark("undef"); obj := dummy END
       ELSE S.Mark("identifier expected"); obj := dummy
@@ -784,7 +783,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   BEGIN
     IF sym = S.ident THEN
       qualident(obj);
-      IF obj.class = B.Typ THEN typ := obj.type ELSE S.Mark("not a type"); typ := B.intType END
+      IF obj.class = B.Typ THEN typ := obj.type; obj.ref := TRUE ELSE S.Mark("not a type"); typ := B.intType END
     ELSIF sym = S.array THEN
       S.Get(sym); Check(S.of, "OF ?");
       IF dim >= 1 THEN S.Mark("multi-dimensional open arrays not implemented") END ;
@@ -812,7 +811,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = S.ident THEN
       qualident(obj);
       IF obj.class = B.Typ THEN
-        IF (obj.type # NIL) & (obj.type.form # B.NoTyp) THEN type := obj.type END
+        IF (obj.type # NIL) & (obj.type.form # B.NoTyp) THEN type := obj.type; obj.ref := TRUE
+        END
       ELSE S.Mark("not a type or undefined")
       END
     ELSIF sym = S.array THEN S.Get(sym); ArrayType(type)

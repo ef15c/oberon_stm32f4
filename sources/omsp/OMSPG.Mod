@@ -106,6 +106,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END RegisterRTproc;
 
+  PROCEDURE MarkAsUsed(noi: INTEGER);
+    VAR obj!: B.Object;
+  BEGIN obj := B.topScope; WHILE obj.dsc.next.lev > 0 DO obj := obj.dsc END;
+    REPEAT obj := obj.next; IF obj.dsc # B.system THEN DEC(noi) END
+    UNTIL (noi <= 1) OR (obj = NIL) OR (obj.class #  B.Mod);
+    obj.ref := TRUE
+  END MarkAsUsed;
+
   PROCEDURE OfsPTOS(frameofs, returnofs: INTEGER; increment: BOOLEAN);
     VAR offset: INTEGER;
   BEGIN
@@ -316,7 +324,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      the trap checking code is generated.*)
   VAR t!: Item;
   BEGIN IF cond # A.AL THEN A.PutJ(mcode, A.negated(cond), 4) END;
-    t.reg := 0; t.am := A.Immediate; t.ofs := ORD({16}); t.obj := traps[num];
+    t.reg := 0; t.am := A.Immediate; t.ofs := ORD({16}); t.obj := traps[num]; MarkAsUsed(-t.obj.lev);
     A.PutSO(mcode, A.CALL, t, A.Word)
   END Trap;
 
@@ -590,7 +598,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: INTEGER);
     VAR fd!: FixData;
-  BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.c := y.lev; x.b := 0;
+  BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.c := y.lev; x.b := 0; y.ref := TRUE;
     x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0;
     IF (y.class IN {B.Var, B.Par}) THEN x.c := y.lev;
       IF y.register # 0FFH THEN
@@ -850,7 +858,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF arith[0] = NIL THEN S.Mark("import Arith.mul16 function")
       ELSE MakeItem(p, arith[0], 0); x0 := x; y0 := y; PrepCall(p, r, or, pau); load(x, 5); load(y, 6); Call(p, r, or, pau);
-        free(x0); free(y0); x.reg := p.reg;
+        free(x0); free(y0); x.reg := p.reg; MarkAsUsed(-arith[0].lev)
       END
     END
   END MulOp;
@@ -866,7 +874,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod16 procedure")
         ELSE IF traps[6] # NIL THEN t := c0; PutDO(A.CMP, t, y); Trap(A.NE, 6); free(y) END;
           MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or, pau); load(x, 5); load(y, 6); t := c0; load(t, 7); Call(p, r, or, pau);
-          free(x0); free(y0); x.reg := p.reg;
+          free(x0); free(y0); x.reg := p.reg; MarkAsUsed(-arith[1].lev)
         END
       END
     ELSE (*op = OM4S.mod*)
@@ -877,7 +885,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSE IF arith[1] = NIL THEN S.Mark("import Arith.divmod procedure")
         ELSE IF traps[6] # NIL THEN t := c0; PutDO(A.CMP, t, y); Trap(A.NE, 6); free(y) END;
             MakeItem(p, arith[1], 0); x0 := x; y0 := y; PrepCall(p, r, or, pau); load(x, 5); load(y, 6); t := c1; load(t, 7); Call(p, r, or, pau); x.reg := p.reg;
-          free(x0); free(y0); x.reg := p.reg;
+          free(x0); free(y0); x.reg := p.reg; MarkAsUsed(-arith[1].lev)
         END
       END
     END
@@ -931,7 +939,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF x.a <= y.a THEN x.a := ORD({x.a .. y.a}) ELSE x.a := 0 END
     ELSE IF arith[2] = NIL THEN S.Mark("import Arith.set function")
       ELSE  MakeItem(p, arith[2], 0); x0 := x; y0 := y; PrepCall(p, r, or, pau); load(x, 5); load(y, 6); Call(p, r, or, pau);
-        free(x0); free(y0); x.reg := p.reg;
+        free(x0); free(y0); x.reg := p.reg; MarkAsUsed(-arith[2].lev)
       END
     END
   END Set;
@@ -1074,7 +1082,14 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     t.mode := B.Const; t.type := B.intType; t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti := y;
     pc0 := -1; xtyp := x.type; ytyp := y.type;
     oneReg := distance(x, y, d);
-    IF ytyp.size # 0 THEN
+    IF (ytyp.size < 14) & (y.mode IN {B.Var, B.StoredConst}) & ((x.mode IN {B.Var, B.StoredConst}) OR (x.type.form = B.String)) THEN
+      s := ytyp.size; x.rdo := FALSE; y.rdo := FALSE;
+      WHILE s > 0 DO PutDO(A.MOV, y, x);
+        IF x.c >= 0 THEN INC(x.a, 2) ELSE INC(x.b, 2) END;
+        IF y.c >= 0 THEN INC(y.a, 2) ELSE INC(y.b, 2) END;
+        DEC(s, 2)
+      END
+    ELSE 
       loadAdr(y, 0FFH); IF oneReg THEN free(x); x.reg := y.reg; x.tmp := FALSE; DEC(d, WordSize) ELSE loadAdr(x, 0FFH); d := 0 END; rh.reg := AllocR();
       IF (xtyp.form = B.Array) &  (xtyp.len > 0) THEN
         IF ytyp.len >= 0 THEN
@@ -1466,11 +1481,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END handlerFixupCond;
 
   PROCEDURE varFixupCond(obj: B.Object; local:BOOLEAN): BOOLEAN;
-    VAR res: BOOLEAN;
-  BEGIN res := (obj.class = B.Var) & (obj.usedat # 0);
-    IF local THEN res := res & (obj.lev = 0); ASSERT(~res) ELSE res := res & (obj.lev < 0) END
-
-    RETURN res
+  RETURN ~local & (obj.class = B.Var) & (obj.usedat # 0) & (obj.lev < 0)
   END varFixupCond;
 
   PROCEDURE constFixupCond(obj: B.Object; local:BOOLEAN): BOOLEAN;
@@ -1584,7 +1595,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           END
         ELSE S.Mark("Unknown entry type")
         END
-      END ;
+      END;
       obj := obj.next
     END ;
     WriteFixup(R, procFixupCond, objFixupAction); (*data for procedures fixup in code space*)

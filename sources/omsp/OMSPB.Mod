@@ -26,7 +26,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
     ObjDesc*= RECORD
       class*, exno*, register*: BYTE; (*register = 0FFH if memory allocation, else contains the register number*)
-      expo*, unsafe*, rdo*: BOOLEAN;   (*exported / unsafe / read-only*)
+      expo*, unsafe*, rdo*, ref*: BOOLEAN;   (*exported / unsafe / read-only / referenced*)
       lev*, usedat*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
@@ -354,7 +354,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           END
         ELSIF obj.class IN {Var, StoredConst} THEN Files.WriteNum(R, obj.exno)
         END
-      END ;
+      ELSE (*not exported*) IF ~obj.ref THEN S.DebugString("not referenced", obj.name) END
+      END;
       obj := obj.next
     END ;
     REPEAT Write(R, 0) UNTIL Files.Length(F) MOD 4 = 0;

@@ -11,14 +11,15 @@ BEGIN
   a := b MOD c
 END p;
 
+BEGIN p
 END testIntArith.
 
-
+OMSPP.Compile testIntArith.Mod~
 OMSPTool.DecObj testIntArith.mpc
 decode testIntArith.mpc
-testIntArith 57D15311 Flash    88
+testIntArith 57D15311 Flash    92
 imports:
-	Arith BDF2CFB8
+	Arith CE724D80
 type descriptors
 
 data     0
@@ -29,16 +30,18 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0056
-fixup procedures chains
+ c 0056
+fixup procedures in code space chains
+ 0058     0	 0000
  004A     1	 0002
  0026     1	 0001
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
+fixup handlers in vector space chains
+fixup data in code space chains
+fixup constants in code space chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  0056
-code    88
+code    92
  0000	     8031	SUB #6,SP
  0002	     0006
  0004	     411F	MOV 2(SP),R15
@@ -82,4 +85,6 @@ code    88
  0050	     5031	ADD #6,SP
  0052	     0006
  0054	     4130	RET
- 0056	     4130	RET
+ 0056	     12B0	CALL #0
+ 0058	     0000
+ 005A	     4130	RET

@@ -15,11 +15,13 @@ MODULE testInEx;
     EXCL(s, 5); EXCL(s, p);
   END q;
 
- END testInEx.
+BEGIN p; q
+END testInEx.
 
+OMSPP.Compile testInEx.Mod~
 OMSPTool.DecObj testInEx.mpc
 decode testInEx.mpc
-testInEx 3FD5DD17 Flash    98
+testInEx 3FD5DD17 Flash   106
 imports:
 type descriptors
 
@@ -31,14 +33,17 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0060
-fixup procedures chains
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
+ c 0060
+fixup procedures in code space chains
+ 0062     0	 0000
+ 0066     0	 0038
+fixup handlers in vector space chains
+fixup data in code space chains
+fixup constants in code space chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  0060
-code    98
+code   106
  0000	     8221	SUB #4,SP
  0002	     D2B1	BIS #8,0(SP)
  0004	     0000
@@ -47,9 +52,9 @@ code    98
  000A	     0002
  000C	     531E	ADD #1,R14
  000E	     831E	SUB #1,R14
- 0010	     2402	JEQ #2, goes to  0016
+ 0010	     2402	JEQ $+6, goes to  0016
  0012	     5F0F	ADD R15,R15
- 0014	     3FFC	JMP #-4, goes to  000E
+ 0014	     3FFC	JMP $-6, goes to  000E
  0016	     DF81	BIS R15,0(SP)
  0018	     0000
  001A	     C0B1	BIC #32,0(SP)
@@ -60,9 +65,9 @@ code    98
  0024	     0002
  0026	     531E	ADD #1,R14
  0028	     831E	SUB #1,R14
- 002A	     2402	JEQ #2, goes to  0030
+ 002A	     2402	JEQ $+6, goes to  0030
  002C	     5F0F	ADD R15,R15
- 002E	     3FFC	JMP #-4, goes to  0028
+ 002E	     3FFC	JMP $-6, goes to  0028
  0030	     CF81	BIC R15,0(SP)
  0032	     0000
  0034	     5221	ADD #4,SP
@@ -72,9 +77,9 @@ code    98
  003C	     4507	MOV R5,R7
  003E	     5317	ADD #1,R7
  0040	     8317	SUB #1,R7
- 0042	     2402	JEQ #2, goes to  0048
+ 0042	     2402	JEQ $+6, goes to  0048
  0044	     5606	ADD R6,R6
- 0046	     3FFC	JMP #-4, goes to  0040
+ 0046	     3FFC	JMP $-6, goes to  0040
  0048	     D604	BIS R6,R4
  004A	     C034	BIC #32,R4
  004C	     0020
@@ -82,9 +87,13 @@ code    98
  0050	     4507	MOV R5,R7
  0052	     5317	ADD #1,R7
  0054	     8317	SUB #1,R7
- 0056	     2402	JEQ #2, goes to  005C
+ 0056	     2402	JEQ $+6, goes to  005C
  0058	     5606	ADD R6,R6
- 005A	     3FFC	JMP #-4, goes to  0054
+ 005A	     3FFC	JMP $-6, goes to  0054
  005C	     C604	BIC R6,R4
  005E	     4130	RET
- 0060	     4130	RET
+ 0060	     12B0	CALL #0
+ 0062	     0000
+ 0064	     12B0	CALL #0
+ 0066	     0000
+ 0068	     4130	RET

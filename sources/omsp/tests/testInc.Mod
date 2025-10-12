@@ -32,11 +32,13 @@ MODULE testInc;
     DEC(k); DEC(k, 2); DEC(k, -2); DEC(k, l);
   END q;
 
+BEGIN p; q
 END testInc.
 
+OMSPP.Compile testInc.Mod~
 OMSPTool.DecObj testInc.mpc
 decode testInc.mpc
-testInc 1EDF1214 Flash   262
+testInc 1EDF1214 Flash   270
 imports:
 type descriptors
 
@@ -48,18 +50,21 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0104
-fixup procedures chains
-fixup handlers chains
-fixup data chains
- 00CE     0	 0000
- 00CC     0	 0002
- 00E0     0	 0004
+ c 0104
+fixup procedures in code space chains
+ 0106     0	 0000
+ 010A     0	 009A
+fixup handlers in vector space chains
+fixup data in code space chains
  00DE     0	 0005
-fixup constants chains
-fixup types chains
+ 00E0     0	 0004
+ 00CC     0	 0002
+ 00CE     0	 0000
+fixup constants in code space chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  0104
-code   262
+code   270
  0000	     8031	SUB #6,SP
  0002	     0006
  0004	     5392	ADD #1,&0
@@ -190,4 +195,8 @@ code   262
  00FE	     5366	ADD.B #2,R6
  0100	     8746	SUB.B R7,R6
  0102	     4130	RET
- 0104	     4130	RET
+ 0104	     12B0	CALL #0
+ 0106	     0000
+ 0108	     12B0	CALL #0
+ 010A	     0000
+ 010C	     4130	RET
