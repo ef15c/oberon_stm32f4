@@ -3,22 +3,22 @@ MODULE testStore;
 
   VAR s,t: string; v,u: vector; i: INTEGER;
 
-  PROCEDURE p(a: ARRAY OF CHAR; c: string; VAR x:ARRAY OF CHAR; VAR z: string );
+  PROCEDURE p*(a: ARRAY OF CHAR; c: string; VAR x:ARRAY OF CHAR; VAR z: string );
     VAR j: INTEGER;
   BEGIN j := j*3; z := c; z := s; s := z; x[j] := a[1]; x[j] := s[1]; z[j] := a[1]
   END p;
 
-  PROCEDURE q(b: ARRAY OF INTEGER; d: vector; VAR y: ARRAY OF INTEGER; VAR t: vector );
+  PROCEDURE q*(b: ARRAY OF INTEGER; d: vector; VAR y: ARRAY OF INTEGER; VAR t: vector );
     VAR j: INTEGER;
   BEGIN t := d; t := v; v := t; y[j] := b[1]; y[j] := v[1]; t[j] := b[1]
   END q;
 
-  PROCEDURE p0(a: ARRAY OF CHAR*; c: string*; VAR x:ARRAY OF CHAR*; VAR z: string* );
+  PROCEDURE p0*(a: ARRAY OF CHAR*; c: string*; VAR x:ARRAY OF CHAR*; VAR z: string* );
     VAR j: INTEGER*;
   BEGIN j := j*3; z := c; z := s; s := z; x[j] := a[1]; x[j] := s[1]; z[j] := a[1]
   END p0;
 
-  PROCEDURE q0(b: ARRAY OF INTEGER*; d: vector*; VAR y: ARRAY OF INTEGER*; VAR t: vector* );
+  PROCEDURE q0*(b: ARRAY OF INTEGER*; d: vector*; VAR y: ARRAY OF INTEGER*; VAR t: vector* );
     VAR j: INTEGER*;
   BEGIN t := d; t := v; v := t; y[j] := b[1]; y[j] := v[1]; t[j] := b[1]
   END q0;
@@ -26,11 +26,12 @@ MODULE testStore;
 BEGIN i := i*3; s := t; s[i] := s[1]; u := v; v[i] := v[1]
 END testStore.
 
+OMSPP.Compile testStore.Mod/s~
 OMSPTool.DecObj testStore.mpc
 
 no traps:
 decode testStore.mpc
-testStore 18785DE6 Flash   528
+testStore 2267D38A Flash   516
 imports:
 type descriptors
 
@@ -42,20 +43,21 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 01BE
-fixup procedures chains
-fixup handlers chains
-fixup data chains
- 01E2     0	 0000
- 01E8     0	 0001
- 0204     0	 0014
- 020A     0	 0016
- 01FE     0	 0028
+ c 01BE c 0000 c 0080 c 00FA c 015E
+fixup procedures in code space chains
+fixup handlers in vector space chains
+fixup data in code space chains
  01CE     0	 000A
-fixup constants chains
-fixup types chains
+ 01F8     0	 0028
+ 01FE     0	 0016
+ 0200     0	 0014
+ 01E2     0	 0001
+ 01E4     0	 0000
+fixup constants in code space chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  01BE
-code   528
+code   516
  0000	     8321	SUB #2,SP
  0002	     412F	MOV @SP,R15
  0004	     4F0E	MOV R15,R14
@@ -73,7 +75,7 @@ code   528
  001C	     0000
  001E	     532E	ADD #2,R14
  0020	     831D	SUB #1,R13
- 0022	     23FB	JNE #-5, goes to  001A
+ 0022	     23FB	JNE $-8, goes to  001A
  0024	     403F	MOV #0,R15
  0026	     0000
  0028	     411E	MOV 4(SP),R14
@@ -84,7 +86,7 @@ code   528
  0032	     0000
  0034	     532E	ADD #2,R14
  0036	     831D	SUB #1,R13
- 0038	     23FB	JNE #-5, goes to  0030
+ 0038	     23FB	JNE $-8, goes to  0030
  003A	     411F	MOV 4(SP),R15
  003C	     0004
  003E	     403E	MOV #38,R14
@@ -95,7 +97,7 @@ code   528
  0048	     0000
  004A	     532E	ADD #2,R14
  004C	     831D	SUB #1,R13
- 004E	     23FB	JNE #-5, goes to  0046
+ 004E	     23FB	JNE $-8, goes to  0046
  0050	     412F	MOV @SP,R15
  0052	     511F	ADD 6(SP),R15
  0054	     0006
@@ -131,7 +133,7 @@ code   528
  0090	     0000
  0092	     532E	ADD #2,R14
  0094	     831D	SUB #1,R13
- 0096	     23FB	JNE #-5, goes to  008E
+ 0096	     23FB	JNE $-8, goes to  008E
  0098	     403F	MOV #0,R15
  009A	     0000
  009C	     411E	MOV 4(SP),R14
@@ -142,7 +144,7 @@ code   528
  00A6	     0000
  00A8	     532E	ADD #2,R14
  00AA	     831D	SUB #1,R13
- 00AC	     23FB	JNE #-5, goes to  00A4
+ 00AC	     23FB	JNE $-8, goes to  00A4
  00AE	     411F	MOV 4(SP),R15
  00B0	     0004
  00B2	     403E	MOV #154,R14
@@ -153,7 +155,7 @@ code   528
  00BC	     0000
  00BE	     532E	ADD #2,R14
  00C0	     831D	SUB #1,R13
- 00C2	     23FB	JNE #-5, goes to  00BA
+ 00C2	     23FB	JNE $-8, goes to  00BA
  00C4	     412F	MOV @SP,R15
  00C6	     5F0F	ADD R15,R15
  00C8	     511F	ADD 6(SP),R15
@@ -194,7 +196,7 @@ code   528
  010E	     0000
  0110	     532C	ADD #2,R12
  0112	     831D	SUB #1,R13
- 0114	     23FB	JNE #-5, goes to  010C
+ 0114	     23FB	JNE $-8, goes to  010C
  0116	     403B	MOV #64,R11
  0118	     0040
  011A	     490C	MOV R9,R12
@@ -204,7 +206,7 @@ code   528
  0122	     0000
  0124	     532C	ADD #2,R12
  0126	     831D	SUB #1,R13
- 0128	     23FB	JNE #-5, goes to  0120
+ 0128	     23FB	JNE $-8, goes to  0120
  012A	     490B	MOV R9,R11
  012C	     403C	MOV #280,R12
  012E	     0118
@@ -214,7 +216,7 @@ code   528
  0136	     0000
  0138	     532C	ADD #2,R12
  013A	     831D	SUB #1,R13
- 013C	     23FB	JNE #-5, goes to  0134
+ 013C	     23FB	JNE $-8, goes to  0134
  013E	     4A0B	MOV R10,R11
  0140	     570B	ADD R7,R11
  0142	     44DB	MOV.B 1(R4),0(R11)
@@ -239,7 +241,7 @@ code   528
  0168	     0000
  016A	     532C	ADD #2,R12
  016C	     831D	SUB #1,R13
- 016E	     23FB	JNE #-5, goes to  0166
+ 016E	     23FB	JNE $-8, goes to  0166
  0170	     403B	MOV #180,R11
  0172	     00B4
  0174	     490C	MOV R9,R12
@@ -249,7 +251,7 @@ code   528
  017C	     0000
  017E	     532C	ADD #2,R12
  0180	     831D	SUB #1,R13
- 0182	     23FB	JNE #-5, goes to  017A
+ 0182	     23FB	JNE $-8, goes to  017A
  0184	     490B	MOV R9,R11
  0186	     403C	MOV #370,R12
  0188	     0172
@@ -259,7 +261,7 @@ code   528
  0190	     0000
  0192	     532C	ADD #2,R12
  0194	     831D	SUB #1,R13
- 0196	     23FB	JNE #-5, goes to  018E
+ 0196	     23FB	JNE $-8, goes to  018E
  0198	     4A0B	MOV R10,R11
  019A	     5B0B	ADD R11,R11
  019C	     570B	ADD R7,R11
@@ -293,33 +295,27 @@ code   528
  01D4	     4FBF	MOV @R15+,-12(R15)
  01D6	     FFF4
  01D8	     831E	SUB #1,R14
- 01DA	     23FC	JNE #-4, goes to  01D4
+ 01DA	     23FC	JNE $-6, goes to  01D4
  01DC	     421F	MOV &458,R15
  01DE	     01CA
- 01E0	     403E	MOV #302,R14
- 01E2	     012E
- 01E4	     5E0F	ADD R14,R15
- 01E6	     42DF	MOV.B &334,0(R15)
- 01E8	     014E
- 01EA	     0000
- 01EC	     403F	MOV #392,R15
- 01EE	     0188
- 01F0	     403E	MOV #5,R14
- 01F2	     0005
- 01F4	     4FBF	MOV @R15+,8(R15)
- 01F6	     0008
- 01F8	     831E	SUB #1,R14
- 01FA	     23FC	JNE #-4, goes to  01F4
- 01FC	     421F	MOV &478,R15
- 01FE	     01DE
- 0200	     5F0F	ADD R15,R15
- 0202	     403E	MOV #494,R14
- 0204	     01EE
- 0206	     5E0F	ADD R14,R15
- 0208	     429F	MOV &428,0(R15)
- 020A	     01AC
- 020C	     0000
- 020E	     4130	RET
+ 01E0	     42DF	MOV.B &334,302(R15)
+ 01E2	     014E
+ 01E4	     012E
+ 01E6	     403F	MOV #392,R15
+ 01E8	     0188
+ 01EA	     403E	MOV #5,R14
+ 01EC	     0005
+ 01EE	     4FBF	MOV @R15+,8(R15)
+ 01F0	     0008
+ 01F2	     831E	SUB #1,R14
+ 01F4	     23FC	JNE $-6, goes to  01EE
+ 01F6	     421F	MOV &478,R15
+ 01F8	     01DE
+ 01FA	     5F0F	ADD R15,R15
+ 01FC	     429F	MOV &428,488(R15)
+ 01FE	     01AC
+ 0200	     01E8
+ 0202	     4130	RET
 
 MODULE testStore;
   IMPORT Traps;
@@ -328,22 +324,22 @@ MODULE testStore;
 
   VAR s,t: string; v,u: vector; i: INTEGER;
 
-  PROCEDURE p(a: ARRAY OF CHAR; c: string; VAR x:ARRAY OF CHAR; VAR z: string );
+  PROCEDURE p*(a: ARRAY OF CHAR; c: string; VAR x:ARRAY OF CHAR; VAR z: string );
     VAR j: INTEGER;
   BEGIN j := j*3; z := c; z := s; s := z; x[j] := a[1]; x[j] := s[1]; z[j] := a[1]
   END p;
 
-  PROCEDURE q(b: ARRAY OF INTEGER; d: vector; VAR y: ARRAY OF INTEGER; VAR t: vector );
+  PROCEDURE q*(b: ARRAY OF INTEGER; d: vector; VAR y: ARRAY OF INTEGER; VAR t: vector );
     VAR j: INTEGER;
   BEGIN t := d; t := v; v := t; y[j] := b[1]; y[j] := v[1]; t[j] := b[1]
   END q;
 
-  PROCEDURE p0(a: ARRAY OF CHAR*; c: string*; VAR x:ARRAY OF CHAR*; VAR z: string* );
+  PROCEDURE p0*(a: ARRAY OF CHAR*; c: string*; VAR x:ARRAY OF CHAR*; VAR z: string* );
     VAR j: INTEGER*;
   BEGIN j := j*3; z := c; z := s; s := z; x[j] := a[1]; x[j] := s[1]; z[j] := a[1]
   END p0;
 
-  PROCEDURE q0(b: ARRAY OF INTEGER*; d: vector*; VAR y: ARRAY OF INTEGER*; VAR t: vector* );
+  PROCEDURE q0*(b: ARRAY OF INTEGER*; d: vector*; VAR y: ARRAY OF INTEGER*; VAR t: vector* );
     VAR j: INTEGER*;
   BEGIN t := d; t := v; v := t; y[j] := b[1]; y[j] := v[1]; t[j] := b[1]
   END q0;
@@ -351,9 +347,12 @@ MODULE testStore;
 BEGIN i := i*3; s := t; s[i] := s[1]; u := v; v[i] := v[1]
 END testStore.
 
+OMSPP.Compile @/s
+OMSPTool.DecObj testStore.mpc
+
 with traps:
 decode testStore.mpc
-testStore 18785DE6 Flash   764
+testStore 2267D38A Flash   752
 imports:
 	Traps 37B3757C
 type descriptors
@@ -366,21 +365,22 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0292
-fixup procedures chains
- 02E6     1	 0001
-fixup handlers chains
-fixup data chains
- 02C2     0	 0000
- 02C8     0	 0001
- 02F0     0	 0014
- 02F6     0	 0016
- 02EA     0	 0028
+ c 0292 c 0000 c 00B8 c 016E c 0200
+fixup procedures in code space chains
+ 02E0     1	 0001
+fixup handlers in vector space chains
+fixup data in code space chains
  02A2     0	 000A
-fixup constants chains
-fixup types chains
+ 02E4     0	 0028
+ 02EA     0	 0016
+ 02EC     0	 0014
+ 02C2     0	 0001
+ 02C4     0	 0000
+fixup constants in code space chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  0292
-code   764
+code   752
  0000	     8321	SUB #2,SP
  0002	     412F	MOV @SP,R15
  0004	     4F0E	MOV R15,R14
@@ -398,7 +398,7 @@ code   764
  001C	     0000
  001E	     532E	ADD #2,R14
  0020	     831D	SUB #1,R13
- 0022	     23FB	JNE #-5, goes to  001A
+ 0022	     23FB	JNE $-8, goes to  001A
  0024	     403F	MOV #0,R15
  0026	     0000
  0028	     411E	MOV 4(SP),R14
@@ -409,7 +409,7 @@ code   764
  0032	     0000
  0034	     532E	ADD #2,R14
  0036	     831D	SUB #1,R13
- 0038	     23FB	JNE #-5, goes to  0030
+ 0038	     23FB	JNE $-8, goes to  0030
  003A	     411F	MOV 4(SP),R15
  003C	     0004
  003E	     403E	MOV #38,R14
@@ -420,11 +420,11 @@ code   764
  0048	     0000
  004A	     532E	ADD #2,R14
  004C	     831D	SUB #1,R13
- 004E	     23FB	JNE #-5, goes to  0046
+ 004E	     23FB	JNE $-8, goes to  0046
  0050	     9191	CMP 8(SP),0(SP)
  0052	     0008
  0054	     0000
- 0056	     2802	JNC #2, goes to  005C
+ 0056	     2802	JNC $+6, goes to  005C
  0058	     12B0	CALL #0
  005A	     0000
  005C	     412F	MOV @SP,R15
@@ -433,7 +433,7 @@ code   764
  0062	     431E	MOV #1,R14
  0064	     911E	CMP 14(SP),R14
  0066	     000E
- 0068	     2802	JNC #2, goes to  006E
+ 0068	     2802	JNC $+6, goes to  006E
  006A	     12B0	CALL #90
  006C	     005A
  006E	     511E	ADD 12(SP),R14
@@ -443,7 +443,7 @@ code   764
  0076	     9191	CMP 8(SP),0(SP)
  0078	     0008
  007A	     0000
- 007C	     2802	JNC #2, goes to  0082
+ 007C	     2802	JNC $+6, goes to  0082
  007E	     12B0	CALL #108
  0080	     006C
  0082	     412F	MOV @SP,R15
@@ -455,7 +455,7 @@ code   764
  008E	     90B1	CMP #10,0(SP)
  0090	     000A
  0092	     0000
- 0094	     2802	JNC #2, goes to  009A
+ 0094	     2802	JNC $+6, goes to  009A
  0096	     12B0	CALL #128
  0098	     0080
  009A	     412F	MOV @SP,R15
@@ -464,7 +464,7 @@ code   764
  00A0	     431E	MOV #1,R14
  00A2	     911E	CMP 14(SP),R14
  00A4	     000E
- 00A6	     2802	JNC #2, goes to  00AC
+ 00A6	     2802	JNC $+6, goes to  00AC
  00A8	     12B0	CALL #152
  00AA	     0098
  00AC	     511E	ADD 12(SP),R14
@@ -484,7 +484,7 @@ code   764
  00C8	     0000
  00CA	     532E	ADD #2,R14
  00CC	     831D	SUB #1,R13
- 00CE	     23FB	JNE #-5, goes to  00C6
+ 00CE	     23FB	JNE $-8, goes to  00C6
  00D0	     403F	MOV #0,R15
  00D2	     0000
  00D4	     411E	MOV 4(SP),R14
@@ -495,7 +495,7 @@ code   764
  00DE	     0000
  00E0	     532E	ADD #2,R14
  00E2	     831D	SUB #1,R13
- 00E4	     23FB	JNE #-5, goes to  00DC
+ 00E4	     23FB	JNE $-8, goes to  00DC
  00E6	     411F	MOV 4(SP),R15
  00E8	     0004
  00EA	     403E	MOV #210,R14
@@ -506,11 +506,11 @@ code   764
  00F4	     0000
  00F6	     532E	ADD #2,R14
  00F8	     831D	SUB #1,R13
- 00FA	     23FB	JNE #-5, goes to  00F2
+ 00FA	     23FB	JNE $-8, goes to  00F2
  00FC	     9191	CMP 8(SP),0(SP)
  00FE	     0008
  0100	     0000
- 0102	     2802	JNC #2, goes to  0108
+ 0102	     2802	JNC $+6, goes to  0108
  0104	     12B0	CALL #170
  0106	     00AA
  0108	     412F	MOV @SP,R15
@@ -520,7 +520,7 @@ code   764
  0110	     431E	MOV #1,R14
  0112	     911E	CMP 14(SP),R14
  0114	     000E
- 0116	     2802	JNC #2, goes to  011C
+ 0116	     2802	JNC $+6, goes to  011C
  0118	     12B0	CALL #262
  011A	     0106
  011C	     5E0E	ADD R14,R14
@@ -531,7 +531,7 @@ code   764
  0126	     9191	CMP 8(SP),0(SP)
  0128	     0008
  012A	     0000
- 012C	     2802	JNC #2, goes to  0132
+ 012C	     2802	JNC $+6, goes to  0132
  012E	     12B0	CALL #282
  0130	     011A
  0132	     412F	MOV @SP,R15
@@ -544,7 +544,7 @@ code   764
  0140	     90B1	CMP #5,0(SP)
  0142	     0005
  0144	     0000
- 0146	     2802	JNC #2, goes to  014C
+ 0146	     2802	JNC $+6, goes to  014C
  0148	     12B0	CALL #304
  014A	     0130
  014C	     412F	MOV @SP,R15
@@ -554,7 +554,7 @@ code   764
  0154	     431E	MOV #1,R14
  0156	     911E	CMP 14(SP),R14
  0158	     000E
- 015A	     2802	JNC #2, goes to  0160
+ 015A	     2802	JNC $+6, goes to  0160
  015C	     12B0	CALL #330
  015E	     014A
  0160	     5E0E	ADD R14,R14
@@ -577,7 +577,7 @@ code   764
  0182	     0000
  0184	     532C	ADD #2,R12
  0186	     831D	SUB #1,R13
- 0188	     23FB	JNE #-5, goes to  0180
+ 0188	     23FB	JNE $-8, goes to  0180
  018A	     403B	MOV #64,R11
  018C	     0040
  018E	     490C	MOV R9,R12
@@ -587,7 +587,7 @@ code   764
  0196	     0000
  0198	     532C	ADD #2,R12
  019A	     831D	SUB #1,R13
- 019C	     23FB	JNE #-5, goes to  0194
+ 019C	     23FB	JNE $-8, goes to  0194
  019E	     490B	MOV R9,R11
  01A0	     403C	MOV #396,R12
  01A2	     018C
@@ -597,23 +597,23 @@ code   764
  01AA	     0000
  01AC	     532C	ADD #2,R12
  01AE	     831D	SUB #1,R13
- 01B0	     23FB	JNE #-5, goes to  01A8
+ 01B0	     23FB	JNE $-8, goes to  01A8
  01B2	     980A	CMP R8,R10
- 01B4	     2802	JNC #2, goes to  01BA
+ 01B4	     2802	JNC $+6, goes to  01BA
  01B6	     12B0	CALL #350
  01B8	     015E
  01BA	     4A0B	MOV R10,R11
  01BC	     570B	ADD R7,R11
  01BE	     431C	MOV #1,R12
  01C0	     950C	CMP R5,R12
- 01C2	     2802	JNC #2, goes to  01C8
+ 01C2	     2802	JNC $+6, goes to  01C8
  01C4	     12B0	CALL #440
  01C6	     01B8
  01C8	     540C	ADD R4,R12
  01CA	     4CEB	MOV.B @R12,0(R11)
  01CC	     0000
  01CE	     980A	CMP R8,R10
- 01D0	     2802	JNC #2, goes to  01D6
+ 01D0	     2802	JNC $+6, goes to  01D6
  01D2	     12B0	CALL #454
  01D4	     01C6
  01D6	     4A0B	MOV R10,R11
@@ -623,14 +623,14 @@ code   764
  01DE	     0000
  01E0	     903A	CMP #10,R10
  01E2	     000A
- 01E4	     2802	JNC #2, goes to  01EA
+ 01E4	     2802	JNC $+6, goes to  01EA
  01E6	     12B0	CALL #468
  01E8	     01D4
  01EA	     4A0B	MOV R10,R11
  01EC	     590B	ADD R9,R11
  01EE	     431C	MOV #1,R12
  01F0	     950C	CMP R5,R12
- 01F2	     2802	JNC #2, goes to  01F8
+ 01F2	     2802	JNC $+6, goes to  01F8
  01F4	     12B0	CALL #488
  01F6	     01E8
  01F8	     540C	ADD R4,R12
@@ -645,7 +645,7 @@ code   764
  020A	     0000
  020C	     532C	ADD #2,R12
  020E	     831D	SUB #1,R13
- 0210	     23FB	JNE #-5, goes to  0208
+ 0210	     23FB	JNE $-8, goes to  0208
  0212	     403B	MOV #236,R11
  0214	     00EC
  0216	     490C	MOV R9,R12
@@ -655,7 +655,7 @@ code   764
  021E	     0000
  0220	     532C	ADD #2,R12
  0222	     831D	SUB #1,R13
- 0224	     23FB	JNE #-5, goes to  021C
+ 0224	     23FB	JNE $-8, goes to  021C
  0226	     490B	MOV R9,R11
  0228	     403C	MOV #532,R12
  022A	     0214
@@ -665,9 +665,9 @@ code   764
  0232	     0000
  0234	     532C	ADD #2,R12
  0236	     831D	SUB #1,R13
- 0238	     23FB	JNE #-5, goes to  0230
+ 0238	     23FB	JNE $-8, goes to  0230
  023A	     980A	CMP R8,R10
- 023C	     2802	JNC #2, goes to  0242
+ 023C	     2802	JNC $+6, goes to  0242
  023E	     12B0	CALL #502
  0240	     01F6
  0242	     4A0B	MOV R10,R11
@@ -675,7 +675,7 @@ code   764
  0246	     570B	ADD R7,R11
  0248	     431C	MOV #1,R12
  024A	     950C	CMP R5,R12
- 024C	     2802	JNC #2, goes to  0252
+ 024C	     2802	JNC $+6, goes to  0252
  024E	     12B0	CALL #576
  0250	     0240
  0252	     5C0C	ADD R12,R12
@@ -683,7 +683,7 @@ code   764
  0256	     4CAB	MOV @R12,0(R11)
  0258	     0000
  025A	     980A	CMP R8,R10
- 025C	     2802	JNC #2, goes to  0262
+ 025C	     2802	JNC $+6, goes to  0262
  025E	     12B0	CALL #592
  0260	     0250
  0262	     4A0B	MOV R10,R11
@@ -694,7 +694,7 @@ code   764
  026C	     0000
  026E	     903A	CMP #5,R10
  0270	     0005
- 0272	     2802	JNC #2, goes to  0278
+ 0272	     2802	JNC $+6, goes to  0278
  0274	     12B0	CALL #608
  0276	     0260
  0278	     4A0B	MOV R10,R11
@@ -702,7 +702,7 @@ code   764
  027C	     590B	ADD R9,R11
  027E	     431C	MOV #1,R12
  0280	     950C	CMP R5,R12
- 0282	     2802	JNC #2, goes to  0288
+ 0282	     2802	JNC $+6, goes to  0288
  0284	     12B0	CALL #630
  0286	     0276
  0288	     5C0C	ADD R12,R12
@@ -724,42 +724,36 @@ code   764
  02A8	     4FBF	MOV @R15+,-12(R15)
  02AA	     FFF4
  02AC	     831E	SUB #1,R14
- 02AE	     23FC	JNE #-4, goes to  02A8
+ 02AE	     23FC	JNE $-6, goes to  02A8
  02B0	     90B2	CMP #10,&670
  02B2	     000A
  02B4	     029E
- 02B6	     2802	JNC #2, goes to  02BC
+ 02B6	     2802	JNC $+6, goes to  02BC
  02B8	     12B0	CALL #646
  02BA	     0286
  02BC	     421F	MOV &692,R15
  02BE	     02B4
- 02C0	     403E	MOV #418,R14
- 02C2	     01A2
- 02C4	     5E0F	ADD R14,R15
- 02C6	     42DF	MOV.B &476,0(R15)
- 02C8	     01DC
- 02CA	     0000
- 02CC	     403F	MOV #554,R15
- 02CE	     022A
- 02D0	     403E	MOV #5,R14
- 02D2	     0005
- 02D4	     4FBF	MOV @R15+,8(R15)
- 02D6	     0008
- 02D8	     831E	SUB #1,R14
- 02DA	     23FC	JNE #-4, goes to  02D4
- 02DC	     90B2	CMP #5,&702
- 02DE	     0005
- 02E0	     02BE
- 02E2	     2802	JNC #2, goes to  02E8
- 02E4	     12B0	CALL #698
- 02E6	     02BA
- 02E8	     421F	MOV &736,R15
- 02EA	     02E0
- 02EC	     5F0F	ADD R15,R15
- 02EE	     403E	MOV #718,R14
- 02F0	     02CE
- 02F2	     5E0F	ADD R14,R15
- 02F4	     429F	MOV &618,0(R15)
- 02F6	     026A
- 02F8	     0000
- 02FA	     4130	RET
+ 02C0	     42DF	MOV.B &476,418(R15)
+ 02C2	     01DC
+ 02C4	     01A2
+ 02C6	     403F	MOV #554,R15
+ 02C8	     022A
+ 02CA	     403E	MOV #5,R14
+ 02CC	     0005
+ 02CE	     4FBF	MOV @R15+,8(R15)
+ 02D0	     0008
+ 02D2	     831E	SUB #1,R14
+ 02D4	     23FC	JNE $-6, goes to  02CE
+ 02D6	     90B2	CMP #5,&702
+ 02D8	     0005
+ 02DA	     02BE
+ 02DC	     2802	JNC $+6, goes to  02E2
+ 02DE	     12B0	CALL #698
+ 02E0	     02BA
+ 02E2	     421F	MOV &730,R15
+ 02E4	     02DA
+ 02E6	     5F0F	ADD R15,R15
+ 02E8	     429F	MOV &618,712(R15)
+ 02EA	     026A
+ 02EC	     02C8
+ 02EE	     4130	RET

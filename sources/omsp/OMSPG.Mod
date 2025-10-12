@@ -1082,7 +1082,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     t.mode := B.Const; t.type := B.intType; t.reg := 0; t.am := A.Immediate; t.obj := NIL; ti := y;
     pc0 := -1; xtyp := x.type; ytyp := y.type;
     oneReg := distance(x, y, d);
-    IF (ytyp.size < 14) & (y.mode IN {B.Var, B.StoredConst}) & ((x.mode IN {B.Var, B.StoredConst}) OR (x.type.form = B.String)) THEN
+    IF ((ytyp.size < 8) OR oneReg & (ytyp.size < 10))
+    & (y.mode IN {B.Var, B.StoredConst}) & ((x.mode IN {B.Var, B.StoredConst}) OR (x.type.form = B.String)) THEN
       s := ytyp.size; x.rdo := FALSE; y.rdo := FALSE;
       WHILE s > 0 DO PutDO(A.MOV, y, x);
         IF x.c >= 0 THEN INC(x.a, 2) ELSE INC(x.b, 2) END;

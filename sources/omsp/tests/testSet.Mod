@@ -18,14 +18,15 @@ MODULE testSet;
     c := a/b
   END p;
 
+BEGIN p
 END testSet.
 
-
+OMSPP.Compile testSet.Mod~
 OMSPTool.DecObj testSet.mpc
 decode testSet.mpc
-testSet B4D15A40 Flash   152
+testSet B4D15A40 Flash   156
 imports:
-	Arith BDF2CFB8
+	Arith CE724D80
 type descriptors
 
 data     0
@@ -36,15 +37,17 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0096
-fixup procedures chains
+ c 0096
+fixup procedures in code space chains
+ 0098     0	 0000
  0032     1	 0003
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
+fixup handlers in vector space chains
+fixup data in code space chains
+fixup constants in code space chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  0096
-code   152
+code   156
  0000	     8031	SUB #12,SP
  0002	     000C
  0004	     40B1	MOV #60,4(SP)
@@ -76,9 +79,9 @@ code   152
  0038	     B0B1	BIT #1024,0(SP)
  003A	     0400
  003C	     0000
- 003E	     2402	JEQ #2, goes to  0044
+ 003E	     2402	JEQ $+6, goes to  0044
  0040	     431F	MOV #1,R15
- 0042	     3C01	JMP #1, goes to  0046
+ 0042	     3C01	JMP $+4, goes to  0046
  0044	     430F	MOV #0,R15
  0046	     4FC1	MOV.B R15,10(SP)
  0048	     000A
@@ -87,13 +90,13 @@ code   152
  004E	     412E	MOV @SP,R14
  0050	     531F	ADD #1,R15
  0052	     831F	SUB #1,R15
- 0054	     2402	JEQ #2, goes to  005A
+ 0054	     2402	JEQ $+6, goes to  005A
  0056	     100E	RRC R14
- 0058	     3FFC	JMP #-4, goes to  0052
+ 0058	     3FFC	JMP $-6, goes to  0052
  005A	     B31E	BIT #1,R14
- 005C	     2402	JEQ #2, goes to  0062
+ 005C	     2402	JEQ $+6, goes to  0062
  005E	     431F	MOV #1,R15
- 0060	     3C01	JMP #1, goes to  0064
+ 0060	     3C01	JMP $+4, goes to  0064
  0062	     430F	MOV #0,R15
  0064	     4FC1	MOV.B R15,10(SP)
  0066	     000A
@@ -120,4 +123,6 @@ code   152
  0090	     5031	ADD #12,SP
  0092	     000C
  0094	     4130	RET
- 0096	     4130	RET
+ 0096	     12B0	CALL #0
+ 0098	     0000
+ 009A	     4130	RET

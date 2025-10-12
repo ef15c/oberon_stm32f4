@@ -12,9 +12,10 @@ MODULE testSFuncs;
 
 END testSFuncs.
 
+OMSPP.Compile testSFuncs.Mod/s~
 OMSPTool.DecObj testSFuncs.mpc
 decode testSFuncs.mpc
-testSFuncs E3E91F2A Flash    62
+testSFuncs DA799ADA Flash    66
 imports:
 type descriptors
 
@@ -26,19 +27,20 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- 0040
-fixup procedures chains
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
+ c 0040 c 0000
+fixup procedures in code space chains
+fixup handlers in vector space chains
+fixup data in code space chains
+fixup constants in code space chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  0040
 code    66
  0000	     8031	SUB #6,SP
  0002	     0006
  0004	     9381	CMP #0,2(SP)
  0006	     0002
- 0008	     3404	JGE #4, goes to  0012
+ 0008	     3404	JGE $+10, goes to  0012
  000A	     411F	MOV 2(SP),R15
  000C	     0002
  000E	     E33F	XOR #-1,R15
@@ -47,9 +49,9 @@ code    66
  0014	     0000
  0016	     B391	BIT #1,0(SP)
  0018	     0000
- 001A	     2402	JEQ #2, goes to  0020
+ 001A	     2402	JEQ $+6, goes to  0020
  001C	     431F	MOV #1,R15
- 001E	     3C01	JMP #1, goes to  0022
+ 001E	     3C01	JMP $+4, goes to  0022
  0020	     430F	MOV #0,R15
  0022	     4FC1	MOV.B R15,4(SP)
  0024	     0004

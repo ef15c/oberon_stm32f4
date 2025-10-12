@@ -1,6 +1,6 @@
 MODULE testString;
   CONST st* = "salut"; st1* = "hi";
-  TYPE R = RECORD END;
+  TYPE R* = RECORD END;
   VAR s*: ARRAY 10 OF CHAR; c: CHAR;
 
   PROCEDURE p(m: ARRAY OF CHAR);
@@ -14,11 +14,11 @@ BEGIN
 END testString.
 
 System.Free OMSPL OMSPP OMSPG~
-OMSPP.Compile testString.Mod~
+OMSPP.Compile testString.Mod/s~
 
 OMSPTool.DecObj testString.mpc
 decode testString.mpc
-testString 14B437F3 Flash   112
+testString CF182A0C Flash   112
 imports:
 type descriptors
  0000 FFFF FFFF FFFF
@@ -30,18 +30,19 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- c 0002 k 0008 k 000E d 0000
-fixup procedures chains
+ c 0002 k 0008 k 000E k 0000 d 0000
+fixup procedures in code space chains
  004A     0	 0000
-fixup handlers chains
-fixup data chains
+fixup handlers in vector space chains
+fixup data in code space chains
  0052     0	 000A
  001C     0	 0000
-fixup constants chains
+fixup constants in code space chains
  0008     0	 0012
  0046     0	 000E
  0038     0	 0008
-fixup types chains
+fixup variables in constant space chains
+fixup constants in constant space chains
 entry =  0002
 code    86
  0000	     4130	RET
@@ -89,8 +90,8 @@ code    86
  0054	     4130	RET
 
 OMSPTool.DecSym testString.sms
-decode testString.sms
-testString 14B437F3  1
+testString CF182A0C  1
    1 st [^11]     6       1
    1 st1 [^11]     3       2
-   2 s [0  form = 12  size = 10 [^3]  len = 10]     3
+   5 R [19  form = 13  size = 0 [^9]{  exno = 3  extlev = 0 {}]()
+   2 s [0  form = 12  size = 10 [^3]  len = 10]     4
