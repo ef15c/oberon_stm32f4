@@ -79,7 +79,7 @@ MODULE pcd8544;
   TYPE Callback = PROCEDURE {4..15};
 
   VAR (*Store LCD state cannot be queried from the device, so must be memorized*)
-    XAddr, YAddr, Vop*: BYTE; FunctionSet*: BYTESET; composeChar: CHAR;
+    XAddr*, YAddr*, Vop*: BYTE; FunctionSet*: BYTESET; composeChar: CHAR;
     select, deselect, setData, setCommand: Callback;
 
   PROCEDURE doSend(d: SET* );
@@ -194,7 +194,7 @@ END pcd8544.
 OMSPP.Compile pcd8544.Mod/s~
 OMSPTool.DecSym pcd8544.sms
 decode pcd8544.sms
-pcd8544 28932780  1
+pcd8544 3A99ADE2  1
    1 FUNCTION_SET [^6]      32
    1 H [^6]       1
    1 V [^6]       2
@@ -205,18 +205,20 @@ pcd8544 28932780  1
    1 TEMP_CONTROL [^6]       4
    1 BIAS_SYSTEM [^6]      16
    1 SET_VOP [^6]     128
-   2 Vop [^1]     1
-   2 FunctionSet [^16]     2
-   1 send [0  form = 10  size = 2 [^9] UR 0030( class = 2 [^6])]       3
-   1 WriteChar [0  form = 10  size = 2 [^9] UR C030( class = 2 [^3])]       4
-   1 WriteString [0  form = 10  size = 2 [^9] UR C030( class = 3# [0  form = 12  size = 4 [^3]  len = -1])]       5
-   1 SetAddr [0  form = 10  size = 2 [^9] UR 8030( class = 2 [^1] class = 2 [^1])]       6
-   1 GetAddr [0  form = 10  size = 2 [^9] leaf UR 0030( class = 3 R5 [^1] class = 3 R4 [^1])]       7
-   1 Clear [0  form = 10  size = 2 [^9] UR 8030()]       8
-   1 Init [0  form = 10  size = 2 [^9] UR 0030()]       9
-   1 SetVop [0  form = 10  size = 2 [^9] UR C030( class = 2 [^4])]      10
-   1 WriteLongint [0  form = 10  size = 2 [^9] UR DFF0( class = 2 [^3] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4])]      11
-   1 setCallbacks [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R7 [19  form = 10  size = 2 [^9] UR 0000()] class = 2 R6 [^19] class = 2 R5 [^19] class = 2 R4 [^19])]      12
+   2 XAddr [^1]     1
+   2 YAddr [^1]     2
+   2 Vop [^1]     3
+   2 FunctionSet [^16]     4
+   1 send [0  form = 10  size = 2 [^9] UR 0030( class = 2 [^6])]       5
+   1 WriteChar [0  form = 10  size = 2 [^9] UR C030( class = 2 [^3])]       6
+   1 WriteString [0  form = 10  size = 2 [^9] UR C030( class = 3# [0  form = 12  size = 4 [^3]  len = -1])]       7
+   1 SetAddr [0  form = 10  size = 2 [^9] UR 8030( class = 2 [^1] class = 2 [^1])]       8
+   1 GetAddr [0  form = 10  size = 2 [^9] leaf UR 0030( class = 3 R5 [^1] class = 3 R4 [^1])]       9
+   1 Clear [0  form = 10  size = 2 [^9] UR 8030()]      10
+   1 Init [0  form = 10  size = 2 [^9] UR 0030()]      11
+   1 SetVop [0  form = 10  size = 2 [^9] UR C030( class = 2 [^4])]      12
+   1 WriteLongint [0  form = 10  size = 2 [^9] UR DFF0( class = 2 [^3] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4])]      13
+   1 setCallbacks [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R7 [19  form = 10  size = 2 [^9] UR 0000()] class = 2 R6 [^19] class = 2 R5 [^19] class = 2 R4 [^19])]      14
 
 OMSPTool.DecObj pcd8544.mpc
 decode pcd8544.mpc
