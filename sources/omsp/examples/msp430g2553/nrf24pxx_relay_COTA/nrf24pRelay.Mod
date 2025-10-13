@@ -700,6 +700,6 @@ OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s pcd8544.Mod/
 OMSPL.Link 32 4000H 200H nrf24pRelay~
   linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc Arith MultiPrecisionArith String
  pcd8544 nrf24pRelay
-    flash 7508, data  292, stack  220 bytes
+    flash 7510, data  292, stack  220 bytes
 
 OMSPTool.DecObj nrf24pRelay.mpc

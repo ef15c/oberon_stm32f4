@@ -77,7 +77,7 @@ MODULE msp430g2xx3uscib0i2c13;
        switch from RX interrupt sources to TX interrupt sources. This is 
        important since the interrupt vectors are shared by TX and RX flags. *)
 
-  VAR PTxData, PRxData: PBYTE; (* Pointers to TX data and RX data *)
+  VAR PRxData: PBYTE; (* Pointers to TX data and RX data *)
     RxBuffer: ARRAY 128 OF BYTE; (* Allocate 128 byte of RAM *)
     SLV_Data, TXByteCtr, RXByteCtr: BYTE;
     RX: BOOLEAN;

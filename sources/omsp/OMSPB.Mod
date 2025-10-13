@@ -354,7 +354,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           END
         ELSIF obj.class IN {Var, StoredConst} THEN Files.WriteNum(R, obj.exno)
         END
-      ELSE (*not exported*) IF ~obj.ref THEN S.DebugString("not referenced", obj.name) END
+      ELSE (*not exported*) IF ~obj.ref & (obj.type.form # Handler) THEN S.DebugString("not referenced", obj.name) END
       END;
       obj := obj.next
     END ;

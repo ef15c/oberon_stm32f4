@@ -66,14 +66,14 @@ MODULE msp430g2xx3uscib0i2csm;
     MasterType0 = ($0B$);
 
     IDLE_MODE = 0;
-    NACK_MODE = 1;
+(*    NACK_MODE = 1;*)
     TX_REG_ADDRESS_MODE = 2;
-    RX_REG_ADDRESS_MODE = 3;
+(*    RX_REG_ADDRESS_MODE = 3;*)
     TX_DATA_MODE = 4;
     RX_DATA_MODE = 5;
     SWITCH_TO_RX_MODE = 6;
-    SWITHC_TO_TX_MODE = 7;
-    TIMEOUT_MODE = 8;
+(*    SWITCH_TO_TX_MODE = 7;
+    TIMEOUT_MODE = 8;*)
 
   TYPE I2C_Mode = BYTE;
 

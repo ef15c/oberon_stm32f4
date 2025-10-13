@@ -65,15 +65,15 @@ CONST SLAVE_ADDR = 48H;
    General I2C State Machine ***************************************************
   ******************************************************************************)
 
-    IDLE_MODE = 0;
+(*    IDLE_MODE = 0;
     NACK_MODE = 1;
-    TX_REG_ADDRESS_MODE = 2;
+    TX_REG_ADDRESS_MODE = 2;*)
     RX_REG_ADDRESS_MODE = 3;
     TX_DATA_MODE = 4;
     RX_DATA_MODE = 5;
-    SWITCH_TO_RX_MODE = 6;
+(*    SWITCH_TO_RX_MODE = 6;
     SWITHC_TO_TX_MODE = 7;
-    TIMEOUT_MODE = 8;
+    TIMEOUT_MODE = 8;*)
 
   TYPE I2C_Mode = BYTE;
 

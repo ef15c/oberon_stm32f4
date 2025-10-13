@@ -69,7 +69,7 @@
 //******************************************************************************)
 
 MODULE msp430g2xx3dcocalib;
-  IMPORT SYSTEM, M := msp430g2553;
+  IMPORT M := msp430g2553;
 
 BEGIN
   M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (* Stop Watchdog Timer *)

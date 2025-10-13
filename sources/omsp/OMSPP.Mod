@@ -752,10 +752,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END InsertResultRegister;
 
   PROCEDURE ProcedureType(ptype: B.Type; VAR parblksize: INTEGER);
-    VAR obj!: B.Object; size, nofpar: INTEGER; leaf, inreg: BOOLEAN; x!, sr!: G.Item;
+    VAR obj!: B.Object; size, nofpar: INTEGER; leaf, inreg: BOOLEAN; x!: G.Item;
   BEGIN ptype.base := B.noType; size := parblksize; nofpar := 0; ptype.dsc := NIL; leaf := FALSE;
-    ptype.ur := {4..15}; (*all non saved registers can be destroyed for dynamic procedures*)
-    IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); ptype.ur := ptype.ur - TOSET(sr.a) END;
     IF sym = S.lparen THEN
       S.Get(sym);
       IF sym = S.rparen THEN S.Get(sym)
@@ -803,7 +801,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END CheckRecLevel;
 
   PROCEDURE Type0(VAR type: B.Type);
-    VAR dmy: INTEGER; obj!: B.Object; ptbase!: PtrBase;
+    VAR dmy: INTEGER; obj!: B.Object; ptbase!: PtrBase; sr!: G.Item;
   BEGIN type := B.intType; (*sync*)
     IF (sym # S.ident) & (sym < S.array) THEN S.Mark("not a type");
       REPEAT S.Get(sym) UNTIL (sym = S.ident) OR (sym >= S.array)
@@ -811,8 +809,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = S.ident THEN
       qualident(obj);
       IF obj.class = B.Typ THEN
-        IF (obj.type # NIL) & (obj.type.form # B.NoTyp) THEN type := obj.type; obj.ref := TRUE
-        END
+        IF (obj.type # NIL) & (obj.type.form # B.NoTyp) THEN type := obj.type; obj.ref := TRUE END
       ELSE S.Mark("not a type or undefined")
       END
     ELSIF sym = S.array THEN S.Get(sym); ArrayType(type)
@@ -840,6 +837,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     ELSIF sym = S.procedure THEN
       S.Get(sym); B.OpenScope;
       NEW(type); type.form := B.Proc; dmy := 0;
+      type.ur := {4..15}; (*all non saved registers can be destroyed for dynamic procedures*)
+      IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); type.ur := type.ur - TOSET(sr.a) END;
       ProcedureType(type, dmy); type.dsc := B.topScope.next; InsertResultRegister(type); B.CloseScope
     ELSE S.Mark("illegal type")
     END
@@ -900,7 +899,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF tp.form = B.Record THEN
           ptbase := pbsList;  (*check whether this is base of a pointer type; search and fixup*)
           WHILE ptbase # NIL DO
-            IF obj.name = ptbase.name THEN ptbase.type.base := obj.type END ;
+            IF obj.name = ptbase.name THEN ptbase.type.base := obj.type; obj.ref := TRUE END ;
             ptbase := ptbase.next
           END ;
           IF level = 0 THEN G.BuildTD(tp) END    (*type descriptor; len used as its address*)

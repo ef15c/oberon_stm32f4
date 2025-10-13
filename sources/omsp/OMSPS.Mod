@@ -56,27 +56,27 @@ MODULE OMSPS; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   END Pos;
 
   PROCEDURE Mark*(msg: ARRAY OF CHAR);
-    VAR p: INTEGER;
+    VAR p, oldCol: INTEGER;
   BEGIN p := Pos();
-    IF (p > errpos) & (errcnt < 25) THEN
+    IF (p > errpos) & (errcnt < 25) THEN oldCol := W.col; W.col := 0E8H; (*orange*)
       Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
-      Texts.WriteString(W, msg); Texts.Append(Oberon.Log, W.buf)
+      Texts.WriteString(W, msg); W.col := oldCol; Texts.Append(Oberon.Log, W.buf)
     END ;
     INC(errcnt); errpos := p + 4
   END Mark;
 
   PROCEDURE DebugHex*(msg: ARRAY OF CHAR; v: INTEGER);
-    VAR p: INTEGER;
-  BEGIN p := Pos();
+    VAR p, oldCol: INTEGER;
+  BEGIN p := Pos(); oldCol := W.col; W.col := 0FCH; (*yellow*)
     Texts.WriteLn(W); Texts.WriteString(W, msg); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
-    Texts.WriteHex(W, v); Texts.Append(Oberon.Log, W.buf)
+    Texts.WriteHex(W, v); W.col := oldCol; Texts.Append(Oberon.Log, W.buf)
   END DebugHex;
 
   PROCEDURE DebugString*(msg, v: ARRAY OF CHAR);
-    VAR p: INTEGER;
-  BEGIN p := Pos();
+    VAR p, oldCol: INTEGER;
+  BEGIN p := Pos(); oldCol := W.col; W.col := 0FCH; (*yellow*)
     Texts.WriteLn(W); Texts.WriteString(W, msg); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
-    Texts.WriteString(W, v); Texts.Append(Oberon.Log, W.buf)
+    Texts.WriteString(W, v); W.col := oldCol; Texts.Append(Oberon.Log, W.buf)
   END DebugString;
 
   PROCEDURE Identifier(VAR sym: INTEGER);
