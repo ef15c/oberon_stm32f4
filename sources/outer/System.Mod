@@ -10,16 +10,18 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
     (*To improve readability*)
     CFSR = BSP.SCB_BASE + BSP.CFSR; ICSR = BSP.SCB_BASE + BSP.ICSR; BFAR = BSP.SCB_BASE + BSP.BFAR;
+    MMFAR = BSP.SCB_BASE + BSP.MMFAR;
     NOCP = BSP.NOCP; INVSTATE = BSP.INVSTATE; STKERR = BSP.STKERR; PRECISERR = BSP.PRECISERR;
+    DACCVIOL = BSP.DACCVIOL; IACCVIOL = BSP.IACCVIOL;
     PENDSVSET = BSP.PENDSVSET;
-    UFSR_Mask = BSP.UFSR_Mask; BFSR_Mask = BSP.BFSR_Mask;
+    UFSR_Mask = BSP.UFSR_Mask; BFSR_Mask = BSP.BFSR_Mask; MMFSR_Mask = BSP.MMFSR_Mask;
 
     PR = BSP.EXTI_BASE + BSP.PR;
 
   TYPE
     StackDumpDesc* = RECORD
       cause*: BYTE;
-      cfsr*: SET; bfar*, eos*, PC*, LR*: INTEGER;
+      cfsr*: SET; far*, eos*, PC*, LR*: INTEGER;
       len*: INTEGER;
       stack*: ARRAY 10000H DIV 4 OF INTEGER
     END;
@@ -478,14 +480,25 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
     VAR icsr: SET; w, inst: INTEGER;
   BEGIN SYSTEM.GET(CFSR, cfsr);
-    IF PRECISERR IN cfsr THEN SYSTEM.GET(BFAR, stack.bfar) END;
+    IF PRECISERR IN cfsr THEN SYSTEM.GET(BFAR, stack.far) END;
     IF ~(STKERR IN cfsr) THEN TrappedAdr := f.returnAddress 
-    ELSIF PRECISERR IN cfsr THEN TrappedAdr := stack.bfar
+    ELSIF PRECISERR IN cfsr THEN TrappedAdr := stack.far
     END;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
     SYSTEM.PUT(CFSR, cfsr*BFSR_Mask); (*reset BFSR flags*) Kernel.setSPHWM
   END BusFaultHandler;
+
+  PROCEDURE* MemManageFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
+    VAR icsr: SET; w, inst: INTEGER;
+  BEGIN SYSTEM.GET(CFSR, cfsr);
+    IF DACCVIOL IN cfsr THEN SYSTEM.GET(MMFAR, stack.far); TrappedAdr := f.returnAddress
+    ELSIF IACCVIOL IN cfsr THEN TrappedAdr := f.lr
+    END;
+    (*Trigger abort by requesting a PendSV interrupt*)
+    SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
+    SYSTEM.PUT(CFSR, cfsr*MMFSR_Mask); (*reset MMFSR flags*) Kernel.setSPHWM
+  END MemManageFaultHandler;
 
   (*Handle abort key press*)
   PROCEDURE* AbortHandler(VAR f: Kernel.ExceptionFrameDesc);
@@ -510,7 +523,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       inst := inst DIV 10H; (*inst contains 1110/110p/pppp/pppp/pppp/0ppp/pppp*)
       inst := (inst DIV 100H*80H + inst MOD 80H) MOD 100000H;
       Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
-    ELSIF INVSTATE IN cfsr THEN w := 5 (*probably illegal procedure call*)
+    ELSIF DACCVIOL IN cfsr THEN w := 4; (*probably NIL dereference*)
+    ELSIF cfsr*{IACCVIOL, INVSTATE} # {} THEN w := 5; (*probably illegal procedure call*)
     ELSIF STKERR IN cfsr THEN w := 9; (*Bus Fault: stack overflow*)
       (*trying to find nearest return adress*) i := 0;
       REPEAT TrappedAdr := stack.stack[i] - 1; INC(i) UNTIL ((TrappedAdr >= modBase) & (TrappedAdr < Modules.AllocPtr)) OR (i >= stack.len);
@@ -538,7 +552,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     lr := SYSTEM.VAL(SET, SYSTEM.REG(LR)); IF 4 IN lr THEN sz := 20H ELSE sz := 68H END;
     IF ORD(lr*{0..3}) = 0DH THEN (*return to thread mode with process stack*)
       (*dump the stack*) stack.cfsr := cfsr;
-      IF ~(PRECISERR IN cfsr) THEN stack.bfar := 0 END;
+      IF ~(PRECISERR IN cfsr) THEN stack.far := 0 END;
       IF STKERR IN cfsr THEN (*stack overflow*) stack.eos := 10000000H; stack.LR := 0FFFFFFFFH;
       ELSE stack.eos := SYSTEM.VAL(INTEGER, cf) + sz; stack.LR := cf.lr; IF 9 IN SYSTEM.VAL(SET, cf.xpsr) THEN (*stack was realigned*) INC(stack.eos, 4) END
       END; stack.len := (10010000H - stack.eos) DIV 4;
@@ -570,9 +584,10 @@ BEGIN SYSTEM.GET(Kernel.bootParams+16, modBase);
   Oberon.OpenLog(TextFrames.Text("")); OpenViewers;
   Kernel.Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);
   Kernel.Install(SYSTEM.ADR(BusFaultHandler), BSP.VecTabBase+BSP.BusFaultExcNum*4);
+  Kernel.Install(SYSTEM.ADR(MemManageFaultHandler), BSP.VecTabBase+BSP.MemManageExcNum*4);
   installAbortHandler;
   Kernel.Install(SYSTEM.ADR(PendSVHandler), BSP.VecTabBase+BSP.PendSVExcNum*4);
   activateHandlers;
   stack := SYSTEM.VAL(StackDump, (*20000600H*) 0D0110000H); stack.len := 0; stack.cause := 0;
-  stack.cfsr := {}; stack.bfar := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0;
+  stack.cfsr := {}; stack.far := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0;
 END System.

@@ -45,7 +45,7 @@ MODULE StackTrace;
   BEGIN 
    Texts.WriteString(W, "cause: "); Texts.WriteInt(W, System.stack.cause, 1); Texts.WriteLn(W);
    Texts.WriteString(W, "cfsr: "); Texts.WriteHex(W, ORD(System.stack.cfsr)); Texts.WriteLn(W);
-   Texts.WriteString(W, "bfar : "); Texts.WriteHex(W, System.stack.bfar); Texts.WriteLn(W);
+   Texts.WriteString(W, "bfar : "); Texts.WriteHex(W, System.stack.far); Texts.WriteLn(W);
    Texts.WriteString(W, "eos : "); Texts.WriteHex(W, System.stack.eos); Texts.WriteLn(W);
    Texts.WriteString(W, "PC : "); Texts.WriteHex(W, System.stack.PC); Texts.WriteLn(W);
    Texts.WriteString(W, "LR : "); Texts.WriteHex(W, System.stack.LR); Texts.WriteLn(W);

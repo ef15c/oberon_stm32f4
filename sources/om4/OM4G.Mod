@@ -200,10 +200,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   
   PROCEDURE NilCheck(a: BYTE);
   BEGIN
+(*experimental: test MPU region 00H 1FH non accessible
     IF check THEN
       IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, a, RH, 0) END ;
       Trap(A.EQ, 4) 
-    END
+    END*)
   END NilCheck;
 
   (* loading of operands and addresses into registers *)
@@ -402,13 +403,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       lim := x.type.len;
       IF (y.mode = B.Const) & (lim >= 0) THEN
         IF (y.a < 0) OR (y.a >= lim) THEN S.Mark("bad index") END ;
-        (*IF (x.mode # B.Var) OR (x.r >= 0) OR (y.a = 0) THEN *)
           IF x.mode = B.Var THEN IF x.r >= 0 THEN INC(x.a, y.a * s) ELSE INC(x.b, y.a * s) END
           ELSIF x.mode = RegI THEN INC(x.a, y.a * s)
           ELSIF x.mode = B.Par THEN INC(x.b, y.a * s)
+          ELSE ASSERT(FALSE)
           END
-        (*ELSE GetStaticVarAddress(fixORGV, x, RH); x.mode := RegI; x.r := RH; x.a := y.a * s;
-        END*)
       ELSE convertInt(y, B.intType); load(y);
         IF check THEN  (*check array bounds*)
           IF lim >= 0 THEN A.encCMPImm(mcode, y.r, RH, lim)

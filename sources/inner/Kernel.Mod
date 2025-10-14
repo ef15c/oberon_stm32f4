@@ -292,7 +292,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END SVCallHandler;
 
   PROCEDURE defaultHandler; (*infinite loop*)
-  BEGIN REPEAT BSP.led(128); BSP.Delayus(10000); BSP.led(0); BSP.Delayus(10000) UNTIL FALSE
+  BEGIN REPEAT BSP.led(127); BSP.Delayus(100000); BSP.led(0); BSP.Delayus(100000) UNTIL FALSE
   END defaultHandler;
 
   PROCEDURE DisableAbortHandler*;
@@ -316,6 +316,15 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SYSTEM.GET(08000000H, i); SYSTEM.PUT(20000000H, i); SYSTEM.GET(08000004H, i); SYSTEM.PUT(20000004H, i); 
     FOR i := 20000008H TO 200001A8H BY 4 DO SYSTEM.PUT(i, SYSTEM.ADR(defaultHandler)) END; (*initialize vectors to default trap*)
     SYSTEM.PUT(BSP.SCB_BASE + BSP.VTOR, 20000000H);
+
+    (*create a region 1 from 00H to 1FH not accessible for detection
+        by hardware of NIL dereference and illegal procedure call*)
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.RNR, 1);
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.RASR, 4*2); (*disable region 1*)
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.RBAR, 0);
+    SYSTEM.PUT(BSP.MPU_BASE + BSP.RASR, {BSP.XN} + BSP.AP_NO_ACCESS + BSP.TEX_LEVEL0 + {BSP.C, BSP.S} + 
+      TOSET(4*2) + {BSP.RASR_ENABLE});
+
     SYSTEM.PUT(BSP.SCB_BASE + BSP.CPACR, (BSP.CP10m + BSP.CP11m)); (*set CP10 and CP11 full access to activate FPU*)
     BSP.InitRTC;
     Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);  (*install temporary trap*)
