@@ -13,7 +13,7 @@ Previously, the modules had too be loaded in the SDRAM to be executed.
 There are a lot of advantages doing this:  
 
 * The code executes 8 times faster, by avoiding the competition between CPU and VGA system for SDRAM access.  
-* More SDRAM is available for modules that remains in SDRAM and for the heap.
+* More SDRAM is available for modules that remain in SDRAM and for the heap.
 * If the Oberon system and the compiler are both placed in embedded flash memory,
  the system is guaranteed to boot and compile even if incoherent recompilation has been done on vital modules.
  
