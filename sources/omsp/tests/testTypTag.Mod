@@ -43,7 +43,7 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- c 006A
+ c 006A 0006
 fixup procedures in code space chains
  0052     0	 0000
  005C     0	 0032

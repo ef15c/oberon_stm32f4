@@ -1124,13 +1124,15 @@ BEGIN dayOfWeek[0] := "Dim"; dayOfWeek[1] :="Lun"; dayOfWeek[2] := "Mar"; dayOfW
   UNTIL FALSE
 END sDiary.
 
-OMSPP.Compile String.Mod pcd8544.Mod/s preserveMSPFlash.Mod/s MSPFlashTypes.Mod PosixTime.Mod/s sDiaryTypes.Mod/s sDiary.Mod/s ~
+OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod Arith.Mod/s MultiPrecisionArith.Mod/s
+  String.Mod/s PosixTime.Mod/s sDiaryTypes.Mod/s
+  msp430delay.Mod/s  pcd8544.Mod/s sDiary.Mod/s ~
 
 2A00H = 3C00H - NB_DIARY_SLOTS*SYSTEM.SIZE(ST.DEDesc)
 OMSPL.Link 32 2A00H 200H sDiary ~
   linking preserveMSPFlash msp430g2553 Arith MultiPrecisionArith String PosixTime MSPFlashTypes sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash10642, data  294, stack  218 bytes
+    flash10650, data  294, stack  218 bytes
 
 OMSPTool.DecSym sDiary.sms
 

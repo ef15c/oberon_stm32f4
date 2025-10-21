@@ -1027,6 +1027,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         S.Mark("function without result"); type.base := B.noType
       END;
       G.Return(type.base.form, x, locblksize, int, savedregs);
+      type.size := G.Here() - proc.val;
       proc.type.ur := G.PRU;
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE; isInt := FALSE;

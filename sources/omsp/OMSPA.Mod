@@ -174,6 +174,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ELSE S.Mark("not implemented")
       END
     ELSE ASSERT(op < 10H);
+ASSERT((op # MOV) OR (s.am # Register) OR (d.am # Register) OR (s.reg # d.reg));
       encSrc(op, ts.reg, ts.am, ts.ofs, emitSOff, params);
 
       IF d.am = Register THEN params := params + Rdm
