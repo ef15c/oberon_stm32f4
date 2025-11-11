@@ -29,17 +29,17 @@ MODULE pcd8544;
     DATA = 8; (*specify data instead of command*) INVERT = {0..8};
 
     (*instructions available in all modes*)
-    NOp = {}; NOP_MASK = {0..8}; FUNCTION_SET* = {5}; FUNCTION_SET_MASK = {3..8}; H* = {0}; V* = {1}; PD* = {2}; (*function flags*)
+    NOp* = {}; NOP_MASK* = {0..8}; FUNCTION_SET* = {5}; FUNCTION_SET_MASK* = {3..8}; H* = {0}; V* = {1}; PD* = {2}; (*function flags*)
 
     (*instructions available in basic mode*)
-    DISPLAY_CONTROL* = {3}; DISPLAY_CONTROL_MASK = {1, 3..8}; D = 2; E = 0;
-    SET_Y_ADDRESS* = {6}; SET_Y_ADDRESS_MASK = {3..8};
-    SET_X_ADDRESS* = {7}; SET_X_ADDRESS_MASK = {7..8};
+    DISPLAY_CONTROL* = {3}; DISPLAY_CONTROL_MASK* = {1, 3..8}; D* = 2; E* = 0;
+    SET_Y_ADDRESS* = {6}; SET_Y_ADDRESS_MASK* = {3..8};
+    SET_X_ADDRESS* = {7}; SET_X_ADDRESS_MASK* = {7..8};
 
     (*instructions available in extended mode*)
-    TEMP_CONTROL* = {2}; TEMP_CONTROL_MASK = {2..8};
-    BIAS_SYSTEM* = {4}; BIAS_SYSTEM_MASK = {3..8};
-    SET_VOP* = {7}; SET_VOP_MASK = {7..8};
+    TEMP_CONTROL* = {2}; TEMP_CONTROL_MASK* = {2..8};
+    BIAS_SYSTEM* = {4}; BIAS_SYSTEM_MASK* = {3..8};
+    SET_VOP* = {7}; SET_VOP_MASK* = {7..8};
 
     (*Characters glyphs*)
     GLYPH_WIDTH = 5;
@@ -194,39 +194,50 @@ END pcd8544.
 OMSPP.Compile pcd8544.Mod/s~
 OMSPTool.DecSym pcd8544.sms
 decode pcd8544.sms
-pcd8544 3A99ADE2  1
+pcd8544 4EBAAD29  2
+   1 NOp [^6]       0
+   1 NOP_MASK [^6]     511
    1 FUNCTION_SET [^6]      32
+   1 FUNCTION_SET_MASK [^6]     504
    1 H [^6]       1
    1 V [^6]       2
    1 PD [^6]       4
    1 DISPLAY_CONTROL [^6]       8
+   1 DISPLAY_CONTROL_MASK [^6]     506
+   1 D [^4]       2
+   1 E [^4]       0
    1 SET_Y_ADDRESS [^6]      64
+   1 SET_Y_ADDRESS_MASK [^6]     504
    1 SET_X_ADDRESS [^6]     128
+   1 SET_X_ADDRESS_MASK [^6]     384
    1 TEMP_CONTROL [^6]       4
+   1 TEMP_CONTROL_MASK [^6]     508
    1 BIAS_SYSTEM [^6]      16
+   1 BIAS_SYSTEM_MASK [^6]     504
    1 SET_VOP [^6]     128
+   1 SET_VOP_MASK [^6]     384
    2 XAddr [^1]     1
    2 YAddr [^1]     2
    2 Vop [^1]     3
    2 FunctionSet [^16]     4
-   1 send [0  form = 10  size = 2 [^9] UR 0030( class = 2 [^6])]       5
-   1 WriteChar [0  form = 10  size = 2 [^9] UR C030( class = 2 [^3])]       6
-   1 WriteString [0  form = 10  size = 2 [^9] UR C030( class = 3# [0  form = 12  size = 4 [^3]  len = -1])]       7
-   1 SetAddr [0  form = 10  size = 2 [^9] UR 8030( class = 2 [^1] class = 2 [^1])]       8
-   1 GetAddr [0  form = 10  size = 2 [^9] leaf UR 0030( class = 3 R5 [^1] class = 3 R4 [^1])]       9
-   1 Clear [0  form = 10  size = 2 [^9] UR 8030()]      10
-   1 Init [0  form = 10  size = 2 [^9] UR 0030()]      11
-   1 SetVop [0  form = 10  size = 2 [^9] UR C030( class = 2 [^4])]      12
-   1 WriteLongint [0  form = 10  size = 2 [^9] UR DFF0( class = 2 [^3] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4])]      13
-   1 setCallbacks [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R7 [19  form = 10  size = 2 [^9] UR 0000()] class = 2 R6 [^19] class = 2 R5 [^19] class = 2 R4 [^19])]      14
+   1 send [0  form = 10 [^9] UR 0030( class = 2 [^6])]       5
+   1 WriteChar [0  form = 10 [^9] UR C030( class = 2 [^3])]       6
+   1 WriteString [0  form = 10 [^9] UR C030( class = 3# [0  form = 12 [^3]  len = -1  size = 4])]       7
+   1 SetAddr [0  form = 10 [^9] UR 8030( class = 2 [^1] class = 2 [^1])]       8
+   1 GetAddr [0  form = 10 [^9] leaf UR 0030( class = 3 R5 [^1] class = 3 R4 [^1])]       9
+   1 Clear [0  form = 10 [^9] UR 8030()]      10
+   1 Init [0  form = 10 [^9] UR 0030()]      11
+   1 SetVop [0  form = 10 [^9] UR C030( class = 2 [^4])]      12
+   1 WriteLongint [0  form = 10 [^9] UR DFF0( class = 2 [^3] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4])]      13
+   1 setCallbacks [0  form = 10 [^9] leaf UR 00F0( class = 2 R7 [19  form = 10 [^9] UR 0000()] class = 2 R6 [^19] class = 2 R5 [^19] class = 2 R4 [^19])]      14
 
 OMSPTool.DecObj pcd8544.mpc
 decode pcd8544.mpc
-pcd8544 28932780 Flash  1356
+pcd8544 4EBAAD29 Flash  1356
 imports:
-	msp430g2553 F10488DC
-	String 393F15C3
-	msp430delay EE6A4099
+	msp430g2553 1CD85DB4
+	String FB1BD9CE
+	msp430delay 79B2EFB6
 type descriptors
 
 data    14
@@ -237,29 +248,29 @@ vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 
 entries
- c 0326 d 0002 d 0003 c 00CA c 00EE c 0188 c 01B2 c 0200 c 020E c 023A c 0280 c 02C4 c 0314
+	c 0326 24b	d 0000 1b	d 0001 1b	d 0002 1b	d 0003 1b	c 00CA 36b	c 00EE 154b	c 0188 42b	c 01B2 78b	c 0200 14b	c 020E 44b	c 023A 70b	c 0280 68b	c 02C4 80b	c 0314 18b
 fixup procedures in code space chains
- 00E6     0	 0000
- 02BC     0	 00CA
- 01A4     0	 00EE
- 030A     0	 0188
- 02DC     0	 01B2
- 02F8     2	 0001
- 024A     3	 0001
+ 00E6     0	 0000	202b
+ 02BC     0	 00CA	36b
+ 01A4     0	 00EE	154b
+ 030A     0	 0188	42b
+ 02DC     0	 01B2	78b
+ 02F8     2	 0001	0b
+ 024A     3	 0001	0b
 fixup handlers in vector space chains
-fixup data in code space chains
- 033A     0	 0004
- 031A     0	 0008
- 0322     0	 000C
- 031E     0	 000A
- 0316     0	 0006
- 0330     0	 0002
- 0328     0	 0000
- 032C     0	 0001
- 0336     0	 0003
+fixup variables in code space chains
+ 033A     0	 0004	1b
+ 031A     0	 0008	2b
+ 0322     0	 000C	2b
+ 031E     0	 000A	2b
+ 0316     0	 0006	2b
+ 0330     0	 0002	1b
+ 0328     0	 0000	1b
+ 032C     0	 0001	1b
+ 0336     0	 0003	1b
 fixup constants in code space chains
- 015A     0	 01DC
- 013A     0	 0000
+ 015A     0	 01DC	50b
+ 013A     0	 0000	475b
 fixup variables in constant space chains
 fixup constants in constant space chains
 entry =  0326
