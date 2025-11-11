@@ -3,14 +3,14 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   CONST ON = 1; OFF = 0; HIGH = 1; LOW = 0;
     NONE = 0; DEVICE_TO_HOST = 1; HOST_TO_DEVICE = 2; (*direction*)
-    SUCCESS* = 0; IN_PROGRESS* = 1; FRAME_ERROR* = 2; PARITY_ERROR* = 3; NAK* = 4; NO_ANSWER* = 5; (*status*)
-    NO_DEVICE* = 0; KEYBOARD* = 1; MOUSE* = 2;
+    SUCCESS = 0; IN_PROGRESS = 1; FRAME_ERROR = 2; PARITY_ERROR = 3; NAK = 4; NO_ANSWER = 5; (*status*)
+    NO_DEVICE = 0; KEYBOARD = 1; MOUSE = 2;
 
     BUFFERSIZE* = 16;
 
   TYPE
-    CircularBuffer* = POINTER TO CircularBufferDesc;
-    CircularBufferDesc* = RECORD
+    CircularBuffer = POINTER TO CircularBufferDesc;
+    CircularBufferDesc = RECORD
       head*, tail*: INTEGER; (*Indexes of head and tail of the circular keyboard buffer*)
       buffer*: ARRAY BUFFERSIZE OF BYTE
     END;
@@ -25,12 +25,12 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   Device* = POINTER TO DeviceDesc;
   DeviceDesc* = RECORD
-      direction, statusIn*, statusOut*, connectedDevice*: BYTE;
+      direction, statusIn, statusOut, connectedDevice: BYTE;
       clockPin*, nofBitsToBeRead, parity: BYTE;
-      parityEnabled*, haveWheel: BOOLEAN;
+      parityEnabled, haveWheel: BOOLEAN;
       clock_In*, data_In*, clock_Out*, data_Out*, activityLED, mouseLED*, keyboardLED*: INTEGER;
-      dataIn, dataOut, tickLastReport, mouseReportSize, badEdge*: INTEGER;
-      dest*: CircularBuffer; buf: CircularBufferDesc
+      dataIn, dataOut, tickLastReport, mouseReportSize, badEdge: INTEGER;
+      dest: CircularBuffer; buf: CircularBufferDesc
     END;
 
   VAR mkb*: MKB; mkbBlock: MKDataBlock; keyboard*: Device;
@@ -71,8 +71,11 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   END PutByteInFIFOBuffer;
 
   PROCEDURE^3 requestToSend(VAR dev: DeviceDesc);
+    VAR clockBit: BOOLEAN;
   BEGIN
     IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, ON) END;
+    SYSTEM.PUT(dev.clock_Out, HIGH);
+    REPEAT SYSTEM.GET(dev.clock_In, clockBit) UNTIL clockBit; (*wait until clock is high*)
     SYSTEM.PUT(dev.clock_Out, LOW); BSP.Delayus(150); (*wait for at least 100 microseconds*)
     SYSTEM.PUT(dev.data_Out, LOW); SYSTEM.PUT(dev.clock_Out, HIGH)
     (*now, wait for device to generate clock pulses*)
@@ -119,16 +122,17 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       IF ~clockBit THEN (* Falling edge of clock *)
         IF dev.nofBitsToBeRead = 11 THEN 
           IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, ON) END;
-          IF dataBit THEN dev.statusIn := FRAME_ERROR 
+          IF dataBit THEN dev.statusIn := FRAME_ERROR; BSP.led(FRAME_ERROR)
           ELSE dev.statusIn := IN_PROGRESS END;
           dev.dataIn := 0; dev.parity := 1
         ELSIF dev.statusIn = IN_PROGRESS THEN
           IF dev.nofBitsToBeRead > 2 THEN dev.dataIn := LSR(dev.dataIn, 1); INC(dev.dataIn, LSL(ORD(dataBit), 7));
             INC(dev.parity, ORD(dataBit))
           ELSIF (dev.nofBitsToBeRead = 2) & dev.parityEnabled THEN
-            IF ODD(dev.parity + ORD(dataBit)) THEN dev.statusIn := PARITY_ERROR; SendByteAsync(dev, 0FEH); dev.dataOut := LSR(dev.dataOut, 1)
+            IF ODD(dev.parity + ORD(dataBit)) THEN dev.statusIn := PARITY_ERROR; BSP.led(PARITY_ERROR);
+              SendByteAsync(dev, 0FEH)
             ELSE dev.statusIn := IN_PROGRESS END
-          ELSE IF dataBit THEN dev.statusIn := SUCCESS ELSE dev.statusIn := FRAME_ERROR END
+          ELSE IF dataBit THEN dev.statusIn := SUCCESS ELSE dev.statusIn := FRAME_ERROR; BSP.led(FRAME_ERROR) END
           END
         END;
         DEC(dev.nofBitsToBeRead);
@@ -137,7 +141,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
           IF (dev.statusIn = SUCCESS) OR ~dev.parityEnabled THEN 
             SYSTEM.PUT(dev.clock_Out, LOW); (*Keep clock low while processing byte*); PutByteInFIFOBuffer(dev);
             SYSTEM.PUT(dev.clock_Out, HIGH); (*Release clock*)
-          ELSE SendByteAsync(dev, 0FEH); dev.dataOut := LSR(dev.dataOut, 1) END;
+          ELSE SendByteAsync(dev, 0FEH) END;
           IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, OFF) END
         END
       ELSE INC(dev.badEdge)
@@ -145,20 +149,13 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     ELSIF dev.direction = HOST_TO_DEVICE THEN
       IF ~clockBit THEN (*falling edge*)
         IF dev.dataOut # 0 THEN (*Send data to device*) SYSTEM.PUT(dev.data_Out, ODD(dev.dataOut)); dev.dataOut := LSR(dev.dataOut, 1)
-        ELSE (*Check ACK from device*) IF dataBit THEN dev.statusOut := NAK ELSE dev.statusOut := SUCCESS END;
+        ELSE (*Check ACK from device*) IF dataBit THEN dev.statusOut := NAK; BSP.led(NAK) ELSE dev.statusOut := SUCCESS END;
           dev.direction := DEVICE_TO_HOST; dev.nofBitsToBeRead := 11
         END
       ELSE INC(dev.badEdge)
       END
     END; Kernel.setSPHWM
   END ProcessData;
-
-  PROCEDURE SendByte*(VAR dev: DeviceDesc; data: BYTE): BYTE;
-  BEGIN
-    SendByteAsync(dev, data);
-    REPEAT UNTIL dev.statusIn # IN_PROGRESS; (*wait for answer*)
-    RETURN dev.statusIn
-  END SendByte;
 
   PROCEDURE StopReporting(VAR dev: DeviceDesc): INTEGER;
     VAR nbTries, res: INTEGER;
@@ -250,29 +247,17 @@ END PS2.
 
 OM4Tool.DecSym PS2.sm4
 decode PS2.sm4
-PS2 65F39FC1  1
-   1 SUCCESS [^4]       0
-   1 IN_PROGRESS [^4]       1
-   1 FRAME_ERROR [^4]       2
-   1 PARITY_ERROR [^4]       3
-   1 NAK [^4]       4
-   1 NO_ANSWER [^4]       5
-   1 NO_DEVICE [^4]       0
-   1 KEYBOARD [^4]       1
-   1 MOUSE [^4]       2
+PS2 F85B00D1  1
    1 BUFFERSIZE [^4]      16
-   5 CircularBuffer [15  form = 7 [16  form = 13 [^9]  exno = 1  extlev = 0  size = 24 { buffer [0  form = 12 [^1]  len = 16  size = 16]   8 tail [^4]   4 head [^4]   0}]]()
-   5 CircularBufferDesc [^16]( ->  15)
-   5 MKB [17  form = 7 [18  form = 13 [^9]  exno = 2  extlev = 0  size = 36 { MH [^4]  32 MW [^4]  28 MD [^4]  24 KB [^16]   0}]]()
-   5 MKDataBlock [^18]( ->  17)
-   5 Device [19  form = 7 [20  form = 13 [^9]  exno = 3  extlev = 0  size = 88 { dest [^15]  60 badEdge [^4]  56 keyboardLED [^4]  36 mouseLED [^4]  32 data_Out [^4]  24 clock_Out [^4]  20 data_In [^4]  16 clock_In [^4]  12 parityEnabled [^2]   7 clockPin [^1]   4 connectedDevice [^1]   3 statusOut [^1]   2 statusIn [^1]   1}]]()
-   5 DeviceDesc [^20]( ->  19)
-   2 mkb [^17]     4
-   2 keyboard [^19]     5
-   1 SendByteAsync [0  form = 10 [^9]( class = 2 [^1] class = 3 [^20])]       6
-   1 WaitForAnswer [0  form = 10 [^4]( class = 2 [^4] class = 3 [^20])]       7
-   1 ProcessData [0  form = 10 [^9]( class = 3 [^20])]       8
-   1 SendByte [0  form = 10 [^1]( class = 2 [^1] class = 3 [^20])]       9
-   1 SetCapsLock [0  form = 10 [^9]( class = 2 [^2])]      10
-   1 InitDevice [0  form = 10 [^9]( class = 3 [^20])]      11
+   5 MKB [15  form = 7 [16  form = 13 [^9]  exno = 1  extlev = 0  size = 40 { z [^4]  36 MH [^4]  32 MW [^4]  28 MD [^4]  24 KB [17  form = 13 [^9]  exno = 0  extlev = 0  size = 24 { buffer [0  form = 12 [^1]  len = 16  size = 16]   8 tail [^4]   4 head [^4]   0}]   0}]]()
+   5 MKDataBlock [^16]( ->  15)
+   5 Device [18  form = 7 [19  form = 13 [^9]  exno = 2  extlev = 0  size = 88 { --  60 keyboardLED [^4]  36 mouseLED [^4]  32 data_Out [^4]  24 clock_Out [^4]  20 data_In [^4]  16 clock_In [^4]  12 clockPin [^1]   4}]]()
+   5 DeviceDesc [^19]( ->  18)
+   2 mkb [^15]     3
+   2 keyboard [^18]     4
+   1 SendByteAsync [0  form = 10 [^9]( class = 2 [^1] class = 3 [^19])]       5
+   1 WaitForAnswer [0  form = 10 [^4]( class = 2 [^4] class = 3 [^19])]       6
+   1 ProcessData [0  form = 10 [^9]( class = 3 [^19])]       7
+   1 SetCapsLock [0  form = 10 [^9]( class = 2 [^2])]       8
+   1 InitDevice [0  form = 10 [^9]( class = 3 [^19])]       9
 

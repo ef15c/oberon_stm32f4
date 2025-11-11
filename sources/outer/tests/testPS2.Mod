@@ -5,6 +5,7 @@ MODULE testPS2;
 
     W: Texts.Writer;
 
+(*
   PROCEDURE show*(dev: PS2.DeviceDesc);
     VAR lb: BYTE;
       idx: INTEGER;
@@ -14,13 +15,23 @@ MODULE testPS2;
       Texts.WriteString(W, ", tail "); Texts.WriteInt(W, dev.dest.tail, 1);
       idx := dev.dest.head; DEC(idx); IF idx < 0 THEN idx := 15 END;
       Texts.WriteString(W, ", last byte read "); TextsEx.WriteHexVLen(W, dev.dest.buffer[idx], 1, FALSE);
-      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+      Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf)
     END;
 
-    Texts.WriteString(W, "statusIn "); Texts.WriteInt(W, dev.statusIn,1);
-    Texts.WriteString(W, ", statusOut "); Texts.WriteInt(W, dev.statusOut,1);
-    Texts.WriteString(W, ", bad edges "); Texts.WriteInt(W, dev.badEdge,1);
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+    Texts.WriteString(W, "direction "); TextsEx.WriteHexVLen(W, dev.direction, 1, FALSE);
+    Texts.WriteString(W, ", statusIn "); TextsEx.WriteHexVLen(W, dev.statusIn, 1, FALSE);
+    Texts.WriteString(W, ", statusOut "); TextsEx.WriteHexVLen(W, dev.statusOut, 1, FALSE);
+    Texts.WriteString(W, ", nofBitsToBeRead "); Texts.WriteInt(W, dev.nofBitsToBeRead, 1);
+    Texts.WriteLn(W);
+    SYSTEM.GET(dev.clock_Out, idx); Texts.WriteString(W, "clock out "); Texts.WriteInt(W, idx, 1);
+    SYSTEM.GET(dev.data_Out, idx); Texts.WriteString(W, ", data out "); Texts.WriteInt(W, idx, 1);
+    SYSTEM.GET(dev.clock_In, idx); Texts.WriteString(W, ", clock in "); Texts.WriteInt(W, idx, 1);
+    SYSTEM.GET(dev.data_In, idx); Texts.WriteString(W, ", data in "); Texts.WriteInt(W, idx, 1);
+    Texts.WriteLn(W);
+    Texts.WriteString(W, "bad edges "); Texts.WriteInt(W, dev.badEdge,1);
+    Texts.WriteLn(W);
+    Texts.Append(Oberon.Log, W.buf);
   END show;
 
   PROCEDURE showKB*;
@@ -31,6 +42,7 @@ MODULE testPS2;
   PROCEDURE showMouse*;
   BEGIN show(Oberon.ps2[1])
   END showMouse;
+*)
 
   PROCEDURE nextKBLeds*;
     VAR rc: BYTE;
@@ -80,6 +92,7 @@ testPS2.showKB
 testPS2.showMouse
 testPS2.nextKBLeds
 testPS2.resetKB
-testPS2.CommandKB 0FFH
+testPS2.CommandKB 0F4H
+testPS2.CommandKB 0F5H
 testPS2.CapsLockLedOn
 testPS2.CapsLockLedOff
