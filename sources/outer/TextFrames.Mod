@@ -763,7 +763,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       col, voff: INTEGER;
       L!: Line;
   BEGIN
-    IF X < F.X + Min(F.left, barW) THEN  (*scroll bar*)
+    IF (X < F.X + Min(F.left, barW)) & (F.bot # 0) THEN  (*scroll bar*)
       Oberon.DrawMouse(ScrollMarker, X, Y); keysum := Keys;
       IF Keys = {2} THEN   (*ML, scroll up*)
         TrackLine(F, X, Y, pos, keysum);
