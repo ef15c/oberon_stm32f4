@@ -8,7 +8,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
     ModAdr = 32;
  
     TYPE ModulesList = POINTER TO ModulesListDesc;
-      ModulesListDesc = RECORD body: INTEGER; next: ModulesList END;
+      ModulesListDesc = RECORD m: Modules.Module; body: INTEGER; next: ModulesList END;
       Segment = RECORD org, size, start, cur: INTEGER END;
 
   VAR root: Modules.Module;
@@ -188,7 +188,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         put(const, 0);
         Files.ReadInt(R, fixorgP); Files.ReadInt(R, fixorgV);
         IF version = 2 THEN Files.ReadInt(R, fixorgC) END; Files.ReadInt(R, fixorgT);
-        Files.ReadInt(R, w); tail.body := SYSTEM.VAL(INTEGER, mod.code + w);
+        Files.ReadInt(R, w); tail.m := mod; tail.body := SYSTEM.VAL(INTEGER, mod.code + w);
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
       END ;
@@ -332,7 +332,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
   END Link;
 
   PROCEDURE LinkEF*;  (*link multiple object files together and create a single FLASH boot file M.efb from them*)
-    VAR i, x, pc, count: INTEGER;
+    VAR i, x, pc: INTEGER;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       M!, p!: Modules.Module;
@@ -342,9 +342,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
       sram.start := 0; sram.cur := 0;
       i := 0; WHILE i < ModAdr DO put(flash, 0); INC(i, 4) END;
       REPEAT LinkOne(S.s, M, flash, sram, flash); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
-      IF res = noerr THEN p := root; Texts.WriteString(W, "  linking"); count := 0;
-        WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
-          INC(count); IF count MOD 8 =  0 THEN count := 0; Texts.WriteLn(W) END;
+      IF res = noerr THEN p := root; Texts.WriteString(W, "  linking"); Texts.WriteLn(W);
+        WHILE p # NIL DO (*fixup*)
           M := p; p := p.next;
           IF p # NIL THEN M.next := SYSTEM.VAL(Modules.Module, SYSTEM.VAL(INTEGER, p) - flash.start + flash.org) END ;
           INC(M.const, flash.org);
@@ -372,6 +371,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         END;
         tail := modules; (*generate initilization sequence*)
         WHILE tail # NIL DO (*call each module body in order*)
+          Texts.WriteString(W, "  "); Texts.WriteString(W, tail.m.name); Texts.Write(W, 09X);
+          Texts.WriteHex(W, tail.body + flash.org); Texts.WriteLn(W);
           put(flash, thumbSwap(A.BL + A.formatEvenImm25(tail.body - 4 - flash.cur)));
           tail := tail.next
         END;
@@ -385,7 +386,9 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         IF flash.cur MOD 4 # 0 THEN putByte(flash, 0); putByte(flash, 0BFH) (*padding NOP*) END; ASSERT(flash.cur MOD 4 = 0);
         MakeFileName(name, S.s, ".efb"); F := Files.New(name); Files.Set(R, F, 0); i := flash.start;
         WHILE i < flash.cur + flash.start DO SYSTEM.GET(i, x); Files.WriteInt(R, x); INC(i, 4) END ;
-        Texts.WriteInt(W, flash.cur, 8); Texts.WriteInt(W, sram.cur, 8); Files.Register(F)
+        Texts.WriteString(W, "Flash "); Texts.WriteInt(W, flash.cur, 8); Texts.WriteString(W, " B"); Texts.WriteLn(W);
+        Texts.WriteString(W, "RAM "); Texts.WriteInt(W, sram.cur, 8); Texts.WriteString(W, " B"); Texts.WriteLn(W);
+        Files.Register(F)
       ELSE
         Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
         IF res = nofile THEN Texts.WriteString(W, " module not found")
