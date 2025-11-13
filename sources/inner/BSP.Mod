@@ -303,7 +303,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     SPI_CPHAm* = {0}; SPI_CPOLm* = {1};  MSTRm* = {2}; BRm* = {3..5}; SPEm* = {SPE}; LSBFIRSTm* = {7}; SSIm* = {8}; SSMm* = {9};
     RXONLYm* = {10}; DFFm* = {11}; CRCNEXTm* = {12}; CECENm* = {13}; BIDIOEm* = {14}; BIDIMODEm* = {15};
     BRPS_2* = {}; BRPS_4* = {3}; BRPS_8* = {4}; BRPS_16* = {3,4}; BRPS_32* = {5}; BRPS_64* = {3,5}; BRPS_128* = {4,5}; BRPS_256* = {3..5};
-    spe3* = PeriphBBAlias + (SPI3_BASE +SPI_CR1 - PeriphBase + SPE DIV 8)*32 + SPE MOD 8*4;
+    spe3* = PeriphBBAlias + (SPI3_BASE + SPI_CR1 - PeriphBase + SPE DIV 8)*32 + SPE MOD 8*4;
 
     SPI_CR2* = 4;
 
@@ -316,6 +316,9 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     (*SYSCFG*)
     SYSCFG_BASE* = 40013800H; EXTI_CR1* = 8;
+    CMPCR* = 20H; CMP_PD*= 0; READY* = 8;
+    ready* = PeriphBBAlias + (SYSCFG_BASE + CMPCR - PeriphBase + READY DIV 8)*32 + READY MOD 8*4;
+    cmp_pd* = PeriphBBAlias + (SYSCFG_BASE + CMPCR - PeriphBase + CMP_PD DIV 8)*32 + CMP_PD MOD 8*4;
 
     (*USART*)
     USART1_BASE* = 40011000H;
@@ -478,11 +481,11 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   BEGIN SYSTEM.PUT(gpioeEn, TRUE); SYSTEM.GET(gpioeEn, en); (*delay*)
     configureGPIO(GPIOE, mask_1b, mask_2b, {}, {}, om, {}, od, {}, {}, {}); (*all pins are output, low speed, open-drain, no pullups nor pulldowns*)
     SYSTEM.GET(SYSCFG_BASE + EXTI_CR1, reg); (*PE2 generates interrupt at falldown*)
-    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1, reg - {8..11} + LSL(SYSTEM.VAL(SET, 4), 8)); (*EXTI 2 connected to GPIOE*)
+    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1, reg - {8..11} + LSL(TOSET(4), 8)); (*EXTI 2 connected to GPIOE*)
     SYSTEM.GET(SYSCFG_BASE + EXTI_CR1+4, reg); (*PE4 generates interrupt at falldown*)
-    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1+4, reg - {0..3} + SYSTEM.VAL(SET, 4)); (*EXTI 2 connected to GPIOE*)
-    SYSTEM.GET(EXTI_BASE + FTSR, reg); SYSTEM.PUT(EXTI_BASE + FTSR, reg + {2, 4});
-    SYSTEM.GET(EXTI_BASE + EXTI_IMR, reg); SYSTEM.PUT(EXTI_BASE + EXTI_IMR, reg + {2, 4})
+    SYSTEM.PUT(SYSCFG_BASE + EXTI_CR1+4, reg - {0..3} + TOSET(4)); (*EXTI 4 connected to GPIOE*)
+    SYSTEM.GET(EXTI_BASE + FTSR, reg); SYSTEM.PUT(EXTI_BASE + FTSR, reg + {PS2CLOCK1Pin, PS2CLOCK2Pin});
+    SYSTEM.GET(EXTI_BASE + EXTI_IMR, reg); SYSTEM.PUT(EXTI_BASE + EXTI_IMR, reg + {PS2CLOCK1Pin, PS2CLOCK2Pin})
   END PS2_initGPIOs;
 
   PROCEDURE NRF_initGPIOs; (*nrf24L01+*)
@@ -544,7 +547,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       maskG_4bl = LSL(MASK4, 6*4);
       maskG_4bh = LSL(MASK4, 10 MOD 8*4) + LSL(MASK4, 11 MOD 8*4) + LSL(MASK4, 12 MOD 8*4);
     VAR reg: SET;
-  BEGIN SYSTEM.GET(RCC_BASE + AHB1ENR, reg); SYSTEM.PUT(RCC_BASE + AHB1ENR, reg + {GPIOAEN, GPIOBEN, GPIOCEN, GPIODEN, GPIOGEN});
+  BEGIN SYSTEM.PUT(cmp_pd, 1); (*enable I/O compensation cell*)
+    SYSTEM.GET(RCC_BASE + AHB1ENR, reg); SYSTEM.PUT(RCC_BASE + AHB1ENR, reg + {GPIOAEN, GPIOBEN, GPIOCEN, GPIODEN, GPIOGEN});
     SYSTEM.GET(RCC_BASE + AHB1ENR, reg); (*delay*)
     (**LTDC GPIO Configuration
     PA3     ------> LTDC_B5
@@ -604,8 +608,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       maskD_2b = LSL(MASK2, 12*2) + LSL(MASK2, 13*2) + LSL(PULL_UP, 3*2);
       maskE_1b = {6};
       maskE_2b = LSL(MASK2, 6*2);
-      maskF_1b = {6, 7, 8, 9};
-      maskF_2b = LSL(MASK2, 6*2) + LSL(MASK2, 7*2) + LSL(MASK2, 8*2) + LSL(MASK2, 9*2);
+      maskF_1b = {6, 7, 8, 9, 10};
+      maskF_2b = LSL(MASK2, 6*2) + LSL(MASK2, 7*2) + LSL(MASK2, 8*2) + LSL(MASK2, 9*2) + LSL(MASK2, 10*2);
       maskG_1b = {2, 3, 13, 14};
       maskG_2b = LSL(MASK2, 2*2) + LSL(MASK2, 3*2) + LSL(PULL_UP, 13*2) + LSL(MASK2, 14*2);
     VAR reg: SET;
@@ -629,8 +633,9 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     configureGPIO(GPIOD, maskD_1b, maskD_2b, {}, {}, LSL(OUTPUT_MODE, 12*2) + LSL(OUTPUT_MODE, 13*2), {}, {}, {}, {}, {});
    (*PE6 as push button 3*)
     configureGPIO(GPIOE, maskE_1b, maskE_2b, {}, {}, {}, {}, {}, LSL(PULL_UP, 6*2), {}, {});
-    (*PF6, 8 and 7 as push buttons 6, 7, 8*)
-    configureGPIO(GPIOF, maskF_1b, maskF_2b, {}, {}, LSL(OUTPUT_MODE, 9*2), {}, {}, LSL(PULL_UP, 6*2) + LSL(PULL_UP, 7*2) + LSL(PULL_UP, 8*2), {}, {});
+    (*PF6, 8 and 7 as push buttons 6, 7, 8, PF9 as LED1 and PF10 as output low connected to onboard LCD*)
+    configureGPIO(GPIOF, maskF_1b, maskF_2b, {}, {}, LSL(OUTPUT_MODE, 9*2) + LSL(OUTPUT_MODE, 10*2),
+      {}, {}, LSL(PULL_UP, 6*2) + LSL(PULL_UP, 7*2) + LSL(PULL_UP, 8*2), {}, {});
     (*PG2 as push button 5, PG3 as LED 7, PG13 and 14 as LD 3 and 4*)
     configureGPIO(GPIOG, maskG_1b, maskG_2b, {}, {}, LSL(OUTPUT_MODE, 3*2) + LSL(OUTPUT_MODE, 13*2) + LSL(OUTPUT_MODE, 14*2), {}, {},
       LSL(PULL_UP, 2*2), {}, {});
