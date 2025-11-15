@@ -183,7 +183,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   PROCEDURE ReadId(VAR dev: DeviceDesc);
     VAR nbTries, res: INTEGER;
-  BEGIN res := StopReporting(dev);
+  BEGIN nbTries := 3; res := StopReporting(dev);
     (*Send the read ID command*)
     REPEAT DEC(nbTries);
       SendByteAsync(dev, 0F2H);
