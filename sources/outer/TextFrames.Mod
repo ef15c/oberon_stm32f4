@@ -4,6 +4,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
 
   CONST replace* = 0; insert* = 1; delete* = 2; unmark* = 3; (*message id*)
     BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX; LEFTARROW = 81X; RIGHTARROW = 8DX; UPARROW = 8FX; DOWNARROW = 90X;
+    HOME = 9DX; ENDK = 19X;
     FrameColor = Display.midgrey;
 
   TYPE Line = POINTER TO LineDesc;
@@ -650,6 +651,10 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     ELSIF ch = UPARROW THEN LocatePos(F, F.carloc.pos, loc); LocateChar(F, loc.x, loc.y + asr, loc);
       IF loc.pos >= F.org THEN FlipCaret(F); SetCaret(F, loc.pos) END
     ELSIF ch = DOWNARROW THEN LocatePos(F, F.carloc.pos, loc); LocateChar(F, loc.x, loc.y - asr, loc);
+      FlipCaret(F); SetCaret(F, loc.pos)
+    ELSIF ch = HOME THEN LocatePos(F, F.carloc.pos, loc); LocateChar(F, F.left, loc.y, loc);
+      FlipCaret(F); SetCaret(F, loc.pos)
+    ELSIF ch = ENDK THEN LocatePos(F, F.carloc.pos, loc); LocateChar(F, F.W - 1, loc.y, loc);
       FlipCaret(F); SetCaret(F, loc.pos)
     ELSIF ch = 3X THEN (*ctrl-c  copy*)
       IF F.hasSel THEN
