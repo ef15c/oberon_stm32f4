@@ -13,7 +13,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END ;
 
   VAR sym: INTEGER;   (*last symbol read*)
-    dc: INTEGER;    (*data counter*)
     level, exno: INTEGER;
     newSF, initmode: BOOLEAN;  (*option flag*)
     expression: PROCEDURE (VAR x: G.Item);  (*to avoid forward reference*)
@@ -34,7 +33,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE qualident(VAR obj: B.Object);
   BEGIN obj := B.thisObj(); S.Get(sym);
     IF obj = NIL THEN S.Mark("undef"); obj := dummy END ;
-    IF (sym = S.period) & (obj.class = B.Mod) THEN obj.ref := TRUE; S.Get(sym);
+    IF (sym = S.period) & (obj.class = B.Mod) THEN S.Get(sym);
       IF sym = S.ident THEN obj := B.thisimport(obj); S.Get(sym);
         IF obj = NIL THEN S.Mark("undef"); obj := dummy END
       ELSE S.Mark("identifier expected"); obj := dummy
@@ -564,21 +563,21 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         Check(S.then, "no THEN");
         StatSequence; L0 := 0;
         WHILE sym = S.elsif DO
-          S.Get(sym); G.FJump(L0); G.Fixup(x); expression(x); CheckBool(x);
+          S.Get(sym); G.FJump(L0); G.fixup(x); expression(x); CheckBool(x);
           G.CFJump(x); Check(S.then, "no THEN"); StatSequence
         END ;
-        IF sym = S.else THEN S.Get(sym); G.FJump(L0); G.Fixup(x); StatSequence
-        ELSE G.Fixup(x)
+        IF sym = S.else THEN S.Get(sym); G.FJump(L0); G.fixup(x); StatSequence
+        ELSE G.fixup(x)
         END ;
         G.FixLink(L0); Check(S.end, "no END")
       ELSIF sym = S.while THEN
         S.Get(sym); L0 := G.Here(); expression(x); CheckBool(x); G.CFJump(x);
         Check(S.do, "no DO"); StatSequence; G.BJump(L0);
         WHILE sym = S.elsif DO
-          S.Get(sym); G.Fixup(x); expression(x); CheckBool(x); G.CFJump(x);
+          S.Get(sym); G.fixup(x); expression(x); CheckBool(x); G.CFJump(x);
           Check(S.do, "no DO"); StatSequence; G.BJump(L0)
         END ;
-        G.Fixup(x); Check(S.end, "no END")
+        G.fixup(x); Check(S.end, "no END")
       ELSIF sym = S.repeat THEN
         S.Get(sym); L0 := G.Here(); StatSequence;
         IF sym = S.until THEN
@@ -609,9 +608,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           IF (orgtype.form = B.Pointer) OR (orgtype.form = B.Record) & (obj.class = B.Par) THEN
             Check(S.of, "OF expected"); TypeCase(obj, x); L0 := 0;
             WHILE sym = S.bar DO
-              S.Get(sym); G.FJump(L0); G.Fixup(x); obj.type := orgtype; TypeCase(obj, x)
+              S.Get(sym); G.FJump(L0); G.fixup(x); obj.type := orgtype; TypeCase(obj, x)
             END ;
-            G.Fixup(x); G.FixLink(L0); obj.type := orgtype
+            G.fixup(x); G.FixLink(L0); obj.type := orgtype
           ELSE S.Mark("numeric case not implemented");
             Check(S.of, "OF expected"); SkipCase;
             WHILE sym = S.bar DO SkipCase END
@@ -781,7 +780,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   BEGIN
     IF sym = S.ident THEN
       qualident(obj);
-      IF obj.class = B.Typ THEN typ := obj.type; obj.ref := TRUE ELSE S.Mark("not a type"); typ := B.intType END
+      IF obj.class = B.Typ THEN typ := obj.type ELSE S.Mark("not a type"); typ := B.intType END
     ELSIF sym = S.array THEN
       S.Get(sym); Check(S.of, "OF ?");
       IF dim >= 1 THEN S.Mark("multi-dimensional open arrays not implemented") END ;
@@ -809,7 +808,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = S.ident THEN
       qualident(obj);
       IF obj.class = B.Typ THEN
-        IF (obj.type # NIL) & (obj.type.form # B.NoTyp) THEN type := obj.type; obj.ref := TRUE END
+        IF (obj.type # NIL) & (obj.type.form # B.NoTyp) THEN type := obj.type END
       ELSE S.Mark("not a type or undefined")
       END
     ELSIF sym = S.array THEN S.Get(sym); ArrayType(type)
@@ -899,7 +898,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF tp.form = B.Record THEN
           ptbase := pbsList;  (*check whether this is base of a pointer type; search and fixup*)
           WHILE ptbase # NIL DO
-            IF obj.name = ptbase.name THEN ptbase.type.base := obj.type; obj.ref := TRUE END ;
+            IF obj.name = ptbase.name THEN ptbase.type.base := obj.type END ;
             ptbase := ptbase.next
           END ;
           IF level = 0 THEN G.BuildTD(tp) END    (*type descriptor; len used as its address*)
@@ -933,8 +932,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
             IF inreg & (tp.size > 4) THEN S.Mark("reg alloc forbidden"); inreg := FALSE END;
             IF inreg THEN obj.register := G.AllocR(); nbregs := tp.size DIV G.WordSize;
               WHILE nbregs > 1 DO dummy := G.AllocR(); DEC(nbregs) END
-            ELSE IF tp.size > 1 THEN varsize := (varsize + (G.WordSize - 1)) DIV G.WordSize * G.WordSize (*align*) END;
-              obj.register := 0FFH; obj.val := varsize; INC(varsize, tp.size)
+            ELSE obj.register := 0FFH; G.AllocV(obj, varsize)
             END;
           END;
           IF obj.expo THEN obj.exno := exno; INC(exno) END;
@@ -973,7 +971,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     ELSE savedregs := {}
     END;
     IF sym = S.ident THEN
-      S.CopyId(procid); S.Get(sym); B.NewObj(proc, S.id, B.Const);
+      S.CopyId(procid); S.Get(sym); B.NewObj(proc, S.id, B.StoredConst);
       parblksize := 0; NEW(type);
       IF int THEN type.form := B.Handler; WHILE L > 0 DO DEC(L); G.SetVector(v[L], proc) END
       ELSE type.form := B.Proc 
@@ -1003,7 +1001,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         loc := loc.next; INC(L)
       END;
 
-      proc.val := G.Here(); 
+      G.AllocP(proc);
       proc.type.dsc := B.topScope.next;
       InsertResultRegister(type);
 
@@ -1027,7 +1025,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         S.Mark("function without result"); type.base := B.noType
       END;
       G.Return(type.base.form, x, locblksize, int, savedregs);
-      type.size := G.Here() - proc.val;
+      G.EndP(proc);
       proc.type.ur := G.PRU;
       B.CloseScope; DEC(level); Check(S.end, "no END");
       isLeaf := FALSE; isInt := FALSE;
@@ -1058,12 +1056,12 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END Import;
 
   PROCEDURE Module;
-    VAR key, oldCol: INTEGER; dmy: BOOLEAN;
+    VAR key, oldCol, dmyv: INTEGER; dmy: BOOLEAN;
   BEGIN isLeaf := FALSE; isInt := FALSE; Texts.WriteString(W, "  compiling "); S.Get(sym);
     IF sym = S.module THEN S.Get(sym);
       IF sym = S.times THEN codeseg := 1 (*execute from RAM*); Texts.Write(W, "*"); S.Get(sym)
       ELSE codeseg := 0 (*execute from Flash*) END;
-      G.Open; dc := 0;
+      G.Open;
       initmode := FALSE;
       B.Init; B.OpenScope;
       IF sym = S.ident THEN
@@ -1077,7 +1075,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         WHILE sym = S.comma DO S.Get(sym); Import END ;
         Check(S.semicolon, "; missing")
       END ;
-      Declarations(dc, dmy); G.SetDataSize((dc + (G.WordSize - 1)) DIV G.WordSize * G.WordSize);
+      Declarations(dmyv, dmy);
       WHILE sym = S.procedure DO ProcedureDecl; Check(S.semicolon, "no ;") END ;
       initmode := TRUE;
       G.Header;
@@ -1094,7 +1092,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF newSF THEN Texts.WriteString(W, " new symbol file") END
       END;
       IF S.errcnt = 0 THEN G.Close(modid, key, exno, codeseg);
-        Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key)
+        Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, G.varsize, 6); Texts.WriteHex(W, key)
       ELSE Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol 
       END;
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
@@ -1146,7 +1144,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP Compiler 19.04.25");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP Compiler 19.10.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0

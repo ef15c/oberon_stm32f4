@@ -20,7 +20,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     Rdm* = {}; Idm* = {7}; (*dest for format I instructions*)
 
   (*Addressing mode names*)
-    Register* = 0; Indexed* = 1; Symbolic* = 2; Absolute* = 3; Indirect* = 4; IndirectIncr* = 5; Immediate* = 6; Undefined* = 255;
+    Register* = 0; Indexed* = 1; Symbolic* = 2; Absolute* = 3; Indirect* = 4;
+    IndirectIncr* = 5; Immediate* = 6; Immediate2* = 7; Undefined* = 255;
 
   (*Instruction size*)
     Byte* = {6}; Word* = {}; 
@@ -71,7 +72,6 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     ModuleCode* = RECORD
       pc*: INTEGER; (*program counter*)
       code*: ARRAY maxCode OF BYTE;   (*MSP instructions are multiple of 16bit words, but this size does not exists in Oberon 07 cross compiler*)
-      pos*: ARRAY maxCode DIV 2 OF INTEGER
     END;
     Item* = RECORD reg*, am*: BYTE; ofs*: INTEGER END;
 
@@ -100,13 +100,19 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   (*instruction assemblers*)
 
+  PROCEDURE GetWordAt*(VAR c: ModuleCode; at: INTEGER): INTEGER;
+    RETURN 0 + c.code[at] + c.code[at + 1] * 100H
+  END GetWordAt;
+
+  PROCEDURE PutWordAt*(VAR c: ModuleCode; at, val: INTEGER);
+  BEGIN
+    c.code[at] := val MOD ORD({8});
+    c.code[at + 1] := LSR(val, 8) MOD ORD({8})
+  END PutWordAt;
+
   PROCEDURE Emit*(VAR c: ModuleCode; val: INTEGER);
   BEGIN ASSERT ((val >= -ORD({15})) & (val < ORD({16})));
-    IF enabled THEN
-      c.code[c.pc+1] := LSR(val, 8) MOD ORD({8});
-      c.code[c.pc] := val MOD ORD({8});
-      c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
-    END
+    IF enabled THEN PutWordAt(c, c.pc, val); INC(c.pc, 2) END
   END Emit;
 
   PROCEDURE encSrc(VAR op: INTEGER; VAR SReg: BYTE; sam: BYTE; VAR SOff: INTEGER; VAR emitSOff: BOOLEAN; VAR params: SET);
@@ -128,7 +134,8 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ELSIF (op = ADD) & (SOff < -1) THEN op := SUB; SOff := -SOff; encSrc(op, SReg, sam, SOff, emitSOff, params)
       ELSIF (op = SUB) & (SOff < -1) THEN op := ADD; SOff := -SOff; encSrc(op, SReg, sam, SOff, emitSOff, params)
       ELSE SReg := PC; params := params + IRAm; emitSOff := TRUE
-    END
+      END
+    ELSIF sam = Immediate2 THEN SReg := PC; params := params + IRAm; emitSOff := TRUE (*don't use constant generator*)
     ELSE S.DebugHex("encSrc sam", sam); ASSERT(FALSE)
     END;
   END encSrc;
@@ -142,7 +149,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     IF enabled THEN
       c.code[c.pc+1] := LSL(op, 4) + src;
       c.code[c.pc] := ORD(params) + dst;
-      c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
+      INC(c.pc, 2)
     END
   END Put1;
 
@@ -204,7 +211,7 @@ ASSERT((op # MOV) OR (s.am # Register) OR (d.am # Register) OR (s.reg # d.reg));
     IF enabled THEN
       c.code[c.pc+1] := LSR(op, 1);
       c.code[c.pc]   := LSL(ORD(ODD(op)), 7) + ORD(params) + register;
-      c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
+      INC(c.pc, 2)
     END
   END Put2;
 
@@ -244,7 +251,7 @@ ASSERT((op # MOV) OR (s.am # Register) OR (d.am # Register) OR (s.reg # d.reg));
     IF enabled THEN
       c.code[c.pc+1] := JMPh + LSL(cond, 2) + LSR(offset, 8) MOD 4;
       c.code[c.pc]   := offset MOD ORD({8});
-      c.pos[c.pc DIV 2] := S.Pos(); INC(c.pc, 2)
+      INC(c.pc, 2)
     END;
     setFCI(dummy, FALSE)
   END PutJ;

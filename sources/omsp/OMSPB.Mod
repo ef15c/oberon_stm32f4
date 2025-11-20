@@ -26,8 +26,8 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
 
     ObjDesc*= RECORD
       class*, exno*, register*: BYTE; (*register = 0FFH if memory allocation, else contains the register number*)
-      expo*, unsafe*, rdo*, ref*: BOOLEAN;   (*exported / unsafe / read-only / referenced*)
-      lev*, usedat*: INTEGER;
+      expo*, unsafe*, rdo*: BOOLEAN;   (*exported / unsafe / read-only*)
+      lev*: INTEGER;
       next*, dsc*: Object;
       type*: Type;
       name*: S.Ident;
@@ -85,7 +85,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   BEGIN x := topScope;
     WHILE (x.next # NIL) & (x.next.name # id) DO x := x.next END ;
     IF x.next = NIL THEN
-      NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.usedat := 0; new.register := 0FFH; new.dsc := NIL;
+      NEW(new); new.name := id; new.class := class; new.next := NIL; new.rdo := FALSE; new.register := 0FFH; new.dsc := NIL;
       x.next := new; obj := new
     ELSE obj := x.next; S.Mark("mult def")
     END 
@@ -214,7 +214,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         WHILE (obj # NIL) & (obj.name # name) DO obj := obj.next END ;
         IF obj # NIL THEN T := obj.type   (*type object found in object list of mod*)
         ELSE (*insert new type object in object list of mod*)
-          NEW(obj); obj.name := name; obj.class := Typ; obj.next := mod.dsc; mod.dsc := obj; obj.type := t; obj.usedat := 0;
+          NEW(obj); obj.name := name; obj.class := Typ; obj.next := mod.dsc; mod.dsc := obj; obj.type := t;
           t.mno := mod.lev; t.typobj := obj; T := t
         END ;
         typtab[ref] := T
@@ -240,7 +240,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
         IF class # versionkey THEN S.Mark("wrong version") END ;
         Read(R, class);
         WHILE class # 0 DO
-          NEW(obj); obj.class := class; obj.usedat := 0; Files.ReadString(R, obj.name);
+          NEW(obj); obj.class := class; Files.ReadString(R, obj.name);
           InType(R, thismod, obj.type); obj.lev := -thismod.lev;
           IF class = Typ THEN
             t := obj.type; t.typobj := obj; Read(R, k);  (*fixup bases of previously declared pointer types*)
@@ -249,7 +249,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             IF class = Const THEN obj.rdo := TRUE;
               IF obj.type.form = String THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END;
               IF obj.type.form = Proc THEN regRTProc(obj) END
-            ELSIF class IN {Var, StoredConst} THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.usedat := 0; obj.register := 0FFH
+            ELSIF class IN {Var, StoredConst} THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.register := 0FFH
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
@@ -355,7 +355,6 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           END
         ELSIF obj.class IN {Var, StoredConst} THEN Files.WriteNum(R, obj.exno)
         END
-      ELSE (*not exported*) IF ~obj.ref & (obj.type.form # Handler) & (obj.lev <= 1) THEN S.DebugString("not referenced", obj.name) END
       END;
       obj := obj.next
     END ;

@@ -112,25 +112,8 @@ MODULE OMSPTool;  (*NW 18.2.2013
 
 (*---------------------------------------------------*)
 
-  PROCEDURE fixup(msg: ARRAY OF CHAR; VAR R: Files.Rider);
-    VAR data: INTEGER; mno: BYTE;
-  BEGIN
-    Texts.WriteString(W, "fixup "); Texts.WriteString(W, msg); Texts.WriteString(W, " chains"); Texts.WriteLn(W);
-    ReadWord(R, data);
-    WHILE data # 0 DO TextsEx.WriteHexVLen(W, data, 4, FALSE);
-      Files.ReadByte(R, mno); Texts.WriteInt(W, mno, 6); Texts.Write(W, 9X);
-      ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE);
-      ReadWord(R, data);
-      IF data # 0 THEN IF data > 0 THEN Texts.Write(W, 9X); Texts.Write(W, "+") END; Texts.WriteInt(W, data, 1) END;
-      ReadWord(R, data);
-      Texts.Write(W, 9X); Texts.WriteInt(W, data, 1); Texts.Write(W, "b");
-      Texts.WriteLn(W);
-      ReadWord(R, data)
-    END
-  END fixup;
-
   PROCEDURE DecObj*;   (*decode object file*)
-    VAR i, n, key, size, adr, data: INTEGER;
+    VAR i, n, key, adr, data, size, no: INTEGER;
       bl: BYTE;
       ch: CHAR;
       name: ARRAY 32 OF CHAR;
@@ -140,73 +123,63 @@ MODULE OMSPTool;  (*NW 18.2.2013
     IF S1.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S1.s); F := Files.Old(S1.s);
       IF F # NIL THEN
-        A.Init(mcode);
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
         Files.ReadInt(R, key); Texts.WriteHex(W, key); Files.ReadByte(R, bl);
-        IF bl IN {2..3} THEN bl := bl MOD 2;
-          ReadWord(R, size); Texts.WriteString(W, " Flash"); Texts.WriteInt(W, size, 6);
-          Texts.WriteLn(W);
+        IF bl IN {4..5} THEN bl := bl MOD 2;
           IF bl = 1 THEN Texts.WriteString(W, "code executed from RAM"); Texts.WriteLn(W); END;
-          Texts.Append(Oberon.Log, W.buf); ASSERT(size < 100000);
+          Texts.Append(Oberon.Log, W.buf); Texts.WriteLn(W);
           Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
           WHILE name[0] # 0X DO
             Texts.Write(W, 9X); Texts.WriteString(W, name);
             Files.ReadInt(R, key); Texts.WriteHex(W, key); Texts.WriteLn(W);
             Files.ReadString(R, name)
           END ;
-        (* Sync(R); *)
-          Texts.WriteString(W, "type descriptors"); Texts.WriteLn(W);
-          ReadWord(R, n); size := n; i := 0;
-          WHILE i < n DO ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); INC(i) END;
-          Texts.WriteLn(W);
-          Texts.WriteString(W, "data"); ReadWord(R, data); Texts.WriteInt(W, data, 6); Texts.WriteLn(W);
-          Texts.WriteString(W, "strings"); Texts.WriteLn(W);
-          ReadWord(R, n); i := 0; INC(size, n);
-          WHILE i < n DO Files.Read(R, ch); IF ch=0X THEN ch := "|" END; Texts.Write(W, ch); INC(i) END ;
-          Texts.WriteLn(W);
-          (*code*)
-          ReadWord(R, mcode.pc); i := 0;
-          WHILE i < mcode.pc DO Files.ReadByte(R, mcode.code[i]); INC(i) END;
-         (* Sync(R); *)
-          Texts.WriteString(W, "vector table"); Texts.WriteLn(W);
-          Files.ReadByte(R, bl); i := 0;
-          WHILE i < bl DO ReadWord(R, data); TextsEx.WriteHexVLen(W, data, 4, FALSE); INC(i);
-            IF i MOD 16 = 0 THEN Texts.WriteLn(W) END
+          Files.Read(R, ch); no := 0;
+          WHILE ~R.eof & (ch # 0X) DO Texts.WriteString(W, "section "); Texts.WriteInt(W, no, 5);
+            Texts.Write(W, 09X); Texts.Write(W, ch);
+            Files.ReadString(R, name); ReadWord(R, size);
+            Texts.WriteInt(W, size, 5); Texts.Write(W, 09X);
+            Texts.WriteString(W, name); Texts.WriteLn(W);
+            IF ch = "c" THEN (*code section*) A.Init(mcode); (*read code*)
+              FOR i := 0 TO size - 1 DO Files.ReadByte(R, mcode.code[i]) END;
+              i := 0;
+              WHILE i < size DO
+                TextsEx.WriteHexVLen(W, i, 4, FALSE);
+                Texts.Write(W, 9X); adr := i + 2;
+                D.opcode(W, mcode.code, i, 0); Texts.WriteLn(W);
+                FOR n := adr TO i - 2 BY 2 DO (*print operation data*)
+                  TextsEx.WriteHexVLen(W, n, 4, FALSE);
+                  Texts.Write(W, 9X); Texts.WriteString(W, "    ");
+                  data := mcode.code[n+1]*100H + mcode.code[n];
+                  TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
+                END
+              END;
+            ELSE 
+              FOR i := 1 TO size DO Files.ReadByte(R, bl); TextsEx.WriteHexVLen(W, bl, 2, FALSE);
+                IF i MOD 10H = 0 THEN Texts.WriteLn(W) END
+              END;
+              IF i MOD 10H # 0 THEN Texts.WriteLn(W) END
+            END;
+            Texts.WriteString(W, "fixups:"); Texts.WriteLn(W);
+            ReadWord(R, adr);
+            WHILE adr # 0 DO TextsEx.WriteHexVLen(W, adr, 4, FALSE); Texts.Write(W, 09X);
+              Files.ReadByte(R, bl); Texts.WriteInt(W, bl, 3); Texts.Write(W, " ");
+              ReadWord(R, n); Texts.WriteInt(W, n, 5); Texts.Write(W, " ");
+              ReadWord(R, n); Texts.WriteInt(W, n, 5); Texts.WriteLn(W);
+              ReadWord(R, adr);
+            END;
+            INC(no); Files.Read(R, ch)
           END;
           Texts.WriteLn(W);
-        (* Sync(R); *)
-          Texts.WriteString(W, "entries"); Texts.WriteLn(W);
+          Texts.WriteString(W, "entries:"); Texts.WriteLn(W);
           ReadWord(R, n); i := 0;
           WHILE i < n DO
-            Files.Read(R, ch); ReadWord(R, adr); ReadWord(R, size);
-            Texts.Write(W, 09X); Texts.Write(W, ch); TextsEx.WriteHexVLen(W, adr, 4, FALSE);
-            Texts.Write(W, " "); Texts.WriteInt(W, size, 1); Texts.Write(W, "b"); INC(i)
-          END ;
-          Texts.WriteLn(W);
-        (* Sync(R); *)
-        fixup("procedures in code space", R);
-        fixup("handlers in vector space", R);
-        fixup("variables in code space", R);
-        fixup("constants in code space", R);
-        fixup("variables in constant space", R);
-        fixup("constants in constant space", R);
-          ReadWord(R, data); Texts.WriteString(W, "entry = "); TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W);
-          Files.Read(R, ch);
-          IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
-        (* Sync(R); *)
-          Texts.WriteString(W, "code");  Texts.WriteInt(W, mcode.pc, 6); Texts.WriteLn(W); 
-          i := 0;
-          WHILE i < mcode.pc DO
-            TextsEx.WriteHexVLen(W, i, 4, FALSE);
-             Texts.Write(W, 9X); adr := i + 2;
-            D.opcode(W, mcode.code, i, 0); Texts.WriteLn(W);
-            FOR n := adr TO i - 2 BY 2 DO (*print operation data*)
-              TextsEx.WriteHexVLen(W, n, 4, FALSE);
-              Texts.Write(W, 9X); Texts.WriteString(W, "    ");
-              data := mcode.code[n+1]*100H + mcode.code[n];
-              TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
-            END
-          END
+            ReadWord(R, no); Texts.WriteInt(W, no, 5);
+            IF i MOD 10 = 0 THEN Texts.WriteLn(W) END;
+            INC(i)
+          END;
+          IF i MOD 10 # 0 THEN Texts.WriteLn(W) END;
+          Files.Read(R, ch); IF ch # "O" THEN Texts.WriteString(W, "format error"); Texts.WriteLn(W) END;
         ELSE Texts.WriteString(W, " bad version"); Texts.WriteLn(W)
         END
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
@@ -215,6 +188,6 @@ MODULE OMSPTool;  (*NW 18.2.2013
     END
   END DecObj;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSPTool 19.04.25");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSPTool 21.10.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
 END OMSPTool.
