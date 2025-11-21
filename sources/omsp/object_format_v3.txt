@@ -1,0 +1,49 @@
+Object code V3 file format:
+      CodeFile = name key version imports sections entries "O".
+      imports  = {name key} 0X.
+      sections = {segment name size content fixups} 0X.
+      segment  = "c" | "d" | "s" | "v" | "r".
+      content  = {byte}.
+      fixups   = {fixadr mno secnum offset} 0.
+      entries  = nof {secnum}.
+
+      name: string containing the module or object name
+      key: CRC32 hash of the modules's symbol file
+      version: 0: legacy mode, 1: legacy RAM execution mode,
+               2, 3: not used, reserved for future use
+               4: sections mode, 5: sections RAM execution mode*)
+
+      sections: describes block of data or code that can be omitted by
+        the linker if they are not referenced. Each block will correspond
+        with a global object (variable, stored const or procedure).
+        
+        segment: "c" for code in flash memory,
+                 "d" for data in flash memory,
+                 "s" for strings in flash memory,
+                 "v" for vectors table or
+                 "r" for variables in RAM.
+        size: size in bytes of the segment
+        content: the code or data for flash memory segment.
+          It is empty for RAM segment.
+          
+        fixups: these are backward linked list of referenced sections.
+          The linker will walk them to resolve static addresses.
+          
+          fixadr: the address of the most recent reference to a section.
+            the value at this address contains the next reference. The
+            value 0 marks the end of the list.
+          mno: the nodule index in the import array. The value 0 means
+            the current module. Others values is the rank of the
+            imported module.
+          secnum: is the section number in the mno indexed module.
+          offset: is the offset in byte of the referenced data.
+      
+          the vectors table is a particular type of section flagged
+          with "v" segment. It appears exactly once as the last section
+          in the object file.
+      
+      nof: number of items
+      secnum: section number starting from 0. The first one is the
+        initialization code of the module.
+      
+      entries: exported objects.

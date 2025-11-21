@@ -28,44 +28,46 @@ END Traps.
 
 OMSPTool.DecObj Traps.mpc
 decode Traps.mpc
-Traps 37B3757C Flash    26
+Traps 3714F611
 imports:
-	msp430g2553 F10488DC
-type descriptors
+	msp430g2553 1CD85DB4
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0018 c 0000 c 0008 c 0010
-fixup procedures in code space chains
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0018
-code    26
+section     0	c    8	ArrayOutOfRange
  0000	     42E2	MOV.B #4,&33
  0002	     0021
  0004	     3FFF	JMP $, goes to  0004
  0006	     4130	RET
- 0008	     D3E2	BIS.B #2,&33
- 000A	     0021
- 000C	     3FFF	JMP $, goes to  000C
- 000E	     4130	RET
- 0010	     D3D2	BIS.B #1,&33
- 0012	     0021
- 0014	     3FFF	JMP $, goes to  0014
- 0016	     4130	RET
- 0018	     4130	RET
+fixups:
+
+section     1	c    8	TypeGuardFailure
+ 0000	     D3E2	BIS.B #2,&33
+ 0002	     0021
+ 0004	     3FFF	JMP $, goes to  0004
+ 0006	     4130	RET
+fixups:
+
+section     2	c    8	AssertionViolated
+ 0000	     D3D2	BIS.B #1,&33
+ 0002	     0021
+ 0004	     3FFF	JMP $, goes to  0004
+ 0006	     4130	RET
+fixups:
+
+section     3	c    2	module body
+ 0000	     4130	RET
+fixups:
+
+section     4	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    3
+    0    1    2
 
 OMSPTool.DecSym Traps.sms
-Traps 37B3757C  1
-   1 ArrayOutOfRange [0  form = 10  size = 2 [^9] UR 0000()]       1
-   1 TypeGuardFailure [0  form = 10  size = 2 [^9] UR 0000()]       2
-   1 AssertionViolated [0  form = 10  size = 2 [^9] UR 0000()]       3
+Traps 3714F611  2
+   9 ArrayOutOfRange [0  form = 10 [^9] UR 0000()]     1
+   9 TypeGuardFailure [0  form = 10 [^9] UR 0000()]     2
+   9 AssertionViolated [0  form = 10 [^9] UR 0000()]     3

@@ -723,7 +723,7 @@ END msp430g2553.
 
 OMSPTool.DecSym msp430g2553.sms
 decode msp430g2553.sms
-msp430g2553 F10488DC  1
+msp430g2553 1CD85DB4  2
    1 C [^6]       1
    1 Z [^6]       2
    1 N [^6]       4

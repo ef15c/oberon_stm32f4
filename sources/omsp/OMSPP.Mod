@@ -421,8 +421,6 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         G.StringRelation(rel, x, y)
       ELSIF (xf = B.Char) & (yf = B.String) & (G.Length(y) = 2) THEN
         G.StrToChar(y); G.IntRelation(rel, x, y)
-      ELSIF (yf = B.Char) & (xf = B.String) & (G.Length(x) = 2) THEN
-        G.StrToChar(x); G.IntRelation(rel, x, y)
       ELSIF (xf = B.Int) & (yf = B.Int) THEN G.IntRelation(rel,  x, y)  (*BYTE*)
       ELSIF (xf = B.Set) & (yf = B.Set) THEN
         IF rel <= S.neq THEN G.IntRelation(rel, x, y) ELSE S.Mark("only = or #") END (*byte SET*)

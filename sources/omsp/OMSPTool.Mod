@@ -133,7 +133,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
             Texts.Write(W, 9X); Texts.WriteString(W, name);
             Files.ReadInt(R, key); Texts.WriteHex(W, key); Texts.WriteLn(W);
             Files.ReadString(R, name)
-          END ;
+          END; Texts.WriteLn(W);
           Files.Read(R, ch); no := 0;
           WHILE ~R.eof & (ch # 0X) DO Texts.WriteString(W, "section "); Texts.WriteInt(W, no, 5);
             Texts.Write(W, 09X); Texts.Write(W, ch);
@@ -154,9 +154,14 @@ MODULE OMSPTool;  (*NW 18.2.2013
                   TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
                 END
               END;
-            ELSE 
-              FOR i := 1 TO size DO Files.ReadByte(R, bl); TextsEx.WriteHexVLen(W, bl, 2, FALSE);
-                IF i MOD 10H = 0 THEN Texts.WriteLn(W) END
+            ELSIF ch = "v" THEN i := 0;
+              WHILE i < size DIV 2 DO ReadWord(R, adr); TextsEx.WriteHexVLen(W, adr, 4, FALSE);
+                IF (i + 1) MOD 10H = 0 THEN Texts.WriteLn(W) END; INC(i)
+              END;
+              IF i MOD 10H # 0 THEN Texts.WriteLn(W) END
+            ELSIF ch # "r" THEN i := 0;
+              WHILE i < size DO Files.ReadByte(R, bl); TextsEx.WriteHexVLen(W, bl, 2, FALSE);
+                IF (i + 1) MOD 10H = 0 THEN Texts.WriteLn(W) END; INC(i)
               END;
               IF i MOD 10H # 0 THEN Texts.WriteLn(W) END
             END;
@@ -168,9 +173,9 @@ MODULE OMSPTool;  (*NW 18.2.2013
               ReadWord(R, n); Texts.WriteInt(W, n, 5); Texts.WriteLn(W);
               ReadWord(R, adr);
             END;
+            Texts.WriteLn(W);
             INC(no); Files.Read(R, ch)
           END;
-          Texts.WriteLn(W);
           Texts.WriteString(W, "entries:"); Texts.WriteLn(W);
           ReadWord(R, n); i := 0;
           WHILE i < n DO

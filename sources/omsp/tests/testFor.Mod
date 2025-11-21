@@ -20,29 +20,10 @@ END testFor.
 OMSPP.Compile testFor.Mod~
 OMSPTool.DecObj testFor.mpc
 decode testFor.mpc
-testFor 16D8ACA3 Flash    94
+testFor 1B9B8A7A
 imports:
-type descriptors
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0054
-fixup procedures in code space chains
- 0056     0	 0000
- 005A     0	 0032
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0054
-code    94
+section     0	c   50	p
  0000	     8221	SUB #4,SP
  0002	     4391	MOV #1,0(SP)
  0004	     0000
@@ -68,25 +49,43 @@ code    94
  002C	     3FFA	JMP $-10, goes to  0022
  002E	     5221	ADD #4,SP
  0030	     4130	RET
- 0032	     4314	MOV #1,R4
- 0034	     4036	MOV #10,R6
- 0036	     000A
- 0038	     9406	CMP R4,R6
- 003A	     3805	JL $+12, goes to  0046
- 003C	     4406	MOV R4,R6
- 003E	     5606	ADD R6,R6
- 0040	     4605	MOV R6,R5
- 0042	     5314	ADD #1,R4
- 0044	     3FF7	JMP $-16, goes to  0034
- 0046	     4034	MOV #10,R4
- 0048	     000A
- 004A	     9314	CMP #1,R4
- 004C	     3802	JL $+6, goes to  0052
- 004E	     8324	SUB #2,R4
- 0050	     3FFC	JMP $-6, goes to  004A
- 0052	     4130	RET
- 0054	     12B0	CALL #0
- 0056	     0000
- 0058	     12B0	CALL #0
- 005A	     0000
- 005C	     4130	RET
+fixups:
+
+section     1	c   34	q
+ 0000	     4314	MOV #1,R4
+ 0002	     4036	MOV #10,R6
+ 0004	     000A
+ 0006	     9406	CMP R4,R6
+ 0008	     3805	JL $+12, goes to  0014
+ 000A	     4406	MOV R4,R6
+ 000C	     5606	ADD R6,R6
+ 000E	     4605	MOV R6,R5
+ 0010	     5314	ADD #1,R4
+ 0012	     3FF7	JMP $-16, goes to  0002
+ 0014	     4034	MOV #10,R4
+ 0016	     000A
+ 0018	     9314	CMP #1,R4
+ 001A	     3802	JL $+6, goes to  0020
+ 001C	     8324	SUB #2,R4
+ 001E	     3FFC	JMP $-6, goes to  0018
+ 0020	     4130	RET
+fixups:
+
+section     2	c   10	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     12B0	CALL #0
+ 0006	     0000
+ 0008	     4130	RET
+fixups:
+ 0007	  0     1     0
+ 0003	  0     0     0
+
+section     3	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    2
+

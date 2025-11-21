@@ -18,11 +18,19 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
 
       version: 0: legacy mode, 1: legacy RAM execution mode, 2: new node, 3: new RAM execution mode*)
 
-  IMPORT SYSTEM, Modules, Display, G := OMSPG, Files, FilesEx, Texts, Oberon;
+  IMPORT SYSTEM, Modules, Display, G := OMSPG, Files, FilesEx, Texts, Oberon, TextsEx;
   CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7; notsupported = 8;
     RAMOrigin = 200H; FlashEnd = 10000H;
 
-  TYPE Module = POINTER TO ModDesc;
+  TYPE Object = POINTER TO ObjectDesc;
+    ObjectDesc = RECORD
+      seg: CHAR;
+      mno: BYTE; a, size: INTEGER; (*original address of the object (procedure, string or stored constant*)
+      org, uadr: INTEGER; (*Flash offset and top address of the usage tracking list*)
+      next: Object
+    END;
+
+    Module = POINTER TO ModDesc;
     ModuleName = ARRAY 32 OF CHAR;
 
     ModDesc = RECORD
@@ -30,8 +38,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       next: Module;
       key, num, size: INTEGER;
       data, conststo, codeexe, codesto, codesize: INTEGER;  (*addresses*)
+      ent: ARRAY 64 OF INTEGER;
       codeseg: BYTE;
-      ent: ARRAY 64 OF INTEGER
+      rl, tdl, nrl: Object (*referenced, to do, unreferenced lists*)
     END;
 
     Segment = POINTER TO SegmentDesc;
@@ -41,7 +50,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
       m: ARRAY FlashEnd OF BYTE
     END;
 
-  VAR first, last: Module;
+  VAR first, last, firstM, lastM: Module;
     RAMAllocPtr, RAMLimit, limit, res: INTEGER;
     Flash: Segment; vector: ARRAY 32 OF INTEGER;
     importing, imported: ModuleName;
@@ -176,8 +185,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
         FilesEx.ReadHalfWord(R, n); (*In MSP430 implementation, program size is counted in bytes*)
         mod.codesto := f; mod.codesize := n;
         IF codeseg = 1 THEN mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, n)
-        ELSE mod.codeexe := Flash.origin + f END;
-        WHILE n > 0 DO FilesEx.ReadHalfWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END ;  (*program code*)
+        ELSE mod.codeexe := Flash.origin + f
+        END;
+        WHILE n > 0 DO FilesEx.ReadHalfWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END ; (*program code*)
         Files.ReadByte(R, nv); (*number of entries in vector table*)
         FOR i := 0 TO nv - 1 DO FilesEx.ReadHalfWord(R, w); vec[i] := w END; (*module vector table*)
         FilesEx.ReadHalfWord(R, n); (*number of entries*)
@@ -231,19 +241,194 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     newmod := mod
   END LinkOne;
 
+  PROCEDURE printObject(o: Object);
+  BEGIN Texts.Write(W, o.seg); Texts.WriteInt(W, o.mno, 1);
+    Texts.Write(W, "."); TextsEx.WriteHexVLen(W, o.a, 4, FALSE);
+    Texts.WriteString(W, " ^"); TextsEx.WriteHexVLen(W, o.org, 4, FALSE);
+    Texts.WriteString(W, "+"); TextsEx.WriteHexVLen(W, o.uadr, 4, FALSE);
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END printObject;
+
+  PROCEDURE Mark(name: ARRAY OF CHAR; VAR newmod: Module);
+    VAR mod!, impmod!: Module; name1: ModuleName;
+      F!: Files.File; R!: Files.Rider;
+      f, w, s, i, n: INTEGER;
+      b: BYTE; ch: CHAR;
+      o!, nx!, pr!, td!: Object;
+      import!: ARRAY 16 OF Module; nbi: INTEGER;
+
+    PROCEDURE findObject(l: Object; mno: BYTE; seg: CHAR; a: INTEGER): Object;
+    VAR o!: Object;
+    BEGIN o := l;
+      WHILE (o # NIL) & ((ORD(o.mno > 0) # ORD(mno > 0)) OR (o.seg # seg) OR (o.a # a)) DO o := o.next END
+
+      RETURN o
+    END findObject;
+
+    PROCEDURE takeObject(VAR l: Object; mno: BYTE; seg: CHAR; a: INTEGER);
+    (*remove object from list*)
+    VAR o!, p!: Object;
+    BEGIN o := l; p := NIL;
+      WHILE (o # NIL) & ((ORD(o.mno > 0) # ORD(mno > 0)) OR (o.seg # seg) OR (o.a # a)) DO p := o; o := o.next END;
+      IF o # NIL THEN IF p = NIL THEN l := o.next ELSE p.next := o.next END END
+    END takeObject;
+
+    PROCEDURE putObject(VAR l: Object; mno: BYTE; seg: CHAR; a, size, org, uadr: INTEGER);
+    (*put object in list*)
+    VAR o!: Object;
+    BEGIN o := findObject(l, mno, seg, a);
+      IF o = NIL THEN NEW(o); o.mno := mno; o.seg := seg; o.a := a; o.size := size;
+        o.org := org; o.uadr := uadr; o.next := l; l := o
+      END
+    END putObject;
+
+    PROCEDURE addObject(m: Module; ref: BOOLEAN; mno: BYTE; seg: CHAR; a, size, org, uadr: INTEGER);
+    (*add an object in the appropriate list of the module*)
+    VAR o!: Object;
+    BEGIN o := findObject(m.rl, mno, seg, a);
+      IF o = NIL THEN (*not already referenced*)
+        o := findObject(m.tdl, mno, seg, a);
+        IF o = NIL THEN (*not already in to do list*)
+          IF ref THEN takeObject(m.nrl, mno, seg, a); (*remove form non referenced list*)
+            putObject(m.tdl, mno, seg, a, size, org, uadr) (*and put it in to do list*)
+          ELSE putObject(m.nrl, mno, seg, a, size, org, uadr) (*put object in unreferenced list*)
+          END
+        END
+      END
+    END addObject;
+
+    PROCEDURE skipChainArray(VAR R: Files.Rider);
+      VAR w: INTEGER; b: BYTE;
+    BEGIN FilesEx.ReadHalfWord(R, w); (*usage adress*)
+      WHILE w # 0 DO Files.ReadByte(R, b); (*module index*)
+        FilesEx.ReadHalfWord(R, w); (*adress or number of object *) FilesEx.ReadHalfWord(R, w); (*offset*)
+        FilesEx.ReadHalfWord(R, w); (*size*)
+        FilesEx.ReadHalfWord(R, w); (*usage adress*)
+      END
+    END skipChainArray;
+
+    PROCEDURE parseChainArray(VAR R: Files.Rider; import: ARRAY OF Module; seg: CHAR; org: INTEGER; ref: BOOLEAN);
+      VAR adr, w, t, s: INTEGER; mno: BYTE; o!: Object;
+    BEGIN FilesEx.ReadHalfWord(R, adr); (*usage adress*)
+      WHILE adr # 0 DO Files.ReadByte(R, mno); (*module index*)
+        FilesEx.ReadHalfWord(R, w); (*adress or number of object *) FilesEx.ReadHalfWord(R, t); (*offset*)
+        FilesEx.ReadHalfWord(R, s); (*size*)
+        addObject(import[mno], ref, mno, seg, w, s, org, adr);
+        FilesEx.ReadHalfWord(R, adr); (*usage adress*)
+      END
+    END parseChainArray;
+
+    PROCEDURE findMod(name: ARRAY OF CHAR): Module;
+      VAR mod!: Module;
+    BEGIN mod := firstM;
+      WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END
+
+     RETURN mod
+    END findMod;
+
+    PROCEDURE appendMod(newmod: Module);
+      VAR i: INTEGER;
+    BEGIN
+      i := 0; REPEAT INC(i) UNTIL newmod.name[i] = 0X; REPEAT newmod.name[i] := 0X; INC(i) UNTIL i=LEN(newmod.name);
+      IF firstM = NIL THEN firstM := newmod ELSE lastM.next := newmod END;
+      lastM := newmod; newmod.next := NIL;
+    END appendMod;
+
+    PROCEDURE isRefBy(t, c: Object): BOOLEAN;
+      (*returns TRUE if the object t is referenced by the object c*)
+      VAR uadr, p: INTEGER;
+    BEGIN ASSERT(c.mno = 0); (*not external*)
+      uadr := t.uadr;
+      WHILE (uadr # 0) & ((t.uadr  < c.a) OR (t.uadr >= c.a + c.size)) DO
+        p := uadr; uadr := GetWordAt(t.org + uadr);
+IF uadr >= p THEN printObject(t); printObject(c) END;
+        ASSERT(uadr < p)
+      END
+
+      RETURN uadr # 0
+    END isRefBy;
+
+  BEGIN error(noerr, name); mod := findMod(name);
+    Texts.WriteString(W, "Mark "); Texts.WriteString(W, name); Texts.WriteLn(W);
+    IF mod = NIL THEN NEW(mod); mod.name := name; appendMod(mod) END;
+    IF (mod.rl = NIL) (*first visit*) OR (mod.tdl # NIL) (*new refs*) THEN (*load objects and mark those referenced in body*)
+      Check(name);
+      IF res = noerr THEN F := ThisFile(name) ELSE F := NIL END ;
+      IF F # NIL THEN
+        Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, w); mod.key := w; Files.ReadByte(R, b); (*version*)
+        IF b IN {2, 3} THEN FilesEx.ReadHalfWord(R, w); (*skip flashsize*)
+          Files.ReadString(R, name1); import[0] := mod; nbi := 0; (*load imports table*)
+          WHILE (name1[0] # 0X) DO Files.ReadInt(R, w); (*expected import key*)
+            impmod := findMod(name1);
+            IF impmod = NIL THEN NEW(impmod); impmod.name := name1; impmod.key := w; appendMod(impmod)
+            ELSE IF w # impmod.key THEN error(badkey, name1) END
+            END; INC(nbi); import[nbi] := impmod;
+            Files.ReadString(R, name1)
+          END;
+          f := 0; mod.conststo := f; (*const section storage address*)
+          FilesEx.ReadHalfWord(R, n); (*number of type descriptors words*)
+          WHILE n > 0 DO FilesEx.ReadHalfWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n) END;  (*type descriptors*)
+          FilesEx.ReadHalfWord(R, w); (*size of data*)
+          FilesEx.ReadHalfWord(R, n); (*size of stored constants*)
+          WHILE n > 0 DO Files.Read(R, ch); Flash.m[f] := ORD(ch); INC(f); DEC(n) END; (*stored constants*)
+          WHILE f MOD G.WordSize # 0 DO Flash.m[f] := 0FFH; INC(f) END; (*align to G.WordSize*)
+          FilesEx.ReadHalfWord(R, n); (*In MSP430 implementation, program size is counted in bytes*)
+          mod.codesto := f;
+          WHILE n > 0 DO FilesEx.ReadHalfWord(R, w); PutWordAt(f, w); INC(f, G.WordSize); DEC(n, G.WordSize) END; (*skip program code*)
+          Files.ReadByte(R, b); (*number of entries in vector table*)
+          FOR i := 0 TO b - 1 DO FilesEx.ReadHalfWord(R, w) END; (*skip module vector table*)
+          FilesEx.ReadHalfWord(R, n); (*number of entries*)
+          Files.Read(R, ch); FilesEx.ReadHalfWord(R, w); FilesEx.ReadHalfWord(R, s);
+          addObject(mod, TRUE, 0, ch, w, s, 0, 0); (*first entry is body adress*)
+          FOR i := 1 TO n - 1 DO Files.Read(R, ch); FilesEx.ReadHalfWord(R, w); FilesEx.ReadHalfWord(R, s); (*entries*)
+            addObject(mod, FALSE, 0, ch, w, s, 0, 0)
+          END;
+          parseChainArray(R, import, "c", mod.codesto, FALSE); (*procedures*)
+          parseChainArray(R, import, "c", mod.codesto, TRUE); (*handlers*)
+          skipChainArray(R); (*variables in code*)
+          parseChainArray(R, import, "k", mod.codesto, FALSE); (*constants in code*)
+          skipChainArray(R); (*variables in stored constants*)
+          parseChainArray(R, import, "k", mod.conststo, FALSE); (*constants in stored constants*)
+          FilesEx.ReadHalfWord(R, w); (*entry*)
+          Files.Read(R, ch);
+          IF ch = "O" THEN (*File is OK, we can process the to do list*)
+            Texts.WriteString(W, "format OK"); Texts.WriteLn(W);
+            WHILE mod.tdl # NIL DO td := mod.tdl; mod.tdl := td.next; o := mod.nrl; pr := NIL;
+              WHILE o # NIL DO nx := o.next;
+                IF isRefBy(o, td) THEN printObject(o);
+                  IF pr = NIL THEN mod.nrl := nx ELSE pr.next := nx END; (*remove object from the unreferenced list*)
+                  addObject(import[o.mno], TRUE, 0, o.seg, o.a, o.size, o.org, o.uadr) (*assign object to the to do list*)
+                ELSE pr := o
+                END; o := nx
+              END
+            END;
+            (*Mark imported modules*)
+            i := 1; WHILE i < nbi DO Mark(import[i].name, impmod); INC(i) END
+          ELSE mod := NIL; error(badfile, name)
+          END
+        ELSE error(notsupported, name)
+        END
+      ELSE error(nofile, name)
+      END;
+    END
+  END Mark;
+
   PROCEDURE Link*;  (*link multiple object files together and create a single MSP430 TI-TXT file M.txt from them*)
     VAR i, x, vecsize, isrtrap, count, oldcol: INTEGER;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
       M!, p!: Module;
       name: ModuleName;
+      modlist: ARRAY 64 OF ModuleName;
+      nbmod, mi: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := noerr; count := 0;
     Flash := SYSTEM.VAL(Segment, Modules.AllocPtr); FOR i := 0 TO 31 DO vector[i] := 0FFFFH END;
     IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE vecsize := 0; res := nopar END;
     IF S.class = Texts.Int THEN  limit := S.i - vecsize; Flash.origin := FlashEnd - S.i; Flash.allocPtr := 0; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
-    IF (res = noerr) & (S.class = Texts.Name) THEN first := NIL; last := NIL;
-      REPEAT LinkOne(S.s, M); Texts.Scan(S) UNTIL (S.class # Texts.Name) OR (res # noerr);
+    IF (res = noerr) & (S.class = Texts.Name) THEN nbmod := 0; REPEAT modlist[nbmod] := S.s; INC(nbmod); Texts.Scan(S) UNTIL S.class # Texts.Name;
+(*      firstM := NIL; lastM := NIL; mi := 0; REPEAT Mark(modlist[mi], M); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);*)
+      first := NIL; last := NIL; mi := 0; REPEAT LinkOne(modlist[mi], M); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);
       IF res = noerr THEN Texts.WriteString(W, "  linking");
         (*prolog*) vector[31] := Flash.origin + Flash.allocPtr; p := first;
         (*MOV RAMLimit, SP*) EmitWord(4031H); EmitWord(RAMLimit);
@@ -254,7 +439,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
             (*MOV Flash.origin + p.codesto,R14*) EmitWord(403EH);  EmitWord(Flash.origin + p.codesto);
             (*MOV @R14+,p.codeexe - (Flash.origin + p.codesto)(R14) - 2*) EmitWord(4EBEH); EmitWord(p.codeexe - Flash.origin - p.codesto - 2);
             (*SUB #1,R15*) EmitWord(831FH);
-            (*JNE #-4*2*) EmitWord(23FCH)
+            (*JNE $-8*) EmitWord(23FCH)
           END;
           INC(count); IF count MOD 8 = 0 THEN count := 0; Texts.WriteLn(W) END;
           IF p.ent[0] >= 0 THEN (*init code present: CALL p.ent[0]*); EmitWord(12B0H); EmitWord(p.ent[0]) END;
@@ -312,6 +497,6 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 31.08.2024*)
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END Link;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP linker  AP 6.8.20 / CS 19.04.25");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP linker  AP 6.8.20 / CS 26.10.25");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
 END OMSPL.

@@ -1,48 +1,50 @@
 MODULE testDeRef;
-  IMPORT SYSTEM;
   TYPE prec = POINTER TO rec;
     rec = RECORD
       x, y: INTEGER
     END;
   VAR r: prec; a: rec;
-BEGIN r := SYSTEM.VAL(prec, SYSTEM.ADR(a));
+BEGIN r := PTR(prec, a);
   r.x := r.y
 END testDeRef.
 
 OMSPP.Compile testDeRef.Mod~
 OMSPTool.DecObj testDeRef.mpc
 decode testDeRef.mpc
-testDeRef C0BB9E85 Flash    30
+testDeRef C2D26B0C
 imports:
-type descriptors
- 0004 FFFF FFFF FFFF
-data     6
-strings
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+section     0	d    8	rec
+ 04 00 FF FF FF FF FF FF
+fixups:
 
-entries
- c 0000
-fixup procedures in code space chains
-fixup handlers in vector space chains
-fixup data in code space chains
- 000C     0	 0000
- 0002     0	 0002
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0000
-code    22
+section     1	r    2	r
+fixups:
+
+section     2	r    4	a
+fixups:
+
+section     3	c   22	module body
  0000	     40B2	MOV #0,&0
  0002	     0000
  0004	     0000
- 0006	     421F	MOV &4,R15
- 0008	     0004
- 000A	     421E	MOV &8,R14
- 000C	     0008
+ 0006	     421F	MOV &5,R15
+ 0008	     0005
+ 000A	     421E	MOV &9,R14
+ 000C	     0009
  000E	     4E9F	MOV 2(R14),0(R15)
  0010	     0002
  0012	     0000
  0014	     4130	RET
+fixups:
+ 000D	  0     1     0
+ 0003	  0     2     0
+
+section     4	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    3
+
