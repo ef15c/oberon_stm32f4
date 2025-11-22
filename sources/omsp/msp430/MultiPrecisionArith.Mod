@@ -97,43 +97,26 @@ END MultiPrecisionArith.
 OMSPP.Compile MultiPrecisionArith.Mod~
 OMSPTool.DecSym MultiPrecisionArith.sms
 decode MultiPrecisionArith.sms
-MultiPrecisionArith F94936B3  1
-   1 mulu1632 [0  form = 10  size = 2 [^9] leaf UR 03F0( class = 3 R7 [^4] class = 3 R6 [^4] class = 2 R5 [^4] class = 2 R4 [^4])]       1
-   1 SetLongInt [0  form = 10  size = 2 [^9] leaf UR 0070( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]       2
-   1 SubLongInt [0  form = 10  size = 2 [^9] leaf UR 0070( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]       3
-   1 AddLongInt [0  form = 10  size = 2 [^9] leaf UR 0070( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]       4
-   1 LongNegate [0  form = 10  size = 2 [^9] leaf UR 0030( class = 3 R5 [^4] class = 3 R4 [^4])]       5
-   1 MulLongInt [0  form = 10  size = 2 [^9] leaf UR 03F0( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]       6
-   1 MulLongLong [0  form = 10  size = 2 [^9] leaf UR 07F0( class = 2 R7 [^4] class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]       7
-   1 DivLongLong [0  form = 10  size = 2 [^9] leaf UR 1FF0( class = 3 R7 [^4] class = 3 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]       8
-   1 ASRLongInt [0  form = 10  size = 2 [^9] leaf UR 0070( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]       9
-   1 AbsLong [0  form = 10  size = 2 [^9] leaf UR 0030( class = 3 R5 [^4] class = 3 R4 [^4])]      10
-   1 SubLongLong [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R7 [^4] class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]      11
-   1 CmpLongLong [0  form = 10  size = 2 [^4] leaf UR 01F0( class = 2 R8 [^4] class = 2 R7 [^4] class = 2 R6 [^4] class = 2 R5 [^4])]      12
+MultiPrecisionArith 0E8B91C3  2
+   9 mulu1632 [0  form = 10 [^9] leaf UR 03F0( class = 3 R7 [^4] class = 3 R6 [^4] class = 2 R5 [^4] class = 2 R4 [^4])]     1
+   9 SetLongInt [0  form = 10 [^9] leaf UR 0070( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]     2
+   9 SubLongInt [0  form = 10 [^9] leaf UR 0070( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]     3
+   9 AddLongInt [0  form = 10 [^9] leaf UR 0070( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]     4
+   9 LongNegate [0  form = 10 [^9] leaf UR 0030( class = 3 R5 [^4] class = 3 R4 [^4])]     5
+   9 MulLongInt [0  form = 10 [^9] leaf UR 03F0( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]     6
+   9 MulLongLong [0  form = 10 [^9] leaf UR 07F0( class = 2 R7 [^4] class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]     7
+   9 DivLongLong [0  form = 10 [^9] leaf UR 1FF0( class = 3 R7 [^4] class = 3 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]     8
+   9 ASRLongInt [0  form = 10 [^9] leaf UR 0070( class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]     9
+   9 AbsLong [0  form = 10 [^9] leaf UR 0030( class = 3 R5 [^4] class = 3 R4 [^4])]    10
+   9 SubLongLong [0  form = 10 [^9] leaf UR 00F0( class = 2 R7 [^4] class = 2 R6 [^4] class = 3 R5 [^4] class = 3 R4 [^4])]    11
+   9 CmpLongLong [0  form = 10 [^4] leaf UR 01F0( class = 2 R8 [^4] class = 2 R7 [^4] class = 2 R6 [^4] class = 2 R5 [^4])]    12
 
 OMSPTool.DecObj MultiPrecisionArith.mpc
 decode MultiPrecisionArith.mpc
-MultiPrecisionArith F94936B3 Flash   506
+MultiPrecisionArith 0E8B91C3
 imports:
-type descriptors
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 01F8 c 0000 c 0028 c 003C c 0046 c 0050 c 0062 c 00C0 c 0128 c 01B0 c 01BE c 01D6 c 01E0
-fixup procedures in code space chains
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  01F8
-code   506
+section     0	c   40	mulu1632
  0000	     4386	MOV #0,0(R6)
  0002	     0000
  0004	     4387	MOV #0,0(R7)
@@ -154,236 +137,282 @@ code   506
  0022	     1004	RRC R4
  0024	     3FF3	JMP $-24, goes to  000C
  0026	     4130	RET
- 0028	     4685	MOV R6,0(R5)
+fixups:
+
+section     1	c   20	SetLongInt
+ 0000	     4685	MOV R6,0(R5)
+ 0002	     0000
+ 0004	     9306	CMP #0,R6
+ 0006	     3403	JGE $+8, goes to  000E
+ 0008	     43B4	MOV #-1,0(R4)
+ 000A	     0000
+ 000C	     3C02	JMP $+6, goes to  0012
+ 000E	     4384	MOV #0,0(R4)
+ 0010	     0000
+ 0012	     4130	RET
+fixups:
+
+section     2	c   10	SubLongInt
+ 0000	     8685	SUB R6,0(R5)
+ 0002	     0000
+ 0004	     7384	SUBC #0,0(R4)
+ 0006	     0000
+ 0008	     4130	RET
+fixups:
+
+section     3	c   10	AddLongInt
+ 0000	     5685	ADD R6,0(R5)
+ 0002	     0000
+ 0004	     6384	ADDC #0,0(R4)
+ 0006	     0000
+ 0008	     4130	RET
+fixups:
+
+section     4	c   18	LongNegate
+ 0000	     E3B5	XOR #-1,0(R5)
+ 0002	     0000
+ 0004	     E3B4	XOR #-1,0(R4)
+ 0006	     0000
+ 0008	     5395	ADD #1,0(R5)
+ 000A	     0000
+ 000C	     6384	ADDC #0,0(R4)
+ 000E	     0000
+ 0010	     4130	RET
+fixups:
+
+section     5	c   94	MulLongInt
+ 0000	     4347	MOV.B #0,R7
+ 0002	     9384	CMP #0,0(R4)
+ 0004	     0000
+ 0006	     3409	JGE $+20, goes to  001A
+ 0008	     E357	XOR.B #1,R7
+ 000A	     E3B5	XOR #-1,0(R5)
+ 000C	     0000
+ 000E	     E3B4	XOR #-1,0(R4)
+ 0010	     0000
+ 0012	     5395	ADD #1,0(R5)
+ 0014	     0000
+ 0016	     6384	ADDC #0,0(R4)
+ 0018	     0000
+ 001A	     9306	CMP #0,R6
+ 001C	     3403	JGE $+8, goes to  0024
+ 001E	     E357	XOR.B #1,R7
+ 0020	     E336	XOR #-1,R6
+ 0022	     5316	ADD #1,R6
+ 0024	     4429	MOV @R4,R9
+ 0026	     4528	MOV @R5,R8
+ 0028	     4384	MOV #0,0(R4)
  002A	     0000
- 002C	     9306	CMP #0,R6
- 002E	     3403	JGE $+8, goes to  0036
- 0030	     43B4	MOV #-1,0(R4)
- 0032	     0000
- 0034	     3C02	JMP $+6, goes to  003A
- 0036	     4384	MOV #0,0(R4)
- 0038	     0000
- 003A	     4130	RET
- 003C	     8685	SUB R6,0(R5)
- 003E	     0000
- 0040	     7384	SUBC #0,0(R4)
- 0042	     0000
- 0044	     4130	RET
- 0046	     5685	ADD R6,0(R5)
- 0048	     0000
- 004A	     6384	ADDC #0,0(R4)
- 004C	     0000
- 004E	     4130	RET
- 0050	     E3B5	XOR #-1,0(R5)
+ 002C	     4385	MOV #0,0(R5)
+ 002E	     0000
+ 0030	     9306	CMP #0,R6
+ 0032	     240A	JEQ $+22, goes to  0048
+ 0034	     C312	BIC #1,SR
+ 0036	     1006	RRC R6
+ 0038	     2804	JNC $+10, goes to  0042
+ 003A	     5885	ADD R8,0(R5)
+ 003C	     0000
+ 003E	     6984	ADDC R9,0(R4)
+ 0040	     0000
+ 0042	     5808	ADD R8,R8
+ 0044	     6909	ADDC R9,R9
+ 0046	     3FF4	JMP $-22, goes to  0030
+ 0048	     9347	CMP.B #0,R7
+ 004A	     2408	JEQ $+18, goes to  005C
+ 004C	     E3B5	XOR #-1,0(R5)
+ 004E	     0000
+ 0050	     E3B4	XOR #-1,0(R4)
  0052	     0000
- 0054	     E3B4	XOR #-1,0(R4)
+ 0054	     5395	ADD #1,0(R5)
  0056	     0000
- 0058	     5395	ADD #1,0(R5)
+ 0058	     6384	ADDC #0,0(R4)
  005A	     0000
- 005C	     6384	ADDC #0,0(R4)
- 005E	     0000
- 0060	     4130	RET
- 0062	     4347	MOV.B #0,R7
- 0064	     9384	CMP #0,0(R4)
- 0066	     0000
- 0068	     3409	JGE $+20, goes to  007C
- 006A	     E357	XOR.B #1,R7
- 006C	     E3B5	XOR #-1,0(R5)
- 006E	     0000
- 0070	     E3B4	XOR #-1,0(R4)
- 0072	     0000
- 0074	     5395	ADD #1,0(R5)
- 0076	     0000
- 0078	     6384	ADDC #0,0(R4)
- 007A	     0000
- 007C	     9306	CMP #0,R6
- 007E	     3403	JGE $+8, goes to  0086
- 0080	     E357	XOR.B #1,R7
- 0082	     E336	XOR #-1,R6
- 0084	     5316	ADD #1,R6
- 0086	     4429	MOV @R4,R9
- 0088	     4528	MOV @R5,R8
- 008A	     4384	MOV #0,0(R4)
- 008C	     0000
- 008E	     4385	MOV #0,0(R5)
- 0090	     0000
- 0092	     9306	CMP #0,R6
- 0094	     240A	JEQ $+22, goes to  00AA
- 0096	     C312	BIC #1,SR
- 0098	     1006	RRC R6
- 009A	     2804	JNC $+10, goes to  00A4
- 009C	     5885	ADD R8,0(R5)
- 009E	     0000
- 00A0	     6984	ADDC R9,0(R4)
- 00A2	     0000
- 00A4	     5808	ADD R8,R8
- 00A6	     6909	ADDC R9,R9
- 00A8	     3FF4	JMP $-22, goes to  0092
- 00AA	     9347	CMP.B #0,R7
- 00AC	     2408	JEQ $+18, goes to  00BE
- 00AE	     E3B5	XOR #-1,0(R5)
- 00B0	     0000
- 00B2	     E3B4	XOR #-1,0(R4)
- 00B4	     0000
- 00B6	     5395	ADD #1,0(R5)
- 00B8	     0000
- 00BA	     6384	ADDC #0,0(R4)
- 00BC	     0000
- 00BE	     4130	RET
- 00C0	     4348	MOV.B #0,R8
- 00C2	     9384	CMP #0,0(R4)
- 00C4	     0000
- 00C6	     3409	JGE $+20, goes to  00DA
- 00C8	     E358	XOR.B #1,R8
- 00CA	     E3B5	XOR #-1,0(R5)
- 00CC	     0000
- 00CE	     E3B4	XOR #-1,0(R4)
- 00D0	     0000
- 00D2	     5395	ADD #1,0(R5)
- 00D4	     0000
- 00D6	     6384	ADDC #0,0(R4)
- 00D8	     0000
- 00DA	     9306	CMP #0,R6
- 00DC	     3405	JGE $+12, goes to  00E8
- 00DE	     E358	XOR.B #1,R8
- 00E0	     E337	XOR #-1,R7
- 00E2	     E336	XOR #-1,R6
- 00E4	     5317	ADD #1,R7
- 00E6	     6306	ADDC #0,R6
- 00E8	     442A	MOV @R4,R10
- 00EA	     4529	MOV @R5,R9
- 00EC	     4384	MOV #0,0(R4)
- 00EE	     0000
- 00F0	     4385	MOV #0,0(R5)
- 00F2	     0000
- 00F4	     9306	CMP #0,R6
- 00F6	     240D	JEQ $+28, goes to  0112
- 00F8	     9307	CMP #0,R7
- 00FA	     240B	JEQ $+24, goes to  0112
- 00FC	     C312	BIC #1,SR
- 00FE	     1006	RRC R6
- 0100	     1007	RRC R7
- 0102	     2804	JNC $+10, goes to  010C
- 0104	     5985	ADD R9,0(R5)
- 0106	     0000
- 0108	     6A84	ADDC R10,0(R4)
- 010A	     0000
- 010C	     5909	ADD R9,R9
- 010E	     6A0A	ADDC R10,R10
- 0110	     3FF1	JMP $-28, goes to  00F4
- 0112	     9348	CMP.B #0,R8
- 0114	     2408	JEQ $+18, goes to  0126
- 0116	     E3B5	XOR #-1,0(R5)
- 0118	     0000
- 011A	     E3B4	XOR #-1,0(R4)
- 011C	     0000
- 011E	     5395	ADD #1,0(R5)
- 0120	     0000
- 0122	     6384	ADDC #0,0(R4)
- 0124	     0000
- 0126	     4130	RET
- 0128	     430C	MOV #0,R12
- 012A	     9386	CMP #0,0(R6)
- 012C	     0000
- 012E	     3409	JGE $+20, goes to  0142
- 0130	     E3B7	XOR #-1,0(R7)
- 0132	     0000
- 0134	     E3B6	XOR #-1,0(R6)
- 0136	     0000
- 0138	     5397	ADD #1,0(R7)
- 013A	     0000
- 013C	     6386	ADDC #0,0(R6)
- 013E	     0000
- 0140	     431C	MOV #1,R12
- 0142	     9384	CMP #0,0(R4)
- 0144	     0000
- 0146	     3409	JGE $+20, goes to  015A
- 0148	     E3B5	XOR #-1,0(R5)
- 014A	     0000
- 014C	     E3B4	XOR #-1,0(R4)
- 014E	     0000
- 0150	     5395	ADD #1,0(R5)
- 0152	     0000
- 0154	     6384	ADDC #0,0(R4)
- 0156	     0000
- 0158	     E33C	XOR #-1,R12
- 015A	     430B	MOV #0,R11
- 015C	     430A	MOV #0,R10
- 015E	     4309	MOV #0,R9
- 0160	     4318	MOV #1,R8
- 0162	     55A5	ADD @R5,0(R5)
- 0164	     0000
- 0166	     64A4	ADDC @R4,0(R4)
- 0168	     0000
- 016A	     6A0A	ADDC R10,R10
- 016C	     6B0B	ADDC R11,R11
- 016E	     9B86	CMP R11,0(R6)
- 0170	     0000
- 0172	     3804	JL $+10, goes to  017C
- 0174	     962B	CMP @R6,R11
- 0176	     2004	JNE $+10, goes to  0180
- 0178	     972A	CMP @R7,R10
- 017A	     2802	JNC $+6, goes to  0180
- 017C	     872A	SUB @R7,R10
- 017E	     762B	SUBC @R6,R11
- 0180	     6808	ADDC R8,R8
- 0182	     6909	ADDC R9,R9
- 0184	     2BEE	JNC $-34, goes to  0162
- 0186	     B31C	BIT #1,R12
- 0188	     2404	JEQ $+10, goes to  0192
- 018A	     E338	XOR #-1,R8
- 018C	     E339	XOR #-1,R9
- 018E	     5318	ADD #1,R8
- 0190	     6309	ADDC #0,R9
- 0192	     B32C	BIT #2,R12
- 0194	     2404	JEQ $+10, goes to  019E
- 0196	     E33A	XOR #-1,R10
- 0198	     E33B	XOR #-1,R11
- 019A	     531A	ADD #1,R10
- 019C	     630B	ADDC #0,R11
- 019E	     4984	MOV R9,0(R4)
- 01A0	     0000
- 01A2	     4885	MOV R8,0(R5)
- 01A4	     0000
- 01A6	     4B86	MOV R11,0(R6)
- 01A8	     0000
- 01AA	     4A87	MOV R10,0(R7)
- 01AC	     0000
- 01AE	     4130	RET
- 01B0	     9306	CMP #0,R6
- 01B2	     2404	JEQ $+10, goes to  01BC
- 01B4	     1124	RRA @R4
- 01B6	     1025	RRC @R5
- 01B8	     8316	SUB #1,R6
- 01BA	     3FFA	JMP $-10, goes to  01B0
- 01BC	     4130	RET
- 01BE	     9384	CMP #0,0(R4)
- 01C0	     0000
- 01C2	     3408	JGE $+18, goes to  01D4
- 01C4	     E3B5	XOR #-1,0(R5)
- 01C6	     0000
- 01C8	     E3B4	XOR #-1,0(R4)
- 01CA	     0000
- 01CC	     5395	ADD #1,0(R5)
- 01CE	     0000
- 01D0	     6384	ADDC #0,0(R4)
- 01D2	     0000
- 01D4	     4130	RET
- 01D6	     8785	SUB R7,0(R5)
- 01D8	     0000
- 01DA	     7684	SUBC R6,0(R4)
- 01DC	     0000
- 01DE	     4130	RET
- 01E0	     8806	SUB R8,R6
- 01E2	     7705	SUBC R7,R5
- 01E4	     3402	JGE $+6, goes to  01EA
- 01E6	     4334	MOV #-1,R4
- 01E8	     3C06	JMP $+14, goes to  01F6
- 01EA	     2004	JNE $+10, goes to  01F4
- 01EC	     9306	CMP #0,R6
- 01EE	     2002	JNE $+6, goes to  01F4
- 01F0	     4304	MOV #0,R4
- 01F2	     3C01	JMP $+4, goes to  01F6
- 01F4	     4314	MOV #1,R4
- 01F6	     4130	RET
- 01F8	     4130	RET
+ 005C	     4130	RET
+fixups:
+
+section     6	c  104	MulLongLong
+ 0000	     4348	MOV.B #0,R8
+ 0002	     9384	CMP #0,0(R4)
+ 0004	     0000
+ 0006	     3409	JGE $+20, goes to  001A
+ 0008	     E358	XOR.B #1,R8
+ 000A	     E3B5	XOR #-1,0(R5)
+ 000C	     0000
+ 000E	     E3B4	XOR #-1,0(R4)
+ 0010	     0000
+ 0012	     5395	ADD #1,0(R5)
+ 0014	     0000
+ 0016	     6384	ADDC #0,0(R4)
+ 0018	     0000
+ 001A	     9306	CMP #0,R6
+ 001C	     3405	JGE $+12, goes to  0028
+ 001E	     E358	XOR.B #1,R8
+ 0020	     E337	XOR #-1,R7
+ 0022	     E336	XOR #-1,R6
+ 0024	     5317	ADD #1,R7
+ 0026	     6306	ADDC #0,R6
+ 0028	     442A	MOV @R4,R10
+ 002A	     4529	MOV @R5,R9
+ 002C	     4384	MOV #0,0(R4)
+ 002E	     0000
+ 0030	     4385	MOV #0,0(R5)
+ 0032	     0000
+ 0034	     9306	CMP #0,R6
+ 0036	     240D	JEQ $+28, goes to  0052
+ 0038	     9307	CMP #0,R7
+ 003A	     240B	JEQ $+24, goes to  0052
+ 003C	     C312	BIC #1,SR
+ 003E	     1006	RRC R6
+ 0040	     1007	RRC R7
+ 0042	     2804	JNC $+10, goes to  004C
+ 0044	     5985	ADD R9,0(R5)
+ 0046	     0000
+ 0048	     6A84	ADDC R10,0(R4)
+ 004A	     0000
+ 004C	     5909	ADD R9,R9
+ 004E	     6A0A	ADDC R10,R10
+ 0050	     3FF1	JMP $-28, goes to  0034
+ 0052	     9348	CMP.B #0,R8
+ 0054	     2408	JEQ $+18, goes to  0066
+ 0056	     E3B5	XOR #-1,0(R5)
+ 0058	     0000
+ 005A	     E3B4	XOR #-1,0(R4)
+ 005C	     0000
+ 005E	     5395	ADD #1,0(R5)
+ 0060	     0000
+ 0062	     6384	ADDC #0,0(R4)
+ 0064	     0000
+ 0066	     4130	RET
+fixups:
+
+section     7	c  136	DivLongLong
+ 0000	     430C	MOV #0,R12
+ 0002	     9386	CMP #0,0(R6)
+ 0004	     0000
+ 0006	     3409	JGE $+20, goes to  001A
+ 0008	     E3B7	XOR #-1,0(R7)
+ 000A	     0000
+ 000C	     E3B6	XOR #-1,0(R6)
+ 000E	     0000
+ 0010	     5397	ADD #1,0(R7)
+ 0012	     0000
+ 0014	     6386	ADDC #0,0(R6)
+ 0016	     0000
+ 0018	     431C	MOV #1,R12
+ 001A	     9384	CMP #0,0(R4)
+ 001C	     0000
+ 001E	     3409	JGE $+20, goes to  0032
+ 0020	     E3B5	XOR #-1,0(R5)
+ 0022	     0000
+ 0024	     E3B4	XOR #-1,0(R4)
+ 0026	     0000
+ 0028	     5395	ADD #1,0(R5)
+ 002A	     0000
+ 002C	     6384	ADDC #0,0(R4)
+ 002E	     0000
+ 0030	     E33C	XOR #-1,R12
+ 0032	     430B	MOV #0,R11
+ 0034	     430A	MOV #0,R10
+ 0036	     4309	MOV #0,R9
+ 0038	     4318	MOV #1,R8
+ 003A	     55A5	ADD @R5,0(R5)
+ 003C	     0000
+ 003E	     64A4	ADDC @R4,0(R4)
+ 0040	     0000
+ 0042	     6A0A	ADDC R10,R10
+ 0044	     6B0B	ADDC R11,R11
+ 0046	     9B86	CMP R11,0(R6)
+ 0048	     0000
+ 004A	     3804	JL $+10, goes to  0054
+ 004C	     962B	CMP @R6,R11
+ 004E	     2004	JNE $+10, goes to  0058
+ 0050	     972A	CMP @R7,R10
+ 0052	     2802	JNC $+6, goes to  0058
+ 0054	     872A	SUB @R7,R10
+ 0056	     762B	SUBC @R6,R11
+ 0058	     6808	ADDC R8,R8
+ 005A	     6909	ADDC R9,R9
+ 005C	     2BEE	JNC $-34, goes to  003A
+ 005E	     B31C	BIT #1,R12
+ 0060	     2404	JEQ $+10, goes to  006A
+ 0062	     E338	XOR #-1,R8
+ 0064	     E339	XOR #-1,R9
+ 0066	     5318	ADD #1,R8
+ 0068	     6309	ADDC #0,R9
+ 006A	     B32C	BIT #2,R12
+ 006C	     2404	JEQ $+10, goes to  0076
+ 006E	     E33A	XOR #-1,R10
+ 0070	     E33B	XOR #-1,R11
+ 0072	     531A	ADD #1,R10
+ 0074	     630B	ADDC #0,R11
+ 0076	     4984	MOV R9,0(R4)
+ 0078	     0000
+ 007A	     4885	MOV R8,0(R5)
+ 007C	     0000
+ 007E	     4B86	MOV R11,0(R6)
+ 0080	     0000
+ 0082	     4A87	MOV R10,0(R7)
+ 0084	     0000
+ 0086	     4130	RET
+fixups:
+
+section     8	c   14	ASRLongInt
+ 0000	     9306	CMP #0,R6
+ 0002	     2404	JEQ $+10, goes to  000C
+ 0004	     1124	RRA @R4
+ 0006	     1025	RRC @R5
+ 0008	     8316	SUB #1,R6
+ 000A	     3FFA	JMP $-10, goes to  0000
+ 000C	     4130	RET
+fixups:
+
+section     9	c   24	AbsLong
+ 0000	     9384	CMP #0,0(R4)
+ 0002	     0000
+ 0004	     3408	JGE $+18, goes to  0016
+ 0006	     E3B5	XOR #-1,0(R5)
+ 0008	     0000
+ 000A	     E3B4	XOR #-1,0(R4)
+ 000C	     0000
+ 000E	     5395	ADD #1,0(R5)
+ 0010	     0000
+ 0012	     6384	ADDC #0,0(R4)
+ 0014	     0000
+ 0016	     4130	RET
+fixups:
+
+section    10	c   10	SubLongLong
+ 0000	     8785	SUB R7,0(R5)
+ 0002	     0000
+ 0004	     7684	SUBC R6,0(R4)
+ 0006	     0000
+ 0008	     4130	RET
+fixups:
+
+section    11	c   24	CmpLongLong
+ 0000	     8806	SUB R8,R6
+ 0002	     7705	SUBC R7,R5
+ 0004	     3402	JGE $+6, goes to  000A
+ 0006	     4334	MOV #-1,R4
+ 0008	     3C06	JMP $+14, goes to  0016
+ 000A	     2004	JNE $+10, goes to  0014
+ 000C	     9306	CMP #0,R6
+ 000E	     2002	JNE $+6, goes to  0014
+ 0010	     4304	MOV #0,R4
+ 0012	     3C01	JMP $+4, goes to  0016
+ 0014	     4314	MOV #1,R4
+ 0016	     4130	RET
+fixups:
+
+section    12	c    2	module body
+ 0000	     4130	RET
+fixups:
+
+section    13	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+   12    0    1    2    3    4    5    6    7    8
+    9   10   11

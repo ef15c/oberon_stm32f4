@@ -15,7 +15,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     type*: B.Type;
     obj*: B.Object; (*symbol object, for register variables*)
     a*, b*, c*: INTEGER;
-    rdo*, tmp, ptr: BOOLEAN  (*read only, temporary item, pointer to proc, var or stored const*)
+    rdo*, tmp, adr: BOOLEAN  (*read only, temporary item, pointer to proc, var or stored const*)
   END ;
 
   (* Item forms and meaning of fields:
@@ -80,7 +80,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE PrintItem(msg: ARRAY OF CHAR; x: Item);
   BEGIN S.DebugString("PrintItem", msg);
     IF x.obj # NIL THEN S.DebugString("name", x.obj.name) END;
-    S.DebugHex("mode", x.mode); S.DebugHex("ptr", ORD(x.ptr)); S.DebugHex("tmp", ORD(x.tmp))
+    S.DebugHex("mode", x.mode); S.DebugHex("a", x.a);
+    S.DebugHex("ptr", ORD(x.adr)); S.DebugHex("tmp", ORD(x.tmp))
   END PrintItem;
 
   PROCEDURE pad(x: INTEGER): INTEGER;
@@ -346,7 +347,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: INTEGER);
   BEGIN x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.c := y.lev; x.b := 0;
-    x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0; x.ptr := FALSE;
+    x.obj := y; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0; x.adr := FALSE;
     IF (y.class IN {B.Var, B.Par, B.StoredConst}) & (y.type.form # B.String) THEN
       IF y.register # 0FFH THEN
         x.reg := y.register;
@@ -355,7 +356,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF y.type.form = B.String THEN x.a := y.val MOD 10000H (*no*); x.b := LSL(LSR(y.val, 16), 16) (*len*)
     END;
 
-    IF y.type.form IN {B.String, B.Proc} THEN x.ptr := TRUE END; (*for strings and procs, the item is a pointer*)
+    IF y.type.form IN {B.String, B.Proc} THEN x.adr := TRUE END; (*for strings and procs, the item is a pointer*)
     IF (y.lev > 0) & (y.lev # curlev) & (y.class # B.Const) THEN S.Mark("not accessible ") END
   END MakeItem;
 
@@ -372,27 +373,31 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba, bw: SET);
     VAR ti!: Item;
-  BEGIN ASSERT(ORD(i.ptr) < 2); (*assure that i.ptr was properly initialized*)
+  BEGIN ASSERT(ORD(i.adr) < 2); (*assure that i.ptr was properly initialized*)
     IF ~dst & (i.type.size = 1) & (bw = A.Word) THEN S.Mark("move byte to int") END;
     IF (op = A.PUSH) OR (op = A.CALL) THEN dst := FALSE END;
     IF i.type.size = 1 THEN bw := A.Byte END;
     IF dst & i.rdo & ((i.mode = B.Const) OR (op # A.CMP) & (op # A.BIT)) THEN
       (*this op will modify the destination which is read only. We will use a temporary register*)
-      ti := i; free(i); i.mode := Reg; alloc(i, 0FFH); i.ptr := FALSE; i.rdo := FALSE; i.tmp := TRUE; PutDO0(A.MOV, ti, i)
+      ti := i; free(i); i.mode := Reg; alloc(i, 0FFH); i.adr := FALSE; i.rdo := FALSE; i.tmp := TRUE; PutDO0(A.MOV, ti, i)
     ELSIF i.mode = B.Var THEN
       IF i.c > 0 THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame
-      ELSE i.reg := 0; IF i.ptr THEN i.am := A.Immediate2 ELSE i.am := A.Absolute END
+      ELSE i.reg := 0; IF i.adr THEN i.am := A.Immediate2 ELSE i.am := A.Absolute END
       END
     ELSIF i.mode = Reg THEN i.am := A.Register; i.ofs := 0
     ELSIF i.mode = RegI THEN i.am := A.Indexed; i.ofs := i.a
     ELSIF i.mode = Absol THEN  i.am := A.Absolute; i.ofs := i.a
     ELSIF i.mode = B.Const THEN i.ofs := i.a; i.reg := 0; i.am := A.Immediate;
       IF dst THEN S.Mark("not writable"); i.am := A.Absolute END
-    ELSIF i.mode = B.Par THEN rh.reg := AllocR(); INCL(nba, rh.reg);
-      ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
-      A.PutDO(mcode.content, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
+    ELSIF i.mode = B.Par THEN
+      IF i.adr THEN i.reg := A.SP; i.am := A.Indexed; i.ofs := i.a + frame;
+        IF i.b # 0 THEN ti := c0; ti.a := i.b; PutDO0(A.ADD, ti, i) END
+      ELSE rh.reg := AllocR(); INCL(nba, rh.reg);
+        ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
+        A.PutDO(mcode.content, A.MOV, ti, rh, A.Word); i.mode := RegI; i.reg := rh.reg; i.a := i.b; i.b := 0; setRAO(op, i, dst, nba, bw)
+      END
     ELSIF i.mode = Cond THEN loadOrdCond(i, 0FFH)
-    ELSIF i.mode = B.StoredConst THEN i.reg := 0; IF i.ptr THEN i.am := A.Immediate2 ELSE i.am := A.Absolute END
+    ELSIF i.mode = B.StoredConst THEN i.reg := 0; IF i.adr THEN i.am := A.Immediate2 ELSE i.am := A.Absolute END
     ELSE S.Mark("bad mode in setRAO")
     END;
   END setRAO;
@@ -401,7 +406,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR bw, nba: SET;
   BEGIN
     nba := {}; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
-    IF (op = A.CALL) & (sd.reg = A.SP) & (sd.am = A.Indexed) THEN INC(sd.ofs, WordSize) END;
+    IF (sd.reg = A.SP) & ((op = A.CALL) & (sd.am = A.Indexed) OR (op = A.PUSH)) THEN
+      INC(sd.ofs, WordSize) (*SP is predrecemented, so the offset is augmented by 2*)
+    END;
     IF op = A.PUSH THEN INC(frame, WordSize) ELSIF op = A.POP THEN DEC(frame, WordSize) END;
     A.PutSO(mcode.content, op, sd, bw); freeSet(nba);
   END PutSO;
@@ -441,7 +448,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE NilCheck(a: BYTE);
     VAR t!, c!: Item;
-  BEGIN t.reg := a; t.mode := Reg; t.type := B.intType; t.ptr := FALSE;
+  BEGIN t.reg := a; t.mode := Reg; t.type := B.intType; t.adr := FALSE;
     IF traps[4] # NIL THEN
       c := c0; PutDO(A.CMP, c, t);
       Trap(A.EQ, 4)
@@ -468,7 +475,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Adr*(VAR x:Item);
   BEGIN
-    IF ~x.ptr THEN x.ptr := TRUE;
+    IF ~x.adr THEN x.adr := TRUE;
       IF ~(x.mode IN {B.Var, B.Par, B.StoredConst, RegI, Absol}) THEN S.Mark("not addressable") END
     END
 (*
@@ -512,7 +519,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END loadCond;
 
   PROCEDURE MakeTypTagAdr(VAR x: Item; T: B.Type);
-  BEGIN x.mode := B.StoredConst; x.ptr := TRUE; x.type := B.intType; x.b := 0; x.c := 0;
+  BEGIN x.mode := B.StoredConst; x.adr := TRUE; x.type := B.intType; x.b := 0; x.c := 0;
     x.rdo := TRUE; x.obj := T.typobj; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeTypTagAdr;
 
@@ -530,7 +537,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Items: Conversion from constants or from Objects on the Heap to Items on the Stack*)
 
   PROCEDURE MakeConstItem*(VAR x: Item; typ: B.Type; val: INTEGER);
-  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.c := 0; x.ptr := FALSE;
+  BEGIN x.mode := B.Const; x.type := typ; x.a := val; x.c := 0; x.adr := FALSE;
     x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeConstItem;
 
@@ -559,7 +566,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE stringPut(VAR x: Item; str: ARRAY OF CHAR; len: INTEGER);
     VAR i: INTEGER; s!: Section;
   BEGIN x.mode := B.StoredConst; x.type := B.strType; x.b := LSL(len, 16); x.c := 0 (*global string*);
-    x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0; x.ptr := TRUE;
+    x.rdo := TRUE; x.obj := NIL; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0; x.adr := TRUE;
     IF ~stringFound(str, len, s) THEN NewSection(strings, s, "s", "");
       i := 0; WHILE len > 0 DO EmitByte(s, ORD(str[i])); INC(i); DEC(len) END;
       WHILE s.content.pc MOD WordSize # 0 DO EmitByte(s, 0) END
@@ -632,7 +639,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           END;
           free(x); x.reg := y.reg; x.mode := RegI; x.tmp := TRUE; x.type := typ
         ELSIF x.mode = B.Par THEN load(y, 0FFH); t.mode := B.Var;
-          t.c := x.c; t.a := x.a; t.tmp := FALSE; t.obj := x.obj; t.type := B.intType; t.ptr := FALSE; PutDO(A.ADD, t, y); free(t);
+          t.c := x.c; t.a := x.a; t.tmp := FALSE; t.obj := x.obj; t.type := B.intType; t.adr := FALSE; PutDO(A.ADD, t, y); free(t);
           free(x); x.mode := RegI; x.reg := y.reg; x.a := x.b; x.tmp := TRUE
         ELSIF x.mode = RegI THEN t := x; t.mode := Reg; t.type := B.intType; PutDO( A.ADD, t, y); free(x);
            x.mode := RegI; x.reg := y.reg; x.tmp := TRUE
@@ -794,7 +801,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr); DEC(frame, s) END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(am)
     ELSE (*function*)
-      x.tmp := TRUE; x.mode := Reg; x.ptr := FALSE; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
+      x.tmp := TRUE; x.mode := Reg; x.adr := FALSE; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
       RIU := r; SetAllocationMode(am);
       IF rr.reg IN RIU THEN x.tmp := FALSE; load(x, 0FFH) (*move result in a free register*)
       ELSE INCL(RIU, rr.reg)
@@ -1014,7 +1021,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE StrToChar*(VAR x: Item);
     VAR sc: ARRAY 2 OF CHAR;
   BEGIN ASSERT((x.type.form = B.String) & (Length(x) = 2));
-    stringPop(x, sc); x.type := B.charType; x.a := ORD(sc[0]); x.mode := B.Const; x.ptr := FALSE
+    stringPop(x, sc); x.type := B.charType; x.a := ORD(sc[0]); x.mode := B.Const; x.adr := FALSE
   END StrToChar;
 
   PROCEDURE StoreConstInt(adr, size, val: INTEGER);
@@ -1049,7 +1056,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF y.mode = B.Par THEN oy := y.b ELSE oy := y.a END;
       d := ox - oy
     ELSIF (x.mode = B.Var) & (y.mode = B.Var) & (x.obj.lev > 0) & (x.obj.lev = y.obj.lev) THEN d := x.a - y.a
-    ELSIF (x.mode = B.Const) & (y.mode = B.Const) & (x.c = 0) & x.ptr & y.ptr THEN d := x.a - y.a
+    ELSIF (x.mode = B.Const) & (y.mode = B.Const) & (x.c = 0) & x.adr & y.adr THEN d := x.a - y.a
     ELSE res := FALSE
     END
 
@@ -1277,7 +1284,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR op: BYTE;
   BEGIN
     IF upordown = 0 THEN op := A.ADD ELSE op := A.SUB END;
-    IF y.type.form = B.NoTyp THEN y.mode := B.Const; y.a := 1; y.tmp := FALSE; y.ptr := FALSE END;
+    IF y.type.form = B.NoTyp THEN y.mode := B.Const; y.a := 1; y.tmp := FALSE; y.adr := FALSE END;
     PutDO(op, y, x);
     free(y); free(x)
   END Increment;
@@ -1285,7 +1292,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Include*(inorex: INTEGER; VAR x, y: Item);
     VAR op: BYTE; z!, t!: Item;
   BEGIN IF inorex = 0 THEN op := A.BIS ELSE op := A.BIC END;
-    IF y.mode = B.Const THEN t.mode := B.Const; t.type := B.intType; t.tmp := FALSE; y.ptr := FALSE;
+    IF y.mode = B.Const THEN t.mode := B.Const; t.type := B.intType; t.tmp := FALSE; y.adr := FALSE;
       t.obj := NIL; t.ofs := 0; t.a := LSL(1, y.a); PutDO(op, t, x)
     ELSE z := c1; load(z, 0FFH); Rla(z, y); PutDO(op, z, x); free(z)
     END

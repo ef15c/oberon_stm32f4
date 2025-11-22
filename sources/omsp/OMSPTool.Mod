@@ -180,7 +180,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
           ReadWord(R, n); i := 0;
           WHILE i < n DO
             ReadWord(R, no); Texts.WriteInt(W, no, 5);
-            IF i MOD 10 = 0 THEN Texts.WriteLn(W) END;
+            IF (i + 1) MOD 10 = 0 THEN Texts.WriteLn(W) END;
             INC(i)
           END;
           IF i MOD 10 # 0 THEN Texts.WriteLn(W) END;
