@@ -6,33 +6,29 @@ END testIfThen.
 
 OMSPTool.DecObj testIfThen.mpc
 decode testIfThen.mpc
-testIfThen C10C56CC Flash    18
+testIfThen 2DEE3392
 imports:
-type descriptors
 
-data     2
-strings
+section     0	r    2	i
+fixups:
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0000
-fixup procedures chains
-fixup handlers chains
-fixup data chains
- 000E     0	 0000
-fixup constants chains
-fixup types chains
-entry =  0000
-code    18
+section     1	c   18	module body
  0000	     9382	CMP #0,&0
  0002	     0000
  0004	     2003	JNE $+8, goes to  000C
- 0006	     4392	MOV #1,&2
- 0008	     0002
+ 0006	     4392	MOV #1,&3
+ 0008	     0003
  000A	     3C02	JMP $+6, goes to  0010
- 000C	     4382	MOV #0,&8
- 000E	     0008
+ 000C	     4382	MOV #0,&9
+ 000E	     0009
  0010	     4130	RET
+fixups:
+ 000F	  0     0     0
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1

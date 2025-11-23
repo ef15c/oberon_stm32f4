@@ -1,6 +1,4 @@
 MODULE testLoadAdr;
-  IMPORT Traps;
-
   TYPE rec = RECORD
     x, y: INTEGER;
 	END;
@@ -24,31 +22,17 @@ END testLoadAdr.
 OMSPP.Compile testLoadAdr.Mod~
 OMSPTool.DecObj testLoadAdr.mpc
 decode testLoadAdr.mpc
-testLoadAdr 07B5CAD6 Flash    64
+testLoadAdr 0AF6EC0F
 imports:
-type descriptors
- 0004 FFFF FFFF FFFF
-data     4
-strings
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+section     0	d    8	rec
+ 04 00 FF FF FF FF FF FF
+fixups:
 
-entries
- c 001C
-fixup procedures in code space chains
- 0026     0	 0000
- 0034     0	 0012
-fixup handlers in vector space chains
-fixup data in code space chains
- 002C     0	 0000
-fixup constants in code space chains
- 0030     0	 0000
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  001C
-code    56
+section     1	r    4	r1
+fixups:
+
+section     2	c   18	p
  0000	     411F	MOV 2(SP),R15
  0002	     0002
  0004	     439F	MOV #1,0(R15)
@@ -58,22 +42,41 @@ code    56
  000C	     43AF	MOV #2,2(R15)
  000E	     0002
  0010	     4130	RET
- 0012	     4394	MOV #1,0(R4)
- 0014	     0000
- 0016	     43A4	MOV #2,2(R4)
- 0018	     0002
+fixups:
+
+section     3	c   10	q
+ 0000	     4394	MOV #1,0(R4)
+ 0002	     0000
+ 0004	     43A4	MOV #2,2(R4)
+ 0006	     0002
+ 0008	     4130	RET
+fixups:
+
+section     4	c   28	module body
+ 0000	     1230	PUSH #0
+ 0002	     0000
+ 0004	     1230	PUSH #0
+ 0006	     0000
+ 0008	     12B0	CALL #0
+ 000A	     0000
+ 000C	     5221	ADD #4,SP
+ 000E	     4034	MOV #7,R4
+ 0010	     0007
+ 0012	     4035	MOV #3,R5
+ 0014	     0003
+ 0016	     12B0	CALL #0
+ 0018	     0000
  001A	     4130	RET
- 001C	     1230	PUSH #0
- 001E	     0000
- 0020	     1230	PUSH #0
- 0022	     0000
- 0024	     12B0	CALL #0
- 0026	     0000
- 0028	     5221	ADD #4,SP
- 002A	     4034	MOV #34,R4
- 002C	     0022
- 002E	     4035	MOV #30,R5
- 0030	     001E
- 0032	     12B0	CALL #0
- 0034	     0000
- 0036	     4130	RET
+fixups:
+ 0019	  0     3     0
+ 000B	  0     2     0
+ 0011	  0     1     0
+ 0015	  0     0     0
+
+section     5	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    4

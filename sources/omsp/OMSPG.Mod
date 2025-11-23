@@ -519,7 +519,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END loadCond;
 
   PROCEDURE MakeTypTagAdr(VAR x: Item; T: B.Type);
-  BEGIN x.mode := B.StoredConst; x.adr := TRUE; x.type := B.intType; x.b := 0; x.c := 0;
+  BEGIN x.mode := B.StoredConst; x.adr := TRUE; x.type := B.intType; x.a := T.len; x.b := 0; x.c := 0;
     x.rdo := TRUE; x.obj := T.typobj; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
   END MakeTypTagAdr;
 
