@@ -41,8 +41,8 @@ MODULE Arith; (*runtime module implementing arithmetic operations*)
       RETURN r
   END set;
 
-  PROCEDURE atoiP*(string: ARRAY OF CHAR; pos: INTEGER): INTEGER;
-    VAR r: INTEGER; neg: BOOLEAN;
+  PROCEDURE atoiP*(string: ARRAY OF CHAR*; pos: INTEGER* ): INTEGER;
+    VAR r: INTEGER*; neg: BOOLEAN*;
   BEGIN r := 0; IF string[pos] = "-" THEN neg := TRUE; INC(pos) ELSE neg := FALSE END;
     WHILE (string[pos] >= "0") & (string[pos] <= "9") DO r := r*10; INC(r, ORD(string[pos]) - ORD("0")); INC(pos) END;
     IF neg THEN XOR(r, -1); INC(r) END
@@ -59,16 +59,16 @@ END Arith.
 
 OMSPTool.DecSym Arith.sms
 decode Arith.sms
-Arith 018575B0  2
+Arith 1D2566D6  2
    9 mul16 [0  form = 10 [^4] leaf UR 0070( class = 2 R6 [^4] class = 2 R5 [^4])]     1
    9 divmod16 [0  form = 10 [^4] leaf UR 03F0( class = 2 R7 [^1] class = 2 R6 [^4] class = 2 R5 [^4])]     2
    9 set [0  form = 10 [^4] leaf UR 01F0( class = 2 R6 [^4] class = 2 R5 [^4])]     3
-   9 atoiP [0  form = 10 [^4] UR C000( class = 2 [^4] class = 3# [0  form = 12 [^3]  len = -1  size = 4])]     4
-   9 atoi [0  form = 10 [^4] UR C000( class = 3# [0  form = 12 [^3]  len = -1  size = 4])]     5
+   9 atoiP [0  form = 10 [^4] leaf UR 07F0( class = 2 R7 [^4] class = 3# R5 [0  form = 12 [^3]  len = -1  size = 4])]     4
+   9 atoi [0  form = 10 [^4] UR 87F0( class = 3# [0  form = 12 [^3]  len = -1  size = 4])]     5
 
 OMSPTool.DecObj Arith.mpc
 decode Arith.mpc
-Arith 018575B0
+Arith 1D2566D6
 imports:
 
 section     0	c   22	mul16
@@ -143,84 +143,62 @@ section     2	c   40	set
  0026	     4130	RET
 fixups:
 
-section     3	c  128	atoiP
- 0000	     8221	SUB #4,SP
- 0002	     4381	MOV #0,0(SP)
- 0004	     0000
- 0006	     411F	MOV 6(SP),R15
- 0008	     0006
- 000A	     511F	ADD 8(SP),R15
- 000C	     0008
- 000E	     90FF	CMP.B #45,0(R15)
- 0010	     002D
- 0012	     0000
- 0014	     2005	JNE $+12, goes to  0020
- 0016	     43D1	MOV.B #1,2(SP)
- 0018	     0002
- 001A	     5391	ADD #1,6(SP)
- 001C	     0006
- 001E	     3C02	JMP $+6, goes to  0024
- 0020	     43C1	MOV.B #0,2(SP)
- 0022	     0002
- 0024	     411F	MOV 6(SP),R15
- 0026	     0006
- 0028	     511F	ADD 8(SP),R15
- 002A	     0008
- 002C	     90FF	CMP.B #48,0(R15)
- 002E	     0030
- 0030	     0000
- 0032	     281C	JNC $+58, goes to  006C
- 0034	     411F	MOV 6(SP),R15
- 0036	     0006
- 0038	     511F	ADD 8(SP),R15
- 003A	     0008
- 003C	     407E	MOV.B #57,R14
- 003E	     0039
- 0040	     9F6E	CMP.B @R15,R14
- 0042	     2814	JNC $+42, goes to  006C
- 0044	     412F	MOV @SP,R15
- 0046	     5F0F	ADD R15,R15
- 0048	     4F0E	MOV R15,R14
- 004A	     5E0E	ADD R14,R14
- 004C	     5E0E	ADD R14,R14
- 004E	     5E0F	ADD R14,R15
- 0050	     4F81	MOV R15,0(SP)
- 0052	     0000
- 0054	     411F	MOV 6(SP),R15
- 0056	     0006
- 0058	     511F	ADD 8(SP),R15
- 005A	     0008
- 005C	     4F6F	MOV.B @R15,R15
- 005E	     807F	SUB.B #48,R15
- 0060	     0030
- 0062	     5F81	ADD R15,0(SP)
- 0064	     0000
- 0066	     5391	ADD #1,6(SP)
- 0068	     0006
- 006A	     3FDC	JMP $-70, goes to  0024
- 006C	     93C1	CMP.B #0,2(SP)
- 006E	     0002
- 0070	     2404	JEQ $+10, goes to  007A
- 0072	     E3B1	XOR #-1,0(SP)
- 0074	     0000
- 0076	     5391	ADD #1,0(SP)
- 0078	     0000
- 007A	     412F	MOV @SP,R15
- 007C	     5221	ADD #4,SP
- 007E	     4130	RET
+section     3	c   86	atoiP
+ 0000	     4304	MOV #0,R4
+ 0002	     4709	MOV R7,R9
+ 0004	     5509	ADD R5,R9
+ 0006	     90F9	CMP.B #45,0(R9)
+ 0008	     002D
+ 000A	     0000
+ 000C	     2003	JNE $+8, goes to  0014
+ 000E	     4358	MOV.B #1,R8
+ 0010	     5317	ADD #1,R7
+ 0012	     3C01	JMP $+4, goes to  0016
+ 0014	     4348	MOV.B #0,R8
+ 0016	     4709	MOV R7,R9
+ 0018	     5509	ADD R5,R9
+ 001A	     90F9	CMP.B #48,0(R9)
+ 001C	     0030
+ 001E	     0000
+ 0020	     2815	JNC $+44, goes to  004C
+ 0022	     4709	MOV R7,R9
+ 0024	     5509	ADD R5,R9
+ 0026	     407A	MOV.B #57,R10
+ 0028	     0039
+ 002A	     996A	CMP.B @R9,R10
+ 002C	     280F	JNC $+32, goes to  004C
+ 002E	     4409	MOV R4,R9
+ 0030	     5909	ADD R9,R9
+ 0032	     490A	MOV R9,R10
+ 0034	     5A0A	ADD R10,R10
+ 0036	     5A0A	ADD R10,R10
+ 0038	     5A09	ADD R10,R9
+ 003A	     4904	MOV R9,R4
+ 003C	     4709	MOV R7,R9
+ 003E	     5509	ADD R5,R9
+ 0040	     4969	MOV.B @R9,R9
+ 0042	     8079	SUB.B #48,R9
+ 0044	     0030
+ 0046	     5904	ADD R9,R4
+ 0048	     5317	ADD #1,R7
+ 004A	     3FE5	JMP $-52, goes to  0016
+ 004C	     9348	CMP.B #0,R8
+ 004E	     2402	JEQ $+6, goes to  0054
+ 0050	     E334	XOR #-1,R4
+ 0052	     5314	ADD #1,R4
+ 0054	     4130	RET
 fixups:
 
-section     4	c   20	atoi
- 0000	     1211	PUSH 6(SP)
- 0002	     0006
- 0004	     1211	PUSH 6(SP)
- 0006	     0006
- 0008	     1203	PUSH #0
+section     4	c   18	atoi
+ 0000	     4115	MOV 2(SP),R5
+ 0002	     0002
+ 0004	     4116	MOV 4(SP),R6
+ 0006	     0004
+ 0008	     4307	MOV #0,R7
  000A	     12B0	CALL #0
  000C	     0000
- 000E	     5031	ADD #6,SP
- 0010	     0006
- 0012	     4130	RET
+ 000E	     440F	MOV R4,R15
+ 0010	     4130	RET
 fixups:
  000D	  0     3     0
 

@@ -247,9 +247,9 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
           ELSE
             IF class = Const THEN obj.rdo := TRUE;
-              IF obj.type.form = String THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END;
+              IF obj.type.form = String THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END
+            ELSIF class IN {Var, StoredConst} THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.register := 0FFH;
               IF obj.type.form = Proc THEN regRTProc(obj) END
-            ELSIF class IN {Var, StoredConst} THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.register := 0FFH
             END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)

@@ -1292,7 +1292,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Include*(inorex: INTEGER; VAR x, y: Item);
     VAR op: BYTE; z!, t!: Item;
   BEGIN IF inorex = 0 THEN op := A.BIS ELSE op := A.BIC END;
-    IF y.mode = B.Const THEN t.mode := B.Const; t.type := B.intType; t.tmp := FALSE; y.adr := FALSE;
+    IF y.mode = B.Const THEN t.mode := B.Const; t.type := B.intType; t.tmp := FALSE; t.adr := FALSE;
       t.obj := NIL; t.ofs := 0; t.a := LSL(1, y.a); PutDO(op, t, x)
     ELSE z := c1; load(z, 0FFH); Rla(z, y); PutDO(op, z, x); free(z)
     END

@@ -17,34 +17,29 @@ OMSPTool.DecObj testAssert.mpc
 
 Traps not imported:
 decode testAssert.mpc
-testAssert 49ED7A7C Flash    12
+testAssert A50F1F22
 imports:
-type descriptors
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0006
-fixup procedures in code space chains
- 0008     0	 0000
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0006
-code    12
+section     0	c    6	p
  0000	     8221	SUB #4,SP
  0002	     5221	ADD #4,SP
  0004	     4130	RET
- 0006	     12B0	CALL #1
- 0008	     0001
- 000A	     4130	RET
+fixups:
+
+section     1	c    6	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     4130	RET
+fixups:
+ 0003	  0     0     0
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1
 
 MODULE testAssert;
   IMPORT Traps;
@@ -66,30 +61,11 @@ OMSPTool.DecObj testAssert.mpc
 
 Traps imported:
 decode testAssert.mpc
-testAssert 49ED7A7C Flash    82
+testAssert A50F1F22
 imports:
-	Traps 37B3757C
-type descriptors
+	Traps 3714F611
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 004C
-fixup procedures in code space chains
- 004E     0	 0000
- 0046     1	 0003
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  004C
-code    82
+section     0	c   76	p
  0000	     8221	SUB #4,SP
  0002	     9381	CMP #0,0(SP)
  0004	     0000
@@ -102,16 +78,16 @@ code    82
  0012	     9381	CMP #0,2(SP)
  0014	     0002
  0016	     2002	JNE $+6, goes to  001C
- 0018	     12B0	CALL #10
- 001A	     000A
+ 0018	     12B0	CALL #11
+ 001A	     000B
  001C	     9381	CMP #0,0(SP)
  001E	     0000
  0020	     2005	JNE $+12, goes to  002C
  0022	     9381	CMP #0,2(SP)
  0024	     0002
  0026	     2002	JNE $+6, goes to  002C
- 0028	     12B0	CALL #26
- 002A	     001A
+ 0028	     12B0	CALL #27
+ 002A	     001B
  002C	     9381	CMP #0,0(SP)
  002E	     0000
  0030	     2403	JEQ $+8, goes to  0038
@@ -124,10 +100,24 @@ code    82
  003E	     9391	CMP #1,2(SP)
  0040	     0002
  0042	     2402	JEQ $+6, goes to  0048
- 0044	     12B0	CALL #42
- 0046	     002A
+ 0044	     12B0	CALL #43
+ 0046	     002B
  0048	     5221	ADD #4,SP
  004A	     4130	RET
- 004C	     12B0	CALL #1
- 004E	     0001
- 0050	     4130	RET
+fixups:
+ 0047	  1     3     0
+
+section     1	c    6	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     4130	RET
+fixups:
+ 0003	  0     0     0
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1

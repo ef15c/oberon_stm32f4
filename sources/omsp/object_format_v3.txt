@@ -4,8 +4,8 @@ Object code V3 file format:
       sections = {segment name size content fixups} 0X.
       segment  = "c" | "d" | "s" | "v" | "r".
       content  = {byte}.
-      fixups   = {fixadr mno secnum offset} 0.
-      entries  = nof {secnum}.
+      fixups   = {fixadr mno sno offset} 0.
+      entries  = nof {sno}.
 
       name: string containing the module or object name
       key: CRC32 hash of the modules's symbol file
@@ -35,7 +35,7 @@ Object code V3 file format:
           mno: the nodule index in the import array. The value 0 means
             the current module. Others values is the rank of the
             imported module.
-          secnum: is the section number in the mno indexed module.
+          sno: is the section index in the mno indexed module.
           offset: is the offset in byte of the referenced data.
       
           the vectors table is a particular type of section flagged
@@ -43,7 +43,7 @@ Object code V3 file format:
           in the object file.
       
       nof: number of items
-      secnum: section number starting from 0. The first one is the
-        initialization code of the module.
+      sno: section index starting from 0.
       
-      entries: exported objects.
+      entries: exported objects. The first one is the section index of
+        the initialization code of the module.

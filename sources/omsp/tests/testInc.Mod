@@ -38,71 +38,63 @@ END testInc.
 OMSPP.Compile testInc.Mod~
 OMSPTool.DecObj testInc.mpc
 decode testInc.mpc
-testInc 1EDF1214 Flash   270
+testInc 139C34CD bad version
+  compiling testInc   334     6 139C34CD
+decode testInc.mpc
+testInc 139C34CD
 imports:
-type descriptors
 
-data     6
-strings
+section     0	r    2	a
+fixups:
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+section     1	r    2	b
+fixups:
 
-entries
- c 0104
-fixup procedures in code space chains
- 0106     0	 0000
- 010A     0	 009A
-fixup handlers in vector space chains
-fixup data in code space chains
- 00DE     0	 0005
- 00E0     0	 0004
- 00CC     0	 0002
- 00CE     0	 0000
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0104
-code   270
+section     2	r    1	c
+fixups:
+
+section     3	r    1	d
+fixups:
+
+section     4	c  154	p
  0000	     8031	SUB #6,SP
  0002	     0006
  0004	     5392	ADD #1,&0
  0006	     0000
- 0008	     53A2	ADD #2,&6
- 000A	     0006
- 000C	     83A2	SUB #2,&10
- 000E	     000A
- 0010	     5292	ADD &0,&14
+ 0008	     53A2	ADD #2,&7
+ 000A	     0007
+ 000C	     83A2	SUB #2,&11
+ 000E	     000B
+ 0010	     5292	ADD &0,&15
  0012	     0000
- 0014	     000E
+ 0014	     000F
  0016	     53D2	ADD.B #1,&0
  0018	     0000
- 001A	     53E2	ADD.B #2,&24
- 001C	     0018
- 001E	     83E2	SUB.B #2,&28
- 0020	     001C
- 0022	     52D2	ADD.B &0,&32
+ 001A	     53E2	ADD.B #2,&25
+ 001C	     0019
+ 001E	     83E2	SUB.B #2,&29
+ 0020	     001D
+ 0022	     52D2	ADD.B &0,&33
  0024	     0000
- 0026	     0020
- 0028	     8392	SUB #1,&20
- 002A	     0014
- 002C	     83A2	SUB #2,&42
- 002E	     002A
- 0030	     53A2	ADD #2,&46
- 0032	     002E
- 0034	     8292	SUB &18,&50
- 0036	     0012
- 0038	     0032
- 003A	     83D2	SUB.B #1,&38
- 003C	     0026
- 003E	     83E2	SUB.B #2,&60
- 0040	     003C
- 0042	     53E2	ADD.B #2,&64
- 0044	     0040
- 0046	     82D2	SUB.B &36,&68
- 0048	     0024
- 004A	     0044
+ 0026	     0021
+ 0028	     8392	SUB #1,&21
+ 002A	     0015
+ 002C	     83A2	SUB #2,&43
+ 002E	     002B
+ 0030	     53A2	ADD #2,&47
+ 0032	     002F
+ 0034	     8292	SUB &19,&51
+ 0036	     0013
+ 0038	     0033
+ 003A	     83D2	SUB.B #1,&39
+ 003C	     0027
+ 003E	     83E2	SUB.B #2,&61
+ 0040	     003D
+ 0042	     53E2	ADD.B #2,&65
+ 0044	     0041
+ 0046	     82D2	SUB.B &37,&69
+ 0048	     0025
+ 004A	     0045
  004C	     5391	ADD #1,0(SP)
  004E	     0000
  0050	     53A1	ADD #2,0(SP)
@@ -142,61 +134,86 @@ code   270
  0094	     5031	ADD #6,SP
  0096	     0006
  0098	     4130	RET
- 009A	     5392	ADD #1,&56
- 009C	     0038
- 009E	     53A2	ADD #2,&156
- 00A0	     009C
- 00A2	     83A2	SUB #2,&160
- 00A4	     00A0
- 00A6	     5292	ADD &54,&164
- 00A8	     0036
- 00AA	     00A4
- 00AC	     53D2	ADD.B #1,&74
- 00AE	     004A
- 00B0	     53E2	ADD.B #2,&174
- 00B2	     00AE
- 00B4	     83E2	SUB.B #2,&178
- 00B6	     00B2
- 00B8	     52D2	ADD.B &72,&182
- 00BA	     0048
- 00BC	     00B6
- 00BE	     8392	SUB #1,&170
- 00C0	     00AA
- 00C2	     83A2	SUB #2,&192
- 00C4	     00C0
- 00C6	     53A2	ADD #2,&196
- 00C8	     00C4
- 00CA	     8292	SUB &168,&200
- 00CC	     00A8
- 00CE	     00C8
- 00D0	     83D2	SUB.B #1,&188
- 00D2	     00BC
- 00D4	     83E2	SUB.B #2,&210
- 00D6	     00D2
- 00D8	     53E2	ADD.B #2,&214
- 00DA	     00D6
- 00DC	     82D2	SUB.B &186,&218
- 00DE	     00BA
- 00E0	     00DA
- 00E2	     5314	ADD #1,R4
- 00E4	     5324	ADD #2,R4
- 00E6	     8324	SUB #2,R4
- 00E8	     5504	ADD R5,R4
- 00EA	     5356	ADD.B #1,R6
- 00EC	     5366	ADD.B #2,R6
- 00EE	     8366	SUB.B #2,R6
- 00F0	     5746	ADD.B R7,R6
- 00F2	     8314	SUB #1,R4
- 00F4	     8324	SUB #2,R4
- 00F6	     5324	ADD #2,R4
- 00F8	     8504	SUB R5,R4
- 00FA	     8356	SUB.B #1,R6
- 00FC	     8366	SUB.B #2,R6
- 00FE	     5366	ADD.B #2,R6
- 0100	     8746	SUB.B R7,R6
- 0102	     4130	RET
- 0104	     12B0	CALL #0
- 0106	     0000
- 0108	     12B0	CALL #0
- 010A	     0000
- 010C	     4130	RET
+fixups:
+ 0049	  0     3     0
+ 004B	  0     2     0
+ 0037	  0     1     0
+ 0039	  0     0     0
+
+section     5	c  106	q
+ 0000	     5392	ADD #1,&0
+ 0002	     0000
+ 0004	     53A2	ADD #2,&3
+ 0006	     0003
+ 0008	     83A2	SUB #2,&7
+ 000A	     0007
+ 000C	     5292	ADD &0,&11
+ 000E	     0000
+ 0010	     000B
+ 0012	     53D2	ADD.B #1,&0
+ 0014	     0000
+ 0016	     53E2	ADD.B #2,&21
+ 0018	     0015
+ 001A	     83E2	SUB.B #2,&25
+ 001C	     0019
+ 001E	     52D2	ADD.B &0,&29
+ 0020	     0000
+ 0022	     001D
+ 0024	     8392	SUB #1,&17
+ 0026	     0011
+ 0028	     83A2	SUB #2,&39
+ 002A	     0027
+ 002C	     53A2	ADD #2,&43
+ 002E	     002B
+ 0030	     8292	SUB &15,&47
+ 0032	     000F
+ 0034	     002F
+ 0036	     83D2	SUB.B #1,&35
+ 0038	     0023
+ 003A	     83E2	SUB.B #2,&57
+ 003C	     0039
+ 003E	     53E2	ADD.B #2,&61
+ 0040	     003D
+ 0042	     82D2	SUB.B &33,&65
+ 0044	     0021
+ 0046	     0041
+ 0048	     5314	ADD #1,R4
+ 004A	     5324	ADD #2,R4
+ 004C	     8324	SUB #2,R4
+ 004E	     5504	ADD R5,R4
+ 0050	     5356	ADD.B #1,R6
+ 0052	     5366	ADD.B #2,R6
+ 0054	     8366	SUB.B #2,R6
+ 0056	     5746	ADD.B R7,R6
+ 0058	     8314	SUB #1,R4
+ 005A	     8324	SUB #2,R4
+ 005C	     5324	ADD #2,R4
+ 005E	     8504	SUB R5,R4
+ 0060	     8356	SUB.B #1,R6
+ 0062	     8366	SUB.B #2,R6
+ 0064	     5366	ADD.B #2,R6
+ 0066	     8746	SUB.B R7,R6
+ 0068	     4130	RET
+fixups:
+ 0045	  0     3     0
+ 0047	  0     2     0
+ 0033	  0     1     0
+ 0035	  0     0     0
+
+section     6	c   10	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     12B0	CALL #0
+ 0006	     0000
+ 0008	     4130	RET
+fixups:
+ 0007	  0     5     0
+ 0003	  0     4     0
+
+section     7	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    6

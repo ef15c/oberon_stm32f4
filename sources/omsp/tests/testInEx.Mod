@@ -21,29 +21,10 @@ END testInEx.
 OMSPP.Compile testInEx.Mod~
 OMSPTool.DecObj testInEx.mpc
 decode testInEx.mpc
-testInEx 3FD5DD17 Flash   106
+testInEx 4D3E82C4
 imports:
-type descriptors
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0060
-fixup procedures in code space chains
- 0062     0	 0000
- 0066     0	 0038
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0060
-code   106
+section     0	c   56	p
  0000	     8221	SUB #4,SP
  0002	     D2B1	BIS #8,0(SP)
  0004	     0000
@@ -72,28 +53,45 @@ code   106
  0032	     0000
  0034	     5221	ADD #4,SP
  0036	     4130	RET
- 0038	     D234	BIS #8,R4
- 003A	     4316	MOV #1,R6
- 003C	     4507	MOV R5,R7
- 003E	     5317	ADD #1,R7
- 0040	     8317	SUB #1,R7
- 0042	     2402	JEQ $+6, goes to  0048
- 0044	     5606	ADD R6,R6
- 0046	     3FFC	JMP $-6, goes to  0040
- 0048	     D604	BIS R6,R4
- 004A	     C034	BIC #32,R4
- 004C	     0020
- 004E	     4316	MOV #1,R6
- 0050	     4507	MOV R5,R7
- 0052	     5317	ADD #1,R7
- 0054	     8317	SUB #1,R7
- 0056	     2402	JEQ $+6, goes to  005C
- 0058	     5606	ADD R6,R6
- 005A	     3FFC	JMP $-6, goes to  0054
- 005C	     C604	BIC R6,R4
- 005E	     4130	RET
- 0060	     12B0	CALL #0
- 0062	     0000
- 0064	     12B0	CALL #0
- 0066	     0000
- 0068	     4130	RET
+fixups:
+
+section     1	c   40	q
+ 0000	     D234	BIS #8,R4
+ 0002	     4316	MOV #1,R6
+ 0004	     4507	MOV R5,R7
+ 0006	     5317	ADD #1,R7
+ 0008	     8317	SUB #1,R7
+ 000A	     2402	JEQ $+6, goes to  0010
+ 000C	     5606	ADD R6,R6
+ 000E	     3FFC	JMP $-6, goes to  0008
+ 0010	     D604	BIS R6,R4
+ 0012	     C034	BIC #32,R4
+ 0014	     0020
+ 0016	     4316	MOV #1,R6
+ 0018	     4507	MOV R5,R7
+ 001A	     5317	ADD #1,R7
+ 001C	     8317	SUB #1,R7
+ 001E	     2402	JEQ $+6, goes to  0024
+ 0020	     5606	ADD R6,R6
+ 0022	     3FFC	JMP $-6, goes to  001C
+ 0024	     C604	BIC R6,R4
+ 0026	     4130	RET
+fixups:
+
+section     2	c   10	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     12B0	CALL #0
+ 0006	     0000
+ 0008	     4130	RET
+fixups:
+ 0007	  0     1     0
+ 0003	  0     0     0
+
+section     3	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    2
