@@ -6,10 +6,10 @@ A rudimentary image manipulation module has been added. It allows to display 8bp
   
 ![Screenshot](https://raw.githubusercontent.com/ef15c/oberon_stm32f4/refs/heads/main/sources/graph/screenshot7C99C356.png)
   
-**The 12th release contains a major improvement:** the modules code and strings can be hosted
- in the flash memory of the microcontroller and be executed in place.
-The global data can also be placed is SRAM.  
-Previously, the modules had too be loaded in the SDRAM to be executed.  
+**The 12th release contains a major improvement:** the code and strings of the modules can be stored
+ in the microcontroller's flash memory and executed in place.
+In this case, the global data will be placed is SRAM.  
+Previously, the modules had to be loaded into the SDRAM for execution.  
 There are a lot of advantages doing this:  
 
 * The code executes 8 times faster, by avoiding the competition between CPU and VGA system for SDRAM access.  
