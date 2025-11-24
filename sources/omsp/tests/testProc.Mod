@@ -2,9 +2,9 @@ MODULE testProc;
 
   PROCEDURE p;
     PROCEDURE q;
-    BEGIN
+    BEGIN q
     END q;
-  BEGIN
+  BEGIN q; p
   END p;
 
 BEGIN p
@@ -13,31 +13,37 @@ END testProc.
 OMSPP.Compile testProc.Mod~
 OMSPTool.DecObj testProc.mpc
 decode testProc.mpc
-testProc 074761C7 Flash    12
+testProc 75AC3E14
 imports:
-type descriptors
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0006
-fixup procedures in code space chains
- 0008     0	 0004
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0006
-code    12
- 0000	     3C01	JMP $+4, goes to  0004
- 0002	     4130	RET
+section     0	c    6	q
+ 0000	     12B0	CALL #0
+ 0002	     0000
  0004	     4130	RET
- 0006	     12B0	CALL #0
- 0008	     0000
- 000A	     4130	RET
+fixups:
+ 0003	  0     0     0
+
+section     1	c   10	p
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     12B0	CALL #0
+ 0006	     0000
+ 0008	     4130	RET
+fixups:
+ 0007	  0     1     0
+ 0003	  0     0     0
+
+section     2	c    6	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     4130	RET
+fixups:
+ 0003	  0     1     0
+
+section     3	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    2

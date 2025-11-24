@@ -999,17 +999,17 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         loc := loc.next; INC(L)
       END;
 
-      G.AllocP(proc);
       proc.type.dsc := B.topScope.next;
       InsertResultRegister(type);
 
       IF sym = S.procedure THEN
-        riu := G.RIU; proc.type.ur := G.PRU; L := 0; G.FJump(L);
+        riu := G.RIU; proc.type.ur := G.PRU;
         REPEAT ProcedureDecl; Check(S.semicolon, "no ;") UNTIL sym # S.procedure;
-        G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next;
+        proc.type.dsc := B.topScope.next;
         G.SetRIU(riu); G.SetPRU(proc.type.ur); (*restore current procedure RIU and PRU*)
         isInt := int
       END;
+      G.AllocP(proc);
       IF isLeaf THEN G.SetAllocationMode(G.Register) ELSE G.SetAllocationMode(G.Stack) END;
       IF int THEN G.LimitRegisters(savedregs) END;
       G.Enter(locblksize, int, savedregs);

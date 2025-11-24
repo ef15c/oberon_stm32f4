@@ -30,31 +30,17 @@ END testRecord.
 OMSPP.Compile testRecord.Mod~
 OMSPTool.DecObj testRecord.mpc
 decode testRecord.mpc
-testRecord 46D659A9 Flash   118
+testRecord AA343CF7
 imports:
-type descriptors
- 1F46 FFFF FFFF FFFF
-data  8006
-strings
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+section     0	d    8	rec
+ 46 1F FF FF FF FF FF FF
+fixups:
 
-entries
- c 0052
-fixup procedures in code space chains
- 005C     0	 0000
- 006A     0	 0030
-fixup handlers in vector space chains
-fixup data in code space chains
- 0062     0	 0000
-fixup constants in code space chains
- 0066     0	 0000
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0052
-code   110
+section     1	r 8006	r
+fixups:
+
+section     2	c   48	p
  0000	     411F	MOV 2(SP),R15
  0002	     0002
  0004	     439F	MOV #1,0(R15)
@@ -79,34 +65,53 @@ code   110
  002A	     0003
  002C	     1F44
  002E	     4130	RET
- 0030	     4394	MOV #1,0(R4)
- 0032	     0000
- 0034	     43A4	MOV #2,2(R4)
- 0036	     0002
- 0038	     4406	MOV R4,R6
- 003A	     5036	ADD #4004,R6
- 003C	     0FA4
- 003E	     4037	MOV #2000,R7
- 0040	     07D0
- 0042	     46B6	MOV @R6+,-4002(R6)
- 0044	     F05E
- 0046	     8317	SUB #1,R7
- 0048	     23FC	JNE $-6, goes to  0042
- 004A	     40B4	MOV #3,8004(R4)
- 004C	     0003
- 004E	     1F44
- 0050	     4130	RET
- 0052	     1230	PUSH #0
- 0054	     0000
- 0056	     1230	PUSH #0
- 0058	     0000
- 005A	     12B0	CALL #0
- 005C	     0000
- 005E	     5221	ADD #4,SP
- 0060	     4034	MOV #88,R4
- 0062	     0058
- 0064	     4035	MOV #84,R5
- 0066	     0054
- 0068	     12B0	CALL #0
- 006A	     0000
- 006C	     4130	RET
+fixups:
+
+section     3	c   34	q
+ 0000	     4394	MOV #1,0(R4)
+ 0002	     0000
+ 0004	     43A4	MOV #2,2(R4)
+ 0006	     0002
+ 0008	     4406	MOV R4,R6
+ 000A	     5036	ADD #4004,R6
+ 000C	     0FA4
+ 000E	     4037	MOV #2000,R7
+ 0010	     07D0
+ 0012	     46B6	MOV @R6+,-4002(R6)
+ 0014	     F05E
+ 0016	     8317	SUB #1,R7
+ 0018	     23FC	JNE $-6, goes to  0012
+ 001A	     40B4	MOV #3,8004(R4)
+ 001C	     0003
+ 001E	     1F44
+ 0020	     4130	RET
+fixups:
+
+section     4	c   28	module body
+ 0000	     1230	PUSH #0
+ 0002	     0000
+ 0004	     1230	PUSH #0
+ 0006	     0000
+ 0008	     12B0	CALL #0
+ 000A	     0000
+ 000C	     5221	ADD #4,SP
+ 000E	     4034	MOV #7,R4
+ 0010	     0007
+ 0012	     4035	MOV #3,R5
+ 0014	     0003
+ 0016	     12B0	CALL #0
+ 0018	     0000
+ 001A	     4130	RET
+fixups:
+ 0019	  0     3     0
+ 000B	  0     2     0
+ 0011	  0     1     0
+ 0015	  0     0     0
+
+section     5	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    4

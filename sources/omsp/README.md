@@ -81,6 +81,16 @@ the type **t** is a pointer to the type of the expression **x**
 **BIS_SR** allows to set bits of the status register  
 **BIC_SR_ON_EXIT** allows to clear bits of the status register at the exit of an interrupt handler  
 **BIS_SR_ON_EXIT** allows to set bits of the status register at the exit of an interrupt handler  
+### Restrictions
+An inner procedure cannot call the procedure englobing it.  
+For example, the following code will throw an "not accessible" error:
+
+    PROCEDURE p;
+      PROCEDURE q;
+      BEGIN p
+      END q;
+    END p;
+    
 ## Specific extensions
 ### Leaf procedures
 Leaf procedures allow parameters and local variables to be implemented in MSP430 registers.  
@@ -171,7 +181,6 @@ used to convey the return value and therefore is automatically excluded from the
 	    .
 	    .
 	END GUIMpack.
-
 ## Another example
 To show what a real program looks like, this is an example based on 
 msp430g2xx3_lpm3_vlo.c, a C language example from TI.
