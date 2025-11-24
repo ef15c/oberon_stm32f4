@@ -24,30 +24,11 @@ END testSet.
 OMSPP.Compile testSet.Mod~
 OMSPTool.DecObj testSet.mpc
 decode testSet.mpc
-testSet B4D15A40 Flash   156
+testSet B9927C99
 imports:
-	Arith CE724D80
-type descriptors
+	Arith 1D2566D6
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0096
-fixup procedures in code space chains
- 0098     0	 0000
- 0032     1	 0003
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0096
-code   156
+section     0	c  150	p
  0000	     8031	SUB #12,SP
  0002	     000C
  0004	     40B1	MOV #60,4(SP)
@@ -64,16 +45,16 @@ code   156
  001A	     4325	MOV #2,R5
  001C	     4116	MOV 8(SP),R6
  001E	     0008
- 0020	     12B0	CALL #20
- 0022	     0014
+ 0020	     12B0	CALL #21
+ 0022	     0015
  0024	     4481	MOV R4,4(SP)
  0026	     0004
  0028	     4115	MOV 6(SP),R5
  002A	     0006
  002C	     4116	MOV 8(SP),R6
  002E	     0008
- 0030	     12B0	CALL #34
- 0032	     0022
+ 0030	     12B0	CALL #35
+ 0032	     0023
  0034	     4481	MOV R4,4(SP)
  0036	     0004
  0038	     B0B1	BIT #1024,0(SP)
@@ -123,6 +104,20 @@ code   156
  0090	     5031	ADD #12,SP
  0092	     000C
  0094	     4130	RET
- 0096	     12B0	CALL #0
- 0098	     0000
- 009A	     4130	RET
+fixups:
+ 0033	  1     3     0
+
+section     1	c    6	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     4130	RET
+fixups:
+ 0003	  0     0     0
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1

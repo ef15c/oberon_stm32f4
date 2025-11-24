@@ -358,8 +358,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END;
 
     IF y.type.form IN {B.String, B.Proc} THEN x.adr := TRUE END; (*for strings and procs, the item is a pointer*)
-    IF (y.lev # curlev) & (y.lev > 0) & ~(y.class IN {B.Const, B.StoredConst}) OR
-        (y.class = B.StoredConst) & (GetSection(y.val) = NIL) THEN S.Mark("not accessible ") END
+    IF (y.lev > 0) & (y.lev # curlev) & ~(y.class IN {B.Const, B.StoredConst}) OR
+        (y.lev >= 0) & (y.class = B.StoredConst) & (GetSection(y.val) = NIL) THEN S.Mark("not accessible ") END
   END MakeItem;
 
   PROCEDURE loadOrdCond(VAR x: Item; pr: BYTE); (*load condition item in a temporary register*)
@@ -621,8 +621,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE
       IF (y.mode = B.Const) & ((traps[1] = NIL) OR (lim >= 0)) THEN
         IF (y.a < 0) OR (lim >= 0) & (y.a >= lim) THEN S.Mark("bad index") END ;
-        IF (x.mode IN {B.Var, B.StoredConst}) OR (x.type.form = B.String) THEN
-          IF x.c >= 0 THEN INC(x.a, y.a*s) ELSE INC(x.b,  y.a*s) END
+        IF (x.mode IN {B.Var, B.StoredConst}) THEN IF x.c > 0 THEN INC(x.a, y.a*s) ELSE INC(x.b,  y.a*s) END
         ELSIF x.mode = RegI THEN INC(x.a, y.a*s)
         ELSIF x.mode = B.Par THEN INC(x.b, y.a*s)
         ELSE S.Mark("bad mode in index")
