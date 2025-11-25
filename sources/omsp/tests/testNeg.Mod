@@ -16,9 +16,6 @@ END testNeg.
 OMSPP.Compile testNeg.Mod~
 OMSPTool.DecObj testNeg.mpc
 decode testNeg.mpc
-testNeg 25DBDE62 bad version
-  compiling testNeg   100     0 25DBDE62
-decode testNeg.mpc
 testNeg 25DBDE62
 imports:
 
@@ -48,8 +45,8 @@ section     2	c   10	module body
  0006	     0000
  0008	     4130	RET
 fixups:
- 0007	  0     1     0
- 0003	  0     0     0
+ 0007	s0.1
+ 0003	s0.0
 
 section     3	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

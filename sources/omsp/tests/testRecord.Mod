@@ -103,10 +103,10 @@ section     4	c   28	module body
  0018	     0000
  001A	     4130	RET
 fixups:
- 0019	  0     3     0
- 000B	  0     2     0
- 0011	  0     1     0
- 0015	  0     0     0
+ 0019	s0.3
+ 000B	s0.2
+ 0011	s0.1
+ 0015	s0.0
 
 section     5	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

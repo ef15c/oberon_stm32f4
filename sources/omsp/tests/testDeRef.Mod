@@ -37,8 +37,8 @@ section     3	c   22	module body
  0012	     0000
  0014	     4130	RET
 fixups:
- 000D	  0     1     0
- 0003	  0     2     0
+ 000D	s0.1
+ 0003	s0.2
 
 section     4	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
@@ -47,4 +47,3 @@ fixups:
 
 entries:
     3
-

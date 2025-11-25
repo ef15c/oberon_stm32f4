@@ -4,6 +4,7 @@ BEGIN
   IF i = 0 THEN i := 1 ELSE i := 0 END
 END testIfThen.
 
+OMSPP.Compile testIfThen.Mod~
 OMSPTool.DecObj testIfThen.mpc
 decode testIfThen.mpc
 testIfThen 2DEE3392
@@ -23,7 +24,7 @@ section     1	c   18	module body
  000E	     0009
  0010	     4130	RET
 fixups:
- 000F	  0     0     0
+ 000F	s0.0
 
 section     2	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

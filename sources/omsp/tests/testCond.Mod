@@ -144,10 +144,10 @@ section     4	c   38	module body
  0022	     5321	ADD #2,SP
  0024	     4130	RET
 fixups:
- 0021	  0     3     0
- 0019	  0     2     0
- 0011	  0     1     0
- 0007	  0     0     0
+ 0021	s0.3
+ 0019	s0.2
+ 0011	s0.1
+ 0007	s0.0
 
 section     5	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
@@ -156,4 +156,3 @@ fixups:
 
 entries:
     4
-

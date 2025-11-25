@@ -31,7 +31,7 @@ section     1	c    6	module body
  0002	     0000
  0004	     4130	RET
 fixups:
- 0003	  0     0     0
+ 0003	s0.0
 
 section     2	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
@@ -105,14 +105,14 @@ section     0	c   76	p
  0048	     5221	ADD #4,SP
  004A	     4130	RET
 fixups:
- 0047	  1     3     0
+ 0047	s1.3
 
 section     1	c    6	module body
  0000	     12B0	CALL #0
  0002	     0000
  0004	     4130	RET
 fixups:
- 0003	  0     0     0
+ 0003	s0.0
 
 section     2	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

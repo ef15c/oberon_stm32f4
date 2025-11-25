@@ -24,7 +24,7 @@ MODULE testParam;
 BEGIN q(t0, u0)
 END testParam.
 
-
+OMSPP.Compile testParam.Mod/s~
 OMSPTool.DecObj testParam.mpc 
 decode testParam.mpc
 testParam 847D84B2
@@ -59,7 +59,7 @@ section     2	c   40	p
  0024	     0000
  0026	     4130	RET
 fixups:
- 0017	  1     1     0
+ 0017	s1.1
 
 section     3	c   28	r
  0000	     4407	MOV R4,R7
@@ -77,7 +77,7 @@ section     3	c   28	r
  0018	     0000
  001A	     4130	RET
 fixups:
- 000F	  1     1     0
+ 000F	s1.1
 
 section     4	c   66	q
  0000	     1213	PUSH #1
@@ -114,8 +114,8 @@ section     4	c   66	q
  003E	     0031
  0040	     4130	RET
 fixups:
- 003F	  0     3     0
- 001F	  0     2     0
+ 003F	s0.3
+ 001F	s0.2
 
 section     5	c   22	module body
  0000	     1230	PUSH #0
@@ -130,9 +130,9 @@ section     5	c   22	module body
  0012	     0006
  0014	     4130	RET
 fixups:
- 000F	  0     4     0
- 000B	  0     1     0
- 0003	  0     0     0
+ 000F	s0.4
+ 000B	s0.1
+ 0003	s0.0
 
 section     6	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

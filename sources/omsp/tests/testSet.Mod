@@ -105,14 +105,14 @@ section     0	c  150	p
  0092	     000C
  0094	     4130	RET
 fixups:
- 0033	  1     3     0
+ 0033	s1.3
 
 section     1	c    6	module body
  0000	     12B0	CALL #0
  0002	     0000
  0004	     4130	RET
 fixups:
- 0003	  0     0     0
+ 0003	s0.0
 
 section     2	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

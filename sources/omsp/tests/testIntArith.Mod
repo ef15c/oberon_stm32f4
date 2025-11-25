@@ -66,15 +66,15 @@ section     0	c   86	p
  0052	     0006
  0054	     4130	RET
 fixups:
- 004B	  1     2     0
- 0027	  1     1     0
+ 004B	s1.2
+ 0027	s1.1
 
 section     1	c    6	module body
  0000	     12B0	CALL #0
  0002	     0000
  0004	     4130	RET
 fixups:
- 0003	  0     0     0
+ 0003	s0.0
 
 section     2	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

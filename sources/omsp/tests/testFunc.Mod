@@ -65,9 +65,9 @@ section     3	c   40	module body
  0024	     001F
  0026	     4130	RET
 fixups:
- 001B	  0     2     0
- 0025	  0     0     0
- 0007	  0     1     0
+ 001B	s0.2
+ 0025	s0.0
+ 0007	s0.1
 
 section     4	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
@@ -76,4 +76,3 @@ fixups:
 
 entries:
     3
-

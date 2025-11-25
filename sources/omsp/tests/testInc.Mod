@@ -38,9 +38,6 @@ END testInc.
 OMSPP.Compile testInc.Mod~
 OMSPTool.DecObj testInc.mpc
 decode testInc.mpc
-testInc 139C34CD bad version
-  compiling testInc   334     6 139C34CD
-decode testInc.mpc
 testInc 139C34CD
 imports:
 
@@ -135,10 +132,10 @@ section     4	c  154	p
  0096	     0006
  0098	     4130	RET
 fixups:
- 0049	  0     3     0
- 004B	  0     2     0
- 0037	  0     1     0
- 0039	  0     0     0
+ 0049	s0.3
+ 004B	s0.2
+ 0037	s0.1
+ 0039	s0.0
 
 section     5	c  106	q
  0000	     5392	ADD #1,&0
@@ -195,10 +192,10 @@ section     5	c  106	q
  0066	     8746	SUB.B R7,R6
  0068	     4130	RET
 fixups:
- 0045	  0     3     0
- 0047	  0     2     0
- 0033	  0     1     0
- 0035	  0     0     0
+ 0045	s0.3
+ 0047	s0.2
+ 0033	s0.1
+ 0035	s0.0
 
 section     6	c   10	module body
  0000	     12B0	CALL #0
@@ -207,8 +204,8 @@ section     6	c   10	module body
  0006	     0000
  0008	     4130	RET
 fixups:
- 0007	  0     5     0
- 0003	  0     4     0
+ 0007	s0.5
+ 0003	s0.4
 
 section     7	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

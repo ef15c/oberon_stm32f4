@@ -168,10 +168,14 @@ MODULE OMSPTool;  (*NW 18.2.2013
             Texts.WriteString(W, "fixups:"); Texts.WriteLn(W);
             ReadWord(R, adr);
             WHILE adr # 0 DO TextsEx.WriteHexVLen(W, adr, 4, FALSE); Texts.Write(W, 09X);
-              Files.ReadByte(R, bl); Texts.WriteInt(W, bl, 3); Texts.Write(W, " ");
-              ReadWord(R, n); Texts.WriteInt(W, n, 5); Texts.Write(W, " ");
-              ReadWord(R, n); Texts.WriteInt(W, n, 5); Texts.WriteLn(W);
-              ReadWord(R, adr);
+              Files.ReadByte(R, bl); Texts.Write(W, "s"); Texts.WriteInt(W, bl, 1);
+              ReadWord(R, n); Texts.Write(W, "."); Texts.WriteInt(W, n, 1);
+              ReadWord(R, n);
+              IF n # 0 THEN IF n > 0 THEN  Texts.Write(W, "+") END;
+                Texts.WriteInt(W, n, 1)
+              END;
+              Texts.WriteLn(W);
+              ReadWord(R, adr)
             END;
             Texts.WriteLn(W);
             INC(no); Files.Read(R, ch)
