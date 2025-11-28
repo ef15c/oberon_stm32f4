@@ -200,7 +200,7 @@ section     4	c   18	atoi
  000E	     440F	MOV R4,R15
  0010	     4130	RET
 fixups:
- 000D	  0     3     0
+ 000D	s0.3
 
 section     5	c    2	module body
  0000	     4130	RET

@@ -8,7 +8,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     Import and Export. This module contains the list of standard identifiers, with which
     the symbol table (universe), and that of the pseudo-module SYSTEM are initialized. *)
 
-  CONST versionkey* = 2; maxTypTab = 64;
+  CONST versionkey* = 3; maxTypTab = 64;
     (* class values*) Head* = 0;
       Const* = 1; Var* = 2; Par* = 3; Fld* = 4; Typ* = 5;
       SProc* = 6; SFunc* = 7; Mod* = 8; StoredConst* = 9;
@@ -245,12 +245,9 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           IF class = Typ THEN
             t := obj.type; t.typobj := obj; Read(R, k);  (*fixup bases of previously declared pointer types*)
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
-          ELSE
-            IF class = Const THEN obj.rdo := TRUE;
-              IF obj.type.form = String THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END
-            ELSIF class IN {Var, StoredConst} THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.register := 0FFH;
-              IF obj.type.form = Proc THEN regRTProc(obj) END
-            END
+          ELSIF class = Const THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE;
+          ELSIF class IN {Var, StoredConst} THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE; obj.register := 0FFH;
+            IF obj.type.form = Proc THEN regRTProc(obj) END
           END ;
           obj.next := thismod.dsc; thismod.dsc := obj; Read(R, class)
         END ;
@@ -348,12 +345,11 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
             END
           END ;
           Write(R, 0)
-        ELSIF obj.class = Const THEN
-          IF obj.type.form = Proc THEN Files.WriteNum(R, obj.exno)
-          ELSIF obj.type.form = String THEN Files.WriteInt(R, obj.val DIV 10000H*10000H + obj.exno)
-          ELSE Files.WriteNum(R, obj.val)
+        ELSIF obj.class = Const THEN Files.WriteNum(R, obj.val)
+        ELSIF obj.class IN {Var, StoredConst} THEN
+          IF obj.type.form = String THEN Files.WriteNum(R, obj.val DIV 10000H*10000H + obj.exno)
+          ELSE Files.WriteNum(R, obj.exno)
           END
-        ELSIF obj.class IN {Var, StoredConst} THEN Files.WriteNum(R, obj.exno)
         END
       END;
       obj := obj.next

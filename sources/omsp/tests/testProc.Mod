@@ -1,6 +1,6 @@
 MODULE testProc;
 
-  PROCEDURE p;
+  PROCEDURE p*;
     PROCEDURE q;
     BEGIN q
     END q;
@@ -10,7 +10,13 @@ MODULE testProc;
 BEGIN p
 END testProc.
 
-OMSPP.Compile testProc.Mod~
+OMSPP.Compile testProc.Mod/s~
+
+OMSPTool.DecSym testProc.sms
+decode testProc.sms
+testProc 28D01BD8  2
+   9 p [0  form = 10 [^9] UR 0000()]     1
+
 OMSPTool.DecObj testProc.mpc
 decode testProc.mpc
 testProc 75AC3E14

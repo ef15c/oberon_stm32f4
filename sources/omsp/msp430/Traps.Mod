@@ -63,10 +63,10 @@ section     4	v   64	vector table
 fixups:
 
 entries:
-    3
-    0    1    2
+    3    0    1    2
 
 OMSPTool.DecSym Traps.sms
+decode Traps.sms
 Traps 3714F611  2
    9 ArrayOutOfRange [0  form = 10 [^9] UR 0000()]     1
    9 TypeGuardFailure [0  form = 10 [^9] UR 0000()]     2

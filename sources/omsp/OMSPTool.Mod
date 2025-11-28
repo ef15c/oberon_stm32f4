@@ -92,12 +92,10 @@ MODULE OMSPTool;  (*NW 18.2.2013
                 Texts.WriteString(W, " ->"); Texts.WriteInt(W, class, 4); Read(R, class)
               END ;
               Texts.Write(W, ")")
-            ELSIF class = B.Const THEN
-              IF Form = B.String THEN Files.ReadInt(R, k); Texts.WriteInt(W, k DIV 10000H, 6); (*len*) k := k MOD 10000H
-              ELSE Files.ReadNum(R, k)
-              END; Texts.WriteInt(W, k, 8);
-            ELSIF class IN {B.Var, B.StoredConst} THEN
-              Files.ReadNum(R, k); Texts.WriteInt(W, k, 6) (*exno*)
+            ELSIF class = B.Const THEN Files.ReadNum(R, k); Texts.WriteInt(W, k, 8)
+            ELSIF class IN {B.Var, B.StoredConst} THEN Files.ReadNum(R, k);
+              IF Form = B.String THEN Texts.WriteInt(W, k DIV 10000H, 6); (*len*) k := k MOD 10000H END;
+              Texts.WriteInt(W, k, 6) (*exno*)
             END;
             Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
             Read(R, class)
@@ -124,10 +122,10 @@ MODULE OMSPTool;  (*NW 18.2.2013
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S1.s); F := Files.Old(S1.s);
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
-        Files.ReadInt(R, key); Texts.WriteHex(W, key); Files.ReadByte(R, bl);
+        Files.ReadInt(R, key); Texts.WriteHex(W, key); Files.ReadByte(R, bl); Texts.WriteLn(W);
         IF bl IN {4..5} THEN bl := bl MOD 2;
           IF bl = 1 THEN Texts.WriteString(W, "code executed from RAM"); Texts.WriteLn(W); END;
-          Texts.Append(Oberon.Log, W.buf); Texts.WriteLn(W);
+          Texts.Append(Oberon.Log, W.buf);
           Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
           WHILE name[0] # 0X DO
             Texts.Write(W, 9X); Texts.WriteString(W, name);
@@ -159,6 +157,11 @@ MODULE OMSPTool;  (*NW 18.2.2013
                 IF (i + 1) MOD 10H = 0 THEN Texts.WriteLn(W) END; INC(i)
               END;
               IF i MOD 10H # 0 THEN Texts.WriteLn(W) END
+            ELSIF ch = "s" THEN i := 0;
+              WHILE i < size DO Files.Read(R, ch); IF ch = 0X THEN ch := "|" END;
+                Texts.Write(W, ch); INC(i)
+              END;
+              Texts.WriteLn(W)
             ELSIF ch # "r" THEN i := 0;
               WHILE i < size DO Files.ReadByte(R, bl); TextsEx.WriteHexVLen(W, bl, 2, FALSE);
                 IF (i + 1) MOD 10H = 0 THEN Texts.WriteLn(W) END; INC(i)

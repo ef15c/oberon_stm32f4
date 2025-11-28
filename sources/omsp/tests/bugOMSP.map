@@ -1,0 +1,8 @@
+R	d 0000	8
+r	d 0008	6
+i	r 0200	2
+j	r 0202	2
+p	c 000E	2
+module body	c 0010	6
+vector table	v64
+codeexe	 0204

@@ -8,7 +8,6 @@ MODULE msp430delay; (*C. Schoffit 06.10.24*)
 END msp430delay.
 
 OMSPTool.DecObj msp430delay.mpc
-
 decode msp430delay.mpc
 msp430delay 6768A5E3
 imports:

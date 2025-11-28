@@ -873,13 +873,12 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF sym = S.eql THEN S.Get(sym) ELSE S.Mark("= ?") END;
         expression(x);
         IF (x.type.form = B.String) & (G.Length(x) = 2) THEN G.StrToChar(x) END ;
-        B.NewObj(obj, id, B.Const); obj.expo := expo;
-        IF x.mode = B.Const THEN
-          IF x.type.form = B.String THEN ASSERT(x.a < 10000H); IF obj.expo THEN obj.exno := exno; INC(exno) END;
-            obj.val := x.a + G.Length(x)*10000H; (*for string constants, encode address and length in obj.val*)
-          ELSE obj.val := x.a
-          END; obj.type := x.type; obj.lev := x.c; obj.rdo := TRUE
-        ELSE S.Mark("expression not constant"); obj.type := B.intType
+        B.NewObj(obj, id, x.mode); obj.expo := expo; obj.type := x.type; obj.lev := x.c;
+        obj.val := x.a; obj.rdo := TRUE;
+        IF (x.mode = B.StoredConst) & (x.type.form = B.String) THEN ASSERT(x.a < 10000H);
+          IF obj.expo THEN obj.exno := exno; INC(exno) END;
+          INC(obj.val, G.Length(x)*10000H); (*for string constants, encode address and length in obj.val*)
+        ELSIF (x.mode # B.Const) THEN S.Mark("expression not constant"); obj.type := B.intType
         END;
         Check(S.semicolon, "; missing")
       END
