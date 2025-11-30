@@ -15,6 +15,7 @@ END testString.
 
 System.Free OMSPL OMSPP OMSPG~
 OMSPP.Compile testString.Mod/s~
+OMSPL.Link 32 4000H 200H testString ~
 
 OMSPTool.DecObj testString.mpc
 decode testString.mpc
@@ -29,25 +30,21 @@ section     1	s    4
 hi||
 fixups:
 
-section     2	s    8	
-bonjour|
-fixups:
-
-section     3	d    8	R
+section     2	d    8	R
  00 00 FF FF FF FF FF FF
 fixups:
 
-section     4	r   10	s
+section     3	r   10	s
 fixups:
 
-section     5	r    1	c
+section     4	r    1	c
 fixups:
 
-section     6	c    2	p
+section     5	c    2	p
  0000	     4130	RET
 fixups:
 
-section     7	c   84	module body
+section     6	c   84	module body
  0000	     403F	MOV #0,R15
  0002	     0000
  0004	     403E	MOV #0,R14
@@ -91,12 +88,16 @@ section     7	c   84	module body
  0050	     0000
  0052	     4130	RET
 fixups:
- 0051	s0.5
+ 0051	s0.4
  0045	s0.1
  0037	s0.0
- 0049	s0.6
- 0007	s0.2
- 001B	s0.4
+ 0049	s0.5
+ 0007	s0.7
+ 001B	s0.3
+
+section     7	s    8	
+bonjour|
+fixups:
 
 section     8	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
@@ -104,7 +105,7 @@ section     8	v   64	vector table
 fixups:
 
 entries:
-    7    0    1    0    1
+    6    0    1    2    3
 
 OMSPTool.DecSym testString.sms
 decode testString.sms

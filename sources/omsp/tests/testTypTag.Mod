@@ -29,34 +29,22 @@ END q;
 BEGIN q
 END testTypTag.
 
+OMSPP.Compile testTypTag.Mod ~
 OMSPTool.DecObj testTypTag.mpc
 decode testTypTag.mpc
-testTypTag 3F04311C Flash   128
+testTypTag 88478888
 imports:
-type descriptors
- 0002 FFFF FFFF FFFF 0004 0000 FFFF FFFF
-data     0
-strings
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+section     0	d    8	tr
+ 02 00 FF FF FF FF FF FF
+fixups:
 
-entries
- c 006A 0006
-fixup procedures in code space chains
- 0052     0	 0000
- 005C     0	 0032
- 006C     0	 0042
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
- 0048     0	 0008
-fixup variables in constant space chains
-fixup constants in constant space chains
- 000A     0	 0000
-entry =  006A
-code   112
+section     1	d    8	tr1
+ 04 00 00 00 FF FF FF FF
+fixups:
+ 0003	s0.0
+
+section     2	c   50	p
  0000	     8321	SUB #2,SP
  0002	     411F	MOV 4(SP),R15
  0004	     0004
@@ -82,34 +70,57 @@ code   112
  002C	     0000
  002E	     5321	ADD #2,SP
  0030	     4130	RET
- 0032	     8321	SUB #2,SP
- 0034	     411F	MOV 4(SP),R15
- 0036	     0004
- 0038	     4FD1	MOV.B 2(R15),0(SP)
- 003A	     0002
- 003C	     0000
- 003E	     5321	ADD #2,SP
- 0040	     4130	RET
- 0042	     8031	SUB #6,SP
- 0044	     0006
- 0046	     1230	PUSH #22
- 0048	     0016
- 004A	     410F	MOV SP,R15
- 004C	     532F	ADD #2,R15
- 004E	     120F	PUSH R15
- 0050	     12B0	CALL #0
- 0052	     0000
- 0054	     5221	ADD #4,SP
- 0056	     1211	PUSH 6(SP)
- 0058	     0006
- 005A	     12B0	CALL #0
- 005C	     0000
- 005E	     5321	ADD #2,SP
- 0060	     43D1	MOV.B #1,2(SP)
- 0062	     0002
- 0064	     5031	ADD #6,SP
- 0066	     0006
- 0068	     4130	RET
- 006A	     12B0	CALL #0
- 006C	     0000
- 006E	     4130	RET
+fixups:
+ 0017	s0.1
+
+section     3	c   16	p2
+ 0000	     8321	SUB #2,SP
+ 0002	     411F	MOV 4(SP),R15
+ 0004	     0004
+ 0006	     4FD1	MOV.B 2(R15),0(SP)
+ 0008	     0002
+ 000A	     0000
+ 000C	     5321	ADD #2,SP
+ 000E	     4130	RET
+fixups:
+
+section     4	c   40	q
+ 0000	     8031	SUB #6,SP
+ 0002	     0006
+ 0004	     1230	PUSH #0
+ 0006	     0000
+ 0008	     410F	MOV SP,R15
+ 000A	     532F	ADD #2,R15
+ 000C	     120F	PUSH R15
+ 000E	     12B0	CALL #0
+ 0010	     0000
+ 0012	     5221	ADD #4,SP
+ 0014	     1211	PUSH 6(SP)
+ 0016	     0006
+ 0018	     12B0	CALL #0
+ 001A	     0000
+ 001C	     5321	ADD #2,SP
+ 001E	     43D1	MOV.B #1,2(SP)
+ 0020	     0002
+ 0022	     5031	ADD #6,SP
+ 0024	     0006
+ 0026	     4130	RET
+fixups:
+ 001B	s0.3
+ 0011	s0.2
+ 0007	s0.1
+
+section     5	c    6	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     4130	RET
+fixups:
+ 0003	s0.4
+
+section     6	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    5

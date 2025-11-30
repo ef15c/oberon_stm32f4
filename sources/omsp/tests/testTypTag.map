@@ -1,0 +1,10 @@
+Module testTypTag
+tr	d C000	8
+tr1	d C008	8
+p	c C010	50
+p2	c C042	16
+q	c C052	40
+module body	c C07A	6
+vector table	v	64
+codeexe	 C000
+

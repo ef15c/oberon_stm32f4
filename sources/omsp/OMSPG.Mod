@@ -385,7 +385,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF i.mode = Reg THEN i.am := A.Register; i.ofs := 0
     ELSIF i.mode = RegI THEN i.am := A.Indexed; i.ofs := i.a
     ELSIF i.mode = Absol THEN  i.am := A.Absolute; i.ofs := i.a
-    ELSIF i.mode = B.Const THEN i.ofs := i.a; i.reg := 0; i.am := A.Immediate;
+    ELSIF i.mode = B.Const THEN i.ofs := i.a; i.reg := 0;
+      IF i.radr THEN i.am := A.Immediate2 ELSE i.am := A.Immediate END;
       IF dst THEN S.Mark("not writable"); i.am := A.Absolute END
     ELSIF i.mode = B.Par THEN rh.reg := AllocR(); INCL(nba, rh.reg);
       ti.am := A.Indexed; ti.reg := A.SP; ti.obj := NIL; ti.ofs := i.a + frame;
@@ -551,8 +552,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE stringFound(str: ARRAY OF CHAR; len: INTEGER; VAR s: Section): BOOLEAN;
    (*if the string already exists in a section, return TRUE with the position in parameter pos*)
     VAR found: BOOLEAN; i: INTEGER;
-  BEGIN ASSERT(len < 10000H); found := FALSE; s := head;
-    WHILE ~found & (s # NIL) DO ASSERT(s # s.next);
+  BEGIN found := FALSE; s := head;
+    WHILE ~found & (s # NIL) DO
       IF s.segment = "s" THEN
         i := 0; WHILE (i < len) & (str[i] = CHR(strings.code[s.org + i])) DO INC(i) END;
         IF i = len THEN found := TRUE ELSE s := s.next END
@@ -674,16 +675,15 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Q(T: B.Type; s: Section);
     VAR f!: Fixup; adr: INTEGER;
   BEGIN (*one entry of type descriptor extension table*)
-    IF T.base # NIL THEN NEW(f);
-      Q(T.base, s); adr := s.content.pc; EmitWord(s, f.fixadr); f.fixadr := adr; 
-      f.mno := T.mno; f.sno := T.len; f.next := s.fixup; s.fixup := f
+    IF T.base # NIL THEN f := GetFixup(s, T.base.mno, T.base.len, 0);
+      Q(T.base, s); adr := s.content.pc - s.org + 1; EmitWord(s, f.fixadr); f.fixadr := adr
     END
   END Q;
 
   PROCEDURE BuildTD*(T: B.Type);
     VAR k: INTEGER; s!: Section;
   BEGIN NewSection(mcode, s, "d", T.typobj.name); EmitWord(s, T.size);
-    T.len := s.no; (*len used as address*);
+    T.len := s.no; (*len used as section number*);
     k := T.nofpar;   (*extension level!*)
     IF k > 3 THEN S.Mark("ext level too large")
     ELSE Q(T, s);
@@ -1090,7 +1090,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF y.c >= 0 THEN INC(y.a, 2) ELSE INC(y.b, 2) END;
         DEC(s, 2)
       END
-    ELSE 
+    ELSE
       loadAdr(y, 0FFH); IF oneReg THEN free(x); x.reg := y.reg; x.tmp := FALSE; DEC(d, WordSize) ELSE loadAdr(x, 0FFH); d := 0 END; rh.reg := AllocR();
       IF (xtyp.form = B.Array) &  (xtyp.len > 0) THEN
         IF ytyp.len >= 0 THEN

@@ -29,33 +29,10 @@ END testStringRelat.
 OMSPP.Compile testStringRelat.Mod/s~
 OMSPTool.DecObj testStringRelat.mpc
 decode testStringRelat.mpc
-testStringRelat B6C40EAF Flash   552
+testStringRelat DF7853C0
 imports:
-type descriptors
 
-data     0
-strings
-1.||2.||3.||-1.|-2.|-3.|
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 020E c 0000
-fixup procedures in code space chains
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
- 013A     0	 0014
- 011E     0	 0010
- 0102     0	 000C
- 00E6     0	 0008
- 00CA     0	 0004
- 00AE     0	 0000
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  020E
-code   528
+section     0	c  526	p
  0000	     8031	SUB #22,SP
  0002	     0016
  0004	     410F	MOV SP,R15
@@ -142,8 +119,8 @@ code   528
  00A6	     430F	MOV #0,R15
  00A8	     4FC1	MOV.B R15,20(SP)
  00AA	     0014
- 00AC	     403F	MOV #8,R15
- 00AE	     0008
+ 00AC	     403F	MOV #9,R15
+ 00AE	     0009
  00B0	     410E	MOV SP,R14
  00B2	     4E7D	MOV.B @R14+,R13
  00B4	     9F7D	CMP.B @R15+,R13
@@ -156,8 +133,8 @@ code   528
  00C2	     430F	MOV #0,R15
  00C4	     4FC1	MOV.B R15,20(SP)
  00C6	     0014
- 00C8	     403F	MOV #36,R15
- 00CA	     0024
+ 00C8	     403F	MOV #37,R15
+ 00CA	     0025
  00CC	     410E	MOV SP,R14
  00CE	     4F7D	MOV.B @R15+,R13
  00D0	     9E7D	CMP.B @R14+,R13
@@ -170,8 +147,8 @@ code   528
  00DE	     430F	MOV #0,R15
  00E0	     4FC1	MOV.B R15,20(SP)
  00E2	     0014
- 00E4	     403F	MOV #64,R15
- 00E6	     0040
+ 00E4	     403F	MOV #65,R15
+ 00E6	     0041
  00E8	     410E	MOV SP,R14
  00EA	     4F7D	MOV.B @R15+,R13
  00EC	     9E7D	CMP.B @R14+,R13
@@ -184,8 +161,8 @@ code   528
  00FA	     430F	MOV #0,R15
  00FC	     4FC1	MOV.B R15,20(SP)
  00FE	     0014
- 0100	     403F	MOV #92,R15
- 0102	     005C
+ 0100	     403F	MOV #93,R15
+ 0102	     005D
  0104	     410E	MOV SP,R14
  0106	     4F7D	MOV.B @R15+,R13
  0108	     9E7D	CMP.B @R14+,R13
@@ -198,8 +175,8 @@ code   528
  0116	     430F	MOV #0,R15
  0118	     4FC1	MOV.B R15,20(SP)
  011A	     0014
- 011C	     403F	MOV #120,R15
- 011E	     0078
+ 011C	     403F	MOV #121,R15
+ 011E	     0079
  0120	     410E	MOV SP,R14
  0122	     4E7D	MOV.B @R14+,R13
  0124	     9F7D	CMP.B @R15+,R13
@@ -212,8 +189,8 @@ code   528
  0132	     430F	MOV #0,R15
  0134	     4FC1	MOV.B R15,20(SP)
  0136	     0014
- 0138	     403F	MOV #148,R15
- 013A	     0094
+ 0138	     403F	MOV #149,R15
+ 013A	     0095
  013C	     410E	MOV SP,R14
  013E	     4F7D	MOV.B @R15+,R13
  0140	     9E7D	CMP.B @R14+,R13
@@ -319,4 +296,46 @@ code   528
  0208	     5031	ADD #22,SP
  020A	     0016
  020C	     4130	RET
- 020E	     4130	RET
+fixups:
+ 013B	s0.6
+ 011F	s0.5
+ 0103	s0.4
+ 00E7	s0.3
+ 00CB	s0.2
+ 00AF	s0.1
+
+section     1	s    4	
+1.||
+fixups:
+
+section     2	s    4	
+2.||
+fixups:
+
+section     3	s    4	
+3.||
+fixups:
+
+section     4	s    4	
+-1.|
+fixups:
+
+section     5	s    4	
+-2.|
+fixups:
+
+section     6	s    4	
+-3.|
+fixups:
+
+section     7	c    2	module body
+ 0000	     4130	RET
+fixups:
+
+section     8	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    7    0
