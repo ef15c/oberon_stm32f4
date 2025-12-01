@@ -1,5 +1,5 @@
 MODULE testSFuncs;
-  PROCEDURE p;
+  PROCEDURE p*;
     VAR a, v: INTEGER;
       b: BOOLEAN; c: CHAR;
   BEGIN
@@ -15,27 +15,10 @@ END testSFuncs.
 OMSPP.Compile testSFuncs.Mod/s~
 OMSPTool.DecObj testSFuncs.mpc
 decode testSFuncs.mpc
-testSFuncs DA799ADA Flash    66
+testSFuncs 2EE74D58
 imports:
-type descriptors
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0040 c 0000
-fixup procedures in code space chains
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  0040
-code    66
+section     0	c   64	p
  0000	     8031	SUB #6,SP
  0002	     0006
  0004	     9381	CMP #0,2(SP)
@@ -68,4 +51,16 @@ code    66
  003A	     5031	ADD #6,SP
  003C	     0006
  003E	     4130	RET
- 0040	     4130	RET
+fixups:
+
+section     1	c    2	module body
+ 0000	     4130	RET
+fixups:
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1    0

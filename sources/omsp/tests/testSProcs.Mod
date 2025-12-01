@@ -2,7 +2,7 @@ MODULE testSProcs;
 (*For ASSERT tests, see testAssert.Mod,
    For INCL and EXCL tests, see testInEx.Mod*)
 
-  PROCEDURE p;
+  PROCEDURE p*;
     VAR i: INTEGER; b: BYTE;
   BEGIN INC(i); INC(b);
     BIC(i, b); BIC(b, i); BIC(i, i); BIC(b, b); BIC(i, {5, 10}); BIC(b, {5, 10});
@@ -22,26 +22,10 @@ END testSProcs.
 
 OMSPTool.DecObj testSProcs.mpc
 decode testSProcs.mpc
-testSProcs 28EC106F Flash   422
+testSProcs 4B454405
 imports:
-type descriptors
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 01A4
-fixup procedures chains
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
-entry =  01A4
-code   422
+section     0	c  420	p
  0000	     8221	SUB #4,SP
  0002	     5391	ADD #1,0(SP)
  0004	     0000
@@ -154,51 +138,51 @@ code   422
  00DA	     0002
  00DC	     535F	ADD.B #1,R15
  00DE	     835F	SUB.B #1,R15
- 00E0	     2403	JEQ #3, goes to  00E8
+ 00E0	     2403	JEQ $+8, goes to  00E8
  00E2	     51A1	ADD @SP,0(SP)
  00E4	     0000
- 00E6	     3FFB	JMP #-5, goes to  00DE
+ 00E6	     3FFB	JMP $-8, goes to  00DE
  00E8	     412F	MOV @SP,R15
  00EA	     531F	ADD #1,R15
  00EC	     831F	SUB #1,R15
- 00EE	     2404	JEQ #4, goes to  00F8
+ 00EE	     2404	JEQ $+10, goes to  00F8
  00F0	     51D1	ADD.B 2(SP),2(SP)
  00F2	     0002
  00F4	     0002
- 00F6	     3FFA	JMP #-6, goes to  00EC
+ 00F6	     3FFA	JMP $-10, goes to  00EC
  00F8	     412F	MOV @SP,R15
  00FA	     531F	ADD #1,R15
  00FC	     831F	SUB #1,R15
- 00FE	     2403	JEQ #3, goes to  0106
+ 00FE	     2403	JEQ $+8, goes to  0106
  0100	     51A1	ADD @SP,0(SP)
  0102	     0000
- 0104	     3FFB	JMP #-5, goes to  00FC
+ 0104	     3FFB	JMP $-8, goes to  00FC
  0106	     415F	MOV.B 2(SP),R15
  0108	     0002
  010A	     535F	ADD.B #1,R15
  010C	     835F	SUB.B #1,R15
- 010E	     2404	JEQ #4, goes to  0118
+ 010E	     2404	JEQ $+10, goes to  0118
  0110	     51D1	ADD.B 2(SP),2(SP)
  0112	     0002
  0114	     0002
- 0116	     3FFA	JMP #-6, goes to  010C
+ 0116	     3FFA	JMP $-10, goes to  010C
  0118	     403F	MOV #10,R15
  011A	     000A
  011C	     531F	ADD #1,R15
  011E	     831F	SUB #1,R15
- 0120	     2403	JEQ #3, goes to  0128
+ 0120	     2403	JEQ $+8, goes to  0128
  0122	     51A1	ADD @SP,0(SP)
  0124	     0000
- 0126	     3FFB	JMP #-5, goes to  011E
+ 0126	     3FFB	JMP $-8, goes to  011E
  0128	     403F	MOV #5,R15
  012A	     0005
  012C	     531F	ADD #1,R15
  012E	     831F	SUB #1,R15
- 0130	     2404	JEQ #4, goes to  013A
+ 0130	     2404	JEQ $+10, goes to  013A
  0132	     51D1	ADD.B 2(SP),2(SP)
  0134	     0002
  0136	     0002
- 0138	     3FFA	JMP #-6, goes to  012E
+ 0138	     3FFA	JMP $-10, goes to  012E
  013A	     61A1	ADDC @SP,0(SP)
  013C	     0000
  013E	     61D1	ADDC.B 2(SP),2(SP)
@@ -208,48 +192,60 @@ code   422
  0146	     0002
  0148	     535F	ADD.B #1,R15
  014A	     835F	SUB.B #1,R15
- 014C	     2402	JEQ #2, goes to  0152
+ 014C	     2402	JEQ $+6, goes to  0152
  014E	     1121	RRA @SP
- 0150	     3FFC	JMP #-4, goes to  014A
+ 0150	     3FFC	JMP $-6, goes to  014A
  0152	     412F	MOV @SP,R15
  0154	     531F	ADD #1,R15
  0156	     831F	SUB #1,R15
- 0158	     2403	JEQ #3, goes to  0160
+ 0158	     2403	JEQ $+8, goes to  0160
  015A	     1151	RRA.B 2(SP)
  015C	     0002
- 015E	     3FFB	JMP #-5, goes to  0156
+ 015E	     3FFB	JMP $-8, goes to  0156
  0160	     412F	MOV @SP,R15
  0162	     531F	ADD #1,R15
  0164	     831F	SUB #1,R15
- 0166	     2402	JEQ #2, goes to  016C
+ 0166	     2402	JEQ $+6, goes to  016C
  0168	     1121	RRA @SP
- 016A	     3FFC	JMP #-4, goes to  0164
+ 016A	     3FFC	JMP $-6, goes to  0164
  016C	     415F	MOV.B 2(SP),R15
  016E	     0002
  0170	     535F	ADD.B #1,R15
  0172	     835F	SUB.B #1,R15
- 0174	     2403	JEQ #3, goes to  017C
+ 0174	     2403	JEQ $+8, goes to  017C
  0176	     1151	RRA.B 2(SP)
  0178	     0002
- 017A	     3FFB	JMP #-5, goes to  0172
+ 017A	     3FFB	JMP $-8, goes to  0172
  017C	     403F	MOV #10,R15
  017E	     000A
  0180	     531F	ADD #1,R15
  0182	     831F	SUB #1,R15
- 0184	     2402	JEQ #2, goes to  018A
+ 0184	     2402	JEQ $+6, goes to  018A
  0186	     1121	RRA @SP
- 0188	     3FFC	JMP #-4, goes to  0182
+ 0188	     3FFC	JMP $-6, goes to  0182
  018A	     403F	MOV #5,R15
  018C	     0005
  018E	     531F	ADD #1,R15
  0190	     831F	SUB #1,R15
- 0192	     2403	JEQ #3, goes to  019A
+ 0192	     2403	JEQ $+8, goes to  019A
  0194	     1151	RRA.B 2(SP)
  0196	     0002
- 0198	     3FFB	JMP #-5, goes to  0190
+ 0198	     3FFB	JMP $-8, goes to  0190
  019A	     1021	RRC @SP
  019C	     1051	RRC.B 2(SP)
  019E	     0002
  01A0	     5221	ADD #4,SP
  01A2	     4130	RET
- 01A4	     4130	RET
+fixups:
+
+section     1	c    2	module body
+ 0000	     4130	RET
+fixups:
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1    0

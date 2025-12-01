@@ -77,6 +77,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     S.DebugHex("@", SYSTEM.ADR(x));
     S.DebugHex("mode", x.mode); S.DebugHex("reg", x.reg); 
     S.DebugHex("a", x.a); S.DebugHex("b", x.b); S.DebugHex("c", x.c);
+    S.DebugHex("size", x.type.size);
     S.DebugHex("adr", ORD(x.radr)); S.DebugHex("ptr", ORD(x.ptr));
     S.DebugHex("tmp", ORD(x.tmp)); S.DebugHex("rdo", ORD(x.rdo))
   END PrintItem;
@@ -427,7 +428,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN tmp := FALSE;
     IF (src.type.size = 1) & (t.size = 2) THEN (*move byte to word*)
       IF ~(src.mode IN {Reg, B.Const}) THEN
-        it := src; free(src); alloc(src, 0FFH); PutDO0(A.MOV, it, src); tmp := TRUE
+        it := src; free(src); alloc(src, 0FFH); src.mode := Reg; src.rdo := FALSE;
+        PutDO0(A.MOV, it, src); tmp := TRUE
       END; src.type := B.intType (*extend source*)
     END
 
@@ -481,8 +483,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
           IF x.a + frame # 0 THEN t.a := x.a + frame; x.type := B.intType; PutDO(A.ADD, t, x) END
         ELSE (*global or imported*) x.mode := B.Const; x.radr := TRUE;
         END
-      ELSIF x.mode = RegI THEN x.mode := Reg; x.type := B.intType;
-        IF x.a # 0 THEN t.a := x.a; PutDO(A.ADD, t, x) END
+      ELSIF x.mode = RegI THEN x.mode := Reg; x.type := B.intType; x.rdo := FALSE;
+        IF x.a # 0 THEN t.radr := x.radr; t.a := x.a; PutDO(A.ADD, t, x); x.radr := FALSE END
       ELSIF ~(x.mode IN {B.Var, B.StoredConst, Absol}) THEN S.Mark("not addressable")
       END
     END
