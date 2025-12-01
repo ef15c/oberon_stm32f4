@@ -73,15 +73,19 @@ MODULE AOCUtils;
     RETURN r
   END max;
 
-  PROCEDURE toInt*(c: ARRAY OF CHAR): INTEGER;
-    VAR r, i: INTEGER; ch: CHAR;
-  BEGIN r := 0; i := 0;
+  PROCEDURE toIntOfs*(c: ARRAY OF CHAR; i: INTEGER): INTEGER;
+    VAR r: INTEGER; ch: CHAR;
+  BEGIN r := 0;
     WHILE (i < LEN(c)) & (c[i] # 0X) DO ch := c[i];
       IF (ch >= "0") & (ch <= "9") THEN r := r*10; INC(r, ORD(ch) - ORD("0")) END;
       INC(i)
     END
 
     RETURN r
+  END toIntOfs;
+
+  PROCEDURE toInt*(c: ARRAY OF CHAR): INTEGER;
+    RETURN  toIntOfs(c, 0)
   END toInt;
 
 BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
