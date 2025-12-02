@@ -1,5 +1,5 @@
 MODULE BMP;
-  IMPORT Files, FilesEx, Display, Texts, TextsEx;
+  IMPORT Files, FilesEx, Display, Texts;
 
   TYPE Header* = RECORD signature*: ARRAY 3 OF CHAR; filesize*, dataoffset*: INTEGER END;
     DIBHeader* = RECORD size*, width*, height*, planes*, bitcount*, compression*, imagesize*,
@@ -80,7 +80,7 @@ MODULE BMP;
   BEGIN Files.Set(R, Files.Base(R), bh.dataoffset); ASSERT(dh.bitcount = 8);
     IF dh.compression = 0 THEN (*no compression*)
       FOR i := 0 TO n - 1 DO Texts.WriteString(W, "line "); Texts.WriteInt(W, i, 1); Texts.WriteLn(W); j := 0;
-        WHILE j < dh.width DO Files.ReadByte(R, pixel); TextsEx.WriteHexVLen(W, pixel, 2, TRUE);
+        WHILE j < dh.width DO Files.ReadByte(R, pixel); Texts.WriteHexVLen(W, pixel, 2, TRUE);
           IF j MOD 16 = 15 THEN Texts.WriteLn(W) END; INC(j)
         END; WHILE j MOD 4 # 0 DO Files.ReadByte(R, pixel); INC(j) END;
         Texts.WriteLn(W)
@@ -95,13 +95,13 @@ MODULE BMP;
             ELSIF value = 2 THEN (*jump*) ASSERT(FALSE)
             ELSE (*absolute mode*)
               FOR c := 1 TO value DO Files.ReadByte(R, pixel);
-                TextsEx.WriteHexVLen(W, pixel, 2, TRUE); IF j MOD 16 = 15 THEN Texts.WriteLn(W) END;
+                Texts.WriteHexVLen(W, pixel, 2, TRUE); IF j MOD 16 = 15 THEN Texts.WriteLn(W) END;
                 INC(j)
               END;
               WHILE c MOD 2 # 0 DO Files.ReadByte(R, pixel); INC(c) END
             END
           ELSE (*encoded mode*)
-            REPEAT TextsEx.WriteHexVLen(W, value, 2, TRUE); IF j MOD 16 = 15 THEN Texts.WriteLn(W) END;
+            REPEAT Texts.WriteHexVLen(W, value, 2, TRUE); IF j MOD 16 = 15 THEN Texts.WriteLn(W) END;
               INC(j); DEC(count)
             UNTIL count = 0
           END

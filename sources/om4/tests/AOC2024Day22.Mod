@@ -1,5 +1,5 @@
 MODULE AOC2024Day22;
-  IMPORT Texts, TE := TextsEx, Oberon, System, U := AOCUtils, UT := UTHash;
+  IMPORT Texts, Oberon, System, U := AOCUtils, UT := UTHash;
 
   TYPE GainDesc = RECORD(UT.IntHashDesc)
       lastBuyer, gain: INTEGER
@@ -36,7 +36,7 @@ MODULE AOC2024Day22;
 
   PROCEDURE part1*;
   BEGIN sum := 0; parse(doPart1);
-    Texts.WriteString(W, "Partie 1: sum = "); TE.WriteLongInt(W, sum, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 1: sum = "); Texts.WriteInt(W, sum, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part1;
 
@@ -47,7 +47,7 @@ MODULE AOC2024Day22;
       IF i >= 4 THEN t := UT.FIND_INT(gains, e); g := t(Gain);
         IF g = NIL THEN NEW(g); g.key := e; g.lastBuyer := b; g.gain := s MOD 10;
           t := UT.ADD_INT(gains, g); gains := t(Gain);
-        ELSIF g.lastBuyer # b THEN (* seule la premi\E8re apparition de la s\E9quence compte *)
+        ELSIF g.lastBuyer # b THEN (* seule la première apparition de la séquence compte *)
           g.lastBuyer := b; INC(g.gain, s MOD 10)
         END
       END; p := s MOD 10
@@ -55,7 +55,7 @@ MODULE AOC2024Day22;
   END doPart2;
 
   PROCEDURE part2*;
-    (* Chaque changement de prix peut varier de -9 \E0 9 soit 19 cas possibles.
+    (* Chaque changement de prix peut varier de -9 à 9 soit 19 cas possibles.
        le singe observe 4 changements successifs, soit 19*19*19*19 = 130321 cas possibles
        Pour stocker tous les gains possibles il faut au maximum 130321*sizeof(gain_t)
     *)
@@ -68,7 +68,7 @@ MODULE AOC2024Day22;
       g := t(Gain)
     END; gains := NIL; System.Collect;
     (*printf("Nb gains: %d\n", gains->hh.tbl->num_items);*)
-    Texts.WriteString(W, "Partie 2: nb bananes = "); TE.WriteLongInt(W, sum, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 2: nb bananes = "); Texts.WriteInt(W, sum, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part2;
 

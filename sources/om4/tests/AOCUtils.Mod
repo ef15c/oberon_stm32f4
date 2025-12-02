@@ -1,17 +1,11 @@
 MODULE AOCUtils;
-  IMPORT Texts, TE := TextsEx;
+  IMPORT Texts;
 
   CONST LONG_MAX* = LSL(1L, 63) - 1; BYTE_MAX* = LSL(1, 8);
 
   TYPE Vector* = RECORD x*, y*: INTEGER END;
 
   VAR DIRECTION4*: ARRAY 4 OF Vector;
-
-  PROCEDURE ReadL*(VAR S: TE.Scanner): LONGINT;
-    VAR r: LONGINT;
-  BEGIN IF S.class = Texts.Int THEN r := S.i ELSE ASSERT(S.class = TE.LongInt); r := S.l END; TE.Scan(S)
-    RETURN r
-  END ReadL;
 
   PROCEDURE ilog10*(x: LONGINT): INTEGER;
   (** Calculer le logarithme en base 10 d'un entier *)
@@ -87,6 +81,14 @@ MODULE AOCUtils;
   PROCEDURE toInt*(c: ARRAY OF CHAR): INTEGER;
     RETURN  toIntOfs(c, 0)
   END toInt;
+
+  PROCEDURE toString*(x: LONGINT; VAR s: ARRAY OF CHAR);
+    VAR i, j, l: INTEGER; c: CHAR;
+  BEGIN ASSERT(x >= 0);
+    l := 0;
+    REPEAT s[l] := CHR(ORD("0") + x MOD 10); x := x DIV 10; INC(l) UNTIL x = 0; s[l] := 0X;
+    i := 0; j := l - 1; WHILE i < j DO c := s[i]; s[i] := s[j]; s[j] := c; INC(i); DEC(j) END; (*reverse digits*)
+  END toString;
 
 BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
   DIRECTION4[1].x := 1; DIRECTION4[1].y := 0;

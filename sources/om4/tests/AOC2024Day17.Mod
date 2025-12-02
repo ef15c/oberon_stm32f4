@@ -1,5 +1,5 @@
 MODULE AOC2024Day17;
-  IMPORT Texts, TE := TextsEx, Oberon, U := AOCUtils;
+  IMPORT Texts, Oberon, U := AOCUtils;
 
   TYPE Regs = RECORD A, B, C: LONGINT; PC: INTEGER END;
     OutProc = PROCEDURE(v: INTEGER; next: BOOLEAN; a: INTEGER): BOOLEAN;
@@ -10,7 +10,7 @@ MODULE AOC2024Day17;
     VAR j: INTEGER;
   BEGIN
     IF i = -1 THEN Texts.WriteString(W, "Partie 2: valeur initiale du registre A = ");
-      TE.WriteLongInt(W, a, 1); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+      Texts.WriteInt(W, a, 1); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
     ELSE a := a*8;
       FOR j := 0 TO 7 DO
         IF digit[a MOD 1024 + j] = p[i] THEN (*On peut construire le nombre*) combine(i-1, a + j, p) END
@@ -19,10 +19,10 @@ MODULE AOC2024Day17;
   END combine;
 
   PROCEDURE parse(VAR r: Regs; VAR p: ARRAY OF INTEGER; VAR ps: INTEGER);
-    VAR S!: TE.Scanner;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); TE.Scan(S);
-    r.A := U.ReadL(S); r.B := 0; r.C := 0; r.PC := 0; ps := 0;
-    WHILE S.class IN {Texts.Int, TE.LongInt} DO p[ps] := U.ReadL(S); INC(ps) END
+    VAR S!: Texts.Scanner;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+    r.A := S.i; Texts.Scan(S); r.B := 0; r.C := 0; r.PC := 0; ps := 0;
+    WHILE S.class = Texts.Int DO p[ps] := S.i; Texts.Scan(S); INC(ps) END
   END parse;
 
   PROCEDURE value(r: Regs; c: INTEGER): LONGINT;
@@ -54,7 +54,7 @@ MODULE AOC2024Day17;
   PROCEDURE print(v: INTEGER; next: BOOLEAN; a: INTEGER): BOOLEAN;
   BEGIN
     IF next THEN Texts.Write(W, ",") END;
-    TE.WriteLongInt(W, v, 1)
+    Texts.WriteInt(W, v, 1)
 
     RETURN FALSE (*continue exection*)
   END print;

@@ -1,11 +1,11 @@
 MODULE AOC2024Day9;
-  IMPORT Texts, TE := TextsEx2, Oberon;
+  IMPORT Texts, Oberon;
 
   VAR W: Texts.Writer;
     map: ARRAY 160000 OF INTEGER; id, bl: INTEGER;
 
   PROCEDURE loadMap;
-    VAR S!: TE.Scanner; ch: CHAR;
+    VAR S!: Texts.Scanner; ch: CHAR;
       j: INTEGER; file: BOOLEAN;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); ch := S.nextCh;
     id := 0; bl := 0; file := TRUE;
@@ -35,7 +35,7 @@ MODULE AOC2024Day9;
     (* calcul checksum *)
     s := 0; FOR i := 0 TO bl - 1 DO IF map[i] # -1 THEN INC(s, 0L + i*map[i]) END END;
 
-    Texts.WriteString(W, "Partie 1: somme = "); TE.WriteLongInt(W, s, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 1: somme = "); Texts.WriteInt(W, s, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part1;
 
@@ -52,7 +52,7 @@ MODULE AOC2024Day9;
       WHILE l < r DO
         WHILE (l < r) & (map[l] # -1) DO INC(l) END; (** aller au prochain bloc libre *)
         fsz := 0;WHILE (l < r) & (map[l] = -1) DO INC(fsz); INC(l) END;
-        IF fsz >= sz THEN (* D\E9placer le fichier *)
+        IF fsz >= sz THEN (* Déplacer le fichier *)
           FOR j := 0 TO sz - 1 DO map[l - fsz + j] := i; map[r + j] := -1 END;
           l := r (*break*)
         END
@@ -62,7 +62,7 @@ MODULE AOC2024Day9;
     (* calcul checksum *)
     s := 0; FOR i := 0 TO bl - 1 DO IF map[i] # -1 THEN INC(s, 0L + i*map[i]) END END;
 
-    Texts.WriteString(W, "Partie 2: somme = "); TE.WriteLongInt(W, s, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 2: somme = "); Texts.WriteInt(W, s, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part2;
 
@@ -70,7 +70,7 @@ BEGIN Texts.OpenWriter(W)
 END AOC2024Day9.
 
 System.Free OM4P2 OM4G2 ~
-OM4P2.Compile AOC2024Day9.Mod/s ~ System.Free AOC2024Day9 ~
+OM4P.Compile AOC2024Day9.Mod/s ~ System.Free AOC2024Day9 ~
 
 Partie 1: somme = 1928
 AOC2024Day9.part1

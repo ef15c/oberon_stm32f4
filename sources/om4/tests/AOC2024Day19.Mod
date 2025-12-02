@@ -1,5 +1,5 @@
 MODULE AOC2024Day19;
-  IMPORT Texts, TE := TextsEx, Oberon, System, U := AOCUtils, UT := UTHash;
+  IMPORT Kernel, Texts, Oberon, System, U := AOCUtils, UT := UTHash;
 
   TYPE
     Displays = POINTER TO DisplaysDesc; 
@@ -61,16 +61,16 @@ PROCEDURE possible(d: ARRAY OF CHAR; pos: INTEGER): LONGINT;
     RETURN nbpos
   END possible;
 
-  PROCEDURE parsePatterns(VAR S: TE.Scanner);
+  PROCEDURE parsePatterns(VAR S: Texts.Scanner);
     VAR line: INTEGER;
-  BEGIN nbp := 0; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); TE.Scan(S); line := S.line;
-    WHILE (S.line = line) & (S.class = Texts.Name) DO patterns[nbp] := S.s; INC(nbp); TE.Scan(S);
-      IF S.class = Texts.Char THEN TE.Scan(S) END
+  BEGIN nbp := 0; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); line := S.line;
+    WHILE (S.line = line) & (S.class = Texts.Name) DO patterns[nbp] := S.s; INC(nbp); Texts.Scan(S);
+      IF S.class = Texts.Char THEN Texts.Scan(S) END
     END;
   END parsePatterns;
 
   PROCEDURE parts*;
-    VAR S!: TE.Scanner; disp: ARRAY 100 OF CHAR; l: INTEGER; ch: CHAR;
+    VAR S!: Texts.Scanner; disp: ARRAY 100 OF CHAR; l: INTEGER; ch: CHAR;
       nbpd, i: INTEGER; nb, nbpos: LONGINT;
       de!: Displays; t!, t2!: UT.Hash;
       stime: INTEGER;
@@ -90,7 +90,7 @@ PROCEDURE possible(d: ARRAY OF CHAR; pos: INTEGER): LONGINT;
       IF ch = Texts.CR THEN Texts.Read(S, ch) END;  INC(i); LED(i);
     UNTIL ~((ch >= "a") & (ch <= "z"));
     Texts.WriteString(W, "Partie 1: nbpd = "); Texts.WriteInt(W, nbpd, 1); Texts.WriteLn(W);
-    Texts.WriteString(W, "Partie 2: nbpos = "); TE.WriteLongInt(W, nbpos, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 2: nbpos = "); Texts.WriteInt(W, nbpos, 1); Texts.WriteLn(W);
     Texts.WriteInt(W, Kernel.Time() - stime, 1); Texts.WriteString(W, " ms"); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf); dp := NIL; System.Collect;
   END parts;
@@ -103,6 +103,7 @@ OM4Tool.DecObj AOC2024Day19.m4c
 
 Partie 1: nbpd = 6
 Partie 2: nbpos = 16
+9 ms
 AOC2024Day19.parts
 r, wr, b, g, bwu, rb, gb, br
 --

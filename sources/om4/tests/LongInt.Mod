@@ -1,5 +1,5 @@
 MODULE LongInt;
-  IMPORT SYSTEM, LongDiv, Texts, TextsEx := TextsEx2, Oberon;
+  IMPORT SYSTEM, LongDiv, Texts,  Oberon;
 
   TYPE DivParam = RECORD  D, S: LONGINT END;
 
@@ -23,22 +23,22 @@ MODULE LongInt;
   BEGIN l.D := 12345678901234567; l.S := 10;
     LongDiv.DivL(l);
     Texts.WriteString(W, "-----"); Texts.WriteLn(W);
-    TextsEx.WriteLongInt(W, l.D, 1); Texts.WriteLn(W);
-    TextsEx.WriteLongInt(W, l.S, 1); Texts.WriteLn(W);
+    Texts.WriteInt(W, l.D, 1); Texts.WriteLn(W);
+    Texts.WriteInt(W, l.S, 1); Texts.WriteLn(W);
 
     l.D := 12345678901234567; l.S := 10;
     t := l.D MOD l.S;
     Texts.WriteString(W, "-----"); Texts.WriteLn(W);
-    TextsEx.WriteLongInt(W, t, 1); Texts.WriteLn(W);
+    Texts.WriteInt(W, t, 1); Texts.WriteLn(W);
     t := l.D DIV l.S;
-    TextsEx.WriteLongInt(W, t, 1); Texts.WriteLn(W);
+    Texts.WriteInt(W, t, 1); Texts.WriteLn(W);
  
     l.D := 12345678901234567; l.S := 10;
     Texts.WriteString(W, "-----"); Texts.WriteLn(W);
-    TextsEx.WriteLongInt(W, l.D MOD l.S, 1); Texts.WriteLn(W);
-    TextsEx.WriteLongInt(W, l.D DIV l.S, 1); Texts.WriteLn(W);
+    Texts.WriteInt(W, l.D MOD l.S, 1); Texts.WriteLn(W);
+    Texts.WriteInt(W, l.D DIV l.S, 1); Texts.WriteLn(W);
 
-    TextsEx.WriteLongInt(W, LSL(1L, 63), 1); Texts.WriteLn(W);
+    Texts.WriteInt(W, LSL(1L, 63), 1); Texts.WriteLn(W);
 
     Texts.Append(Oberon.Log, W.buf)
   END run;
@@ -46,6 +46,6 @@ MODULE LongInt;
 BEGIN Texts.OpenWriter(W)
 END LongInt.
 
-OM4P2.Compile LongInt.Mod/s ~ System.Free LongInt testLongInt ~ LongInt.run
+OM4P.Compile LongInt.Mod/s ~ System.Free LongInt testLongInt ~ LongInt.run
 
 OM4Tool.DecObj LongInt.m4c

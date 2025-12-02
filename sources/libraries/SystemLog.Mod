@@ -1,5 +1,5 @@
 MODULE SystemLog;
-  IMPORT Texts, TE := TextsEx2, Oberon;
+  IMPORT Texts, Oberon;
 
   VAR W: Texts.Writer;
 
@@ -9,23 +9,23 @@ MODULE SystemLog;
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END DebugHex;
 
-  PROCEDURE DebugInt*(msg: ARRAY OF CHAR; v, l: INTEGER);
+  PROCEDURE DebugInt*(msg: ARRAY OF CHAR; v: LONGINT; l: INTEGER);
   BEGIN
    Texts.WriteString(W, msg); Texts.WriteString(W, " = "); Texts.WriteInt(W, v, l);
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END DebugInt;
-
-  PROCEDURE DebugLongInt*(msg: ARRAY OF CHAR; v: LONGINT; l: INTEGER);
-  BEGIN
-   Texts.WriteString(W, msg); Texts.WriteString(W, " = "); TE.WriteLongInt(W, v, l);
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
-  END DebugLongInt;
 
   PROCEDURE DebugString*(msg, v: ARRAY OF CHAR);
   BEGIN
    Texts.WriteString(W, msg); Texts.WriteString(W, " = "); Texts.WriteString(W, v);
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END DebugString;
+
+  PROCEDURE DebugChar*(msg: ARRAY OF CHAR; v: CHAR);
+  BEGIN
+   Texts.WriteString(W, msg); Texts.WriteString(W, " = "); Texts.Write(W, v);
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END DebugChar;
 
 BEGIN Texts.OpenWriter(W)
 END SystemLog.

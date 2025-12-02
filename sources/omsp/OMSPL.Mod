@@ -50,10 +50,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         the initialization code of the module.
 *)
 
-  IMPORT SYSTEM, Modules, Display, G := OMSPG, Files, FilesEx, Texts, Oberon, TextsEx, L := SystemLog;
+  IMPORT SYSTEM, Modules, Display, G := OMSPG, Files, FilesEx, Texts, Oberon, L := SystemLog;
   CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7; notsupported = 8;
     RAMOrigin = 200H; FlashEnd = 10000H;
-    EXEFlag = 10000H;
 
   TYPE 
     Module = POINTER TO ModDesc;
@@ -63,7 +62,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       name: Name;
       next: Module;
       key, num: INTEGER;
-      varsto, flashsto, codeexe, codesto, codesize: INTEGER;  (*addresses*)
+      varsto, flashsto, codeexe, flashsize: INTEGER;  (*addresses*)
       ent: ARRAY 64 OF INTEGER;
       codeseg: BYTE
     END;
@@ -73,6 +72,11 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
     SegmentDesc = RECORD
       origin, allocPtr: INTEGER;
       m: ARRAY FlashEnd OF BYTE
+    END;
+
+    Section = RECORD
+      segment: CHAR; name: Name;
+      eadr, size: INTEGER (*effective address and size*)
     END;
 
   VAR first, last, firstM, lastM: Module;
@@ -163,7 +167,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
   END fixupFlash;
 
   PROCEDURE LinkOne(name: ARRAY OF CHAR; VAR newmod: Module;
-    VAR sec: ARRAY OF INTEGER; VAR MW: Texts.Writer);
+    VAR sec: ARRAY OF Section; VAR MW: Texts.Writer);
     (*search module in list; if not found, link module.
       res = noerr: already present or linked;
       res = nofile: file not available;
@@ -172,7 +176,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       res = nospace: insufficient space*)
     VAR mod!, impmod!: Module;
       i, n, key, impkey, nofimps, nofsecs: INTEGER;
-      w, size: INTEGER;  (*addresses and size*)
+      w: INTEGER;  (*addresses and size*)
       ch: CHAR;
       adr, ofs, sno, no, dest: INTEGER;
       name1, impname: Name;
@@ -204,7 +208,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         END
       ELSE error(nofile, name)
       END;
-      IF res = noerr THEN
+      IF res = noerr THEN MW.col := Display.yellow;
+        Texts.WriteString(MW, "Module "); Texts.WriteString(MW, name); Texts.WriteLn(MW);
+        MW.col := Display.white;
         NEW(mod);
         IF first = NIL THEN mod.num := 1; first := mod ELSE mod.num := last.num + 1; last.next := mod END;
         last := mod; mod.next := NIL;
@@ -221,22 +227,18 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         (*first pass: place sections*)
         secfpos := Files.Pos(R); nofsecs := 0;
         Files.Read(R, ch);
-        WHILE ch # 0X DO
-          Files.ReadString(R, name1); Texts.WriteString(MW, name1); Texts.Write(MW, 09X);Texts.Write(MW, ch);
-          FilesEx.ReadHalfWord(R, size);
+        WHILE ch # 0X DO sec[nofsecs].segment := ch;
+          Files.ReadString(R, sec[nofsecs].name); FilesEx.ReadHalfWord(R, sec[nofsecs].size);
           IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
-            IF size >= G.WordSize THEN padFlash END; sec[nofsecs] := Flash.allocPtr + EXEFlag;
-            TextsEx.WriteHexVLen(MW, Flash.allocPtr, 4, FALSE); Texts.Write(MW, 09X);
-            FOR i := 0 TO size - 1 DO Files.ReadByte(R, mno); EmitByte(mno) END;
+            IF sec[nofsecs].size >= G.WordSize THEN padFlash END; sec[nofsecs].eadr := Flash.allocPtr;
+            FOR i := 0 TO sec[nofsecs].size - 1 DO Files.ReadByte(R, mno); EmitByte(mno) END;
           ELSIF ch = "v" THEN (*vector table*)
-            FOR i := 0 TO size DIV 2 - 1 DO FilesEx.ReadHalfWord(R, w); vec[i] := w END; (*module vector table*)
+            FOR i := 0 TO sec[nofsecs].size DIV 2 - 1 DO FilesEx.ReadHalfWord(R, w); vec[i] := w END; (*module vector table*)
           ELSIF ch = "r" THEN
-            IF size >= G.WordSize THEN align(RAMAllocPtr) END;
-            TextsEx.WriteHexVLen(MW, RAMAllocPtr, 4, FALSE); Texts.Write(MW, 09X);
-            sec[nofsecs] := RAMAllocPtr; INC(RAMAllocPtr, size)
+            IF sec[nofsecs].size >= G.WordSize THEN align(RAMAllocPtr) END; sec[nofsecs].eadr := RAMAllocPtr;
+            INC(RAMAllocPtr, sec[nofsecs].size)
           ELSE error(badfile, name)
           END;
-          Texts.WriteInt(MW, size, 1); Texts.WriteLn(MW);
           FilesEx.ReadHalfWord(R, adr); (*skip fixup data*)
           WHILE adr # 0 DO
             Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, sno); FilesEx.ReadHalfWord(R, ofs);
@@ -246,27 +248,34 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           INC(nofsecs);
           Files.Read(R, ch)
         END;
-        padFlash; mod.codesize := Flash.allocPtr - mod.flashsto;
-        IF codeseg = 1 THEN mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, mod.codesize)
+        padFlash; mod.flashsize := Flash.allocPtr - mod.flashsto;
+        IF codeseg = 1 THEN (*execute in RAM*) mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, mod.flashsize)
         ELSE mod.codeexe := Flash.origin + mod.flashsto
         END;
+		(*compute effective address*)
+        FOR i := 0 TO nofsecs - 1 DO Texts.WriteString(MW, sec[i].name); Texts.Write(MW, 09X);
+          ch := sec[i].segment; Texts.Write(MW, ch);
+          IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
+            DEC(sec[i].eadr, mod.flashsto - mod.codeexe)
+          END; 
+          IF ch # "v" THEN Texts.WriteHexVLen(MW, sec[i].eadr, 4, FALSE) END; Texts.Write(MW, 09X);
+          Texts.WriteInt(MW, sec[i].size, 1); Texts.WriteLn(MW)
+        END;
+
         Texts.WriteString(MW, "codeexe"); Texts.Write(MW, 09X); 
-        TextsEx.WriteHexVLen(MW, mod.codeexe, 4, FALSE); Texts.WriteLn(MW);
+        Texts.WriteHexVLen(MW, mod.codeexe, 4, FALSE); Texts.WriteLn(MW);
         (*second pass: fixup addresses*)
         Files.Set(R, Files.Base(R), secfpos); (*rewind rider to beginning of sections list*)
         no := 0; Files.Read(R, ch);
         WHILE ch # 0X DO (*go to fixup data*)
-          Files.ReadString(R, name1); FilesEx.ReadHalfWord(R, size);
-          IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN FOR i := 0 TO size - 1 DO Files.ReadByte(R, mno) END
-          ELSIF ch = "v" THEN (*vector table*)
-            FOR i := 0 TO size DIV 2 - 1 DO FilesEx.ReadHalfWord(R, w) END (*module vector table*)
+          Files.ReadString(R, name1); FilesEx.ReadHalfWord(R, n);
+          IF (ch = "c") OR (ch = "d") OR (ch = "s") OR (ch = "v") THEN FOR i := 0 TO n - 1 DO Files.ReadByte(R, mno) END
           END;
-          FilesEx.ReadHalfWord(R, adr); (*skip fixup data*)
+          FilesEx.ReadHalfWord(R, adr); (*entering fixup data*)
           WHILE adr # 0 DO
             Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, sno); FilesEx.ReadHalfWord(R, ofs);
-            IF mno = 0 THEN dest := sec[sno]; IF dest >= EXEFlag THEN DEC(dest, EXEFlag - mod.codeexe) END
-            ELSE dest := import[mno - 1].ent[sno] END;
-            INC(dest, ofs); (*dest contains now the runtime address*)
+            IF mno = 0 THEN dest := sec[sno].eadr ELSE dest := import[mno - 1].ent[sno] END;
+            INC(dest, ofs); (*dest contains now the effective address*)
             IF ch = "v" THEN (*vector table*)
               REPEAT i := (adr - 1) DIV 2;
                 IF vector[i] # 0FFFFH THEN
@@ -274,7 +283,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
                 END;
                 vector[i] := dest; adr := vec[i]
               UNTIL adr = 0;
-            ELSE w := sec[no] MOD 10000H;
+            ELSE w := sec[no].eadr; IF ch # "r" THEN DEC(w, mod.codeexe - mod.flashsto) END;
               REPEAT n := GetWordAt(w + adr - 1); PutWordAt(w + adr - 1, dest); adr := n UNTIL adr = 0
             END;
 
@@ -285,12 +294,11 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         END;
         FilesEx.ReadHalfWord(R, n); (*number of entries*)
         FOR i := 0 TO n - 1 DO FilesEx.ReadHalfWord(R, sno);
-          dest := sec[sno]; IF dest >= EXEFlag THEN DEC(dest, EXEFlag - mod.codeexe) END;
-          mod.ent[i] := dest
+          mod.ent[i] := sec[sno].eadr
         END;
 
-        IF GetWordAt(mod.codesto + mod.ent[0]) = 4130H THEN (*module init is empty*)
-          DEC(mod.codesize, 2); mod.ent[0] := -1; (*mark init address as invalid*)
+        IF GetWordAt(mod.flashsto + mod.ent[0]) = 4130H THEN (*module init is empty*)
+          DEC(mod.flashsize, 2); mod.ent[0] := -1; (*mark init address as invalid*)
           IF codeseg = 1 THEN DEC(RAMAllocPtr, 2) END;
           DEC(Flash.allocPtr, 2)
         END;
@@ -298,7 +306,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         Files.Read(R, ch);
         IF ch # "O" THEN mod := NIL; error(badfile, name) END
       END ;
-      IF res >= badkey THEN importing := name END
+      IF res >= badkey THEN importing := name END;
+      Texts.WriteLn(MW)
     END;
     newmod := mod
   END LinkOne;
@@ -311,7 +320,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       name: Name;
       modlist: ARRAY 64 OF Name;
       nbmod, mi: INTEGER;
-      sec: ARRAY 512 OF INTEGER;
+      sec: ARRAY 512 OF Section;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := noerr; count := 0;
     Flash := SYSTEM.VAL(Segment, Modules.AllocPtr); FOR i := 0 TO 31 DO vector[i] := 0FFFFH END;
     IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE vecsize := 0; res := nopar END;
@@ -328,9 +337,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
           IF p.codeseg = 1 THEN (*module executed from RAM*) Texts.Write(W, "*");
             (*copy code from Flash to RAM*)
-            (*MOV p.codesize DIV 2,R15*) EmitWord(403FH); EmitWord(p.codesize DIV 2);
-            (*MOV Flash.origin + p.codesto,R14*) EmitWord(403EH);  EmitWord(Flash.origin + p.codesto);
-            (*MOV @R14+,p.codeexe - (Flash.origin + p.codesto)(R14) - 2*) EmitWord(4EBEH); EmitWord(p.codeexe - Flash.origin - p.codesto - 2);
+            (*MOV p.flashsize DIV 2,R15*) EmitWord(403FH); EmitWord(p.flashsize DIV 2);
+            (*MOV Flash.origin + p.flashsto,R14*) EmitWord(403EH);  EmitWord(Flash.origin + p.flashsto);
+            (*MOV @R14+,p.codeexe - (Flash.origin + p.flashsto)(R14) - 2*) EmitWord(4EBEH); EmitWord(p.codeexe - Flash.origin - p.flashsto - 2);
             (*SUB #1,R15*) EmitWord(831FH);
             (*JNE $-8*) EmitWord(23FCH)
           END;

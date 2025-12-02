@@ -1,6 +1,6 @@
 MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.12.13
   CS 21/01/2024*)
-  IMPORT SYSTEM, BSP, Kernel, CRC32, Texts, TextsEx;
+  IMPORT SYSTEM, BSP, Kernel, CRC32, Texts;
 
   CONST
     (*nRF24L01+ CSN and CE pins*)
@@ -10,7 +10,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     (*SPI*)
     spiData = BSP.NRF24L01P_spi + BSP.SPI_DR; spiSR = BSP.NRF24L01P_spi + BSP.SPI_SR;
     spiEnable = BSP.NRF24L01P_spiEnable;
-    TXE = BSP.SPI_TXE; RXNE = BSP.SPI_RXNE; BSY = BSP.BSY;
+    TXE = BSP.SPI_TXE; RXNE = BSP.SPI_RXNE; BSY = BSP.SPI_BSY;
   
     HdrSize = 8; MaxPayload = 512; SubPacket = 32; Wait = 50; SendTries = 50;
     MaxPacket = (HdrSize + MaxPayload + SubPacket-1) DIV SubPacket * SubPacket;
@@ -130,12 +130,11 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE Flush*;
   BEGIN FlushRX; FlushTX; WriteReg1(7, 70H); StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1)
-
   END Flush;
 
   PROCEDURE PrintReg1(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; VAR dat: BYTE);
   BEGIN ReadReg1(n, dat); Texts.WriteString(W, t);  Texts.WriteString(W, " = "); 
-    TextsEx.WriteHexVLen(W, dat, 2, FALSE); Texts.WriteLn(W)
+    Texts.WriteHexVLen(W, dat, 2, FALSE); Texts.WriteLn(W)
   END PrintReg1;
   
   PROCEDURE xmitPayload(VAR timeout: BOOLEAN; flush: BOOLEAN);
@@ -198,8 +197,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
         SubRcvReq(timeout);
         WHILE timeout & (Kernel.Time() - t1 <= time) DO Delayms(1); xmitPayload(timeout, FALSE) END;
         IF timeout THEN FlushTX ELSE rcvd := RXFIFOAvail() END
-  
-    UNTIL rcvd OR (Kernel.Time() - t1 > time)
+      UNTIL rcvd OR (Kernel.Time() - t1 > time)
     END;
     RETURN rcvd
   END Rcvd;
@@ -240,7 +238,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   PROCEDURE PrintRegN(VAR W: Texts.Writer; n: BYTE; t: ARRAY OF CHAR; len: INTEGER);
     VAR dat: ARRAY 5 OF BYTE; i: INTEGER;
   BEGIN ReadRegN(n, dat, len); Texts.WriteString(W, t);  Texts.WriteString(W, " = "); 
-    FOR i := 0 TO len-1 DO TextsEx.WriteHexVLen(W, dat[i], 1, FALSE) END; Texts.WriteLn(W)
+    FOR i := 0 TO len-1 DO Texts.WriteHexVLen(W, dat[i], 1, FALSE) END; Texts.WriteLn(W)
   END PrintRegN;
   
   PROCEDURE PrintConfig*(VAR W: Texts.Writer);
@@ -327,7 +325,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   BEGIN
     adr := SYSTEM.ADR(rx);
     FOR i := 0 TO (rx.hd.len + HdrSize +  SubPacket -1) DIV SubPacket*SubPacket + 3 DO SYSTEM.GET(adr + i, dat);
-      TextsEx.WriteHexVLen(W, dat, 2, FALSE); 
+      Texts.WriteHexVLen(W, dat, 2, FALSE); 
       IF i MOD 32 = 31 THEN Texts.WriteLn(W) END
     END;
     Texts.WriteLn(W)

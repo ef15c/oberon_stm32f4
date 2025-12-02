@@ -1,5 +1,5 @@
 MODULE AOC2024Day20;
-  IMPORT Files, FilesEx, CRC32, Texts, TE := TextsEx, Oberon, System, U := AOCUtils;
+  IMPORT Files, FilesEx, CRC32, Texts, Oberon, System, U := AOCUtils;
 
   CONST MAZE_SIZE = 200;
 
@@ -39,7 +39,7 @@ MODULE AOC2024Day20;
   END computeCheats;
 
   PROCEDURE printCheat(p1, p2: U.Vector; sav: Int);
-  BEGIN U.printVector(W, p1); Texts.Write(W, "-");U.printVector(W, p2); TE.WriteLongInt(W, sav, 1); Texts.WriteLn(W);
+  BEGIN U.printVector(W, p1); Texts.Write(W, "-");U.printVector(W, p2); Texts.WriteInt(W, sav, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END printCheat;
 
@@ -50,7 +50,7 @@ MODULE AOC2024Day20;
   END storeCount;
 
   PROCEDURE parse*;
-    VAR S!: TE.Scanner; ch: CHAR; x: INTEGER;
+    VAR S!: Texts.Scanner; ch: CHAR; x: INTEGER;
   BEGIN mazeXlen := 0; mazeYlen := 0; x := 0; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Read(S, ch);
     WHILE ch = Texts.CR DO Texts.Read(S, ch) END;
     WHILE (ch = "#") OR (ch = ".") OR (ch = "S") OR (ch = "E") OR (ch = Texts.CR) DO
@@ -95,13 +95,13 @@ MODULE AOC2024Day20;
   END computeDistance;
 
   PROCEDURE storeDist*;
-    VAR S!: TE.Scanner; f!: Files.File; rf!: Files.Rider;
+    VAR S!: Texts.Scanner; f!: Files.File; rf!: Files.Rider;
       i, j: INTEGER;
   BEGIN
     IF ~distComputed THEN Texts.WriteString(W, "Need to compute distance matrix before save.");
       Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
     END;
-    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); TE.Scan(S);
+    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN f := Files.New(S.s);
       IF f # NIL THEN Files.Set(rf, f, 0);
         Files.WriteInt(rf, mazeYlen); Files.WriteInt(rf, mazeXlen);
@@ -112,13 +112,13 @@ MODULE AOC2024Day20;
   END storeDist;
 
   PROCEDURE loadDist*;
-    VAR S!: TE.Scanner; f!: Files.File; rf!: Files.Rider;
+    VAR S!: Texts.Scanner; f!: Files.File; rf!: Files.Rider;
       i, j: INTEGER;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); TE.Scan(S);
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN f := Files.Old(S.s);
       IF f # NIL THEN Files.Set(rf, f, 0);
         Files.ReadInt(rf, i); Files.ReadInt(rf, j);
-        IF (i # mazeYlen) OR (j # mazeXlen) THEN Texts.WriteString(W, "Maze size mismatch. Trt to parse the maze input data.");
+        IF (i # mazeYlen) OR (j # mazeXlen) THEN Texts.WriteString(W, "Maze size mismatch. Try to parse the maze input data.");
           Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
         ELSE FOR i := 0 TO mazeYlen DO FOR j := 0 TO mazeXlen DO FilesEx.ReadLongInt(rf, d[i, j]) END END;
           distComputed := TRUE

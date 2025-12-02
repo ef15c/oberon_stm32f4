@@ -1,5 +1,5 @@
 MODULE AOC2024Day11;
-  IMPORT Texts, TE := TextsEx, Oberon, System, UT := UTHash, U := AOCUtils;
+  IMPORT Texts, Oberon, System, UT := UTHash, U := AOCUtils;
 
   TYPE
     StoneDesc = RECORD(UT.LongintHashDesc)
@@ -62,23 +62,23 @@ MODULE AOC2024Day11;
     VAR n!: UT.Hash;
   BEGIN
     WHILE sto # NIL DO
-     IF sto.count # 0 THEN TE.WriteLongInt(W, sto.key, 1);
-       Texts.Write(W, ":"); TE.WriteLongInt(W, sto.count, 1); Texts.Write(W, " ") END;
+     IF sto.count # 0 THEN Texts.WriteInt(W, sto.key, 1);
+       Texts.Write(W, ":"); Texts.WriteInt(W, sto.count, 1); Texts.Write(W, " ") END;
       n := UT.NEXT(sto); sto := n(Stone) END;
     Texts.WriteLn(W);
   END print;
 
   PROCEDURE run*;
-    VAR stones!, s!: Stone; n!: UT.Hash; S!: TE.Scanner; id, ns: LONGINT; i: INTEGER; nofBlinks: INTEGER;
-  BEGIN stones := NIL; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); TE.Scan(S);
-    nofBlinks := U.ReadL(S);
-    WHILE S.class IN {Texts.Int, TE.LongInt} DO id := U.ReadL(S); add(stones, id, 1) END;
+    VAR stones!, s!: Stone; n!: UT.Hash; S!: Texts.Scanner; id, ns: LONGINT; i: INTEGER; nofBlinks: INTEGER;
+  BEGIN stones := NIL; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+    nofBlinks := S.i; Texts.Scan(S);
+    WHILE S.class = Texts.Int DO id := S.i; Texts.Scan(S); add(stones, id, 1) END;
     FOR i := 1 TO nofBlinks DO blink(stones); LED(i) END;
     ns := 0; s := stones; WHILE s # NIL DO INC(ns, s.count);  n := UT.NEXT(s); s := n(Stone) END;
 (*    print(stones); *)
     freelist := NIL; System.Collect;
 
-    Texts.WriteString(W, "Partie 1: nombre de pierres = "); TE.WriteLongInt(W, ns, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 1: nombre de pierres = "); Texts.WriteInt(W, ns, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END run;
 

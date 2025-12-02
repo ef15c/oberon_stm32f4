@@ -1,5 +1,5 @@
 MODULE AOC2024Day13;
-  IMPORT Texts, TE := TextsEx, Oberon, U := AOCUtils;
+  IMPORT Texts, Oberon, U := AOCUtils;
 
   TYPE ProcessProc = PROCEDURE(dxa, dya, dxb, dyb, px, py: LONGINT);
   VAR W: Texts.Writer;
@@ -55,37 +55,37 @@ MODULE AOC2024Day13;
     END
   END doPart2;
 
-  PROCEDURE parseButton(VAR S: TE.Scanner; but: ARRAY OF CHAR; VAR dx, dy: LONGINT);
+  PROCEDURE parseButton(VAR S: Texts.Scanner; but: ARRAY OF CHAR; VAR dx, dy: LONGINT);
   BEGIN
-    ASSERT((S.class = Texts.Name) & (S.s = "Button")); TE.Scan(S);
-    ASSERT((S.class = Texts.Name) & (S.s = but)); TE.Scan(S);
-    ASSERT((S.class = Texts.Char) & (S.c = ":")); TE.Scan(S);
-    ASSERT((S.class = Texts.Name) & (S.s = "X")); TE.Scan(S);
-    ASSERT((S.class = Texts.Char) & (S.c = "+")); TE.Scan(S);
-    dx := U.ReadL(S);
-    ASSERT((S.class = Texts.Char) & (S.c = ",")); TE.Scan(S);
-    ASSERT((S.class = Texts.Name) & (S.s = "Y")); TE.Scan(S);
-    ASSERT((S.class = Texts.Char) & (S.c = "+")); TE.Scan(S);
-    dy := U.ReadL(S);
+    ASSERT((S.class = Texts.Name) & (S.s = "Button")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Name) & (S.s = but)); Texts.Scan(S);
+    ASSERT((S.class = Texts.Char) & (S.c = ":")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Name) & (S.s = "X")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Char) & (S.c = "+")); Texts.Scan(S);
+    dx := S.i; Texts.Scan(S);
+    ASSERT((S.class = Texts.Char) & (S.c = ",")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Name) & (S.s = "Y")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Char) & (S.c = "+")); Texts.Scan(S);
+    dy := S.i; Texts.Scan(S)
   END parseButton;
 
-  PROCEDURE parsePrize(VAR S: TE.Scanner; VAR x, y: LONGINT);
+  PROCEDURE parsePrize(VAR S: Texts.Scanner; VAR x, y: LONGINT);
   BEGIN
-    ASSERT((S.class = Texts.Name) & (S.s = "Prize")); TE.Scan(S);
-    ASSERT((S.class = Texts.Char) & (S.c = ":")); TE.Scan(S);
-    ASSERT((S.class = Texts.Name) & (S.s = "X")); TE.Scan(S);
-    ASSERT((S.class = Texts.Char) & (S.c = "=")); TE.Scan(S);
-    x := U.ReadL(S);
-    ASSERT((S.class = Texts.Char) & (S.c = ",")); TE.Scan(S);
-    ASSERT((S.class = Texts.Name) & (S.s = "Y")); TE.Scan(S);
-    ASSERT((S.class = Texts.Char) & (S.c = "=")); TE.Scan(S);
-    y := U.ReadL(S);
+    ASSERT((S.class = Texts.Name) & (S.s = "Prize")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Char) & (S.c = ":")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Name) & (S.s = "X")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Char) & (S.c = "=")); Texts.Scan(S);
+    x := S.i; Texts.Scan(S);
+    ASSERT((S.class = Texts.Char) & (S.c = ",")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Name) & (S.s = "Y")); Texts.Scan(S);
+    ASSERT((S.class = Texts.Char) & (S.c = "=")); Texts.Scan(S);
+    y := S.i; Texts.Scan(S)
   END parsePrize;
 
   PROCEDURE parse(process: ProcessProc);
-    VAR S!: TE.Scanner;
+    VAR S!: Texts.Scanner;
       dxa, dya, dxb, dyb, px, py, cost: LONGINT;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); TE.Scan(S);
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     WHILE S.class = Texts.Name DO
       parseButton(S, "A", dxa, dya); parseButton(S, "B", dxb, dyb);
       parsePrize(S, px, py);
@@ -95,20 +95,20 @@ MODULE AOC2024Day13;
 
   PROCEDURE printCM(VAR dxa, dya, dxb, dyb, px, py: LONGINT);
   BEGIN
-    TE.WriteLongInt(W, dxa, 7); TE.WriteLongInt(W, dya, 7); TE.WriteLongInt(W, dxb, 7); TE.WriteLongInt(W, dyb, 7); 
-    TE.WriteLongInt(W, px, 7); TE.WriteLongInt(W, py, 7); Texts.WriteLn(W);
+    Texts.WriteInt(W, dxa, 7); Texts.WriteInt(W, dya, 7); Texts.WriteInt(W, dxb, 7); Texts.WriteInt(W, dyb, 7); 
+    Texts.WriteInt(W, px, 7); Texts.WriteInt(W, py, 7); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END printCM;
 
   PROCEDURE part1*;
   BEGIN st := 0; parse(doPart1);
-    Texts.WriteString(W, "Partie 1: jetons = "); TE.WriteLongInt(W, st, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 1: jetons = "); Texts.WriteInt(W, st, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part1;
 
   PROCEDURE part2*;
   BEGIN st := 0; parse(doPart2);
-    Texts.WriteString(W, "Partie 2: jetons = "); TE.WriteLongInt(W, st, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 2: jetons = "); Texts.WriteInt(W, st, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part2;
 

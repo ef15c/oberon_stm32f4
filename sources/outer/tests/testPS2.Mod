@@ -1,5 +1,5 @@
 MODULE testPS2;
-  IMPORT SYSTEM, PS2, Texts, Oberon, TextsEx;
+  IMPORT SYSTEM, PS2, Texts, Oberon;
 
   VAR leds: BYTE; keyboard: PS2.Device;
 
@@ -14,14 +14,14 @@ MODULE testPS2;
       Texts.WriteString(W, "head "); Texts.WriteInt(W, dev.dest.head, 1);
       Texts.WriteString(W, ", tail "); Texts.WriteInt(W, dev.dest.tail, 1);
       idx := dev.dest.head; DEC(idx); IF idx < 0 THEN idx := 15 END;
-      Texts.WriteString(W, ", last byte read "); TextsEx.WriteHexVLen(W, dev.dest.buffer[idx], 1, FALSE);
+      Texts.WriteString(W, ", last byte read "); Texts.WriteHexVLen(W, dev.dest.buffer[idx], 1, FALSE);
       Texts.WriteLn(W);
       Texts.Append(Oberon.Log, W.buf)
     END;
 
-    Texts.WriteString(W, "direction "); TextsEx.WriteHexVLen(W, dev.direction, 1, FALSE);
-    Texts.WriteString(W, ", statusIn "); TextsEx.WriteHexVLen(W, dev.statusIn, 1, FALSE);
-    Texts.WriteString(W, ", statusOut "); TextsEx.WriteHexVLen(W, dev.statusOut, 1, FALSE);
+    Texts.WriteString(W, "direction "); Texts.WriteHexVLen(W, dev.direction, 1, FALSE);
+    Texts.WriteString(W, ", statusIn "); Texts.WriteHexVLen(W, dev.statusIn, 1, FALSE);
+    Texts.WriteString(W, ", statusOut "); Texts.WriteHexVLen(W, dev.statusOut, 1, FALSE);
     Texts.WriteString(W, ", nofBitsToBeRead "); Texts.WriteInt(W, dev.nofBitsToBeRead, 1);
     Texts.WriteLn(W);
     SYSTEM.GET(dev.clock_Out, idx); Texts.WriteString(W, "clock out "); Texts.WriteInt(W, idx, 1);

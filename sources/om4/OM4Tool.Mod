@@ -1,6 +1,6 @@
 MODULE OM4Tool;  (*NW 18.2.2013
   C. Schoffit 25.02.25*)
-  IMPORT SYSTEM, Files, Texts, TextsEx, Oberon, OM4B, OM4A, OM4D, Modules;
+  IMPORT SYSTEM, Files, Texts, Oberon, OM4B, OM4A, OM4D, Modules;
 
   TYPE
     ExternalRefMap = RECORD
@@ -494,7 +494,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   END DecBin;
 
   PROCEDURE DecMod*;
-    VAR mod!: Modules.Module; S!: TextsEx.Scanner; i, d: INTEGER;
+    VAR mod!: Modules.Module; S!: Texts.Scanner; i, d: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); mod := NIL;
     IF S.class = Texts.Name THEN mod := Modules.root;
       WHILE (mod # NIL) & (mod.name # S.s) DO mod := mod.next END

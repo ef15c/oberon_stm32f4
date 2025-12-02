@@ -1,4 +1,5 @@
-MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10.1.2019*)
+Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10.1.2019
+  C.S 02.12.25*)
   IMPORT Files, Fonts;
 
   CONST (*scanner symbol classes*)
@@ -49,7 +50,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
     Scanner* = RECORD (Reader)
       nextCh*: CHAR;
       line*, class*: INTEGER;
-      i*: INTEGER;
+      i*: LONGINT;
       x*: REAL;
       c*: CHAR;
       len*: INTEGER;
@@ -338,7 +339,7 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
     CONST maxExp = 38; maxM = 16777216; (*2^24*)
     VAR ch: CHAR;
       neg, negE, hex: BOOLEAN;
-      i, j, h, d, e, n, s: INTEGER;
+      i, j, d, e, s: INTEGER; h, n: LONGINT;
       x: REAL;
   BEGIN ch := S.nextCh; i := 0;
     WHILE (ch = " ") OR (ch = TAB) OR (ch = CR) DO
@@ -359,13 +360,14 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
         n := ORD(ch) - 30H; h := n; Read(S, ch);
         WHILE ("0" <= ch) & (ch <= "9") OR ("A" <= ch) & (ch <= "F") DO
           IF ch <= "9" THEN d := ORD(ch) - 30H ELSE d := ORD(ch) - 37H; hex := TRUE END ;
-          n := 10*n + d; h := 10H*h + d; Read(S, ch)
+          n := n*10 + d; h := h*10H + d; Read(S, ch)
         END ;
-        IF ch = "H" THEN (*hex integer*) Read(S, ch); S.i := h; S.class := Int  (*neg?*)
+        IF ch = "H" THEN (*hex integer*) Read(S, ch);
+          S.i := h; S.class := Int  (*neg?*)
         ELSIF ch = "." THEN (*real number*)
           Read(S, ch); x := 0.0; e := 0; j := 0;
           WHILE ("0" <= ch) & (ch <= "9") DO  (*fraction*)
-            h := 10*n + (ORD(ch) - 30H);
+            h := n*10 + (ORD(ch) - 30H);
             IF h < maxM THEN n := h; INC(j) END ;
             Read(S, ch)
           END ;
@@ -389,8 +391,9 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
           IF neg THEN S.x := -x ELSE S.x := x END ;
           IF hex THEN S.class := 0 ELSE S.class := Real END
         ELSE (*decimal integer*)
-          IF neg THEN S.i := -n ELSE S.i := n END;
-          IF hex THEN S.class := Inval ELSE S.class := Int END
+          IF neg THEN n := -n END;
+          S.class := Int; S.i := n;
+          IF hex THEN S.class := Inval END
         END
       ELSE (*special character*) S.class := Char;
         IF neg THEN S.c := "-" ELSE S.c := ch; Read(S, ch) END
@@ -442,11 +445,11 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
     WHILE s[i] >= " " DO Write(W, s[i]); INC(i) END
   END WriteString;
 
-  PROCEDURE WriteInt* (VAR W: Writer; x, n: INTEGER);
-    VAR i: INTEGER; x0: INTEGER;
-      a: ARRAY 10 OF CHAR;
+  PROCEDURE WriteInt*(VAR W: Writer; x: LONGINT; n: INTEGER);
+    VAR i: INTEGER; x0: LONGINT;
+      a: ARRAY 20 OF CHAR;
   BEGIN
-    IF ROR(x, 31) = 1 THEN WriteString(W, " -2147483648")
+    IF (x < 0) & (-x < 0) THEN WriteString(W, " -9223372036854775808")
     ELSE i := 0;
       IF x < 0 THEN DEC(n); x0 := -x ELSE x0 := x END;
       REPEAT
@@ -468,6 +471,19 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
     UNTIL i = 8;
     REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
   END WriteHex;
+
+  PROCEDURE WriteHexVLen*(VAR W: Writer; x, n: INTEGER; leadingZero: BOOLEAN);
+    VAR i: INTEGER; y: INTEGER;
+      a: ARRAY 10 OF CHAR;
+  BEGIN ASSERT(n<=10);
+    i := 0; Write(W, " ");
+    REPEAT y := x MOD 10H;
+      IF y < 10 THEN a[i] := CHR(y + 30H) ELSE a[i] := CHR(y + 37H) END;
+      x := x DIV 10H; IF x < 0 THEN INC(x, 10000000H) END; INC(i)
+    UNTIL (i >= n) & (x = 0);
+    IF leadingZero & (a[i-1] > "9") THEN Write(W, "0") END; (*Add a leading 0 if first hex digit is a letter*)
+    REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
+  END WriteHexVLen;
 
  PROCEDURE WriteReal* (VAR W: Writer; x: REAL; n: INTEGER);
     VAR e, i, k, m: INTEGER;
@@ -537,3 +553,5 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10
 
 BEGIN TrailerFile := Files.New("")
 END Texts.
+
+OM4Tool.DecSym Texts.sm4

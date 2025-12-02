@@ -1,6 +1,6 @@
 MODULE OMSPTool;  (*NW 18.2.2013
   C. Schoffit  09.06.24*)
-  IMPORT Files, Texts, Oberon, B := OMSPB, A := OMSPA, D := OMSPD, TextsEx;
+  IMPORT Files, Texts, Oberon, B := OMSPB, A := OMSPA, D := OMSPD;
 
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
@@ -47,7 +47,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
         Texts.Write(W, "}")
       ELSIF form = B.Proc THEN
         ReadType(R); Read(R, class); IF class = 1 THEN Texts.WriteString(W, " leaf") END;
-        Files.ReadInt(R, off); Texts.WriteString(W, " UR"); TextsEx.WriteHexVLen(W, off, 4, FALSE);
+        Files.ReadInt(R, off); Texts.WriteString(W, " UR"); Texts.WriteHexVLen(W, off, 4, FALSE);
         Texts.Write(W, "("); Read(R, class);
         WHILE class # 0 DO
           Texts.WriteString(W, " class = "); Texts.WriteInt(W, class, 1); Read(R, readonly);
@@ -142,18 +142,18 @@ MODULE OMSPTool;  (*NW 18.2.2013
               FOR i := 0 TO size - 1 DO Files.ReadByte(R, mcode.code[i]) END;
               i := 0;
               WHILE i < size DO
-                TextsEx.WriteHexVLen(W, i, 4, FALSE);
+                Texts.WriteHexVLen(W, i, 4, FALSE);
                 Texts.Write(W, 9X); adr := i + 2;
                 D.opcode(W, mcode.code, i, 0); Texts.WriteLn(W);
                 FOR n := adr TO i - 2 BY 2 DO (*print operation data*)
-                  TextsEx.WriteHexVLen(W, n, 4, FALSE);
+                  Texts.WriteHexVLen(W, n, 4, FALSE);
                   Texts.Write(W, 9X); Texts.WriteString(W, "    ");
                   data := mcode.code[n+1]*100H + mcode.code[n];
-                  TextsEx.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
+                  Texts.WriteHexVLen(W, data, 4, FALSE); Texts.WriteLn(W)
                 END
               END;
             ELSIF ch = "v" THEN i := 0;
-              WHILE i < size DIV 2 DO ReadWord(R, adr); TextsEx.WriteHexVLen(W, adr, 4, FALSE);
+              WHILE i < size DIV 2 DO ReadWord(R, adr); Texts.WriteHexVLen(W, adr, 4, FALSE);
                 IF (i + 1) MOD 10H = 0 THEN Texts.WriteLn(W) END; INC(i)
               END;
               IF i MOD 10H # 0 THEN Texts.WriteLn(W) END
@@ -163,14 +163,14 @@ MODULE OMSPTool;  (*NW 18.2.2013
               END;
               Texts.WriteLn(W)
             ELSIF ch # "r" THEN i := 0;
-              WHILE i < size DO Files.ReadByte(R, bl); TextsEx.WriteHexVLen(W, bl, 2, FALSE);
+              WHILE i < size DO Files.ReadByte(R, bl); Texts.WriteHexVLen(W, bl, 2, FALSE);
                 IF (i + 1) MOD 10H = 0 THEN Texts.WriteLn(W) END; INC(i)
               END;
               IF i MOD 10H # 0 THEN Texts.WriteLn(W) END
             END;
             Texts.WriteString(W, "fixups:"); Texts.WriteLn(W);
             ReadWord(R, adr);
-            WHILE adr # 0 DO TextsEx.WriteHexVLen(W, adr, 4, FALSE); Texts.Write(W, 09X);
+            WHILE adr # 0 DO Texts.WriteHexVLen(W, adr, 4, FALSE); Texts.Write(W, 09X);
               Files.ReadByte(R, bl); Texts.Write(W, "s"); Texts.WriteInt(W, bl, 1);
               ReadWord(R, n); Texts.Write(W, "."); Texts.WriteInt(W, n, 1);
               ReadWord(R, n);

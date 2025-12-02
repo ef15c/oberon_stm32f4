@@ -1,5 +1,5 @@
 MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
-  IMPORT SYSTEM, Texts, TextsEx, A := OMSPA;
+  IMPORT SYSTEM, Texts, A := OMSPA;
 
   VAR mnemo1: ARRAY 8, 3 OF CHAR;  (*condition mnemonics*)
     mnemo2: ARRAY 7, 5 OF CHAR;  (*single-operand mnemonics*)
@@ -23,7 +23,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
     Texts.WriteString(W, " $");
     IF ofsb > 0 THEN Texts.Write(W, "+") END;
     IF ofsb # 0 THEN Texts.WriteInt(W, ofsb, 1) END;
-    Texts.WriteString(W, ", goes to "); TextsEx.WriteHexVLen(W, at + ofs, 4, FALSE);
+    Texts.WriteString(W, ", goes to "); Texts.WriteHexVLen(W, at + ofs, 4, FALSE);
   END WritePCOffset;
 
   PROCEDURE WordToInt(x : INTEGER): INTEGER;
@@ -92,7 +92,7 @@ MODULE OMSPD;  (*MSP430 Disassembler C. Schoffit 09.06.24*)
       op: SET;
   BEGIN b1 := c[i+1]; b2 := c[i]; INC(i, 2);
     op := SYSTEM.VAL(SET, 0+b2+100H*b1);
-    Texts.WriteString(W, "    "); TextsEx.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
+    Texts.WriteString(W, "    "); Texts.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
     IF SYSTEM.VAL(INTEGER, op) = 4130H THEN Texts.WriteString(W, "RET")
     ELSIF SYSTEM.VAL(INTEGER, op) = 4303H THEN Texts.WriteString(W, "NOP")
     ELSIF op*SOMSK = SO THEN (*Single-operand (Format II) instructions*)

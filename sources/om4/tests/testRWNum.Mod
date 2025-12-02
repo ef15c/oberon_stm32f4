@@ -1,5 +1,5 @@
 MODULE testRWNum;
-  IMPORT Files, FilesEx := FilesEx2, Texts, TextsEx := TextsEx2, Oberon;
+  IMPORT Files, FilesEx, Texts, Oberon;
 
   VAR W: Texts.Writer;
 
@@ -25,7 +25,7 @@ MODULE testRWNum;
     Files.Register(f);
 
     Files.Set(r, f, 0); FilesEx.ReadLongNum(r, v);
-    WHILE ~r.eof DO Texts.WriteString(W, "v = "); TextsEx.WriteLongInt(W, v, 1); Texts.WriteLn(W); FilesEx.ReadLongNum(r, v) END;
+    WHILE ~r.eof DO Texts.WriteString(W, "v = "); Texts.WriteInt(W, v, 1); Texts.WriteLn(W); FilesEx.ReadLongNum(r, v) END;
     Texts.Append(Oberon.Log, W.buf)    
   END writeL;
 
@@ -41,52 +41,15 @@ MODULE testRWNum;
     VAR f!: Files.File; r!: Files.Rider; v: LONGINT;
   BEGIN f := Files.Old("testRWNum.data");
     Files.Set(r, f, 0); FilesEx.ReadLongNum(r, v);
-    WHILE ~r.eof DO Texts.WriteString(W, "v = "); TextsEx.WriteLongInt(W, v, 1); Texts.WriteLn(W); FilesEx.ReadLongNum(r, v) END;
+    WHILE ~r.eof DO Texts.WriteString(W, "v = "); Texts.WriteInt(W, v, 1); Texts.WriteLn(W); FilesEx.ReadLongNum(r, v) END;
     Texts.Append(Oberon.Log, W.buf)    
   END runL;
 
 BEGIN Texts.OpenWriter(W);  
 END testRWNum.
 
-Stage 1
-
-OM4P.Compile TextsEx2.Mod FilesEx2.Mod testRWNum.Mod/s ~ System.Free testRWNum FilesEx2 TextsEx2 ~ 
-testRWNum.write
-v = -1000
-v = -1
-v = 0
-v = 1
-v = 1000
-v = -727379968
-v = -805306368
-testRWNum.writeL
-v = -1000
-v = -1
-v = 0
-v = 1
-v = 1000
-v = -805306368
-testRWNum.run
-v = -1000
-v = -1
-v = 0
-v = 1
-v = 1000
-v = -727379968
-v = -805306368
-testRWNum.runL
-v = -1000
-v = -1
-v = 0
-v = 1
-v = 1000
-v = -727379968
-v = -805306368
-
-Stage 2
-
-OM4P2.Compile TextsEx2.Mod FilesEx2.Mod testRWNum.Mod/s ~
-System.Free testRWNum LongInt testScan SystemLog OM4P2 OM4G2 OM4B2 FilesEx2 TextsEx2 ~ 
+OM4P.Compile testRWNum.Mod/s ~
+System.Free testRWNum LongInt testScan SystemLog ~ 
 testRWNum.write
 v = -1000
 v = -1

@@ -26,7 +26,7 @@ MODULE ShowPatterns;
 
 *)
 
-  IMPORT SYSTEM, Display, Fonts, Texts, Oberon, TextsEx, GraphicFrames;
+  IMPORT SYSTEM, Display, Fonts, Texts, Oberon, GraphicFrames;
 
   CONST Span = (Display.Width*8 DIV Display.NofBPP+63) DIV 64*64;
 
@@ -68,12 +68,11 @@ MODULE ShowPatterns;
     Texts.WriteString(W, " := SYSTEM.ADR($");
     SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
     IF special THEN
-      TextsEx.WriteHexVLen(W, w, 2, FALSE); TextsEx.WriteHexVLen(W, h, 2, FALSE);
+      Texts.WriteHexVLen(W, w, 2, FALSE); Texts.WriteHexVLen(W, h, 2, FALSE);
       Texts.WriteString(W, " 0000"); Texts.WriteLn(W); INC(patadr, 2)
-     ELSE
-      TextsEx.WriteHexVLen(W, w, 2, FALSE); Texts.WriteString(W, "00 "); 
-  
-    TextsEx.WriteHexVLen(W, h, 2, FALSE); Texts.WriteString(W, "00 "); Texts.WriteLn(W)
+    ELSE
+      Texts.WriteHexVLen(W, w, 2, FALSE); Texts.WriteString(W, "00 "); 
+      Texts.WriteHexVLen(W, h, 2, FALSE); Texts.WriteString(W, "00 "); Texts.WriteLn(W)
     END;
     Texts.WriteString(W, "    "); 
     FOR r := 1 TO h DO
@@ -86,11 +85,11 @@ MODULE ShowPatterns;
       END ;
       c := 0;
       WHILE c <= w-1 DO
-        IF ODD(line) THEN TextsEx.WriteHexVLen(W, 0FFH, 2, FALSE)
-        ELSE TextsEx.WriteHexVLen(W, 0, 2, FALSE)
+        IF ODD(line) THEN Texts.WriteHexVLen(W, 0FFH, 2, FALSE)
+        ELSE Texts.WriteHexVLen(W, 0, 2, FALSE)
         END; line := line DIV 2; INC(c)
       END;
-      WHILE c MOD 4 # 0 DO TextsEx.WriteHexVLen(W, 0, 2, FALSE); INC(c) END;
+      WHILE c MOD 4 # 0 DO Texts.WriteHexVLen(W, 0, 2, FALSE); INC(c) END;
       IF r # h THEN Texts.WriteLn(W); Texts.WriteString(W, "    ") END
     END;
     Texts.WriteString(W, "$);"); Texts.WriteLn(W);
@@ -98,7 +97,7 @@ MODULE ShowPatterns;
   END Convert;
 
   PROCEDURE ConvertAll*;
-    VAR pat: INTEGER;
+   VAR pat: INTEGER;
   BEGIN (* Convert(Display.arrow, "arrow");
     Convert(Display.star, "star");
     Convert(Display.hook, "hook");
@@ -108,11 +107,9 @@ MODULE ShowPatterns;
     Convert(Display.grey, "grey")*)
     Convert(GraphicFrames.tack, "tack", FALSE);
     pat := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 0000 0000 0000 0000$);
-    Convert(pat, "dotted
-", TRUE);
+    Convert(pat, "dotted", TRUE);
     pat := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 4444 4444 0000 0000$);
-    Convert(pat, "dotted
-1", TRUE);
+    Convert(pat, "dotted1", TRUE);
   END ConvertAll;
 
   PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);

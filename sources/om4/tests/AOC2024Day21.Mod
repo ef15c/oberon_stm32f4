@@ -1,5 +1,5 @@
 MODULE AOC2024Day21;
-  IMPORT Texts, TE := TextsEx, Oberon, System, U := AOCUtils, UT := UTHash;
+  IMPORT Texts, Oberon, System, U := AOCUtils, UT := UTHash;
 
   CONST ASCII_MAX = LSL(1, 7);
     MOVES_SIZE = 200;
@@ -17,7 +17,7 @@ MODULE AOC2024Day21;
     shortmoves: ARRAY MOVES_SIZE OF CHAR; sc, minlen: LONGINT;
     words, skey, freelist: Word;
 
-(* table d'expansion des paires de caract\E8res
+(* table d'expansion des paires de caractères
       +---------------------+
       | ^ | A  | <  | v | > |
   +---+---+----+----+---+---|
@@ -165,7 +165,7 @@ MODULE AOC2024Day21;
 
   PROCEDURE part1*;
   BEGIN sc := 0; parse(processPart1);
-    Texts.WriteString(W, "Partie 1: sc = "); TE.WriteLongInt(W, sc, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 1: sc = "); Texts.WriteInt(W, sc, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part1;
 
@@ -239,7 +239,7 @@ MODULE AOC2024Day21;
 
   PROCEDURE part2*;
   BEGIN sc := 0; parse(processPart2);
-    Texts.WriteString(W, "Partie 2: sc = "); TE.WriteLongInt(W, sc, 1); Texts.WriteLn(W);
+    Texts.WriteString(W, "Partie 2: sc = "); Texts.WriteInt(W, sc, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf); words := NIL
   END part2;
 

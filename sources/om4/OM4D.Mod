@@ -1,5 +1,5 @@
 MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
-  IMPORT SYSTEM, Texts, TextsEx, B := OM4B, A := OM4A;
+  IMPORT SYSTEM, Texts, B := OM4B, A := OM4A;
 
   TYPE
     ITBlockDesc = RECORD
@@ -1151,7 +1151,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       ELSE Texts.WriteString(W, "TODO other 32-bit thumb instruction")
       END
     ELSE op := SYSTEM.VAL(SET, 0+b2+100H*b1);
-      Texts.WriteString(W, "    "); TextsEx.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
+      Texts.WriteString(W, "    "); Texts.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
       IF op*T16MSK2 = SpecDataBrEx THEN
         (*T16MSK2 010001: Special data instructions and branch and exchange on page A5-132*)
         Rm := b2 DIV A.C3 MOD A.C4;
