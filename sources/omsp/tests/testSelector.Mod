@@ -6,7 +6,7 @@ MODULE testSelector;
 
   VAR r: tr;
 
-  PROCEDURE p(VAR r: tr);
+  PROCEDURE p*(VAR r: tr);
     VAR q: tr;
   BEGIN r.b := r.a; r.a := r.b;
     q.b := q.a; q.a := q.b
@@ -17,64 +17,65 @@ END testSelector.
 
 OMSPTool.DecObj testSelector.mpc
 decode testSelector.mpc
-testSelector 7BB7CD1E Flash    82
+testSelector C6B5286E
 imports:
-	testExport 266A3416
-type descriptors
- 0004 FFFF FFFF FFFF
-data     4
-strings
+	testExport 1ADE4F94
 
-vector table
+section     0	d    8	tr
+ 04 00 FF FF FF FF FF FF
+fixups:
+
+section     1	r    4	r
+fixups:
+
+section     2	c   42	p
+ 0000	     8221	SUB #4,SP
+ 0002	     411F	MOV 6(SP),R15
+ 0004	     0006
+ 0006	     411E	MOV 6(SP),R14
+ 0008	     0006
+ 000A	     4EAF	MOV @R14,2(R15)
+ 000C	     0002
+ 000E	     411F	MOV 6(SP),R15
+ 0010	     0006
+ 0012	     411E	MOV 6(SP),R14
+ 0014	     0006
+ 0016	     4E9F	MOV 2(R14),0(R15)
+ 0018	     0002
+ 001A	     0000
+ 001C	     41A1	MOV @SP,2(SP)
+ 001E	     0002
+ 0020	     4191	MOV 2(SP),0(SP)
+ 0022	     0002
+ 0024	     0000
+ 0026	     5221	ADD #4,SP
+ 0028	     4130	RET
+fixups:
+
+section     3	c   26	module body
+ 0000	     4292	MOV &0,&0
+ 0002	     0000								r.a
+ 0004	     0000								r.b
+ 0006	     4292	MOV &5,&3
+ 0008	     0005								r.b
+ 000A	     0003								r.a
+ 000C	     4292	MOV &0,&11
+ 000E	     0000								te.v.y
+ 0010	     000B								r.a
+ 0012	     4292	MOV &0,&9
+ 0014	     0000								te.v.x
+ 0016	     0009								r.b
+ 0018	     4130	RET
+fixups:
+ 0015	s1.4										te.v.x
+ 000F	s1.4+2									te.v.y
+ 0017	s0.1+2									r.b	
+ 0011	s0.1										r.a
+
+section     4	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
 
-entries
- 0032
-fixup procedures chains
-fixup handlers chains
-fixup data chains
- 003E( 0046)     0	 0000
- 0046( 004E)     0	 0002
- 0042( 004A)     1	 0004
-fixup constants chains
-fixup types chains
-entry =  0032
-code    74
- 0000( 0008)	     8221	SUB #4,SP
- 0002( 000A)	     411F	MOV 6(SP),R15
- 0004( 000C)	     0006
- 0006( 000E)	     411E	MOV 6(SP),R14
- 0008( 0010)	     0006
- 000A( 0012)	     4EAF	MOV @R14,2(R15)
- 000C( 0014)	     0002
- 000E( 0016)	     411F	MOV 6(SP),R15
- 0010( 0018)	     0006
- 0012( 001A)	     411E	MOV 6(SP),R14
- 0014( 001C)	     0006
- 0016( 001E)	     4E9F	MOV 2(R14),0(R15)
- 0018( 0020)	     0002
- 001A( 0022)	     0000
- 001C( 0024)	     41A1	MOV @SP,2(SP)
- 001E( 0026)	     0002
- 0020( 0028)	     4191	MOV 2(SP),0(SP)
- 0022( 002A)	     0002
- 0024( 002C)	     0000
- 0026( 002E)	     5221	ADD #4,SP
- 0028( 0030)	     4130	RET
- 002A( 0032)	     4292	MOV &0,&0
- 002C( 0034)	     0000
- 002E( 0036)	     0000
- 0030( 0038)	     4292	MOV &46,&44
- 0032( 003A)	     002E
- 0034( 003C)	     002C
- 0036( 003E)	     403F	MOV #0,R15
- 0038( 0040)	     0000
- 003A( 0042)	     4F92	MOV 2(R15),&52
- 003C( 0044)	     0002
- 003E( 0046)	     0034
- 0040( 0048)	     403F	MOV #56,R15
- 0042( 004A)	     0038
- 0044( 004C)	     4FA2	MOV @R15,&50
- 0046( 004E)	     0032
- 0048( 0050)	     4130	RET
+entries:
+    3    2

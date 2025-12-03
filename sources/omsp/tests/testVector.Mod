@@ -4,31 +4,29 @@ MODULE testVector;
 PROCEDURE*(M.TRAPINT_VECTOR, M.PORT1_VECTOR, M.PORT2_VECTOR) {} dummy;
 END dummy;
 
+BEGIN REPEAT UNTIL FALSE
 END testVector.
 
 OMSPTool.DecObj testVector.mpc
 decode testVector.mpc
-testVector 8C26D391 Flash     4
+testVector 3B656A05
 imports:
-	msp430g2553 F10488DC
-type descriptors
+	msp430g2553 BBD31A01
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- 0112 FFFF 0113 0000 FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 0002
-fixup procedures chains
-fixup handlers chains
- 0110     0	 0000
-fixup data chains
-fixup constants chains
-fixup types chains
-entry =  0002
-code     4
+section     0	c    2	dummy
  0000	     1300	RETI
+fixups:
+
+section     1	c    4	module body
+ 0000	     3FFF	JMP $, goes to  0000
  0002	     4130	RET
+fixups:
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ 0025 FFFF 0027 0000 FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+ 0021	s0.0
+
+entries:
+    1

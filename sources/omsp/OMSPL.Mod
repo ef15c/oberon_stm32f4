@@ -297,7 +297,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           mod.ent[i] := sec[sno].eadr
         END;
 
-        IF GetWordAt(mod.flashsto + mod.ent[0]) = 4130H THEN (*module init is empty*)
+        IF GetWordAt(mod.flashsto + mod.ent[0] - Flash.origin) = 4130H THEN (*module init is empty*)
           DEC(mod.flashsize, 2); mod.ent[0] := -1; (*mark init address as invalid*)
           IF codeseg = 1 THEN DEC(RAMAllocPtr, 2) END;
           DEC(Flash.allocPtr, 2)
@@ -332,7 +332,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       first := NIL; last := NIL; mi := 0; REPEAT LinkOne(modlist[mi], M, sec, MW); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);
       Texts.Append(MT, MW.buf);
       IF res = noerr THEN Texts.WriteString(W, "  linking");
-        (*prolog*) vector[31] := Flash.origin + Flash.allocPtr; p := first;
+        (*prolog*) padFlash; vector[31] := Flash.origin + Flash.allocPtr; p := first;
         (*MOV RAMLimit, SP*) EmitWord(4031H); EmitWord(RAMLimit);
         WHILE p # NIL DO (*fixup*) Texts.Write(W, " "); Texts.WriteString(W, p.name);
           IF p.codeseg = 1 THEN (*module executed from RAM*) Texts.Write(W, "*");
@@ -347,7 +347,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           IF p.ent[0] >= 0 THEN (*init code present: CALL p.ent[0]*); EmitWord(12B0H); EmitWord(p.ent[0]) END;
           p := p.next
         END
-      END;
+      END; Texts.WriteLn(W);
       IF (res = noerr) & (M.ent[0] < 0) THEN error(noinit, M.name) END;
       IF res = noerr THEN
         MakeFileName(name, S.s, ".txt"); F := Files.New(name); Files.Set(R, F, 0);

@@ -1,0 +1,11 @@
+Module msp430g2553
+module body	c C000	2
+vector table	v	64
+codeexe	 C000
+
+Module testVector
+dummy	c C000	2
+module body	c C002	4
+vector table	v	64
+codeexe	 C000
+
