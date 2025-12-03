@@ -1,7 +1,7 @@
 MODULE testImport;
   IMPORT testExport;
 
-  TYPE locrec = RECORD(testExport.rec) z: INTEGER END;
+  TYPE locrec* = RECORD(testExport.rec) z: INTEGER END;
 
   VAR v1: INTEGER;
     p1: PROCEDURE;
@@ -20,60 +20,64 @@ END testImport.
 
 OMSPTool.DecObj testImport.mpc
 decode testImport.mpc
-testImport CF624B57 Flash    64
+testImport EAFBD69F
 imports:
-	testExport 266A3416
-type descriptors
- 0006 0000 FFFF FFFF
-data     4
-strings
+	testExport 1ADE4F94
 
-vector table
+section     0	d    8	locrec
+ 06 00 00 00 FF FF FF FF
+fixups:
+ 0003	s1.1
+
+section     1	r    2	v1
+fixups:
+
+section     2	r    2	p1
+fixups:
+
+section     3	c    2	q
+ 0000	     4130	RET
+fixups:
+
+section     4	c   48	module body
+ 0000	     4292	MOV &0,&0
+ 0002	     0000
+ 0004	     0000
+ 0006	     12B0	CALL #0
+ 0008	     0000
+ 000A	     40B2	MOV #9,&0
+ 000C	     0009
+ 000E	     0000
+ 0010	     1292	CALL &15
+ 0012	     000F
+ 0014	     4292	MOV &0,&5
+ 0016	     0000
+ 0018	     0005
+ 001A	     4292	MOV &0,&25
+ 001C	     0000
+ 001E	     0019
+ 0020	     1230	PUSH #0
+ 0022	     0000
+ 0024	     1230	PUSH #23
+ 0026	     0017
+ 0028	     12B0	CALL #0
+ 002A	     0000
+ 002C	     5221	ADD #4,SP
+ 002E	     4130	RET
+fixups:
+ 002B	s0.3
+ 0023	s1.1
+ 001D	s1.4+2
+ 0027	s1.4
+ 0013	s0.2
+ 000D	s1.5
+ 001F	s0.1
+ 0003	s1.2
+
+section     5	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
 
-entries
- 000A
-fixup procedures chains
- 0032( 003A)     0	 0008
- 000E( 0016)     1	 0005
-fixup handlers chains
-fixup data chains
- 0026( 002E)     0	 0000
- 0014( 001C)     0	 0002
- 002E( 0036)     1	 0004
- 0004( 000C)     1	 0002
-fixup constants chains
- 002A( 0032)     1	 0001
-fixup types chains
- 0002     1	 0001
-entry =  000A
-code    56
- 0000( 0008)	     4130	RET
- 0002( 000A)	     4292	MOV &0,&0
- 0004( 000C)	     0000
- 0006( 000E)	     0000
- 0008( 0010)	     12B0	CALL #0
- 000A( 0012)	     0000
- 000C( 0014)	     40B2	MOV #10,&0
- 000E( 0016)	     000A
- 0010( 0018)	     0000
- 0012( 001A)	     1292	CALL &16
- 0014( 001C)	     0010
- 0016( 001E)	     403F	MOV #0,R15
- 0018( 0020)	     0000
- 001A( 0022)	     4FA2	MOV @R15,&6
- 001C( 0024)	     0006
- 001E( 0026)	     403F	MOV #24,R15
- 0020( 0028)	     0018
- 0022( 002A)	     4F92	MOV 2(R15),&28
- 0024( 002C)	     0002
- 0026( 002E)	     001C
- 0028( 0030)	     1230	PUSH #0
- 002A( 0032)	     0000
- 002C( 0034)	     1230	PUSH #32
- 002E( 0036)	     0020
- 0030( 0038)	     12B0	CALL #0
- 0032( 003A)	     0000
- 0034( 003C)	     5221	ADD #4,SP
- 0036( 003E)	     4130	RET
+entries:
+    4    0

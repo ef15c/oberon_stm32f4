@@ -343,11 +343,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE MakeItem*(VAR x: Item; y: B.Object; curlev: INTEGER);
   BEGIN x := c0; x.mode := y.class; x.type := y.type; x.a := y.val; x.rdo := y.rdo; x.c := y.lev; x.obj := y;
-    IF (y.class IN {B.Var, B.Par, B.StoredConst}) & (y.type.form # B.String) THEN
+    IF (y.class IN {B.Var, B.Par}) THEN
       IF y.register # 0FFH THEN
         x.reg := y.register;
         IF y.class = B.Var THEN x.mode := Reg ELSE x.mode := RegI END
-      END
+      END;
+    ELSIF (y.class = B.StoredConst) & (y.type.form = B.Proc) THEN x.ptr := TRUE (*const procs are always pointers*)
     ELSIF y.type.form = B.String THEN x.a := y.val MOD 10000H (*no*); x.b := LSL(LSR(y.val, 16), 16) (*len*)
     END;
 
@@ -420,7 +421,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
      the trap checking code is generated.*)
   VAR t!: Item;
   BEGIN IF cond # A.AL THEN PutJ(A.negated(cond), 4) END;
-    MakeItem(t, traps[num], 0); t.ptr := TRUE; PutSO(A.CALL, t)
+    MakeItem(t, traps[num], 0); PutSO(A.CALL, t)
   END Trap;
 
   PROCEDURE convertSize(VAR src: Item; t: B.Type): BOOLEAN;
@@ -529,8 +530,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END loadCond;
 
   PROCEDURE MakeTypTagAdr(VAR x: Item; T: B.Type);
-  BEGIN x.mode := B.StoredConst; x.radr := TRUE; x.ptr := TRUE; x.type := B.intType; x.a := T.len; x.b := 0; x.c := 0;
-    x.rdo := TRUE; x.obj := T.typobj; x.tmp := FALSE; x.reg := 0; x.am := A.Undefined; x.ofs := 0
+  BEGIN x := c0; x.mode := B.StoredConst; x.radr := TRUE; x.ptr := TRUE; x.type := B.intType; x.a := T.len; x.c := T.typobj.lev;
+    x.rdo := TRUE; x.obj := T.typobj; x.am := A.Undefined
   END MakeTypTagAdr;
 
   PROCEDURE loadTypTagAdr(T: B.Type; pr: INTEGER): BYTE;
@@ -808,7 +809,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN (*x.type.form = B.Proc*) s := getParSize(x.type);
     IF x.mode = B.StoredConst THEN
       IF x.c > 0 THEN x.c := 0 END; (*inner procedure are called the same way as global procedures*) 
-      Adr(x); PutSO(A.CALL, x)
+      PutSO(A.CALL, x)
     ELSE IF x.mode > B.Par THEN x.mode := RegI; x.reg := A.SP; x.a := s; INC(s, WordSize) END;
       IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
       PutSO(A.CALL, x); free(x)
@@ -1176,7 +1177,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         END
       ELSIF par.type.form = B.Record THEN
         IF xmd = B.Par THEN rh.reg := AllocRP(par.register+1); ti.reg := A.SP; ti.ofs := x.a+WordSize+frame;
-        A.PutDO(mcode, A.MOV, ti, rh, A.Word)
+          A.PutDO(mcode, A.MOV, ti, rh, A.Word)
         ELSE xmd := loadTypTagAdr(xtyp, par.register+1)
         END
       END
