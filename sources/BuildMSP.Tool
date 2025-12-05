@@ -14,7 +14,7 @@ OMSPP.Compile testFunc.Mod/s testFor.Mod/s testDeRef.Mod/s testCond.Mod/s testAs
   testVarParam.Mod/s testSProcs2.Mod/s testRecStr.Mod/s ISRTrap.Mod/s testInit.Mod/s testInitImp.Mod/s testRAMcode.Mod/s ~
 
 OMSPL.Link 32 4000H 200H testFrame ~ OMSPL.Link 32 4000H 200H testTypTag ~ OMSPL.Link 32 4000H 200H testString ~ OMSPL.Link 32 4000H 200H testVector ~
-OMSPL.Link 32 4000H 200H testImportString ~ OMSPL.Link 32 4000H 200H testInitImp ~ OMSPL.Link 32 4000H 200H testRAMcode ~
+OMSPL.Link 32 4000H 200H testImportString ~ OMSPL.Link 32 4000H 200H testInitImp ~ OMSPL.Link 32 4000H 200H testRAMcode ~ OMSPL.Link 32 4000H 200H Facto ~
 
 Texas Instruments examples
 Compilation

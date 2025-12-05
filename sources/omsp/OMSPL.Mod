@@ -52,7 +52,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
 
   IMPORT SYSTEM, Modules, Display, G := OMSPG, Files, FilesEx, Texts, Oberon, L := SystemLog;
   CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7; notsupported = 8;
-    RAMOrigin = 200H; FlashEnd = 10000H;
+    RAMOrigin = 200H; FlashEnd = 10000H; MaxSec = 512;
 
   TYPE 
     Module = POINTER TO ModDesc;
@@ -79,7 +79,14 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       eadr, size: INTEGER (*effective address and size*)
     END;
 
-  VAR first, last, firstM, lastM: Module;
+    ModMaps = POINTER TO ModMapsDesc;
+    ModMapsDesc = RECORD
+      name: Name;
+      next: ModMaps;
+      refm, tdm: ARRAY MaxSec DIV 32 OF SET; (*bitmaps for referenced and to do sections*)
+    END;
+
+  VAR first, last: Module; maps: ModMaps;
     RAMAllocPtr, RAMLimit, limit, res: INTEGER;
     Flash: Segment; vector: ARRAY 32 OF INTEGER;
     importing, imported: Name;
@@ -252,7 +259,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         IF codeseg = 1 THEN (*execute in RAM*) mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, mod.flashsize)
         ELSE mod.codeexe := Flash.origin + mod.flashsto
         END;
-		(*compute effective address*)
+        (*compute effective address*)
         FOR i := 0 TO nofsecs - 1 DO Texts.WriteString(MW, sec[i].name); Texts.Write(MW, 09X);
           ch := sec[i].segment; Texts.Write(MW, ch);
           IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
@@ -312,6 +319,15 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
     newmod := mod
   END LinkOne;
 
+  PROCEDURE Mark(name: ARRAY OF CHAR; VAR sec: ARRAY OF Section);
+    VAR mm!: ModMaps;
+  BEGIN mm := maps; error(noerr, name);
+    WHILE (mm # NIL) & (name # mm.name) DO mm := mm.next END ;
+    IF mm = NIL THEN NEW(mm); mm.name := name; mm.next := maps; maps := mm;
+(*todo*)
+    END
+  END Mark;
+
   PROCEDURE Link*;  (*link multiple object files together and create a single MSP430 TI-TXT file M.txt from them*)
     VAR i, x, vecsize, isrtrap, count, oldcol: INTEGER;
       F!: Files.File; R!: Files.Rider; MT!: Texts.Text; MW!: Texts.Writer;
@@ -320,14 +336,14 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       name: Name;
       modlist: ARRAY 64 OF Name;
       nbmod, mi: INTEGER;
-      sec: ARRAY 512 OF Section;
+      sec: ARRAY MaxSec OF Section;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := noerr; count := 0;
     Flash := SYSTEM.VAL(Segment, Modules.AllocPtr); FOR i := 0 TO 31 DO vector[i] := 0FFFFH END;
     IF S.class = Texts.Int THEN  vecsize := S.i; Texts.Scan(S) ELSE vecsize := 0; res := nopar END;
     IF S.class = Texts.Int THEN  limit := S.i - vecsize; Flash.origin := FlashEnd - S.i; Flash.allocPtr := 0; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Name) THEN nbmod := 0; REPEAT modlist[nbmod] := S.s; INC(nbmod); Texts.Scan(S) UNTIL S.class # Texts.Name;
-(*      firstM := NIL; lastM := NIL; mi := 0; REPEAT Mark(modlist[mi], M); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);*)
+      maps := NIL; mi := 0; REPEAT Mark(modlist[mi], sec); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);
       NEW(MT); Texts.Open(MT, ""); Texts.OpenWriter(MW);
       first := NIL; last := NIL; mi := 0; REPEAT LinkOne(modlist[mi], M, sec, MW); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);
       Texts.Append(MT, MW.buf);
@@ -347,7 +363,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           IF p.ent[0] >= 0 THEN (*init code present: CALL p.ent[0]*); EmitWord(12B0H); EmitWord(p.ent[0]) END;
           p := p.next
         END
-      END; Texts.WriteLn(W);
+      END;
       IF (res = noerr) & (M.ent[0] < 0) THEN error(noinit, M.name) END;
       IF res = noerr THEN
         MakeFileName(name, S.s, ".txt"); F := Files.New(name); Files.Set(R, F, 0);
@@ -382,7 +398,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         Texts.WriteString(W, ", data"); Texts.WriteInt(W, RAMAllocPtr - RAMOrigin, 5);
         Texts.WriteString(W, ", stack"); Texts.WriteInt(W, RAMLimit - RAMAllocPtr, 5);
         Texts.WriteString(W, " bytes")
-      ELSE oldcol := W.col; W.col := Display.red;
+      ELSE  Texts.WriteLn(W); oldcol := W.col; W.col := Display.red;
         Texts.WriteString(W, "Link error:  "); Texts.WriteString(W, importing);
         IF res = nofile THEN Texts.WriteString(W, " module not found")
         ELSIF res = duphandler THEN Texts.WriteString(W, " duplicate interrupt handler")

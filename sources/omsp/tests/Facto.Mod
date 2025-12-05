@@ -14,40 +14,28 @@ MODULE Facto;
 BEGIN res := f(5)
 END Facto.
 
+OMSPL.Link 32 4000H 200H Facto ~
+  linking Arith Facto
+    flash  310, data    2, stack  510 bytes
+
 OMSPTool.DecObj Facto.mpc
 decode Facto.mpc
-Facto BEC114C3 Flash    66
+Facto 309DBBD6
 imports:
-	Arith BDF2CFB8
-type descriptors
+	Arith CA33A8B5
 
-data     2
-strings
+section     0	r    2	res
+fixups:
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 0032 0000
-fixup procedures chains
- 0038     0	 0000
- 0026     1	 0001
-fixup handlers chains
-fixup data chains
- 003E     0	 0000
-fixup constants chains
-fixup types chains
-entry =  0032
-code    66
+section     1	c   50	f
  0000	     8321	SUB #2,SP
  0002	     430F	MOV #0,R15
  0004	     911F	CMP 4(SP),R15
  0006	     0004
- 0008	     3803	JL #3, goes to  0010
+ 0008	     3803	JL $+8, goes to  0010
  000A	     4391	MOV #1,0(SP)
  000C	     0000
- 000E	     3C0E	JMP #14, goes to  002C
+ 000E	     3C0E	JMP $+30, goes to  002C
  0010	     411F	MOV 4(SP),R15
  0012	     0004
  0014	     831F	SUB #1,R15
@@ -65,11 +53,27 @@ code    66
  002C	     412F	MOV @SP,R15
  002E	     5321	ADD #2,SP
  0030	     4130	RET
- 0032	     1230	PUSH #5
- 0034	     0005
- 0036	     12B0	CALL #26
- 0038	     001A
- 003A	     5321	ADD #2,SP
- 003C	     4F82	MOV R15,&0
- 003E	     0000
- 0040	     4130	RET
+fixups:
+ 0027	s1.1
+ 001B	s0.1
+
+section     2	c   16	module body
+ 0000	     1230	PUSH #5
+ 0002	     0005
+ 0004	     12B0	CALL #0
+ 0006	     0000
+ 0008	     5321	ADD #2,SP
+ 000A	     4F82	MOV R15,&0
+ 000C	     0000
+ 000E	     4130	RET
+fixups:
+ 000D	s0.0
+ 0007	s0.1
+
+section     3	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    2    1
