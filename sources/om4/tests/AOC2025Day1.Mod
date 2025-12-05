@@ -50,7 +50,6 @@ MODULE AOC2025Day1;
 BEGIN Texts.OpenWriter(W)
 END AOC2025Day1.
 
-Edit.Store AOC2025Day1.Mod
 OM4P.Compile AOC2025Day1.Mod/s~
 System.Free AOCUtils AOC2025Day1~
 
