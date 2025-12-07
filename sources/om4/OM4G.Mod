@@ -403,11 +403,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       lim := x.type.len;
       IF (y.mode = B.Const) & (lim >= 0) THEN
         IF (y.a < 0) OR (y.a >= lim) THEN S.Mark("bad index") END ;
-          IF x.mode = B.Var THEN IF x.r >= 0 THEN INC(x.a, y.a * s) ELSE INC(x.b, y.a * s) END
-          ELSIF x.mode = RegI THEN INC(x.a, y.a * s)
-          ELSIF x.mode = B.Par THEN INC(x.b, y.a * s)
-          ELSE ASSERT(FALSE)
-          END
+        IF x.mode = B.Var THEN IF x.r >= 0 THEN INC(x.a, y.a * s) ELSE INC(x.b, y.a * s) END
+        ELSIF x.mode = RegI THEN INC(x.a, y.a * s)
+        ELSIF x.mode = B.Par THEN INC(x.b, y.a * s)
+        ELSE ASSERT(FALSE)
+        END
       ELSE convertInt(y, B.intType); load(y);
         IF check THEN  (*check array bounds*)
           IF lim >= 0 THEN A.encCMPImm(mcode, y.r, RH, lim)
@@ -1269,7 +1269,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF isLongint(x.type) THEN incR; A.encDMemImm32(mcode, A.LDRD, zr, zr+1, x.r, RH, ofs)
       ELSE A.encMemImm32(mcode, vl, zr, x.r, RH, ofs)
       END; doInc(x, y, op, op2, zr, vl, vs);
-      IF isLongint(x.type) THEN A.encDMemImm32(mcode, A.STRD, zr, zr+1, x.r, RH, ofs); DEC(RH, 3)
+      IF isLongint(x.type) THEN A.encDMemImm32(mcode, A.STRD, zr, zr+1, x.r, RH+2, ofs); DEC(RH, 3)
       ELSE A.encMemImm32(mcode, vs, zr, x.r, RH, ofs); DEC(RH, 2)
       END
     END

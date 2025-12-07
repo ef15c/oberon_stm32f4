@@ -616,8 +616,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       encDMemImm8PUW(mc, op, a, b, c, TRUE(*Pre-indexed*), FALSE(*subtract*), FALSE(*no write back*), -imm DIV 4)
     ELSIF (imm < C10) THEN
       encDMemImm8PUW(mc, op, a, b, c, TRUE(*Pre-indexed*), TRUE(*add*), FALSE(*no write back*), imm DIV 4)
-    ELSE (*imm = imm1+imm2 et 0 <= imm2 < C12*) ASSERT (t < 13);
-      imm2 := imm MOD C12; imm1 := imm DIV C12*C12;
+    ELSE (*imm = imm1+imm2 et 0 <= imm2 < C10*) ASSERT (t < 13);
+      imm2 := imm MOD C10; imm1 := imm DIV C10*C10; ASSERT(t > b);
       encDPImm32(mc, ADD, t, c, t, imm1, FALSE); encDMemImm32(mc, op, a, b, t, t, imm2)
     END;
     mc.lastInstrSetFlags := FALSE
