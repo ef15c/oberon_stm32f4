@@ -164,16 +164,16 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
       IF res = 0 THEN F := ThisFile(name) ELSE F := NIL END ;
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key); Files.ReadByte(R, version);
-        Files.ReadInt(R, size); importing := name1;
+        Files.ReadInt(R, size);
         IF version IN {1, 2} THEN
           Files.ReadString(R, impname);   (*imports*)
           WHILE (impname[0] # 0X) & (res = 0) DO
             Files.ReadInt(R, impkey);
-            Load(impname, impmod); import[nofimps] := impmod; importing := name1;
+            Load(impname, impmod); import[nofimps] := impmod;
             IF res = 0 THEN
-              IF impmod.key = impkey THEN 
+              IF impmod.key = impkey THEN
                 IF (version = 2) OR (impmod.data = impmod.const) THEN IncRefcnt(impmod, 1); INC(nofimps)
-                ELSE error(2, name1)
+                ELSE error(2, impname)
                 END
               ELSE error(3, name1); imported := impname
               END
@@ -291,7 +291,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
         END ;
         body;   (*initialize module*)
         IF shrinkable & (AllocPtr > p) THEN DEC(mod.size, AllocPtr - p); AllocPtr := p END (*remove trampoline unused space*)
-      ELSIF res >= 3 THEN importing := name;
+      ELSIF res > 3 THEN importing := name;
         WHILE nofimps > 0 DO DEC(nofimps); IncRefcnt(import[nofimps], -1) END
       END 
     END ;
