@@ -1,5 +1,5 @@
 MODULE BMP;
-  IMPORT Files, FilesEx, Display, Texts;
+  IMPORT Files, Display, Texts;
 
   TYPE Header* = RECORD signature*: ARRAY 3 OF CHAR; filesize*, dataoffset*: INTEGER END;
     DIBHeader* = RECORD size*, width*, height*, planes*, bitcount*, compression*, imagesize*,
@@ -21,7 +21,7 @@ MODULE BMP;
   BEGIN (*assume the rider is at the right position*)
     Files.ReadInt(R, h.size);
     IF h.size >= 40 THEN Files.ReadInt(R, h.width); Files.ReadInt(R, h.height);
-      FilesEx.ReadHalfWord(R, h.planes); FilesEx.ReadHalfWord(R, h.bitcount); 
+      Files.ReadHalfWord(R, h.planes); Files.ReadHalfWord(R, h.bitcount); 
       Files.ReadInt(R, h.compression);
       IF (h.bitcount # 8) OR ~(h.compression IN {0, 1}) THEN h.size := 0 (*not supported*) END;
       Files.ReadInt(R, h.imagesize);
@@ -117,7 +117,7 @@ MODULE BMP;
     Files.WriteInt(R, 14 + 40 + 256*4); (*data offset*)
     (*write DIB header*)
     Files.WriteInt(R, 40); (*BITMAPINFOHEADER*) Files.WriteInt(R, Display.Width); Files.WriteInt(R, Display.Height);
-    FilesEx.WriteHalfWord(R, 1); FilesEx.WriteHalfWord(R, 8); Files.WriteInt(R, 1);
+    Files.WriteHalfWord(R, 1); Files.WriteHalfWord(R, 8); Files.WriteInt(R, 1);
     Files.WriteInt(R, 0); (*placeholder for image data size, offset 34 *) Files.WriteInt(R, 2835); Files.WriteInt(R, 2835);
     Files.WriteInt(R, 256); Files.WriteInt(R, 256);
     (*write palette*)
