@@ -1,5 +1,5 @@
 MODULE AOC2025Day5;
-  IMPORT Texts, Oberon, U := AOCUtils, L := SystemLog;
+  IMPORT Texts, Oberon, L := SystemLog;
 
   TYPE ProcessProc = PROCEDURE(id: LONGINT);
     Range = RECORD l, h: LONGINT END;

@@ -1,5 +1,5 @@
 MODULE AOC2025Day7;
-  IMPORT Texts, Oberon, U := AOCUtils, L := SystemLog;
+  IMPORT Texts, Oberon, L := SystemLog;
 
   CONST size = 170;
 

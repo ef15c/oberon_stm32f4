@@ -1,9 +1,12 @@
 MODULE AOCUtils;
-  IMPORT Texts;
+  IMPORT Texts, L := SystemLog;
 
   CONST LONG_MAX* = LSL(1L, 63) - 1; BYTE_MAX* = LSL(1, 8);
 
   TYPE Vector* = RECORD x*, y*: INTEGER END;
+    Vec3* = RECORD x*, y*, z*: INTEGER END;
+    List* = POINTER TO ListDesc;
+    ListDesc* = RECORD n*: LONGINT; next*: List END;
 
   VAR DIRECTION4*: ARRAY 4 OF Vector;
 
@@ -89,6 +92,27 @@ MODULE AOCUtils;
     REPEAT s[l] := CHR(ORD("0") + x MOD 10); x := x DIV 10; INC(l) UNTIL x = 0; s[l] := 0X;
     i := 0; j := l - 1; WHILE i < j DO c := s[i]; s[i] := s[j]; s[j] := c; INC(i); DEC(j) END; (*reverse digits*)
   END toString;
+
+  PROCEDURE dist32*(a, b: Vec3): LONGINT;
+    VAR dx, dy, dz: LONGINT;
+  BEGIN dx := a.x - b.x; dy := a.y - b.y; dz := a.z - b.z;
+
+    RETURN dx*dx + dy*dy + dz*dz
+  END dist32;
+
+  PROCEDURE sort*(VAR h: List);
+    VAR max: LONGINT; r!, p!, q!, t!: List;
+  BEGIN r := h; t := NIL;
+    WHILE r # NIL DO max := r.n; p := NIL; q := r;
+      WHILE q.next # NIL DO
+        IF q.next.n > max THEN max := q.next.n; p := q END;
+        q := q.next
+      END;
+      IF p # NIL THEN q := p.next; p.next := q.next ELSE q := r; r := r.next END; (*remove q from original list*)
+      q.next := NIL;
+      IF t = NIL THEN h := q; t := h ELSE t.next := q; t := q END (*append q to the destination list*)
+    END
+  END sort;
 
 BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
   DIRECTION4[1].x := 1; DIRECTION4[1].y := 0;

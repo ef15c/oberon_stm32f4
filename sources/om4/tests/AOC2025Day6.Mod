@@ -1,5 +1,5 @@
 MODULE AOC2025Day6;
-  IMPORT Texts, Oberon, U := AOCUtils, L := SystemLog;
+  IMPORT Texts, Oberon, L := SystemLog;
 
   TYPE ProcessProc = PROCEDURE;
     Problem = POINTER TO ProblemDesc;

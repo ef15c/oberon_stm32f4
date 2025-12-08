@@ -1,5 +1,5 @@
 MODULE  AOC2025Day3;
-  IMPORT Texts, Oberon, U := AOCUtils, L := SystemLog;
+  IMPORT Texts, Oberon, L := SystemLog;
 
   TYPE ProcessProc = PROCEDURE(bank: ARRAY OF BYTE; n, nd: INTEGER);
 
