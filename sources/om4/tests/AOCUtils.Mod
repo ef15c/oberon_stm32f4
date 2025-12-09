@@ -3,7 +3,7 @@ MODULE AOCUtils;
 
   CONST LONG_MAX* = LSL(1L, 63) - 1; BYTE_MAX* = LSL(1, 8);
 
-  TYPE Vector* = RECORD x*, y*: INTEGER END;
+  TYPE Vector* = RECORD x*, y*, param*: INTEGER END;
     Vec3* = RECORD x*, y*, z*: INTEGER END;
     List* = POINTER TO ListDesc;
     ListDesc* = RECORD n*: LONGINT; next*: List END;
@@ -113,6 +113,39 @@ MODULE AOCUtils;
       IF t = NIL THEN h := q; t := h ELSE t.next := q; t := q END (*append q to the destination list*)
     END
   END sort;
+
+  PROCEDURE cmpVector(a, b: Vector; col: INTEGER): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN
+    IF col = 1 THEN res := (a.x < b.x) OR ((a.x = b.x) & (a.y < b.y)) (*sort by x then y*)
+    ELSIF col = 2 THEN res := (a.y < b.y) OR ((a.y = b.y) & (a.x < b.x)) (*sort by y then x*)
+    ELSE res := a.param < b.param
+    END
+
+    RETURN res
+  END cmpVector;
+
+  PROCEDURE doVectorSort(VAR a: ARRAY OF Vector; col: INTEGER; L, R: INTEGER);
+    VAR i, j: INTEGER; w, x: Vector;
+  BEGIN
+    i := L; j := R;
+    x := a[(L+R) DIV 2];
+    REPEAT
+      WHILE cmpVector(a[i], x, col) DO i := i+1 END;
+      WHILE cmpVector(x, a[j], col) DO j := j-1 END;
+      IF i <= j THEN
+        w := a[i]; a[i] := a[j]; a[j] := w;
+        i := i+1; j := j-1
+      END
+    UNTIL i > j;
+    IF L < j THEN doVectorSort(a, col, L, j) END;
+    IF i < R THEN doVectorSort(a, col, i, R) END
+  END doVectorSort;
+
+  PROCEDURE VectorSort*(VAR a: ARRAY OF Vector; col: INTEGER; n: INTEGER);
+  BEGIN IF n = 0 THEN n := LEN(a) END;
+    doVectorSort(a, col, 0, n - 1)
+  END VectorSort;
 
 BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
   DIRECTION4[1].x := 1; DIRECTION4[1].y := 0;

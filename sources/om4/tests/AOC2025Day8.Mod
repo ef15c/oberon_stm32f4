@@ -12,7 +12,7 @@ MODULE AOC2025Day8;
     circuits: Circuit;
     cnttab: ARRAY maxj OF INTEGER;
 
- PROCEDURE parse1(process: ProcessProc);
+ PROCEDURE parse(process: ProcessProc);
     VAR S!: Texts.Scanner; nc: INTEGER;
   BEGIN nbj := 0;
     Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
@@ -24,7 +24,7 @@ MODULE AOC2025Day8;
       INC(nbj)
     END;
     process(nc)
-  END parse1;
+  END parse;
 
   PROCEDURE circuit(cx: INTEGER): Circuit;
     VAR c!: Circuit;
@@ -142,13 +142,13 @@ MODULE AOC2025Day8;
   END doPart2;
 
   PROCEDURE part1*;
-  BEGIN parse1(doPart1);
+  BEGIN parse(doPart1);
     Texts.WriteString(W, "Partie 1: prd = "); Texts.WriteInt(W, prd, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part1;
 
   PROCEDURE part2*;
-  BEGIN parse1(doPart2);
+  BEGIN parse(doPart2);
     Texts.WriteString(W, "Partie 2: prd x = "); Texts.WriteInt(W, prd, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part2;
@@ -162,7 +162,9 @@ OM4L.LinkEF Modules System Edit OnStartup Image OM4L OM4P AOC2025Day8~
 OM4L.LoadEF AOC2025Day8.efb OM4L.CompareEF AOC2025Day8.efb
 
 Test
+Partie 1: prd = 40
 AOC2025Day8.part1 10
+Partie 2: prd x = 25272
 AOC2025Day8.part2 0
 162,817,812
 57,618,57
