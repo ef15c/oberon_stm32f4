@@ -1,35 +1,79 @@
 MODULE AOC2025Day9;
-  IMPORT Display, Fonts, Texts, Oberon, U := AOCUtils, L := SystemLog;
+  IMPORT Display, Fonts, Texts, Oberon, U := AOCUtils, L := SystemLog, Q := QuickSort;
 
   CONST maxrt = 500;
 
-  TYPE ProcessProc = PROCEDURE(n: INTEGER);
+  TYPE ProcessProc = PROCEDURE;
+    Vector = RECORD(U.Vector) no: INTEGER END;
+    Array = RECORD(Q.Array) vec: ARRAY maxrt OF Vector END;
     Map = ARRAY 250, 250 OF CHAR;
 
   VAR W: Texts.Writer;
-    redt: ARRAY maxrt OF U.Vector; nbrt: INTEGER;
+    redt: Array;
     la: LONGINT;
     map: Map;
 
  PROCEDURE parse(process: ProcessProc);
     VAR S!: Texts.Scanner;
-  BEGIN nbrt := 0;
+  BEGIN redt.n := 0;
     Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     WHILE S.class = Texts.Int DO 
-      redt[nbrt].x := S.i; Texts.Scan(S); ASSERT(S.class = Texts.Char); Texts.Scan(S);
-      redt[nbrt].y := S.i; Texts.Scan(S);
-      INC(nbrt)
+      redt.vec[redt.n].x := S.i; Texts.Scan(S); ASSERT(S.class = Texts.Char); Texts.Scan(S);
+      redt.vec[redt.n].y := S.i; Texts.Scan(S);
+      INC(redt.n)
     END;
-    process(nbrt)
+    process
   END parse;
 
-  PROCEDURE doPart1(n: INTEGER);
+  PROCEDURE xyup(a: Q.Array; i, j: INTEGER): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN
+    CASE a OF Array:
+      res := (a.vec[i].x < a.vec[j].x) OR ((a.vec[i].x = a.vec[j].x) & (a.vec[i].y < a.vec[j].y)) (*sort by x then y*)
+    | Q.Array: ASSERT(FALSE)
+    END
+
+    RETURN res
+  END xyup;
+
+  PROCEDURE yxup(a: Q.Array; i, j: INTEGER): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN
+    CASE a OF Array:
+      res := (a.vec[i].y < a.vec[j].y) OR ((a.vec[i].y = a.vec[j].y) & (a.vec[i].x < a.vec[j].x)) (*sort by y then x*)
+    | Q.Array: ASSERT(FALSE)
+    END
+
+    RETURN res
+  END yxup;
+
+  PROCEDURE noup(a: Q.Array; i, j: INTEGER): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN
+    CASE a OF Array:
+      res := a.vec[i].no < a.vec[j].no (*sort by no*)
+    | Q.Array: ASSERT(FALSE)
+    END
+
+    RETURN res
+  END noup;
+
+  PROCEDURE swap(VAR a: Q.Array; i, j: INTEGER);
+    VAR t: Vector;
+  BEGIN
+    CASE a OF Array:
+      t := a.vec[i]; a.vec[i] := a.vec[j]; a.vec[j] := t
+    | Q.Array: ASSERT(FALSE)
+    END
+  END swap;
+
+  PROCEDURE doPart1;
     VAR i, j: INTEGER; a: LONGINT;
-  BEGIN U.VectorSort(redt, 1, n);
+  BEGIN Q.Sort(redt, xyup, swap);
     la := 0; i := 0;
-    WHILE i < n DO LED(i);
-      j := n - 1;
-      WHILE j > i DO a := (1L + ABS(redt[i].x - redt[j].x))*(1L + ABS(redt[i].y - redt[j].y));
+    WHILE i < redt.n DO LED(i);
+      j := redt.n - 1;
+      WHILE j > i DO a := (1L + ABS(redt.vec[i].x - redt.vec[j].x))*(1L + ABS(redt.vec[i].y - redt.vec[j].y));
         IF a > la THEN la := a END;
         DEC(j)
       END;
@@ -54,40 +98,40 @@ MODULE AOC2025Day9;
     Texts.Append(Oberon.Log, W.buf)
   END printMap;
 
-  PROCEDURE buildMap(v: ARRAY OF U.Vector; nv, mx, my: INTEGER);
+  PROCEDURE buildMap(v: ARRAY OF Vector; nv, mx, my: INTEGER);
     VAR i, j: INTEGER;
   BEGIN FOR i := 0 TO mx DO FOR j := 0 TO my DO map[i, j] := "." END END;
     FOR i := 0 TO nv - 1 DO map[v[i].x, v[i].y] := "#" END;
   END buildMap;
 
-  PROCEDURE doPart2(n: INTEGER);
-    VAR rp: ARRAY maxrt OF U.Vector; i, j: INTEGER; pc, nc, maxx, maxy, dx, dy: INTEGER;
-      p: U.Vector; x, y, x0, y0, x1, y1, t: INTEGER; pf: BOOLEAN; a: LONGINT;
+  PROCEDURE doPart2;
+    VAR rp: Array; i, j: INTEGER; pc, nc, maxx, maxy, dx, dy: INTEGER;
+      p: Vector; x, y, x0, y0, x1, y1, t: INTEGER; pf: BOOLEAN; a: LONGINT;
   BEGIN (*reduce problem size*) rp := redt;
-    FOR i := 0 TO n - 1 DO rp[i].param := i END; (*store original order*)
+    FOR i := 0 TO rp.n - 1 DO rp.vec[i].no := i END; (*store original order*)
     (*compress horizontally*)
-    U.VectorSort(rp, 1, n); pc := rp[0].x; nc := 0;
-    FOR i := 0 TO n - 1 DO IF rp[i].x # pc THEN pc := rp[i].x; INC(nc) END;
-      rp[i].x := nc
+    Q.Sort(rp, xyup, swap); pc := rp.vec[0].x; nc := 0;
+    FOR i := 0 TO rp.n - 1 DO IF rp.vec[i].x # pc THEN pc := rp.vec[i].x; INC(nc) END;
+      rp.vec[i].x := nc
     END; maxx := nc;
     (*compress vertically*)
-    U.VectorSort(rp, 2, n); pc := rp[0].y; nc := 0;
-    FOR i := 0 TO n - 1 DO IF rp[i].y # pc THEN pc := rp[i].y; INC(nc) END;
-      rp[i].y := nc
+    Q.Sort(rp, yxup, swap); pc := rp.vec[0].y; nc := 0;
+    FOR i := 0 TO rp.n - 1 DO IF rp.vec[i].y # pc THEN pc := rp.vec[i].y; INC(nc) END;
+      rp.vec[i].y := nc
     END; maxy := nc;
-    U.VectorSort(rp, 3, n); (*restore original order*)
-    buildMap(rp, n, maxx, maxy); (*create map*)
+    Q.Sort(rp,noup, swap); (*restore original order*)
+    buildMap(rp.vec, rp.n, maxx, maxy); (*create map*)
 (*    printMap("reduced size", maxx, maxy);*)
     (*mark edges*)
-    rp[n] := rp[0]; (*close the polygon*)
-    FOR i := 0 TO n - 1 DO
-      dx := rp[i + 1].x - rp[i].x; dy := rp[i + 1].y - rp[i].y;
-      p := rp[i];
+    rp.vec[rp.n] := rp.vec[0]; (*close the polygon*)
+    FOR i := 0 TO rp.n - 1 DO
+      dx := rp.vec[i + 1].x - rp.vec[i].x; dy := rp.vec[i + 1].y - rp.vec[i].y;
+      p := rp.vec[i];
       REPEAT
         IF dx > 0 THEN INC(p.x) ELSIF dx < 0 THEN DEC(p.x) END;
         IF dy > 0 THEN INC(p.y) ELSIF dy < 0 THEN DEC(p.y) END;
         IF map[p.x, p.y] = "." THEN map[p.x, p.y] := "X" END
-      UNTIL (p.x = rp[i + 1].x) & (p.y = rp[i + 1].y)
+      UNTIL (p.x = rp.vec[i + 1].x) & (p.y = rp.vec[i + 1].y)
     END;
 (*    printMap("with edges", maxx, maxy);*)
     (*fill the polygon*)
@@ -120,13 +164,13 @@ MODULE AOC2025Day9;
       END
     END;
 (*    printMap("filled", maxx, maxy);*)
-L.DebugString("map filled", "");
+L.DebugInt("map filled width", maxx, 1);
     la := 0; i := 0;
-    WHILE i < n DO LED(i);
-      j := n - 1;
-      WHILE j > i DO a := (1L + ABS(redt[i].x - redt[j].x))*(1L + ABS(redt[i].y - redt[j].y));
+    WHILE i < redt.n DO LED(i);
+      j := redt.n - 1;
+      WHILE j > i DO a := (1L + ABS(redt.vec[i].x - redt.vec[j].x))*(1L + ABS(redt.vec[i].y - redt.vec[j].y));
         IF a > la THEN (*check if the rectangle is enclosed in the polygon*)
-          x0 := rp[i].x; y0 := rp[i].y; x1 := rp[j].x; y1 := rp[j].y;
+          x0 := rp.vec[i].x; y0 := rp.vec[i].y; x1 := rp.vec[j].x; y1 := rp.vec[j].y;
           IF x0 > x1 THEN t := x0; x0 := x1; x1 := t END;
           IF y0 > y1 THEN t := y0; y0 := y1; y1 := t END;
           pf := TRUE; x := x0;
@@ -158,7 +202,7 @@ BEGIN Texts.OpenWriter(W)
 END AOC2025Day9.
 
 OM4P.Compile AOCUtils.Mod/s AOC2025Day9.Mod/s~
-System.Free AOC2025Day9 AOCUtils~
+System.Free AOC2025Day9 ~
 
 Test
 

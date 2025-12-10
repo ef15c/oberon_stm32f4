@@ -1,47 +1,66 @@
 MODULE testQuickSort;
-  IMPORT QuickSort, Texts, Oberon;
+  IMPORT Q := QuickSort, Texts, Oberon;
   
   TYPE
-    Person = POINTER TO PersonDesc;
-    PersonDesc = RECORD(QuickSort.ItemPayload)
+    Person = RECORD
       name: ARRAY 10 OF CHAR;
       age: INTEGER
     END;
-    
+    Array = RECORD(Q.Array) person: ARRAY 4 OF Person END;
   VAR W: Texts.Writer;
 
-  PROCEDURE ageCroissant(a, b: QuickSort.Item): BOOLEAN;
+  PROCEDURE ageCroissant(a: Q.Array; i, j: INTEGER): BOOLEAN;
   BEGIN
-    RETURN a(Person).age < b(Person).age
+    RETURN a(Array).person[i].age < a(Array).person[j].age
   END ageCroissant;
-  
- PROCEDURE Sort*;
-    VAR t!: ARRAY 4 OF QuickSort.Item;
-      p!: Person;
-      i: INTEGER;
+
+  PROCEDURE swap(VAR a: Q.Array; i, j: INTEGER);
+    VAR t: Person;
+  BEGIN t := a(Array).person[i]; a(Array).person[i] := a(Array).person[j]; a(Array).person[j] := t
+  END swap;
+
+  PROCEDURE print(a: Array);
+    VAR i: INTEGER;
   BEGIN
-    NEW(p); p.name := "Nounours"; p.age := 62; t[0] := p;
-    NEW(p); p.name := "Pupuce"; p.age := 63; t[1] := p;
-    NEW(p); p.name := "Figaro"; p.age := 13; t[2] := p;
-    NEW(p); p.name := "Baya"; p.age := 11; t[3] := p;
-    
-    QuickSort.Sort(t, ageCroissant);
-    
-    FOR i := 0 TO LEN(t)-1 DO
-      p := t[i](Person);
-      Texts.WriteString(W, p.name); Texts.WriteString(W, ", ");
-      Texts.WriteInt(W, p.age, 1); Texts.WriteString(W, " ans.");
+    FOR i := 0 TO a.n -1 DO
+      Texts.WriteString(W, a.person[i].name); Texts.WriteString(W, ", ");
+      Texts.WriteInt(W, a.person[i].age, 1); Texts.WriteString(W, " ans.");
       Texts.WriteLn(W);
     END;
+    Texts.WriteString(W, "---"); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
+  END print;
+
+ PROCEDURE Sort*;
+    VAR a: Array; p: Person;
+  BEGIN
+    a.person[0].name := "Nounours"; a.person[0].age := 62;
+    a.person[1].name := "Pupuce"; a.person[1].age := 63;
+    a.person[2].name := "Figaro"; a.person[2].age := 13;
+    a.person[3].name := "Baya"; a.person[3].age := 11;
+    a.n := 4;
+
+    print(a);
+    Q.Sort(a, ageCroissant, swap);
+    print(a);
   END Sort;
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Test QuickSort 13/12/2023");
+
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Test QuickSort 10/12/2025");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
 END testQuickSort.
 
+OM4P.Compile testQuickSort.Mod~
+System.Free testQuickSort QuickSort~
+
 testQuickSort.Sort
-Test QuickSort 13/12/2023
+Test QuickSort 10/12/2025
+Nounours, 62 ans.
+Pupuce, 63 ans.
+Figaro, 13 ans.
+Baya, 11 ans.
+---
 Baya, 11 ans.
 Figaro, 13 ans.
 Nounours, 62 ans.
 Pupuce, 63 ans.
+---
