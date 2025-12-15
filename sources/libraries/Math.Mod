@@ -4,10 +4,15 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
 (* The missing arctan(x), a corrected ln(x), and some additional constants and         *)
 (* functions for convenience.                                                          *)
 (* Procedures sqrt, exp, sin and cos can be found in module Math by NW 12.10.2013      *)
+(*Rational arithmetics CS 15.12.2025*)
 
   CONST
     pi* = 3.14159265358979323846;
     e* = 2.71828182845904523536;
+
+  TYPE RATIONAL* = RECORD p, q: INTEGER END;
+
+  VAR R0*, R1*: RATIONAL-;
 
  PROCEDURE ln* (x: REAL): REAL;  (* hk 18.5.2024 / jr 22.5.2024 *)
   (** Returns the natural (base e) logarithm of x *)
@@ -163,4 +168,40 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
     RETURN s
   END sqrt;
 
+  PROCEDURE RsetI*(VAR r: RATIONAL; x: INTEGER);
+  BEGIN r.p := x; r.q := 1
+  END RsetI;
+
+  PROCEDURE ItoS*(VAR s: ARRAY OF CHAR; x: INTEGER; VAR p: INTEGER; l: INTEGER);
+    VAR i, j, k: INTEGER; neg: BOOLEAN; t: CHAR;
+  BEGIN IF x < 0 THEN neg := TRUE; x := -x END; i := p;
+    REPEAT s[i] := CHR(x MOD 10 + ORD("0")); x := x DIV 10; INC(i) UNTIL x = 0;
+    IF neg THEN s[i] := "-"; INC(i) END; WHILE i < p + l DO s[i] := " "; INC(i) END;
+    j := p; k := i - 1; WHILE j < k DO t := s[j]; s[j] := s[k]; s[k] := t END; (*reverse string*)
+    p := i; s[p] := 0X
+  END ItoS;
+
+  PROCEDURE RtoS*(VAR s: ARRAY OF CHAR; r: RATIONAL; l: INTEGER);
+    VAR pos: INTEGER;
+  BEGIN pos := 0; ItoS(s, r.p, pos, 1);
+    IF r.q # 1 THEN s[pos] := "/"; INC(pos); ItoS(s, r.q, pos, 1) END
+  END RtoS;
+
+  PROCEDURE Rcmp*(a, b: RATIONAL): INTEGER;
+    VAR r: INTEGER; na, nb: LONGINT;
+  BEGIN na := 1L*a.p*b.q; nb := 1L*b.p*a.q;
+    IF na > nb THEN r := 1
+    ELSIF na = nb THEN r := 0
+    ELSE r := -1
+    END
+
+    RETURN r
+
+  END Rcmp;
+
+  PROCEDURE Rdiv*(VAR d: RATIONAL; q: RATIONAL);
+  BEGIN d.p := d.p*q.q; d.q := d.q*q.p
+  END Rdiv;
+
+BEGIN R0.p := 0; R0.q := 1; R1.p := 0; R1.q := 1
 END Math.
