@@ -536,6 +536,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         IF x.mode = B.SProc THEN StandProc(obj.val)
         ELSE selector(x);
           IF sym = S.becomes THEN (*assignment*)
+            IF initmode & (obj.lev = 0) THEN x.rdo := FALSE END;
             S.Get(sym); CheckReadOnly(x); expression(y);
             IF CompTypes(x.type, y.type, FALSE) THEN
               IF (x.type.form <= B.Pointer) OR (x.type.form = B.Proc) THEN G.Store(x, y)
