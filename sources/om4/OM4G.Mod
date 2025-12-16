@@ -1367,10 +1367,17 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (*In-line code functions*)
 
   PROCEDURE Abs*(VAR x: Item);
+    VAR pc0: INTEGER;
   BEGIN
     IF x.mode = B.Const THEN x.a := ABS(x.a)
     ELSE IF x.type.form = B.Real THEN loadFP(x); ELSE load(x) END;
       IF x.mode = FPReg THEN A.encFPOpReg(mcode, A.VABS, x.r, 0, x.r)
+      ELSIF isLongint(x.type) THEN A.encCMPImm(mcode ,x.r+1, RH, 0);
+        pc0 := mcode.pc; A.Put1(mcode, A.BCT1 + A.GE*A.C8);
+        A.encDPImm32(mcode, A.RSB, x.r, x.r, RH, 0, TRUE);
+        A.encDPImm32(mcode, A.EOR, x.r+1, x.r+1, RH, -1, FALSE);
+        A.encDPImm32(mcode, A.ADc, x.r+1, x.r+1, RH, 0, TRUE);
+        A.fix8(mcode, pc0, mcode.pc - pc0 - 4)
       ELSE A.encCMPImm(mcode ,x.r, RH, 0); A.IfThen(mcode, "", A.LT);
         A.encDPImm32(mcode, A.RSB, x.r, x.r, RH, 0, TRUE)
       END
