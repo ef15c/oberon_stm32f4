@@ -172,7 +172,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   PROCEDURE Free1(VAR S: Texts.Scanner);
   BEGIN Texts.WriteString(W, S.s); Texts.WriteString(W, " unloading");
     Modules.Free(S.s);
-    IF Modules.res # 0 THEN Texts.WriteString(W, " failed") END;
+    IF  Modules.res = 2 THEN Texts.WriteString(W, " not found")
+    ELSIF Modules.res # 0 THEN Texts.WriteString(W, " failed")
+    END;
     EndLine
   END Free1;
 

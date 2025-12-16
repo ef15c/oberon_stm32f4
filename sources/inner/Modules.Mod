@@ -328,6 +328,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
         END
       ELSE res := 1
       END
+    ELSE res := 2
     END
   END Free;
 
