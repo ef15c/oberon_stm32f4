@@ -6,9 +6,12 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
 (* Procedures sqrt, exp, sin and cos can be found in module Math by NW 12.10.2013      *)
 (*Rational arithmetics CS 15.12.2025*)
 
+  IMPORT LongDiv(*, L := SystemLog*);
+
   CONST
     pi* = 3.14159265358979323846;
     e* = 2.71828182845904523536;
+    INTMAX = LSL(1, 31) - 1;
 
   TYPE RATIONAL* = RECORD p, q: INTEGER END;
 
@@ -174,17 +177,20 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
 
   PROCEDURE ItoS*(VAR s: ARRAY OF CHAR; x: INTEGER; VAR p: INTEGER; l: INTEGER);
     VAR i, j, k: INTEGER; neg: BOOLEAN; t: CHAR;
-  BEGIN IF x < 0 THEN neg := TRUE; x := -x END; i := p;
+  BEGIN neg := x < 0; IF neg THEN x := -x END; i := p;
     REPEAT s[i] := CHR(x MOD 10 + ORD("0")); x := x DIV 10; INC(i) UNTIL x = 0;
     IF neg THEN s[i] := "-"; INC(i) END; WHILE i < p + l DO s[i] := " "; INC(i) END;
-    j := p; k := i - 1; WHILE j < k DO t := s[j]; s[j] := s[k]; s[k] := t END; (*reverse string*)
+    j := p; k := i - 1; WHILE j < k DO t := s[j]; s[j] := s[k]; s[k] := t; INC(j); DEC(k) END; (*reverse string*)
     p := i; s[p] := 0X
   END ItoS;
 
   PROCEDURE RtoS*(VAR s: ARRAY OF CHAR; r: RATIONAL; l: INTEGER);
-    VAR pos: INTEGER;
+    VAR pos, i: INTEGER;
   BEGIN pos := 0; ItoS(s, r.p, pos, 1);
-    IF r.q # 1 THEN s[pos] := "/"; INC(pos); ItoS(s, r.q, pos, 1) END
+    IF r.q # 1 THEN s[pos] := "/"; INC(pos); ItoS(s, r.q, pos, 1) END;
+    IF pos < l THEN FOR i := pos TO 0 BY -1 DO s[i + l - pos] := s[i] END;
+      FOR i := 0 TO l - pos - 1 DO s[i] := " " END
+    END
   END RtoS;
 
   PROCEDURE Rcmp*(a, b: RATIONAL): INTEGER;
@@ -199,9 +205,53 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
 
   END Rcmp;
 
-  PROCEDURE Rdiv*(VAR d: RATIONAL; q: RATIONAL);
-  BEGIN d.p := d.p*q.q; d.q := d.q*q.p
+  PROCEDURE LPGCD*(p, q: LONGINT): LONGINT;
+    VAR pgcd: LONGINT; ld: LongDiv.DivParam;
+  BEGIN
+    IF p = 0 THEN ASSERT(q # 0); pgcd := q
+    ELSIF q = 0 THEN ASSERT(p # 0); pgcd := p
+    ELSE ASSERT(p > 0); ASSERT(q > 0);
+      REPEAT pgcd := q; ld.D := p; ld.S := q; LongDiv.DivL(ld); p := q; q := ld.D UNTIL q = 0
+    END
+
+    RETURN pgcd
+  END LPGCD;
+
+  PROCEDURE RDsimp(VAR p, q: LONGINT);
+    VAR pgcd: LONGINT;
+  BEGIN IF q < 0 THEN p := -p; q := -q END;
+(*L.DebugInt("p", p, 1);*)
+    pgcd := LPGCD(ABS(p), q); p := p DIV pgcd; q := q DIV pgcd
+  END RDsimp;
+
+  PROCEDURE Rsimp*(VAR r: RATIONAL);
+    VAR P, Q: LONGINT;
+  BEGIN P := r.p; Q := r.q; RDsimp(P, Q);
+    r.p := P; r.q := Q
+  END Rsimp;
+
+  PROCEDURE RsetLR*(VAR r: RATIONAL; P, Q: LONGINT);
+  BEGIN
+    IF (ABS(P) > INTMAX) OR (ABS(Q) > INTMAX) THEN RDsimp(P, Q) END;
+    ASSERT (ABS(P) <= INTMAX); ASSERT (ABS(Q) <= INTMAX);
+    ASSERT(Q # 0);
+    r.p := P; r.q := Q
+  END RsetLR;
+
+  PROCEDURE Rdiv*(VAR d: RATIONAL; q: RATIONAL); (*d := d DIV q*)
+    VAR P, Q: LONGINT;
+  BEGIN P := 1L*d.p*q.q; Q := 1L*d.q*q.p; RsetLR(d, P, Q)
   END Rdiv;
+
+  PROCEDURE Rmul*(VAR a: RATIONAL; b: RATIONAL); (*a := a*b*)
+    VAR P, Q: LONGINT;
+  BEGIN P := 1L*a.p*b.p; Q := 1L*a.q*b.q; RsetLR(a, P, Q)
+  END Rmul;
+
+  PROCEDURE Rsub*(VAR a: RATIONAL; b: RATIONAL); (*a := a - b*)
+    VAR P, Q: LONGINT;
+  BEGIN P := 1L*a.p*b.q - b.p*a.q; Q := 1L*a.q*b.q; RsetLR(a, P, Q)
+  END Rsub;
 
 BEGIN R0.p := 0; R0.q := 1; R1.p := 0; R1.q := 1
 END Math.
