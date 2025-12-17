@@ -15,7 +15,7 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
 
   TYPE RATIONAL* = RECORD p, q: INTEGER END;
 
-  VAR R0*, R1*: RATIONAL-;
+  VAR R0*, R1*, RM1*: RATIONAL-;
 
  PROCEDURE ln* (x: REAL): REAL;  (* hk 18.5.2024 / jr 22.5.2024 *)
   (** Returns the natural (base e) logarithm of x *)
@@ -253,5 +253,10 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
   BEGIN P := 1L*a.p*b.q - b.p*a.q; Q := 1L*a.q*b.q; RsetLR(a, P, Q)
   END Rsub;
 
-BEGIN R0.p := 0; R0.q := 1; R1.p := 0; R1.q := 1
+  PROCEDURE Radd*(VAR a: RATIONAL; b: RATIONAL); (*a := a - b*)
+    VAR P, Q: LONGINT;
+  BEGIN P := 1L*a.p*b.q + b.p*a.q; Q := 1L*a.q*b.q; RsetLR(a, P, Q)
+  END Radd;
+
+BEGIN R0.p := 0; R0.q := 1; R1.p := 1; R1.q := 1; RM1.p := -1; RM1.q := 1
 END Math.
