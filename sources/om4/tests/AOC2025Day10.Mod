@@ -1,14 +1,19 @@
 MODULE AOC2025Day10;
-  IMPORT Texts, Oberon, L := SystemLog;
+  IMPORT Display, Fonts, Texts, Oberon, M := Math, L := SystemLog, U := AOCUtils;
+
+  CONST dim = 15;
 
   TYPE ProcessProc = PROCEDURE;
+    Matrix = ARRAY dim, dim OF M.RATIONAL;
+    Jolt = RECORD j: M.RATIONAL; param: BOOLEAN; min, max: INTEGER END;
 
   VAR W: Texts.Writer;
     lights: SET; buttons: ARRAY 100 OF SET; nbut: INTEGER;
     sum: INTEGER;
+    m: Matrix; vjolt: ARRAY dim OF Jolt; nvj: INTEGER;
 
   PROCEDURE parse(process: ProcessProc);
-    VAR S!: Texts.Scanner; i: INTEGER;
+    VAR S!: Texts.Scanner; i, j: INTEGER;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     WHILE (S.class = Texts.Char) & (S.c = "[") DO lights := {}; i := 0; Texts.Scan(S);
       REPEAT ASSERT(S.class = Texts.Char);
@@ -17,9 +22,9 @@ MODULE AOC2025Day10;
       UNTIL S.c = "]"; nbut := 0;
       REPEAT Texts.Scan(S); ASSERT(S.class = Texts.Char) UNTIL S.c # " ";
       ASSERT(S.c = "(");
-      REPEAT buttons[nbut] := {};
+      REPEAT buttons[nbut] := {}; FOR j := 0 TO dim - 1 DO M.RsetI(m[j, nbut], 0) END;
         Texts.Scan(S); ASSERT(S.class = Texts.Int);
-        REPEAT INCL(buttons[nbut], 0+S.i);
+        REPEAT INCL(buttons[nbut], 0+S.i); M.RsetI(m[S.i, nbut], 1);
           Texts.Scan(S); ASSERT(S.class = Texts.Char);
           IF S.c = "," THEN Texts.Scan(S) END;
         UNTIL S.class # Texts.Int; ASSERT(S.class = Texts.Char); ASSERT(S.c = ")");
@@ -27,8 +32,8 @@ MODULE AOC2025Day10;
         REPEAT Texts.Scan(S); ASSERT(S.class = Texts.Char) UNTIL S.c # " "
       UNTIL S.c # "(";
       ASSERT(S.c = "{");
-      Texts.Scan(S); ASSERT(S.class = Texts.Int);
-      REPEAT (*todo*)
+      Texts.Scan(S); ASSERT(S.class = Texts.Int); nvj := 0;
+      REPEAT M.RsetI(vjolt[nvj].j, S.i); vjolt[nvj].param := FALSE; INC(nvj);
         Texts.Scan(S); ASSERT(S.class = Texts.Char);
         IF S.c = "," THEN Texts.Scan(S) END;
       UNTIL S.class # Texts.Int; ASSERT(S.class = Texts.Char); ASSERT(S.c = "}");
@@ -61,21 +66,232 @@ MODULE AOC2025Day10;
     END
   END doPart1;
 
+  PROCEDURE WriteRat(r: M.RATIONAL; l: INTEGER);
+    VAR s: ARRAY 31 OF CHAR;
+  BEGIN M.RtoS(s, r, l); Texts.WriteString(W, s)
+  END WriteRat;
+
+  PROCEDURE printMat(msg: ARRAY OF CHAR; m: Matrix; ne: INTEGER);
+    VAR i, j: INTEGER; of!: Fonts.Font; col: INTEGER;
+  BEGIN
+    Texts.WriteString(W, msg); Texts.WriteLn(W);
+    of := W.fnt; W.fnt := Fonts.This("Mono10.Scn.Fnt");
+    FOR i := 0 TO ne - 1 DO
+      FOR j := 0 TO nbut - 1 DO WriteRat(m[i, j], 5) END;
+      Texts.WriteString(W, " :");
+      IF vjolt[i].param THEN col := W.col; W.col := Display.yellow;
+        Texts.WriteString(W, "    p"); Texts.WriteInt(W, i, 1);
+        W.col := col
+      ELSE WriteRat(vjolt[i].j, 6)
+      END; Texts.WriteLn(W)
+    END;
+    Texts.WriteString(W, "----"); Texts.WriteLn(W);
+    W.fnt := of;
+    Texts.Append(Oberon.Log, W.buf)
+  END printMat;
+
+  PROCEDURE printEqs(m: Matrix; ne: INTEGER);
+    VAR i, j: INTEGER; u, t: M.RATIONAL;
+  BEGIN Texts.WriteString(W, "Equations:"); Texts.WriteLn(W);
+    FOR i := 0 TO ne - 1 DO
+      IF ~vjolt[i].param THEN Texts.WriteString(W, "x"); Texts.WriteInt(W, i, 1); Texts.WriteString(W, " = ");
+        u := M.R0; FOR j := 0 TO ne - 1 DO IF vjolt[j].param THEN vjolt[j].j := M.R0 END END;
+        FOR j := 0 TO ne - 1 DO
+          IF vjolt[j].param THEN M.Radd(vjolt[j].j, m[i, j]) ELSE t := vjolt[j].j; M.Rmul(t, m[i, j]); M.Radd(u, t) END
+        END;
+        M.Rsimp(u); WriteRat(u, 1);
+        FOR j := 0 TO ne - 1 DO
+          IF vjolt[j].param & (M.Rcmp(vjolt[j].j, M.R0) # 0) THEN t := vjolt[j].j;
+            IF M.Rcmp(t, M.R0) = -1 THEN Texts.WriteString(W, " - "); M.Rmul(t, M.RM1)
+            ELSE Texts.WriteString(W, " + ")
+            END;
+            IF M.Rcmp(t, M.R1) # 0 THEN M.Rsimp(t); WriteRat(t, 1); Texts.Write(W, "*") END;
+            Texts.Write(W, "x"); Texts.WriteInt(W, j, 1)
+          END
+        END;
+        Texts.WriteLn(W)
+      END
+    END; Texts.Append(Oberon.Log, W.buf)
+  END printEqs;
+
+  PROCEDURE isNatural(mc: Matrix; p: ARRAY OF Jolt; ne: INTEGER): BOOLEAN;
+    VAR res, break: BOOLEAN; i, j: INTEGER; t, u: M.RATIONAL;
+  BEGIN res := TRUE; i := 0;
+    WHILE res & (i < ne) DO u := M.R0; j := 0; break := FALSE;
+      WHILE ~break & (j < ne) DO break := p[j].param;
+        IF ~break THEN t := mc[i, j]; M.Rmul(t, p[j].j); M.Radd(u, t) END;
+        INC(j)
+      END;
+        IF ~break THEN res := (M.Rdeno(u) = 1) & (M.RtoI(u) >= 0) END; 
+      INC(i)
+    END
+
+    RETURN res
+  END isNatural;
+
+  PROCEDURE optim(mc: Matrix; p, o: ARRAY OF Jolt; ne, pc: INTEGER; u: M.RATIONAL; VAR score: INTEGER);
+    VAR i, j, k, nb, nbp: INTEGER; np: ARRAY dim OF Jolt; t, tk: M.RATIONAL; mm: INTEGER;
+      ppf: BOOLEAN; (*pivot parameter found indicator*) pscore: INTEGER;
+  BEGIN
+    IF pc = 0 THEN tk := u;
+      FOR j := 0 TO ne - 1 DO
+        IF o[j].param & (M.Rcmp(o[j].j, M.R0) # 0) THEN
+          t := p[j].j; M.Rmul(t, o[j].j); M.Rsimp(t); M.Radd(tk, t); M.Rsimp(tk)
+        END
+      END;
+      IF M.RtoI(tk) < score THEN score := M.RtoI(tk) END
+    ELSE np := p; ppf := FALSE; j := 0;
+      REPEAT
+        IF np[j].param THEN
+          FOR i := 0 TO ne - 1 DO
+            IF ~np[i].param & (M.Rcmp(mc[i, j], M.R0) # 0) THEN (*Xj is involved in equation i*) nb := 0; nbp := 0;
+              FOR k := 0 TO ne - 1 DO
+                IF np[k].param THEN mm := M.Rcmp(mc[i, k], M.R0);
+                  IF mm # 0 THEN INC(nb) END;
+                  IF mm > 0 THEN INC(nbp) END
+                END
+              END;
+              tk := M.R0;
+              FOR k := 0 TO ne - 1 DO IF ~np[k].param THEN t := np[k].j; M.Rmul(t, mc[i, k]); M.Radd(tk, t) END END;
+              M.Rmul(tk, M.RM1); M.Rdiv(tk, mc[i, j]); M.Rsimp(tk);
+              M.RsetI(t, M.Rdeno(tk)); M.Rmul(tk, t); IF M.RtoI(tk) < 0 THEN tk := M.R0 END;
+              IF (nb = 1) & (M.Rcmp(mc[i, j], M.R0) > 0) THEN (*Xj contribution is positive, so we can compute a minimum*)
+                mm := (M.RtoI(tk) + M.RtoI(t) - 1) DIV M.RtoI(t);
+                IF mm > np[j].min THEN np[j].min := mm END
+              ELSIF (nbp = 0) & (M.Rcmp(mc[i, j], M.R0) < 0) THEN (*Xj influences score and contribution is negative, so we can compute a maximum*)
+                mm := M.RtoI(tk) DIV M.RtoI(t);
+                IF mm < np[j].max THEN np[j].max := mm END
+              END
+            END
+          END;
+          IF np[j].max # M.INTMAX THEN (*Xj has just been processed*) ppf := TRUE;
+            np[j].param := FALSE; k := np[j].min;
+            WHILE k <= np[j].max DO
+              M.RsetI(np[j].j, k); IF isNatural(mc, np, ne) THEN optim(mc, np, o, ne, pc - 1, u, score) END;
+              INC(k)
+            END
+          END
+        END;
+        INC(j)
+      UNTIL ppf OR (j >= ne);
+      IF ~ppf THEN (*min max computing possible is not possible*)
+        j := 0; WHILE (j < ne) & (~np[j].param OR (M.Rcmp(o[j].j, M.R0) = 0)) DO INC(j) END; (*take first parameter influencing the score*)
+        IF j >= ne THEN j := 0; WHILE ~np[j].param DO INC(j) END END; (*if none, take first parameter*)
+        np[j].param := FALSE; k := np[j].min;
+        REPEAT M.RsetI(np[j].j, k); pscore := score;
+          IF isNatural(mc, np, ne) THEN optim(mc, np, o, ne, pc - 1, u, score); INC(nb) END;
+          INC(k)
+        UNTIL (score # M.INTMAX) & (score >= pscore)
+      END
+    END
+  END optim;
+
+  PROCEDURE doPart2;
+    VAR i, j, k, nbeq, score: INTEGER;
+      tlm: ARRAY dim OF M.RATIONAL; tj: Jolt; t, u: M.RATIONAL;
+      mi: Matrix; done: BOOLEAN; nbp: INTEGER;
+  BEGIN
+    (*if determinant of matrix is 0, rewrite the equation system
+       by adding new parameter equations*)
+    i := 0; nbeq := nvj;
+(*    printMat("original", m, nbeq);*)
+    WHILE i < U.max(nbeq, nbut) DO
+      (*try to find downwads an equation with m[i, j] # 0*)
+      j := i; WHILE (j < nbeq) & (M.Rcmp(m[j, i], M.R0) = 0) DO INC(j) END;
+      IF j < nbeq THEN (*found*)
+        IF i # j THEN (*swap equations*)
+          tlm := m[i]; tj := vjolt[i]; m[i] := m[j]; vjolt[i] := vjolt[j]; m[j] := tlm; vjolt[j] := tj
+        END;
+        IF M.Rcmp(m[i, i], M.R1) # 0 THEN t := m[i, i];
+          FOR k := i TO nbut - 1 DO M.Rdiv(m[i, k], t); M.Rsimp(m[i, k]) END;
+          M.Rdiv(vjolt[i].j, t); M.Rsimp(vjolt[i].j)
+        END
+      ELSIF i < nbut THEN (*a new parameter equation is needed*)
+        m[nbeq] := m[i]; vjolt[nbeq] := vjolt[i]; INC(nbeq); (*make room in matrix*)
+        FOR j := 0 TO nbut - 1 DO M.RsetI(m[i, j], 0) END; M.RsetI(m[i, i], 1);
+        vjolt[i].param := TRUE; M.RsetI(vjolt[i].j, 0)
+      END;
+      (*triangularisation*)
+      FOR j := i + 1 TO nbeq - 1 DO
+        IF M.Rcmp(m[j, i], M.R0) # 0 THEN t := m[j, i]; M.Rdiv(t, m[i, i]);
+          FOR k := i TO nbut - 1 DO u := m[i, k]; M.Rmul(u, t); M.Rsub(m[j, k], u); M.Rsimp(m[j, k]) END;
+            u := vjolt[i].j; M.Rmul(u, t); M.Rsub(vjolt[j].j, u); M.Rsimp(vjolt[j].j)
+        END
+      END;
+      INC(i)
+    END;
+(*    printMat("with params", m, nbeq);*)
+    FOR j := nbut TO nbeq - 1 DO (*check if there is at least one solution*)
+      FOR k := 0 TO nbut - 1 DO ASSERT(M.Rcmp(m[j, k], M.R0) = 0) END;
+      ASSERT(M.Rcmp(vjolt[j].j, M.R0) = 0)
+    END; nbeq := nbut;
+(*    printMat("triangle", m, nbeq);*)
+    (*diagonalisation*)
+    FOR i := 0 TO nbeq - 1 DO
+      FOR j := 0 TO nbeq - 1 DO M.RsetI(mi[i, j], 0) END;
+      M.RsetI(mi[i, i], 1)
+    END;
+    FOR i := nbeq - 1 TO 0 BY -1 DO
+      FOR j := 0 TO i - 1 DO
+        IF M.Rcmp(m[j, i], M.R0) # 0 THEN t := m[j, i]; M.Rdiv(t, m[i, i]); m[j, i] := M.R0;
+          FOR k := i TO nbeq - 1 DO u := mi[i, k]; M.Rmul(u, t); M.Rsub(mi[j, k], u); M.Rsimp(mi[j, k]) END
+        END
+      END
+    END;
+(*    printMat("diagonal", mi, nbeq);
+    printEqs(mi, nbeq);*)
+    u := M.R0; FOR j := 0 TO nbeq - 1 DO IF vjolt[j].param THEN vjolt[j].j := M.R0 END END;
+    FOR i := 0 TO nbeq - 1 DO
+      FOR j := 0 TO nbeq - 1 DO
+        IF vjolt[j].param THEN M.Radd(vjolt[j].j, mi[i, j])
+        ELSE t := vjolt[j].j; M.Rmul(t, mi[i, j]); M.Radd(u, t)(*; M.Rsimp(u)*) END
+      END
+    END;
+(*    Texts.WriteString(W, "Sx = "); M.Rsimp(u); WriteRat(u, 1);
+    FOR j := 0 TO nbeq - 1 DO
+      IF vjolt[j].param & (M.Rcmp(vjolt[j].j, M.R0) # 0) THEN t := vjolt[j].j;
+        IF M.Rcmp(t, M.R0) = -1 THEN Texts.WriteString(W, " - "); M.Rmul(t, M.RM1)
+        ELSE Texts.WriteString(W, " + ")
+        END;
+        IF M.Rcmp(t, M.R1) # 0 THEN M.Rsimp(t); WriteRat(t, 1); Texts.Write(W, "*") END;
+        Texts.Write(W, "x"); Texts.WriteInt(W, j, 1)
+      END
+    END;
+    Texts.WriteLn(W);
+    Texts.Append(Oberon.Log, W.buf);*)
+    nbp := 0;
+    FOR j := 0 TO nbeq - 1 DO
+      IF vjolt[j].param THEN INC(nbp); vjolt[j].min := 0; vjolt[j].max := M.INTMAX; END
+    END;
+    score := M.INTMAX; optim(mi, vjolt, vjolt, nbeq, nbp, u, score); INC(sum, score);
+    LED(sum)
+;L.DebugInt("score", score, 1)
+  END doPart2;
+
   PROCEDURE part1*;
   BEGIN sum := 0; parse(doPart1);
     Texts.WriteString(W, "Partie 1: sum = "); Texts.WriteInt(W, sum, 1); Texts.WriteLn(W);
     Texts.Append(Oberon.Log, W.buf)
   END part1;
 
+  PROCEDURE part2*;
+  BEGIN sum := 0; parse(doPart2);
+    Texts.WriteString(W, "Partie 2: sum = "); Texts.WriteInt(W, sum, 1); Texts.WriteLn(W);
+    Texts.Append(Oberon.Log, W.buf)
+  END part2;
+
 BEGIN Texts.OpenWriter(W)
 END AOC2025Day10.
 
-OM4P.Compile AOC2025Day10.Mod/s~
-System.Free AOC2025Day10 ~
+OM4P.Compile Math.Mod/s AOC2025Day10.Mod/s SystemLog.Mod/s AOCUtils.Mod/s~
+System.Free AOC2025Day10 AOCUtils SystemLog Math~
+OM4Tool.DecObj AOC2025Day10.m4c
 
 Test
 Partie 1: sum = 7
 AOC2025Day10.part1
+Partie 2: sum = 33
+AOC2025Day10.part2
 [.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
 [...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}
 [.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}
@@ -84,6 +300,205 @@ AOC2025Day10.part1
 Puzzle
 Partie 1: sum = 514
 AOC2025Day10.part1
+score = 105
+score = 273
+score = 227
+score = 63
+score = 150
+score = 60
+score = 74
+score = 93
+score = 63
+score = 194
+score = 164
+score = 30
+score = 198
+score = 36
+score = 154
+score = 195
+score = 57
+score = 253
+score = 48
+score = 76
+score = 98
+score = 279
+score = 109
+score = 26
+score = 39
+score = 226
+score = 27
+score = 113
+score = 88
+score = 72
+score = 138
+score = 79
+score = 59
+score = 95
+score = 87
+score = 82
+score = 213
+score = 47
+score = 243
+score = 176
+score = 59
+score = 75
+score = 217
+score = 69
+score = 103
+score = 63
+score = 177
+score = 138
+score = 110
+score = 51
+score = 49
+score = 94
+score = 91
+score = 132
+score = 79
+score = 48
+score = 21
+score = 153
+score = 88
+score = 18
+score = 58
+score = 63
+score = 49
+score = 31
+score = 250
+score = 145
+score = 120
+score = 86
+score = 56
+score = 205
+score = 106
+score = 168
+score = 117
+score = 70
+score = 65
+score = 70
+score = 257
+score = 124
+score = 91
+score = 23
+score = 28
+score = 31
+score = 108
+score = 75
+score = 84
+score = 33
+score = 69
+score = 154
+score = 55
+score = 77
+score = 217
+score = 30
+score = 198
+score = 25
+score = 29
+score = 48
+score = 139
+score = 84
+score = 82
+score = 125
+score = 48
+score = 138
+score = 235
+score = 47
+score = 45
+score = 47
+score = 209
+score = 163
+score = 86
+score = 18
+score = 85
+score = 248
+score = 305
+score = 106
+score = 213
+score = 56
+score = 241
+score = 85
+score = 187
+score = 195
+score = 103
+score = 42
+score = 111
+score = 181
+score = 19
+score = 47
+score = 227
+score = 49
+score = 48
+score = 49
+score = 100
+score = 68
+score = 16
+score = 189
+score = 78
+score = 42
+score = 88
+score = 225
+score = 53
+score = 31
+score = 80
+score = 46
+score = 254
+score = 209
+score = 106
+score = 209
+score = 113
+score = 251
+score = 69
+score = 131
+score = 37
+score = 74
+score = 117
+score = 220
+score = 217
+score = 51
+score = 79
+score = 45
+score = 241
+score = 271
+score = 56
+score = 197
+score = 53
+score = 56
+score = 110
+score = 291
+score = 60
+score = 178
+score = 149
+score = 42
+score = 28
+score = 23
+score = 45
+score = 60
+score = 53
+score = 15
+score = 224
+score = 255
+score = 48
+score = 94
+score = 62
+score = 61
+score = 209
+score = 14
+score = 61
+score = 31
+score = 191
+score = 75
+score = 209
+score = 85
+score = 260
+score = 166
+score = 70
+score = 81
+score = 115
+score = 194
+score = 71
+Partie 2: sum = 21824
+AOC2025Day10.part2
 [...###.#.#] (1,8) (0,4,5,6) (2,3,4,5,6,7,8) (5) (0,3,5) (0,1,5,6,7,9) (0,7,9) (0,1,2,3,5,6,8,9) (0,1,2,3,4,5,7,8,9) (0,2,4,6,7,8,9) (1,2,3,4,6,7,8,9) (0,9) {65,41,48,35,50,67,76,68,55,61}
 [##.#..] (0,2,3,5) (0,2,3,4) (0,1,2,4) (1,4) (2,3,4,5) (1,4,5) (0,3,4) (3) {56,191,62,82,236,212}
 [...#.] (2,3,4) (1,2) (1,2,3,4) (0,2,3) (3) (0,3,4) {194,25,212,218,39}

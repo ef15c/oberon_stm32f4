@@ -1,5 +1,5 @@
 MODULE SystemLog;
-  IMPORT Texts, Oberon;
+  IMPORT Texts, Oberon, Math;
 
   VAR W: Texts.Writer;
 
@@ -26,6 +26,19 @@ MODULE SystemLog;
    Texts.WriteString(W, msg); Texts.WriteString(W, " = "); Texts.Write(W, v);
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END DebugChar;
+
+  PROCEDURE DebugRat*(msg: ARRAY OF CHAR; v: Math.RATIONAL; l: INTEGER);
+    VAR s: ARRAY 32 OF CHAR;
+  BEGIN
+    Math.RtoS(s, v, l); DebugString(msg, s)
+  END DebugRat;
+
+  PROCEDURE DebugBool*(msg: ARRAY OF CHAR; b: BOOLEAN);
+  BEGIN
+    Texts.WriteString(W, msg); Texts.WriteString(W, " = ");
+    IF b THEN Texts.WriteString(W, "TRUE") ELSE Texts.WriteString(W, "FALSE") END;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END DebugBool;
 
 BEGIN Texts.OpenWriter(W)
 END SystemLog.

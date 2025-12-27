@@ -6,12 +6,12 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
 (* Procedures sqrt, exp, sin and cos can be found in module Math by NW 12.10.2013      *)
 (*Rational arithmetics CS 15.12.2025*)
 
-  IMPORT LongDiv(*, L := SystemLog*);
+  IMPORT LongDiv;
 
   CONST
     pi* = 3.14159265358979323846;
     e* = 2.71828182845904523536;
-    INTMAX = LSL(1, 31) - 1;
+    INTMAX* = LSL(1, 31) - 1;
 
   TYPE RATIONAL* = RECORD p, q: INTEGER END;
 
@@ -217,10 +217,14 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
     RETURN pgcd
   END LPGCD;
 
+  PROCEDURE PPCMD*(p, q: LONGINT): LONGINT;
+
+    RETURN p DIV LPGCD(p, q) * q
+  END PPCMD;
+
   PROCEDURE RDsimp(VAR p, q: LONGINT);
     VAR pgcd: LONGINT;
   BEGIN IF q < 0 THEN p := -p; q := -q END;
-(*L.DebugInt("p", p, 1);*)
     pgcd := LPGCD(ABS(p), q); p := p DIV pgcd; q := q DIV pgcd
   END RDsimp;
 
@@ -232,7 +236,6 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
 
   PROCEDURE RsetLR*(VAR r: RATIONAL; P, Q: LONGINT);
   BEGIN
-    IF (ABS(P) > INTMAX) OR (ABS(Q) > INTMAX) THEN RDsimp(P, Q) END;
     ASSERT (ABS(P) <= INTMAX); ASSERT (ABS(Q) <= INTMAX);
     ASSERT(Q # 0);
     r.p := P; r.q := Q
@@ -250,13 +253,25 @@ MODULE Math;   (*Standard functions;  NW 12.10.2013*)
 
   PROCEDURE Rsub*(VAR a: RATIONAL; b: RATIONAL); (*a := a - b*)
     VAR P, Q: LONGINT;
-  BEGIN P := 1L*a.p*b.q - b.p*a.q; Q := 1L*a.q*b.q; RsetLR(a, P, Q)
+  BEGIN P := 1L*a.p*b.q - b.p*a.q; Q := 1L*a.q*b.q; RsetLR(a, P, Q); Rsimp(a)
   END Rsub;
 
   PROCEDURE Radd*(VAR a: RATIONAL; b: RATIONAL); (*a := a - b*)
     VAR P, Q: LONGINT;
-  BEGIN P := 1L*a.p*b.q + b.p*a.q; Q := 1L*a.q*b.q; RsetLR(a, P, Q)
+  BEGIN P := 1L*a.p*b.q + b.p*a.q; Q := 1L*a.q*b.q; RsetLR(a, P, Q); Rsimp(a)
   END Radd;
+
+  PROCEDURE RtoI*(VAR a: RATIONAL): INTEGER;
+  BEGIN Rsimp(a); ASSERT (a.q = 1);
+
+    RETURN a.p
+  END RtoI;
+
+  PROCEDURE Rdeno*(VAR a: RATIONAL): INTEGER;
+  BEGIN Rsimp(a)
+
+    RETURN a.q
+  END Rdeno;
 
 BEGIN R0.p := 0; R0.q := 1; R1.p := 1; R1.q := 1; RM1.p := -1; RM1.q := 1
 END Math.
