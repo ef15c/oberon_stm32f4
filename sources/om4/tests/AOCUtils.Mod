@@ -1,5 +1,5 @@
 MODULE AOCUtils;
-  IMPORT Texts, L := SystemLog;
+  IMPORT Texts;
 
   CONST LONG_MAX* = LSL(1L, 63) - 1; BYTE_MAX* = LSL(1, 8);
 
@@ -113,6 +113,11 @@ MODULE AOCUtils;
       IF t = NIL THEN h := q; t := h ELSE t.next := q; t := q END (*append q to the destination list*)
     END
   END sort;
+
+  PROCEDURE rotQ*(w, h, x, y: INTEGER; VAR rx, ry: INTEGER);
+  BEGIN ASSERT((x >= 0) & (x < w)); ASSERT((y >= 0) & (y < h));
+    ry := x; rx := h - y - 1;
+  END rotQ;
 
 BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
   DIRECTION4[1].x := 1; DIRECTION4[1].y := 0;
