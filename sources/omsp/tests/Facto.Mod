@@ -16,7 +16,10 @@ END Facto.
 
 OMSPL.Link 32 4000H 200H Facto ~
   linking Arith Facto
-    flash  310, data    2, stack  510 bytes
+    flash  102, data    2, stack  510 bytes
+
+OMSPTool.DecSym Facto.sms
+   9 f [0  form = 10 [^4] UR 8070( class = 2 [^4])]     1
 
 OMSPTool.DecObj Facto.mpc
 decode Facto.mpc

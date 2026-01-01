@@ -51,7 +51,9 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
 *)
 
   IMPORT SYSTEM, Modules, Display, G := OMSPG, Files, FilesEx, Texts, Oberon, L := SystemLog;
-  CONST noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7; notsupported = 8;
+
+  CONST version = 2;
+    noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7; notsupported = 8;
     RAMOrigin = 200H; FlashEnd = 10000H; MaxSec = 512;
 
   TYPE 
@@ -79,10 +81,28 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       eadr, size: INTEGER (*effective address and size*)
     END;
 
+    (*section dependency tree*)
+    Depend = POINTER TO DependDesc;
+    DependDesc = RECORD
+      mno: BYTE;
+      sno: INTEGER;
+      next: Depend
+    END;
+
+    SecDep = POINTER TO SecDepDesc;
+    SecDepDesc = RECORD
+      no: INTEGER;
+      dep: Depend;
+      next: SecDep
+    END;
+
     ModMaps = POINTER TO ModMapsDesc;
     ModMapsDesc = RECORD
       name: Name;
       next: ModMaps;
+      sections: SecDep;
+      import: ARRAY 16 OF ModMaps; nofimps: INTEGER;
+      ent: ARRAY 64 OF INTEGER;
       refm, tdm: ARRAY MaxSec DIV 32 OF SET; (*bitmaps for referenced and to do sections*)
     END;
 
@@ -155,23 +175,11 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
     END
   END Check;
 
-  (*destbase: start address of the destination, relative to flash or RAM origin
-     fixbase: start address of the elements to be fixed, relative to Flash.origin*)
-  PROCEDURE fixupFlash(VAR R: Files.Rider; import: ARRAY OF Module; destbase, fixbase: INTEGER);
-    VAR adr, ofs, size, dest, nadr: INTEGER; mno: BYTE; impmod!: Module;
-  BEGIN
-    FilesEx.ReadHalfWord(R, adr);
-    WHILE adr # 0 DO Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, dest); FilesEx.ReadHalfWord(R, ofs);
-      FilesEx.ReadHalfWord(R, size);
-      IF mno = 0 THEN (*current module*) INC(dest, destbase)
-      ELSE (*imported*) impmod :=  import[mno - 1]; dest := impmod.ent[dest]
-      END; INC(dest, ofs);
-      REPEAT INC(adr, fixbase);
-        nadr := GetWordAt(adr); PutWordAt(adr, dest); adr := nadr
-      UNTIL nadr = 0;
-      FilesEx.ReadHalfWord(R, adr) (*go to next chain*)
-    END;
-  END fixupFlash;
+  PROCEDURE FindModMap(name: ARRAY OF CHAR; VAR mm: ModMaps);
+  BEGIN mm := maps;
+    WHILE (mm # NIL) & (name # mm.name) DO mm := mm.next END;
+    IF mm = NIL THEN NEW(mm); mm.name := name; mm.next := maps; maps := mm END
+  END FindModMap;
 
   PROCEDURE LinkOne(name: ARRAY OF CHAR; VAR newmod: Module;
     VAR sec: ARRAY OF Section; VAR MW: Texts.Writer);
@@ -182,34 +190,34 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       res = badfile: corrupted file;
       res = nospace: insufficient space*)
     VAR mod!, impmod!: Module;
-      i, n, key, impkey, nofimps, nofsecs: INTEGER;
-      w: INTEGER;  (*addresses and size*)
+      i, k, l, nofimps: INTEGER;
       ch: CHAR;
-      adr, ofs, sno, no, dest: INTEGER;
-      name1, impname: Name;
+      adr, ofs, sno, no, dest: INTEGER; (*fixup data*)
+      name1: Name;
       F!: Files.File; R!: Files.Rider;
       import!: ARRAY 16 OF Module;
-      mno, nv, codeseg: BYTE;
-      vec: ARRAY 32 OF INTEGER;
-      secfpos: INTEGER;
+      mno: BYTE;
+      vec: ARRAY 32 OF INTEGER; (*vector table*)
+      secfpos, nofsecs: INTEGER; mm!: ModMaps; keep: BOOLEAN;
   BEGIN mod := first; error(noerr, name);
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
     IF mod = NIL THEN (*link*)
       Check(name);
       IF res = noerr THEN F := ThisFile(name) ELSE F := NIL END ;
       IF F # NIL THEN
-        Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, key); Files.ReadByte(R, codeseg);
-        IF codeseg IN {4, 5} THEN codeseg := codeseg MOD 2;
-          IF name # name1 THEN error(badfile, name) END;
-          importing := name1; nofimps := 0;
-          Files.ReadString(R, impname);   (*imports*)
-          WHILE (impname[0] # 0X) & (res = noerr) DO
-            Files.ReadInt(R, impkey);
-            LinkOne(impname, impmod, sec, MW); import[nofimps] := impmod; INC(nofimps);
-            IF res = noerr THEN importing := name1;
-              IF impmod.key # impkey THEN error(badkey, name1); imported := impname END;
-              Files.ReadString(R, impname)
+        Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, k); Files.ReadByte(R, mno);
+        IF mno IN {version*2, version*2+1} THEN mno := mno MOD 2;
+          IF name = name1 THEN nofimps := 0;
+            Files.ReadString(R, name1);   (*imports*)
+            WHILE (name1[0] # 0X) & (res = noerr) DO
+              Files.ReadInt(R, l);
+              LinkOne(name1, impmod, sec, MW); import[nofimps] := impmod; INC(nofimps);
+              IF res = noerr THEN
+                IF impmod.key # l THEN error(badkey, name); imported := name1 END;
+                Files.ReadString(R, name1)
+              END
             END
+          ELSE error(badfile, name)
           END
         ELSE error(notsupported, name)
         END
@@ -217,13 +225,13 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       END;
       IF res = noerr THEN MW.col := Display.yellow;
         Texts.WriteString(MW, "Module "); Texts.WriteString(MW, name); Texts.WriteLn(MW);
-        MW.col := Display.white;
+        MW.col := Display.white; FindModMap(name, mm);
         NEW(mod);
         IF first = NIL THEN mod.num := 1; first := mod ELSE mod.num := last.num + 1; last.next := mod END;
         last := mod; mod.next := NIL;
         mod.name := name;
         i := 0; REPEAT INC(i) UNTIL mod.name[i] = 0X; REPEAT mod.name[i] := 0X; INC(i) UNTIL i=32;
-        mod.key := key; mod.codeseg := codeseg;
+        mod.key := k; mod.codeseg := mno;
         mod.varsto := RAMAllocPtr; (*storage address in RAM*)
         mod.flashsto := Flash.allocPtr; (*storage address in flash memory*)
        (*sections:
@@ -234,39 +242,48 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         (*first pass: place sections*)
         secfpos := Files.Pos(R); nofsecs := 0;
         Files.Read(R, ch);
-        WHILE ch # 0X DO sec[nofsecs].segment := ch;
-          Files.ReadString(R, sec[nofsecs].name); FilesEx.ReadHalfWord(R, sec[nofsecs].size);
+        WHILE ch # 0X DO
+          sec[nofsecs].segment := ch; sec[nofsecs].eadr := -1;
+          keep := nofsecs MOD 16 IN mm.refm[nofsecs DIV 16]; (*keep the section if referenced*)
+          Files.ReadString(R, sec[nofsecs].name); Files.ReadHalfWord(R, sec[nofsecs].size);
           IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
-            IF sec[nofsecs].size >= G.WordSize THEN padFlash END; sec[nofsecs].eadr := Flash.allocPtr;
-            FOR i := 0 TO sec[nofsecs].size - 1 DO Files.ReadByte(R, mno); EmitByte(mno) END;
+            IF keep THEN
+              IF sec[nofsecs].size >= G.WordSize THEN padFlash END; sec[nofsecs].eadr := Flash.allocPtr;
+              FOR i := 0 TO sec[nofsecs].size - 1 DO Files.ReadByte(R, mno); EmitByte(mno) END
+            ELSE FOR i := 0 TO sec[nofsecs].size - 1 DO Files.ReadByte(R, mno) END (*skip data*)
+            END
           ELSIF ch = "v" THEN (*vector table*)
-            FOR i := 0 TO sec[nofsecs].size DIV 2 - 1 DO FilesEx.ReadHalfWord(R, w); vec[i] := w END; (*module vector table*)
+            FOR i := 0 TO sec[nofsecs].size DIV 2 - 1 DO Files.ReadHalfWord(R, adr); vec[i] := adr END; (*module vector table*)
           ELSIF ch = "r" THEN
-            IF sec[nofsecs].size >= G.WordSize THEN align(RAMAllocPtr) END; sec[nofsecs].eadr := RAMAllocPtr;
-            INC(RAMAllocPtr, sec[nofsecs].size)
+            IF keep THEN
+              IF sec[nofsecs].size >= G.WordSize THEN align(RAMAllocPtr) END; sec[nofsecs].eadr := RAMAllocPtr;
+              INC(RAMAllocPtr, sec[nofsecs].size)
+            END
           ELSE error(badfile, name)
           END;
-          FilesEx.ReadHalfWord(R, adr); (*skip fixup data*)
+          Files.ReadHalfWord(R, adr); (*skip fixup data*)
           WHILE adr # 0 DO
-            Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, sno); FilesEx.ReadHalfWord(R, ofs);
-
-            FilesEx.ReadHalfWord(R, adr)
+            Files.ReadByte(R, mno); Files.ReadHalfWord(R, sno); Files.ReadHalfWord(R, ofs);
+            Files.ReadHalfWord(R, adr)
           END;
           INC(nofsecs);
           Files.Read(R, ch)
         END;
         padFlash; mod.flashsize := Flash.allocPtr - mod.flashsto;
-        IF codeseg = 1 THEN (*execute in RAM*) mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, mod.flashsize)
+        IF mod.codeseg = 1 THEN (*execute in RAM*) mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, mod.flashsize)
         ELSE mod.codeexe := Flash.origin + mod.flashsto
         END;
         (*compute effective address*)
-        FOR i := 0 TO nofsecs - 1 DO Texts.WriteString(MW, sec[i].name); Texts.Write(MW, 09X);
-          ch := sec[i].segment; Texts.Write(MW, ch);
-          IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
-            DEC(sec[i].eadr, mod.flashsto - mod.codeexe)
-          END; 
-          IF ch # "v" THEN Texts.WriteHexVLen(MW, sec[i].eadr, 4, FALSE) END; Texts.Write(MW, 09X);
-          Texts.WriteInt(MW, sec[i].size, 1); Texts.WriteLn(MW)
+        FOR i := 0 TO nofsecs - 1 DO
+          IF i MOD 16 IN mm.refm[i DIV 16] THEN (*adjust address of the section if referenced*)
+            Texts.WriteString(MW, sec[i].name); Texts.Write(MW, 09X);
+            ch := sec[i].segment; Texts.Write(MW, ch);
+            IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
+              DEC(sec[i].eadr, mod.flashsto - mod.codeexe)
+            END; 
+            IF ch # "v" THEN Texts.WriteHexVLen(MW, sec[i].eadr, 4, FALSE) END; Texts.Write(MW, 09X);
+            Texts.WriteInt(MW, sec[i].size, 1); Texts.WriteLn(MW)
+          END
         END;
 
         Texts.WriteString(MW, "codeexe"); Texts.Write(MW, 09X); 
@@ -275,38 +292,40 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         Files.Set(R, Files.Base(R), secfpos); (*rewind rider to beginning of sections list*)
         no := 0; Files.Read(R, ch);
         WHILE ch # 0X DO (*go to fixup data*)
-          Files.ReadString(R, name1); FilesEx.ReadHalfWord(R, n);
-          IF (ch = "c") OR (ch = "d") OR (ch = "s") OR (ch = "v") THEN FOR i := 0 TO n - 1 DO Files.ReadByte(R, mno) END
+          keep := no MOD 16 IN mm.refm[no DIV 16]; (*fixup the section dependencies if referenced*)
+          Files.ReadString(R, name1); Files.ReadHalfWord(R, k);
+          IF (ch = "c") OR (ch = "d") OR (ch = "s") OR (ch = "v") THEN
+            FOR i := 0 TO k - 1 DO Files.ReadByte(R, mno) END (*skip content*)
           END;
-          FilesEx.ReadHalfWord(R, adr); (*entering fixup data*)
+          Files.ReadHalfWord(R, adr); (*entering fixup data*)
           WHILE adr # 0 DO
-            Files.ReadByte(R, mno); FilesEx.ReadHalfWord(R, sno); FilesEx.ReadHalfWord(R, ofs);
-            IF mno = 0 THEN dest := sec[sno].eadr ELSE dest := import[mno - 1].ent[sno] END;
-            INC(dest, ofs); (*dest contains now the effective address*)
-            IF ch = "v" THEN (*vector table*)
-              REPEAT i := (adr - 1) DIV 2;
-                IF vector[i] # 0FFFFH THEN
-                  Texts.WriteString(W, "interrupt vector number"); Texts.WriteInt(W, i, 3); error(duphandler, name1)
-                END;
-                vector[i] := dest; adr := vec[i]
-              UNTIL adr = 0;
-            ELSE w := sec[no].eadr; IF ch # "r" THEN DEC(w, mod.codeexe - mod.flashsto) END;
-              REPEAT n := GetWordAt(w + adr - 1); PutWordAt(w + adr - 1, dest); adr := n UNTIL adr = 0
+            Files.ReadByte(R, mno); Files.ReadHalfWord(R, sno); Files.ReadHalfWord(R, ofs);
+            IF keep THEN
+              IF mno = 0 THEN dest := sec[sno].eadr ELSE dest := import[mno - 1].ent[sno] END;
+              INC(dest, ofs); (*dest contains now the effective address*)
+              IF ch = "v" THEN (*vector table*)
+                REPEAT i := (adr - 1) DIV 2;
+                  IF vector[i] # 0FFFFH THEN
+                    Texts.WriteString(W, "interrupt vector number"); Texts.WriteInt(W, i, 3); error(duphandler, name1)
+                  END;
+                  vector[i] := dest; adr := vec[i]
+                UNTIL adr = 0;
+              ELSE l := sec[no].eadr; IF ch # "r" THEN DEC(l, mod.codeexe - mod.flashsto) END;
+                REPEAT k := GetWordAt(l + adr - 1); PutWordAt(l + adr - 1, dest); adr := k UNTIL adr = 0
+              END
             END;
-
-            FilesEx.ReadHalfWord(R, adr)
+            Files.ReadHalfWord(R, adr)
           END;
-
           INC(no); Files.Read(R, ch)
         END;
-        FilesEx.ReadHalfWord(R, n); (*number of entries*)
-        FOR i := 0 TO n - 1 DO FilesEx.ReadHalfWord(R, sno);
+        Files.ReadHalfWord(R, k); (*number of entries*)
+        FOR i := 0 TO k - 1 DO Files.ReadHalfWord(R, sno);
           mod.ent[i] := sec[sno].eadr
         END;
 
         IF GetWordAt(mod.flashsto + mod.ent[0] - Flash.origin) = 4130H THEN (*module init is empty*)
           DEC(mod.flashsize, 2); mod.ent[0] := -1; (*mark init address as invalid*)
-          IF codeseg = 1 THEN DEC(RAMAllocPtr, 2) END;
+          IF mod.codeseg = 1 THEN DEC(RAMAllocPtr, 2) END;
           DEC(Flash.allocPtr, 2)
         END;
 
@@ -319,20 +338,95 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
     newmod := mod
   END LinkOne;
 
-  PROCEDURE Mark(name: ARRAY OF CHAR; VAR sec: ARRAY OF Section);
-    VAR mm!: ModMaps;
-  BEGIN mm := maps; error(noerr, name);
-    WHILE (mm # NIL) & (name # mm.name) DO mm := mm.next END ;
-    IF mm = NIL THEN NEW(mm); mm.name := name; mm.next := maps; maps := mm;
-(*todo*)
-    END
+(*
+  PROCEDURE FindSecDep(mm: ModMaps; sno: INTEGER; VAR s: SecDep);
+  BEGIN s := mm.sections;
+    WHILE (s # NIL) & (sno # s.no) DO s := s.next END;
+    IF s = NIL THEN NEW(s); s.no := sno; s.next := mm.sections; mm.sections := s END
+  END FindSecDep;
+*)
+
+  PROCEDURE Mark(name: ARRAY OF CHAR; VAR mm: ModMaps);
+    VAR im!: ModMaps;
+      F!: Files.File; R!: Files.Rider;
+      name1: Name;
+      ch: CHAR; b: BYTE;
+      i, w, no: INTEGER;
+      s!: SecDep; d!: Depend; done: BOOLEAN;
+  BEGIN error(noerr, name);
+    FindModMap(name, mm);
+    IF mm.sections = NIL THEN (*load module data from object file*)
+      Check(name);
+      IF res = noerr THEN F := ThisFile(name) ELSE F := NIL END ;
+      IF F # NIL THEN
+        Files.Set(R, F, 0); Files.ReadString(R, name1); Files.ReadInt(R, w); Files.ReadByte(R, b);
+        IF b IN {version*2, version*2+1} THEN
+          IF name = name1 THEN mm.import[0] := mm;
+            Files.ReadString(R, name1);   (*imports*)
+            WHILE (name1[0] # 0X) & (res = noerr) DO
+              Files.ReadInt(R, w); Mark(name1, im); INC(mm.nofimps); mm.import[mm.nofimps] := im;
+              Files.ReadString(R, name1)
+            END;
+            no := 0; Files.Read(R, ch);  (*sections*)
+            WHILE ch # 0X DO NEW(s); s.next := mm.sections; mm.sections := s; s.no := no;
+              (*go to fixup data*)
+              Files.ReadString(R, name1); Files.ReadHalfWord(R, w);
+              IF (ch = "c") OR (ch = "d") OR (ch = "s") OR (ch = "v") THEN
+                FOR i := 0 TO w - 1 DO Files.ReadByte(R, b) END (*skip content*)
+              END;
+              Files.ReadHalfWord(R, w); (*entering fixup data*)
+              WHILE w # 0 DO NEW(d); d.next := s.dep; s.dep := d;
+                Files.ReadByte(R, d.mno); Files.ReadHalfWord(R, d.sno); Files.ReadHalfWord(R, i); (*skip offset*)
+                IF ch = "v" THEN ASSERT(d.mno = 0); INCL(mm.tdm[d.sno DIV 32], d.sno MOD 32) (*add the interrupt handler to do list*)
+                END;
+                Files.ReadHalfWord(R, w)
+              END;
+              INC(no); Files.Read(R, ch)
+            END;
+            Files.ReadHalfWord(R, w); (*number of entries*)
+            FOR i := 0 TO w - 1 DO Files.ReadHalfWord(R, mm.ent[i]) END;
+            INCL(mm.tdm[mm.ent[0] DIV 32], mm.ent[0] MOD 32); (*add the module init section to the to do list*)
+            Files.Read(R, ch);
+            IF ch # "O" THEN mm := NIL; error(badfile, name) END
+          ELSE error(badfile, name)
+          END
+        ELSE error(notsupported, name)
+        END
+      ELSE error(nofile, name)
+      END
+    END;
+    IF res = noerr THEN (*process the to do list*)
+      REPEAT done := TRUE;
+        s := mm.sections;
+        WHILE s # NIL DO
+          IF s.no MOD 32 IN mm.tdm[s.no DIV 32] THEN
+            IF ~(s.no MOD 32 IN mm.refm[s.no DIV 32]) THEN
+              INCL(mm.refm[s.no DIV 32], s.no MOD 32); (*insert in referenced map*)
+              d := s.dep;
+              WHILE d # NIL DO
+                (*insert referenced section in to do list*)
+                IF d.mno = 0 THEN (*current module*) INCL(mm.tdm[d.sno DIV 32], d.sno MOD 32)
+                ELSE (*imported*) im := mm.import[d.mno]; i := im.ent[d.sno];
+                  INCL(im.tdm[i DIV 32], i MOD 32);
+                END;
+                done := FALSE;
+                d := d.next
+              END
+            END;
+            EXCL(mm.tdm[s.no DIV 32], s.no MOD 32); (*remove from to do list*)
+          END;
+          s := s.next
+        END
+      UNTIL done
+    END;
+    FOR i := 1 TO mm.nofimps DO Mark(mm.import[i].name, im) END
   END Mark;
 
   PROCEDURE Link*;  (*link multiple object files together and create a single MSP430 TI-TXT file M.txt from them*)
     VAR i, x, vecsize, isrtrap, count, oldcol: INTEGER;
       F!: Files.File; R!: Files.Rider; MT!: Texts.Text; MW!: Texts.Writer;
       S!: Texts.Scanner;
-      M!, p!: Module;
+      M!, p!: Module; MM!: ModMaps;
       name: Name;
       modlist: ARRAY 64 OF Name;
       nbmod, mi: INTEGER;
@@ -343,7 +437,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
     IF S.class = Texts.Int THEN  limit := S.i - vecsize; Flash.origin := FlashEnd - S.i; Flash.allocPtr := 0; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Int) THEN RAMLimit := RAMOrigin + S.i; RAMAllocPtr := RAMOrigin; Texts.Scan(S) ELSE res := nopar END;
     IF (res = noerr) & (S.class = Texts.Name) THEN nbmod := 0; REPEAT modlist[nbmod] := S.s; INC(nbmod); Texts.Scan(S) UNTIL S.class # Texts.Name;
-      maps := NIL; mi := 0; REPEAT Mark(modlist[mi], sec); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);
+      maps := NIL; mi := 0; REPEAT Mark(modlist[mi], MM); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);
       NEW(MT); Texts.Open(MT, ""); Texts.OpenWriter(MW);
       first := NIL; last := NIL; mi := 0; REPEAT LinkOne(modlist[mi], M, sec, MW); INC(mi) UNTIL (mi >= nbmod) OR (res # noerr);
       Texts.Append(MT, MW.buf);
@@ -413,7 +507,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       MakeFileName(name, S.s, ".map"); Texts.Close(MT, name)
     ELSE Texts.WriteString(W, "Usage: OMSPL.Link VectorTableSize FlashSize RAMSize [module...] topmodule")
     END;
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+    first := NIL; last := NIL; maps := NIL
   END Link;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OMSP linker  AP 6.8.20 / CS 26.10.25");
