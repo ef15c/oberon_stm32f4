@@ -12,48 +12,51 @@ MODULE testFrame;
 BEGIN q
 END testFrame.
 
+OMSPL.Link 32 4000H 200H testFrame ~
+  linking testFrame
+    flash   56, data    0, stack  512 bytes
+
 OMSPTool.DecObj testFrame.mpc
 decode testFrame.mpc
-testFrame 8358FFF7 Flash    42
+testFrame 80E9A6F9
 imports:
-type descriptors
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 0024
-fixup procedures chains
- 001A     0	 0000
- 0026     0	 0002
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
-entry =  0024
-code    42
+section     0	c    2	p
  0000	     4130	RET
- 0002	     8031	SUB #14,SP
- 0004	     000E
- 0006	     1230	PUSH #5
- 0008	     0005
- 000A	     410F	MOV SP,R15
- 000C	     532F	ADD #2,R15
- 000E	     120F	PUSH R15
- 0010	     1211	PUSH 16(SP)
- 0012	     0010
- 0014	     1211	PUSH 20(SP)
- 0016	     0014
- 0018	     12B0	CALL #0
- 001A	     0000
- 001C	     5231	ADD #8,SP
- 001E	     5031	ADD #14,SP
- 0020	     000E
- 0022	     4130	RET
- 0024	     12B0	CALL #0
- 0026	     0000
- 0028	     4130	RET
+fixups:
+
+section     1	c   34	q
+ 0000	     8031	SUB #14,SP
+ 0002	     000E
+ 0004	     1230	PUSH #5
+ 0006	     0005
+ 0008	     410F	MOV SP,R15
+ 000A	     532F	ADD #2,R15
+ 000C	     120F	PUSH R15
+ 000E	     1211	PUSH 16(SP)
+ 0010	     0010
+ 0012	     1211	PUSH 20(SP)
+ 0014	     0014
+ 0016	     12B0	CALL #0
+ 0018	     0000
+ 001A	     5231	ADD #8,SP
+ 001C	     5031	ADD #14,SP
+ 001E	     000E
+ 0020	     4130	RET
+fixups:
+ 0019	s0.0
+
+section     2	c    6	module body
+ 0000	     12B0	CALL #0
+ 0002	     0000
+ 0004	     4130	RET
+fixups:
+ 0003	s0.1
+
+section     3	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    2

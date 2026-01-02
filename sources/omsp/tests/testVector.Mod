@@ -7,6 +7,10 @@ END dummy;
 BEGIN REPEAT UNTIL FALSE
 END testVector.
 
+OMSPL.Link 32 4000H 200H testVector ~
+  linking msp430g2553 testVector
+    flash   20, data    0, stack  512 bytes
+
 OMSPTool.DecObj testVector.mpc
 decode testVector.mpc
 testVector 3B656A05

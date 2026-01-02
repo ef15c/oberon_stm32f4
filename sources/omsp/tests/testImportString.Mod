@@ -10,6 +10,8 @@ END testImportString.
 System.Free OMSPL OMSPP OMSPG~
 OMSPP.Compile testImportString.Mod~
 OMSPL.Link 32 4000H 200H testImportString~
+  linking testString testImportString
+    flash  144, data   22, stack  490 bytes
 
 OMSPTool.DecObj testImportString.mpc
 decode testImportString.mpc

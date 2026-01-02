@@ -16,6 +16,8 @@ END testString.
 System.Free OMSPL OMSPP OMSPG~
 OMSPP.Compile testString.Mod/s~
 OMSPL.Link 32 4000H 200H testString ~
+  linking testString
+    flash  118, data   11, stack  501 bytes
 
 OMSPTool.DecObj testString.mpc
 decode testString.mpc

@@ -6,35 +6,43 @@ MODULE testSProcs2;
 BEGIN SYSTEM.COPY(SYSTEM.ADR(a), SYSTEM.ADR(b), 10)
 END testSProcs2.
 
+OMSPP.Compile testSProcs2.Mod ~
+OMSPL.Link 32 4000H 200H testSProcs2 ~
+  linking testSProcs2
+    flash   32, data   40, stack  472 bytes
+
 OMSPTool.DecObj testSProcs2.mpc
 decode testSProcs2.mpc
-testSProcs2 C77404D3 Flash    18
+testSProcs2 CEF63FBD
 imports:
-type descriptors
 
-data    40
-strings
+section     0	r   20	a
+fixups:
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+section     1	r   20	b
+fixups:
 
-entries
- c 0000
-fixup procedures chains
-fixup handlers chains
-fixup data chains
- 0006     0	 0000
-fixup constants chains
-fixup types chains
-entry =  0000
-code    18
+section     2	c   24	module body
  0000	     403F	MOV #10,R15
  0002	     000A
  0004	     403E	MOV #0,R14
  0006	     0000
- 0008	     4EBE	MOV @R14+,18(R14)
- 000A	     0012
- 000C	     831F	SUB #1,R15
- 000E	     23FC	JNE $-6, goes to  0008
- 0010	     4130	RET
+ 0008	     403D	MOV #0,R13
+ 000A	     0000
+ 000C	     4EBD	MOV @R14+,0(R13)
+ 000E	     0000
+ 0010	     532D	ADD #2,R13
+ 0012	     831F	SUB #1,R15
+ 0014	     23FB	JNE $-8, goes to  000C
+ 0016	     4130	RET
+fixups:
+ 000B	s0.1
+ 0007	s0.0
+
+section     3	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    2

@@ -1,0 +1,17 @@
+Module msp430g2553
+module body	c C000	2
+vector table	v	64
+codeexe	 C000
+
+Module testInit
+toggleP10	c C000	6
+module body	c C006	6
+vector table	v	64
+codeexe	 C000
+
+Module testInitImp
+i	r 0200	2
+module body	c C00C	26
+vector table	v	64
+codeexe	 C00C
+

@@ -323,7 +323,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           mod.ent[i] := sec[sno].eadr
         END;
 
-        IF GetWordAt(mod.flashsto + mod.ent[0] - Flash.origin) = 4130H THEN (*module init is empty*)
+        IF GetWordAt(mod.ent[0] - mod.codeexe + mod.flashsto) = 4130H THEN (*module init is empty*)
           DEC(mod.flashsize, 2); mod.ent[0] := -1; (*mark init address as invalid*)
           IF mod.codeseg = 1 THEN DEC(RAMAllocPtr, 2) END;
           DEC(Flash.allocPtr, 2)
@@ -369,6 +369,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
             END;
             no := 0; Files.Read(R, ch);  (*sections*)
             WHILE ch # 0X DO NEW(s); s.next := mm.sections; mm.sections := s; s.no := no;
+              IF ch = "v" THEN INCL(mm.tdm[no DIV 32], no MOD 32) END; (*add the interrupt handler to do list*)
               (*go to fixup data*)
               Files.ReadString(R, name1); Files.ReadHalfWord(R, w);
               IF (ch = "c") OR (ch = "d") OR (ch = "s") OR (ch = "v") THEN
@@ -377,8 +378,6 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
               Files.ReadHalfWord(R, w); (*entering fixup data*)
               WHILE w # 0 DO NEW(d); d.next := s.dep; s.dep := d;
                 Files.ReadByte(R, d.mno); Files.ReadHalfWord(R, d.sno); Files.ReadHalfWord(R, i); (*skip offset*)
-                IF ch = "v" THEN ASSERT(d.mno = 0); INCL(mm.tdm[d.sno DIV 32], d.sno MOD 32) (*add the interrupt handler to do list*)
-                END;
                 Files.ReadHalfWord(R, w)
               END;
               INC(no); Files.Read(R, ch)
@@ -461,14 +460,12 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       IF (res = noerr) & (M.ent[0] < 0) THEN error(noinit, M.name) END;
       IF res = noerr THEN
         MakeFileName(name, S.s, ".txt"); F := Files.New(name); Files.Set(R, F, 0);
-
         i := 32 - vecsize DIV 2; isrtrap := -1; (*install default ISR trap if required*)
         REPEAT
           IF vector[i] = 0FFFFH THEN (*isrtrap is needed*) isrtrap := Flash.origin + Flash.allocPtr;
             EmitWord(0D032H); EmitWord( 0010H); EmitWord(3FFDH) END;
           INC(i)
         UNTIL (i >= 31) OR (isrtrap > 0);
-
         (*write TI-TXT file*)
         i := 0; Files.Write(R, "@"); FilesEx.WriteHexHalfWord(R, Flash.origin); FilesEx.WriteLn(R); (*code*)
         WHILE i < Flash.allocPtr DO
@@ -476,7 +473,6 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           IF i MOD 16 = 0 THEN FilesEx.WriteLn(R) END
         END;
         IF i MOD 16 # 0 THEN FilesEx.WriteLn(R) END;
-
         i := 0; x := 32 - vecsize DIV 2; Files.Write(R, "@"); FilesEx.WriteHexHalfWord(R, FlashEnd - vecsize); FilesEx.WriteLn(R); (*vector table*)
         WHILE x < 32 DO IF vector[x] = 0FFFFH THEN vector[x] := isrtrap END;
           FilesEx.WriteHex(R, vector[x] MOD 100H); Files.Write(R, " ");

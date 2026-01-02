@@ -1,0 +1,7 @@
+Module testFrame
+p	c C000	2
+q	c C002	34
+module body	c C024	6
+vector table	v	64
+codeexe	 C000
+

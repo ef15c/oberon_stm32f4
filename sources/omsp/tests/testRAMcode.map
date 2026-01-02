@@ -1,0 +1,11 @@
+Module msp430g2553
+module body	c C000	2
+vector table	v	64
+codeexe	 C000
+
+Module testRAMcode
+i	r 0200	2
+module body	c 0202	30
+vector table	v	64
+codeexe	 0202
+

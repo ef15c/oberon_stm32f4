@@ -30,6 +30,10 @@ BEGIN q
 END testTypTag.
 
 OMSPP.Compile testTypTag.Mod ~
+OMSPL.Link 32 4000H 200H testTypTag ~
+  linking testTypTag
+    flash  142, data    0, stack  512 bytes
+
 OMSPTool.DecObj testTypTag.mpc
 decode testTypTag.mpc
 testTypTag 88478888

@@ -1073,7 +1073,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF y.mode = B.Par THEN oy := y.b ELSE oy := y.a END;
       d := ox - oy
     ELSIF (x.mode = B.Var) & (y.mode = B.Var) & (x.obj.lev > 0) & (x.obj.lev = y.obj.lev) THEN d := x.a - y.a
-    ELSIF (x.mode = B.Const) & (y.mode = B.Const) & (x.c = 0) & x.radr & y.radr THEN d := x.a - y.a
+(* TODO   ELSIF (x.mode = B.Const) & (y.mode = B.Const) & (x.c = 0) & x.radr & y.radr THEN d := x.a - y.a*)
     ELSE res := FALSE
     END
 

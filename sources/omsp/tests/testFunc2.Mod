@@ -1,77 +1,91 @@
 MODULE testFunc2;
   TYPE ptr = POINTER TO tr;
     tf = PROCEDURE(pr: ptr): INTEGER;
-    tr = RECORD fp: tf END;
+    tr* = RECORD fp: tf END;
 
-  VAR r: ptr; i: INTEGER;
+  VAR r: ptr; i: INTEGER; s: tr;
 
   PROCEDURE p(f: ptr): INTEGER; RETURN 0 END p;
 
-BEGIN (*NEW(r);*) r.fp := p; i := r.fp(r); i := i+i+(r.fp(r))
+BEGIN r := PTR(ptr, s); r.fp := p; i := r.fp(r); i := i+i+(r.fp(r))
 END testFunc2.
+
+OMSPP.Compile testFunc2.Mod~
+OMSPL.Link 32 4000H 200H testFunc2~
+  linking testFunc2
+    flash   92, data    6, stack  506 bytes
 
 OMSPTool.DecObj testFunc2.mpc
 decode testFunc2.mpc
-testFunc2 3685528E Flash    88
+testFunc2 24A56152
 imports:
-type descriptors
- 0002 FFFF FFFF FFFF
-data     4
-strings
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+section     0	d    8	tr
+ 02 00 FF FF FF FF FF FF
+fixups:
 
-entries
- c 0004
-fixup procedures chains
- 000A     0	 0000
-fixup handlers chains
-fixup data chains
- 003A     0	 0000
- 004C     0	 0002
-fixup constants chains
-fixup types chains
-entry =  0004
-code    80
+section     1	r    2	r
+fixups:
+
+section     2	r    2	i
+fixups:
+
+section     3	r    2	s
+fixups:
+
+section     4	c    4	p
  0000	     430F	MOV #0,R15
  0002	     4130	RET
- 0004	     421F	MOV &0,R15
- 0006	     0000
- 0008	     40BF	MOV #0,0(R15)
- 000A	     0000
+fixups:
+
+section     5	c   74	module body
+ 0000	     40B2	MOV #0,&0
+ 0002	     0000
+ 0004	     0000
+ 0006	     421F	MOV &5,R15
+ 0008	     0005
+ 000A	     40BF	MOV #0,0(R15)
  000C	     0000
- 000E	     421F	MOV &6,R15
- 0010	     0006
- 0012	     4F2F	MOV @R15,R15
- 0014	     120F	PUSH R15
- 0016	     1212	PUSH &16
- 0018	     0010
- 001A	     411F	MOV -2(SP),R15
- 001C	     FFFE
- 001E	     128F	CALL R15
- 0020	     5221	ADD #4,SP
- 0022	     4F82	MOV R15,&0
- 0024	     0000
- 0026	     421F	MOV &36,R15
- 0028	     0024
- 002A	     521F	ADD &40,R15
- 002C	     0028
- 002E	     421E	MOV &24,R14
- 0030	     0018
- 0032	     4E2E	MOV @R14,R14
- 0034	     120F	PUSH R15
- 0036	     120E	PUSH R14
- 0038	     1212	PUSH &48
- 003A	     0030
- 003C	     411F	MOV -2(SP),R15
- 003E	     FFFE
- 0040	     128F	CALL R15
- 0042	     5221	ADD #4,SP
- 0044	     4F0E	MOV R15,R14
- 0046	     413F	POP R15
- 0048	     5E0F	ADD R14,R15
- 004A	     4F82	MOV R15,&44
- 004C	     002C
- 004E	     4130	RET
+ 000E	     0000
+ 0010	     421F	MOV &9,R15
+ 0012	     0009
+ 0014	     122F	PUSH @R15
+ 0016	     1212	PUSH &19
+ 0018	     0013
+ 001A	     1291	CALL 4(SP)
+ 001C	     0004
+ 001E	     5221	ADD #4,SP
+ 0020	     4F82	MOV R15,&0
+ 0022	     0000
+ 0024	     421F	MOV &35,R15
+ 0026	     0023
+ 0028	     521F	ADD &39,R15
+ 002A	     0027
+ 002C	     421E	MOV &25,R14
+ 002E	     0019
+ 0030	     120F	PUSH R15
+ 0032	     122E	PUSH @R14
+ 0034	     1212	PUSH &47
+ 0036	     002F
+ 0038	     1291	CALL 4(SP)
+ 003A	     0004
+ 003C	     5221	ADD #4,SP
+ 003E	     4F0E	MOV R15,R14
+ 0040	     413F	POP R15
+ 0042	     5E0F	ADD R14,R15
+ 0044	     4F82	MOV R15,&43
+ 0046	     002B
+ 0048	     4130	RET
+fixups:
+ 0047	s0.2
+ 000D	s0.4
+ 0037	s0.1
+ 0003	s0.3
+
+section     6	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    5    0

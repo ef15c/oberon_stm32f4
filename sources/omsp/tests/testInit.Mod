@@ -10,35 +10,31 @@ END testInit.
 
 OMSPTool.DecObj testInit.mpc
 decode testInit.mpc
-testInit BBBED741 Flash    12
+testInit 1B108661
 imports:
-	msp430g2553 8250CA0E
-type descriptors
+	msp430g2553 BBD31A01
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 0006 0000
-fixup procedures chains
-fixup handlers chains
-fixup data chains
-fixup constants chains
-fixup types chains
-entry =  0006
-code    12
+section     0	c    6	toggleP10
  0000	     E3D2	XOR.B #1,&33
  0002	     0021
  0004	     4130	RET
- 0006	     D3D2	BIS.B #1,&34
- 0008	     0022
- 000A	     4130	RET
+fixups:
+
+section     1	c    6	module body
+ 0000	     D3D2	BIS.B #1,&34
+ 0002	     0022
+ 0004	     4130	RET
+fixups:
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1    0
 
 OMSPTool.DecSym testInit.sms
 decode testInit.sms
-testInit BBBED741  1
-   1 toggleP10 [0  form = 10  size = 2 [^9] UR 0000()]       1
+testInit 1B108661  3
+   9 toggleP10 [0  form = 10 [^9] UR 0000()]     1

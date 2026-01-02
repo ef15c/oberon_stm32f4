@@ -1,11 +1,13 @@
 Module Arith
 mul16	c C000	22
 module body	c C016	2
+vector table	v	64
 codeexe	 C000
 
 Module Facto
 res	r 0200	2
 f	c C016	50
 module body	c C048	16
+vector table	v	64
 codeexe	 C016
 

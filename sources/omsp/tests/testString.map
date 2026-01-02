@@ -1,12 +1,11 @@
 Module testString
 	s C000	6
 	s C006	4
-R	d C00A	8
 s	r 0200	10
 c	r 020A	1
-p	c C012	2
-module body	c C014	84
-	s C068	8
+p	c C00A	2
+module body	c C00C	84
+	s C060	8
 vector table	v	64
 codeexe	 C000
 

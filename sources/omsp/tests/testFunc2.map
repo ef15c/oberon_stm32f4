@@ -1,0 +1,9 @@
+Module testFunc2
+r	r 0200	2
+i	r 0202	2
+s	r 0204	2
+p	c C000	4
+module body	c C004	74
+vector table	v	64
+codeexe	 C000
+

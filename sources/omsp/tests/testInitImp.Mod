@@ -8,32 +8,21 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (* Stop WDT *)
   UNTIL FALSE
 END testInitImp.
 
+OMSPL.Link 32 4000H 200H testInitImp ~
+  linking msp430g2553 testInit testInitImp
+    flash   56, data    2, stack  510 bytes
+
 OMSPTool.DecObj testInitImp.mpc
 decode testInitImp.mpc
-testInitImp 0106A11F Flash    30
+testInitImp 08849A71
 imports:
-	msp430g2553 8250CA0E
-	testInit BBBED741
-type descriptors
+	msp430g2553 BBD31A01
+	testInit 1B108661
 
-data     2
-strings
+section     0	r    2	i
+fixups:
 
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- 0000
-fixup procedures chains
- 0008     2	 0001
-fixup handlers chains
-fixup data chains
- 0016     0	 0000
-fixup constants chains
-fixup types chains
-entry =  0000
-code    30
+section     1	c   26	module body
  0000	     40B2	MOV #23168,&288
  0002	     5A80
  0004	     0120
@@ -42,10 +31,19 @@ code    30
  000A	     40B2	MOV #-15536,&0
  000C	     C350
  000E	     0000
- 0010	     8392	SUB #1,&14
- 0012	     000E
- 0014	     9382	CMP #0,&18
- 0016	     0012
- 0018	     23FB	JNE #-5, goes to  0010
- 001A	     3FF5	JMP #-11, goes to  0006
- 001C	     4130	RET
+ 0010	     8392	SUB #1,&15
+ 0012	     000F
+ 0014	     23FD	JNE $-4, goes to  0010
+ 0016	     3FF7	JMP $-16, goes to  0006
+ 0018	     4130	RET
+fixups:
+ 0013	s0.0
+ 0009	s2.1
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1

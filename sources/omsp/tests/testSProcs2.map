@@ -1,0 +1,7 @@
+Module testSProcs2
+a	r 0200	20
+b	r 0214	20
+module body	c C000	24
+vector table	v	64
+codeexe	 C000
+
