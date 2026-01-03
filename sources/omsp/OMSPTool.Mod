@@ -123,7 +123,7 @@ MODULE OMSPTool;  (*NW 18.2.2013
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
         Files.ReadInt(R, key); Texts.WriteHex(W, key); Files.ReadByte(R, bl); Texts.WriteLn(W);
-        IF bl IN {4..5} THEN bl := bl MOD 2;
+        IF bl IN {2..3} THEN bl := bl MOD 2;
           IF bl = 1 THEN Texts.WriteString(W, "code executed from RAM"); Texts.WriteLn(W); END;
           Texts.Append(Oberon.Log, W.buf);
           Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
@@ -174,8 +174,13 @@ MODULE OMSPTool;  (*NW 18.2.2013
               Files.ReadByte(R, bl); Texts.Write(W, "s"); Texts.WriteInt(W, bl, 1);
               ReadWord(R, n); Texts.Write(W, "."); Texts.WriteInt(W, n, 1);
               ReadWord(R, n);
-              IF n # 0 THEN IF n > 0 THEN  Texts.Write(W, "+") END;
+              IF n # 0 THEN IF n >= 8000H THEN DEC(n, 10000H) END;
+                IF n > 0 THEN  Texts.Write(W, "+") END;
                 Texts.WriteInt(W, n, 1)
+              END;
+              Files.ReadByte(R, bl); ReadWord(R, n);
+              IF bl # 0FFH THEN Texts.WriteString(W, "-s");
+                Texts.WriteInt(W, bl, 1); Texts.Write(W, "."); Texts.WriteInt(W, n, 1)
               END;
               Texts.WriteLn(W);
               ReadWord(R, adr)

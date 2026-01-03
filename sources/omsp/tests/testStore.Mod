@@ -31,7 +31,7 @@ OMSPTool.DecObj testStore.mpc
 
 no traps:
 decode testStore.mpc
-testStore 990DDA22
+testStore 0BDF80CE
 imports:
 
 section     0	r   10	s
@@ -386,9 +386,9 @@ OMSPTool.DecObj testStore.mpc
 
 with traps:
 decode testStore.mpc
-testStore 990DDA22
+testStore 0BDF80CE
 imports:
-	Traps 3714F611
+	Traps CE0C2A28
 
 section     0	r   10	s
 fixups:

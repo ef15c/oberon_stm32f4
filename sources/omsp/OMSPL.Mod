@@ -5,14 +5,13 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
       sections = {segment name size content fixups} 0X.
       segment  = "r" | "c" | "d" | "s" | "v".
       content  = {byte}.
-      fixups   = {fixadr mno sno offset} 0.
+      fixups   = {fixadr mno sno offset mnor snor} 0.
       entries  = nof {sno}.
 
       name: string containing the module or object name
       key: CRC32 hash of the modules's symbol file
       version: 0: legacy mode, 1: legacy RAM execution mode,
-               2, 3: not used, reserved for future use
-               4: sections mode, 5: sections RAM execution mode
+               2: sections mode, 3: sections RAM execution mode
 
       sections: blocks of data or code that can be omitted by
         the linker if they are not referenced. Except for vector table,
@@ -34,11 +33,15 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           fixadr: the address of the most recent reference to a section.
             the value at this address contains the next reference. The
             value 0 marks the end of the list.
-          mno: the nodule index in the import array. The value 0 means
+          mno: the module index in the import array. The value 0 means
             the current module. Others values is the rank of the
             imported module.
           sno: is the section index in the mno indexed module.
           offset: is the offset in byte of the referenced data.
+          mnor: if # 0FFH, mnor is the module index of a section used to compute an offset.
+          snor: is the section index of an offset base. The offset placed in the generated code
+                   follow this formula:
+                     offset = address of section (mno, smo) plus offset minus address of section (mnor, smor)
       
           the vectors table is a particular type of section flagged
           with "v" segment. It appears exactly once in the object file.
@@ -52,7 +55,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
 
   IMPORT SYSTEM, Modules, Display, G := OMSPG, Files, FilesEx, Texts, Oberon, L := SystemLog;
 
-  CONST version = 2;
+  CONST version = 1;
     noerr = 0; nofile = 1; duphandler = 2; badkey = 3; badfile = 4; nospace = 5; nopar = 6; noinit = 7; notsupported = 8;
     RAMOrigin = 200H; FlashEnd = 10000H; MaxSec = 512;
 
@@ -192,11 +195,11 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
     VAR mod!, impmod!: Module;
       i, k, l, nofimps: INTEGER;
       ch: CHAR;
-      adr, ofs, sno, no, dest: INTEGER; (*fixup data*)
+      adr, ofs, sno, no, snor, dest: INTEGER; (*fixup data*)
       name1: Name;
       F!: Files.File; R!: Files.Rider;
       import!: ARRAY 16 OF Module;
-      mno: BYTE;
+      mno, mnor: BYTE;
       vec: ARRAY 32 OF INTEGER; (*vector table*)
       secfpos, nofsecs: INTEGER; mm!: ModMaps; keep: BOOLEAN;
   BEGIN mod := first; error(noerr, name);
@@ -245,6 +248,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         WHILE ch # 0X DO
           sec[nofsecs].segment := ch; sec[nofsecs].eadr := -1;
           keep := nofsecs MOD 16 IN mm.refm[nofsecs DIV 16]; (*keep the section if referenced*)
+(*L.DebugInt("sno", nofsecs, 1);
+L.DebugBool("keep", keep);*)
           Files.ReadString(R, sec[nofsecs].name); Files.ReadHalfWord(R, sec[nofsecs].size);
           IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
             IF keep THEN
@@ -264,6 +269,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           Files.ReadHalfWord(R, adr); (*skip fixup data*)
           WHILE adr # 0 DO
             Files.ReadByte(R, mno); Files.ReadHalfWord(R, sno); Files.ReadHalfWord(R, ofs);
+            Files.ReadByte(R, mnor); Files.ReadHalfWord(R, snor);
             Files.ReadHalfWord(R, adr)
           END;
           INC(nofsecs);
@@ -300,9 +306,13 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
           Files.ReadHalfWord(R, adr); (*entering fixup data*)
           WHILE adr # 0 DO
             Files.ReadByte(R, mno); Files.ReadHalfWord(R, sno); Files.ReadHalfWord(R, ofs);
+            Files.ReadByte(R, mnor); Files.ReadHalfWord(R, snor);
             IF keep THEN
               IF mno = 0 THEN dest := sec[sno].eadr ELSE dest := import[mno - 1].ent[sno] END;
               INC(dest, ofs); (*dest contains now the effective address*)
+              IF mnor # 0FFH THEN
+                IF mnor = 0 THEN DEC(dest, sec[snor].eadr) ELSE DEC(dest, import[mnor - 1].ent[snor]) END
+              END;
               IF ch = "v" THEN (*vector table*)
                 REPEAT i := (adr - 1) DIV 2;
                   IF vector[i] # 0FFFFH THEN
@@ -378,6 +388,8 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
               Files.ReadHalfWord(R, w); (*entering fixup data*)
               WHILE w # 0 DO NEW(d); d.next := s.dep; s.dep := d;
                 Files.ReadByte(R, d.mno); Files.ReadHalfWord(R, d.sno); Files.ReadHalfWord(R, i); (*skip offset*)
+                Files.ReadByte(R, b); Files.ReadHalfWord(R, w);
+                IF b # 0FFH THEN NEW(d); d.next := s.dep; s.dep := d; d.mno := b; d.sno := w END;
                 Files.ReadHalfWord(R, w)
               END;
               INC(no); Files.Read(R, ch)

@@ -23,7 +23,7 @@ OMSPP.Compile testFunc.Mod~
 
 OMSPTool.DecObj testFunc.mpc
 decode testFunc.mpc
-testFunc 4A1F36F8
+testFunc 9806F724
 imports:
 
 section     0	r    2	i
