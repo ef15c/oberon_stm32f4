@@ -954,14 +954,14 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       type!: B.Type;
       procid: S.Ident;
       x!, sr!: G.Item;
-      locblksize, parblksize, L: INTEGER;
+      locblksize, parblksize, L, nv: INTEGER;
       int, haveinregs: BOOLEAN;
       riu, savedregs: SET;
       v: ARRAY 8 OF BYTE;
-  BEGIN (* ProcedureDecl *) int := FALSE; L := 0; S.Get(sym);
+  BEGIN (* ProcedureDecl *) int := FALSE; nv := 0; S.Get(sym);
     IF sym = S.times THEN IF level # 0 THEN S.Mark("interrupt handler must be global") END;
       int := TRUE; S.Get(sym); IF sym # S.lparen THEN S.Mark("no (") END;
-      REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[L] := x.a; INC(L); UNTIL sym # S.comma;
+      REPEAT S.Get(sym); expression(x); CheckInt(x); CheckConst(x); v[nv] := x.a; INC(nv); UNTIL sym # S.comma;
       Check(S.rparen, "no )")
     END; isInt := int;
     IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); savedregs := TOSET(sr.a)
@@ -970,9 +970,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     IF sym = S.ident THEN
       S.CopyId(procid); S.Get(sym); B.NewObj(proc, S.id, B.StoredConst);
       parblksize := 0; NEW(type);
-      IF int THEN type.form := B.Handler; WHILE L > 0 DO DEC(L); G.SetVector(v[L], proc) END
-      ELSE type.form := B.Proc 
-      END;
+      IF int THEN type.form := B.Handler ELSE type.form := B.Proc END;
       G.SetRIU({}); G.SetPRU({}); proc.type := type; proc.val := -1; proc.lev := level; 
       CheckExport(proc.expo);
       IF int & proc.expo THEN proc.expo := FALSE; S.Mark("remove asterisk") END;
@@ -1009,6 +1007,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         isInt := int
       END;
       G.AllocP(proc);
+      WHILE nv > 0 DO DEC(nv); G.SetVector(v[nv], proc) END;
       IF isLeaf THEN G.SetAllocationMode(G.Register) ELSE G.SetAllocationMode(G.Stack) END;
       IF int THEN G.LimitRegisters(savedregs) END;
       G.Enter(locblksize, int, savedregs);

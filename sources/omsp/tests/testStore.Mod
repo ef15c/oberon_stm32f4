@@ -292,7 +292,7 @@ fixups:
  004F	s0.2+2
  002B	s0.2
 
-section     9	c   82	module body
+section     9	c   70	module body
  0000	     421F	MOV &0,R15
  0002	     0000
  0004	     4F0E	MOV R15,R14
@@ -302,46 +302,41 @@ section     9	c   82	module body
  000C	     0003
  000E	     403F	MOV #0,R15
  0010	     0000
- 0012	     403E	MOV #0,R14
- 0014	     0000
- 0016	     403D	MOV #5,R13
- 0018	     0005
- 001A	     4FBE	MOV @R15+,0(R14)
- 001C	     0000
- 001E	     532E	ADD #2,R14
- 0020	     831D	SUB #1,R13
- 0022	     23FB	JNE $-8, goes to  001A
- 0024	     421F	MOV &13,R15
- 0026	     000D
- 0028	     42DF	MOV.B &0,21(R15)
+ 0012	     403E	MOV #5,R14
+ 0014	     0005
+ 0016	     4FBF	MOV @R15+,0(R15)
+ 0018	     0000
+ 001A	     831E	SUB #1,R14
+ 001C	     23FC	JNE $-6, goes to  0016
+ 001E	     421F	MOV &13,R15
+ 0020	     000D
+ 0022	     42DF	MOV.B &0,0(R15)
+ 0024	     0000
+ 0026	     0000
+ 0028	     403F	MOV #0,R15
  002A	     0000
- 002C	     0015
- 002E	     403F	MOV #0,R15
- 0030	     0000
- 0032	     403E	MOV #0,R14
- 0034	     0000
- 0036	     403D	MOV #5,R13
- 0038	     0005
- 003A	     4FBE	MOV @R15+,0(R14)
- 003C	     0000
- 003E	     532E	ADD #2,R14
- 0040	     831D	SUB #1,R13
- 0042	     23FB	JNE $-8, goes to  003A
- 0044	     421F	MOV &39,R15
- 0046	     0027
- 0048	     5F0F	ADD R15,R15
- 004A	     429F	MOV &0,49(R15)
- 004C	     0000
- 004E	     0031
- 0050	     4130	RET
+ 002C	     403E	MOV #5,R14
+ 002E	     0005
+ 0030	     4FBF	MOV @R15+,0(R15)
+ 0032	     0000
+ 0034	     831E	SUB #1,R14
+ 0036	     23FC	JNE $-6, goes to  0030
+ 0038	     421F	MOV &33,R15
+ 003A	     0021
+ 003C	     5F0F	ADD R15,R15
+ 003E	     429F	MOV &0,43(R15)
+ 0040	     0000
+ 0042	     002B
+ 0044	     4130	RET
 fixups:
- 004D	s0.2+2
- 0035	s0.3
- 004F	s0.2
- 002B	s0.0+1
- 002D	s0.0
+ 0041	s0.2+2
+ 0033	s0.3-2-s0.2
+ 0043	s0.2
+ 0027	s0.0
+ 0025	s0.0+1
+ 0019	s0.0-2-s0.1
  0011	s0.1
- 0047	s0.4
+ 003B	s0.4
 
 section    10	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
@@ -758,7 +753,7 @@ fixups:
  0087	s1.1
  002B	s0.2
 
-section     9	c  106	module body
+section     9	c   94	module body
  0000	     421F	MOV &0,R15
  0002	     0000
  0004	     4F0E	MOV R15,R14
@@ -768,59 +763,54 @@ section     9	c  106	module body
  000C	     0003
  000E	     403F	MOV #0,R15
  0010	     0000
- 0012	     403E	MOV #0,R14
- 0014	     0000
- 0016	     403D	MOV #5,R13
- 0018	     0005
- 001A	     4FBE	MOV @R15+,0(R14)
- 001C	     0000
- 001E	     532E	ADD #2,R14
- 0020	     831D	SUB #1,R13
- 0022	     23FB	JNE $-8, goes to  001A
- 0024	     90B2	CMP #10,&13
- 0026	     000A
- 0028	     000D
- 002A	     2802	JNC $+6, goes to  0030
- 002C	     12B0	CALL #0
- 002E	     0000
- 0030	     421F	MOV &41,R15
- 0032	     0029
- 0034	     42DF	MOV.B &0,21(R15)
+ 0012	     403E	MOV #5,R14
+ 0014	     0005
+ 0016	     4FBF	MOV @R15+,0(R15)
+ 0018	     0000
+ 001A	     831E	SUB #1,R14
+ 001C	     23FC	JNE $-6, goes to  0016
+ 001E	     90B2	CMP #10,&13
+ 0020	     000A
+ 0022	     000D
+ 0024	     2802	JNC $+6, goes to  002A
+ 0026	     12B0	CALL #0
+ 0028	     0000
+ 002A	     421F	MOV &35,R15
+ 002C	     0023
+ 002E	     42DF	MOV.B &0,0(R15)
+ 0030	     0000
+ 0032	     0000
+ 0034	     403F	MOV #0,R15
  0036	     0000
- 0038	     0015
- 003A	     403F	MOV #0,R15
- 003C	     0000
- 003E	     403E	MOV #0,R14
- 0040	     0000
- 0042	     403D	MOV #5,R13
- 0044	     0005
- 0046	     4FBE	MOV @R15+,0(R14)
- 0048	     0000
- 004A	     532E	ADD #2,R14
- 004C	     831D	SUB #1,R13
- 004E	     23FB	JNE $-8, goes to  0046
- 0050	     90B2	CMP #5,&51
- 0052	     0005
- 0054	     0033
- 0056	     2802	JNC $+6, goes to  005C
- 0058	     12B0	CALL #47
- 005A	     002F
- 005C	     421F	MOV &85,R15
- 005E	     0055
- 0060	     5F0F	ADD R15,R15
- 0062	     429F	MOV &0,61(R15)
- 0064	     0000
- 0066	     003D
- 0068	     4130	RET
+ 0038	     403E	MOV #5,R14
+ 003A	     0005
+ 003C	     4FBF	MOV @R15+,0(R15)
+ 003E	     0000
+ 0040	     831E	SUB #1,R14
+ 0042	     23FC	JNE $-6, goes to  003C
+ 0044	     90B2	CMP #5,&45
+ 0046	     0005
+ 0048	     002D
+ 004A	     2802	JNC $+6, goes to  0050
+ 004C	     12B0	CALL #41
+ 004E	     0029
+ 0050	     421F	MOV &73,R15
+ 0052	     0049
+ 0054	     5F0F	ADD R15,R15
+ 0056	     429F	MOV &0,55(R15)
+ 0058	     0000
+ 005A	     0037
+ 005C	     4130	RET
 fixups:
- 0065	s0.2+2
- 0041	s0.3
- 0067	s0.2
- 0037	s0.0+1
- 005B	s1.1
- 0039	s0.0
+ 0059	s0.2+2
+ 003F	s0.3-2-s0.2
+ 005B	s0.2
+ 0033	s0.0
+ 0031	s0.0+1
+ 004F	s1.1
+ 0019	s0.0-2-s0.1
  0011	s0.1
- 005F	s0.4
+ 0053	s0.4
 
 section    10	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF

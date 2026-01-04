@@ -1,0 +1,49 @@
+Module msp430g2553
+module body	c C000	2
+vector table	v	64
+codeexe	 C000
+
+Module MSPFlash
+flashBlock	c 0200	94
+module body	c 025E	2
+vector table	v	64
+codeexe	 0200
+
+Module Types
+module body	c C05E	2
+vector table	v	64
+codeexe	 C05E
+
+Module msp430delay
+CyclesX3	c C05E	6
+module body	c C064	2
+vector table	v	64
+codeexe	 C05E
+
+Module bootloader
+cc	r 025E	1
+byte	r 025F	1
+add	r 0260	2
+nbElt	r 0262	2
+address	r 0264	2
+buffer	r 0266	64
+main_appli	c C064	6
+toHexa	c C06A	20
+serialOutChar	c C07E	12
+serialOutString	c C08A	28
+sendOK	c C0A6	12
+	s C0B2	6
+sendKO	c C0B8	12
+	s C0C4	6
+prompt	c C0CA	12
+	s C0D6	16
+serialInChar	c C0E6	32
+hexa	c C106	32
+waitFlash	c C126	8
+flushBuffer	c C12E	40
+addByteInBuffer	c C156	28
+getHexNumber	c C172	60
+module body	c C1AE	522
+vector table	v	64
+codeexe	 C064
+

@@ -33,29 +33,12 @@ OMSPP.Compile MSPFlash.Mod~
 
 OMSPTool.DecObj MSPFlash.mpc
 decode MSPFlash.mpc
-MSPFlash 950E56FD Flash    96
+MSPFlash 6F801689
 code executed from RAM
 imports:
-	msp430g2553 F10488DC
-type descriptors
+	msp430g2553 BBD31A01
 
-data     0
-strings
-
-vector table
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
- FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
-
-entries
- c 005E c 0000
-fixup procedures in code space chains
-fixup handlers in vector space chains
-fixup data in code space chains
-fixup constants in code space chains
-fixup variables in constant space chains
-fixup constants in constant space chains
-entry =  005E
-code    96
+section     0	c   94	flashBlock
  0000	     B392	BIT #1,&300
  0002	     012C
  0004	     23FD	JNE $-4, goes to  0000
@@ -103,9 +86,16 @@ code    96
  0058	     A510
  005A	     012C
  005C	     4130	RET
- 005E	     4130	RET
+fixups:
 
-OMSPTool.DecSym MSPFlash.sms
-decode MSPFlash.sms
-MSPFlash 950E56FD  1
-   1 flashBlock [0  form = 10  size = 2 [^9] leaf UR 00F0( class = 2 R6 [^4] class = 2 R5 [^7] class = 2 R4 [^7])]       1
+section     1	c    2	module body
+ 0000	     4130	RET
+fixups:
+
+section     2	v   64	vector table
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+ FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+fixups:
+
+entries:
+    1    0

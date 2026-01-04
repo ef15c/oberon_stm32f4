@@ -923,7 +923,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR xs, ys: ARRAY S.stringBufSize OF CHAR; ix, iy: INTEGER;
   BEGIN
     IF op # S.plus THEN S.Mark("op + expected") END;
-    IF (x.mode = B.StoredConst) & (y.mode = B.StoredConst) THEN
+    IF (x.mode = B.StoredConst) & (y.mode IN {B.StoredConst, B.Const}) THEN
       IF y.type.form = B.String THEN stringPop(y, ys) ELSE ys[0] := CHR(y.a); ys[1] := 0X END; stringPop(x, xs);
       ix := 0; WHILE xs[ix] # 0X DO INC(ix) END;
       iy := -1; REPEAT INC(iy); xs[ix] := ys[iy]; INC(ix) UNTIL ys[iy] = 0X; (* xs = xs + ys *)
@@ -1078,7 +1078,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF y.mode = B.Par THEN oy := y.b ELSE oy := y.a END;
       d.a := ox - oy
     ELSIF (x.mode = B.Var) & (y.mode = B.Var) & (x.obj.lev > 0) & (x.obj.lev = y.obj.lev) THEN d.a := x.a - y.a
-    ELSIF (x.mode = B.Const) & (y.mode = B.Const) (*& (x.c = 0)*) & x.radr & y.radr THEN
+    ELSIF (*(x.mode = B.Const) & (y.mode = B.Const) & (x.c = 0) &*) x.radr & y.radr THEN
       d.radr := TRUE; d.a := x.a; d.c := x.c; d.mnor := y.c; d.snor := y.a; d.b := x.b MOD 10000H - y.b MOD 10000H
     ELSE res := FALSE
     END;

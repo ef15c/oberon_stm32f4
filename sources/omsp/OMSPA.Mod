@@ -175,13 +175,12 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       END
     ELSIF op IN {DIv, MOd} THEN
       IF (s.am = Immediate) & (s.ofs < ORD({16})) & (log2(s.ofs, e) = 1) THEN
-        IF op = DIv THEN WHILE e > 0 DO PutSO0(c, RRA, d, params); DEC(e) END
+        IF op = DIv THEN WHILE e > 0 DO ASSERT(d.am = Register); PutSO0(c, RRA, d, params - Byte); DEC(e) END
         ELSE (*op = MOd*) t.reg := 0; t.am := Immediate; t.ofs := LSL(1, e) - 1; PutDO(c, AND, t, d, params)
         END
       ELSE S.Mark("not implemented")
       END
-    ELSE ASSERT(op < 10H);
-ASSERT((op # MOV) OR (s.am # Register) OR (d.am # Register) OR (s.reg # d.reg));
+    ELSE ASSERT(op < 10H); ASSERT((op # MOV) OR (s.am # Register) OR (d.am # Register) OR (s.reg # d.reg));
       encSrc(op, ts.reg, ts.am, ts.ofs, emitSOff, params);
 
       IF d.am = Register THEN params := params + Rdm

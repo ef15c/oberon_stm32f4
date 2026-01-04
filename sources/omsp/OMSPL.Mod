@@ -247,9 +247,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         Files.Read(R, ch);
         WHILE ch # 0X DO
           sec[nofsecs].segment := ch; sec[nofsecs].eadr := -1;
-          keep := nofsecs MOD 16 IN mm.refm[nofsecs DIV 16]; (*keep the section if referenced*)
-(*L.DebugInt("sno", nofsecs, 1);
-L.DebugBool("keep", keep);*)
+          keep := nofsecs MOD 32 IN mm.refm[nofsecs DIV 32]; (*keep the section if referenced*)
           Files.ReadString(R, sec[nofsecs].name); Files.ReadHalfWord(R, sec[nofsecs].size);
           IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
             IF keep THEN
@@ -281,7 +279,7 @@ L.DebugBool("keep", keep);*)
         END;
         (*compute effective address*)
         FOR i := 0 TO nofsecs - 1 DO
-          IF i MOD 16 IN mm.refm[i DIV 16] THEN (*adjust address of the section if referenced*)
+          IF i MOD 32 IN mm.refm[i DIV 32] THEN (*adjust address of the section if referenced*)
             Texts.WriteString(MW, sec[i].name); Texts.Write(MW, 09X);
             ch := sec[i].segment; Texts.Write(MW, ch);
             IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
@@ -298,7 +296,7 @@ L.DebugBool("keep", keep);*)
         Files.Set(R, Files.Base(R), secfpos); (*rewind rider to beginning of sections list*)
         no := 0; Files.Read(R, ch);
         WHILE ch # 0X DO (*go to fixup data*)
-          keep := no MOD 16 IN mm.refm[no DIV 16]; (*fixup the section dependencies if referenced*)
+          keep := no MOD 32 IN mm.refm[no DIV 32]; (*fixup the section dependencies if referenced*)
           Files.ReadString(R, name1); Files.ReadHalfWord(R, k);
           IF (ch = "c") OR (ch = "d") OR (ch = "s") OR (ch = "v") THEN
             FOR i := 0 TO k - 1 DO Files.ReadByte(R, mno) END (*skip content*)
@@ -332,7 +330,6 @@ L.DebugBool("keep", keep);*)
         FOR i := 0 TO k - 1 DO Files.ReadHalfWord(R, sno);
           mod.ent[i] := sec[sno].eadr
         END;
-
         IF GetWordAt(mod.ent[0] - mod.codeexe + mod.flashsto) = 4130H THEN (*module init is empty*)
           DEC(mod.flashsize, 2); mod.ent[0] := -1; (*mark init address as invalid*)
           IF mod.codeseg = 1 THEN DEC(RAMAllocPtr, 2) END;
