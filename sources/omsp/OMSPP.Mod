@@ -70,8 +70,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END CheckConst;
 
   PROCEDURE CheckReadOnly(VAR x: G.Item);
-  BEGIN
-    IF x.rdo THEN S.Mark("read-only") END
+  BEGIN IF x.rdo THEN S.Mark("read-only") END
   END CheckReadOnly;
 
   PROCEDURE CheckExport(VAR expo: BOOLEAN);

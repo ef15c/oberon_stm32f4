@@ -1,0 +1,190 @@
+Module MSPFlashTypes
+module body	c D800	2
+vector table	v	64
+codeexe	 D800
+
+Module preserveMSPFlash
+module body	c D800	2
+vector table	v	64
+codeexe	 D800
+
+Module msp430g2553
+module body	c D800	2
+vector table	v	64
+codeexe	 D800
+
+Module MultiPrecisionArith
+MulLongInt	c D800	94
+MulLongLong	c D85E	104
+DivLongLong	c D8C6	136
+CmpLongLong	c D94E	24
+module body	c D966	2
+vector table	v	64
+codeexe	 D800
+
+Module Arith
+divmod16	c D966	64
+module body	c D9A6	2
+vector table	v	64
+codeexe	 D966
+
+Module String
+FromLong	c D9A6	118
+FromInteger	c DA1C	172
+module body	c DAC8	2
+vector table	v	64
+codeexe	 D9A6
+
+Module PosixTime
+TimeMax	d DAC8	4
+OneSec	d DACC	4
+tz	d DAD0	16
+mon_len	d DAE0	12
+mon_day	d DAEC	24
+timeOffset	r 0200	4
+systemTime	r 0204	4
+timeIsST	r 0208	1
+setMax	c DB04	10
+setMin	c DB0E	10
+cmp	c DB18	36
+inc	c DB3C	12
+tick	c DB48	10
+dec	c DB52	12
+LEAPYEAR	c DB5E	74
+DAYS_IN_YR	c DBA8	16
+gmhms	c DBB8	104
+mktime	c DC20	972
+gmtime	c DFEC	210
+localtime	c E0BE	48
+findlastweekdayofmonth	c E0EE	142
+findnextdsttime	c E17C	182
+settime	c E232	96
+TimeToString	c E292	36
+changedsttime	c E2B6	116
+module body	c E32A	18
+vector table	v	64
+codeexe	 DAC8
+
+Module sDiaryTypes
+module body	c E33C	2
+vector table	v	64
+codeexe	 E33C
+
+Module msp430delay
+CyclesX3	c E33C	6
+module body	c E342	2
+vector table	v	64
+codeexe	 E33C
+
+Module pcd8544
+	s E342	476
+	s E51E	50
+XAddr	r 0209	1
+YAddr	r 020A	1
+Vop	r 020B	1
+FunctionSet	r 020C	1
+composeChar	r 020D	1
+select	r 020E	2
+deselect	r 0210	2
+setData	r 0212	2
+setCommand	r 0214	2
+doSend	c E550	202
+send	c E61A	36
+WriteChar	c E63E	154
+WriteString	c E6D8	42
+SetAddr	c E702	78
+GetAddr	c E750	14
+Clear	c E75E	44
+Init	c E78A	70
+WriteLongint	c E7D0	80
+setCallbacks	c E820	18
+module body	c E832	24
+vector table	v	64
+codeexe	 E342
+
+Module sDiary
+	s E84A	4
+	s E84E	6
+	s E854	10
+ramDE	r 0216	64
+currentDE	r 0256	12
+evTab	r 0262	42
+dayOfWeek	d E85E	28
+commandBusy	r 028C	1
+old_day	r 028E	4
+nextEventTime	r 0292	4
+nextEventType	r 0296	1
+vcc	r 0298	2
+beepOn	r 029A	2
+extraCycles	r 029C	1
+trimPeriod	r 029D	1
+baseFreq	r 029E	2
+state	r 02A0	2
+DEIndex	r 02A2	2
+setTime	r 02A4	18
+oldSetTime	r 02B6	4
+cOrD	r 02BA	2
+parseData	r 02BC	2
+trimmer	r 02BE	2
+BPReq	r 02C0	1
+ADCReq	r 02C1	1
+PCReq	r 02C2	1
+select	c E87A	6
+deselect	c E880	6
+setData	c E886	6
+setCommand	c E88C	6
+nbFreeSlots	c E892	50
+respondC	c E8C4	12
+respondS	c E8D0	28
+respondBAD	c E8EC	12
+appendDigit	c E8F8	64
+appendHexDigit	c E938	66
+scheduleNextEvent	c E97A	126
+adjustEvents	c E9F8	78
+rearmEvent	c EA46	64
+getEventTime	c EA86	82
+nextCompatibleDate	c EAD8	592
+updateBell	c ED28	86
+popEvent	c ED7E	46
+findNextDiaryEvent	c EDAC	268
+findAndArmNextDiaryEvent	c EEB8	40
+eraseAllDiaryEvents	c EEE0	68
+deleteDiaryEvent	c EF24	162
+createDiaryEvent	c EFC6	84
+prompt	c F01A	12
+respondI	c F026	44
+respondUL	c F052	48
+respondT	c F082	44
+parseCommand	c F0AE	1228
+	s F57A	4
+	s F57E	6
+	s F584	4
+	s F588	4
+	s F58C	6
+	s F592	8
+	s F59A	6
+	s F5A0	6
+	s F5A6	6
+	s F5AC	6
+	s F5B2	6
+	s F5B8	8
+setVcc	c F5C0	100
+displayTime	c F624	370
+displayEvent	c F796	364
+nextSecond	c F902	64
+displayEventOneHour	c F942	36
+rearmVCCSense	c F966	44
+rearmBeepOff	c F992	44
+buttonPressed	c F9BE	196
+computeVcc	c FA82	68
+PORT1_ISR_HOOK	c FAC6	58
+ADC10_ISR_HOOK	c FB00	30
+USCI0RX_ISR_HOOK	c FB1E	18
+TIMER0_A0_ISR_HOOK	c FB30	16
+TIMER0_A1_ISR_HOOK	c FB40	38
+sendEvents	c FB66	118
+doDSTEvent	c FBDC	38
+module body	c FC02	896
+vector table	v	64
+codeexe	 E84A
+

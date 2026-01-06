@@ -145,7 +145,7 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
   END EmitWord;
 
   PROCEDURE padFlash; (*align flash allocatopn address a on word size boundary*)
-  BEGIN WHILE Flash.allocPtr MOD G.WordSize # 0 DO EmitByte(0) END
+  BEGIN WHILE (res = noerr) & (Flash.allocPtr MOD G.WordSize # 0) DO EmitByte(0) END
   END padFlash;
 
   PROCEDURE MakeFileName(VAR FName: ARRAY OF CHAR; name, ext: ARRAY OF CHAR);
@@ -277,68 +277,68 @@ MODULE OMSPL;  (*Oberon linker for MSP430 / AP 6.8.20 / CS 27.11.2025*)
         IF mod.codeseg = 1 THEN (*execute in RAM*) mod.codeexe := RAMAllocPtr; INC(RAMAllocPtr, mod.flashsize)
         ELSE mod.codeexe := Flash.origin + mod.flashsto
         END;
-        (*compute effective address*)
-        FOR i := 0 TO nofsecs - 1 DO
-          IF i MOD 32 IN mm.refm[i DIV 32] THEN (*adjust address of the section if referenced*)
-            Texts.WriteString(MW, sec[i].name); Texts.Write(MW, 09X);
-            ch := sec[i].segment; Texts.Write(MW, ch);
-            IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
-              DEC(sec[i].eadr, mod.flashsto - mod.codeexe)
-            END; 
-            IF ch # "v" THEN Texts.WriteHexVLen(MW, sec[i].eadr, 4, FALSE) END; Texts.Write(MW, 09X);
-            Texts.WriteInt(MW, sec[i].size, 1); Texts.WriteLn(MW)
-          END
-        END;
-
-        Texts.WriteString(MW, "codeexe"); Texts.Write(MW, 09X); 
-        Texts.WriteHexVLen(MW, mod.codeexe, 4, FALSE); Texts.WriteLn(MW);
-        (*second pass: fixup addresses*)
-        Files.Set(R, Files.Base(R), secfpos); (*rewind rider to beginning of sections list*)
-        no := 0; Files.Read(R, ch);
-        WHILE ch # 0X DO (*go to fixup data*)
-          keep := no MOD 32 IN mm.refm[no DIV 32]; (*fixup the section dependencies if referenced*)
-          Files.ReadString(R, name1); Files.ReadHalfWord(R, k);
-          IF (ch = "c") OR (ch = "d") OR (ch = "s") OR (ch = "v") THEN
-            FOR i := 0 TO k - 1 DO Files.ReadByte(R, mno) END (*skip content*)
+        IF res = noerr THEN
+          (*compute effective address*)
+          FOR i := 0 TO nofsecs - 1 DO
+            IF i MOD 32 IN mm.refm[i DIV 32] THEN (*adjust address of the section if referenced*)
+              Texts.WriteString(MW, sec[i].name); Texts.Write(MW, 09X);
+              ch := sec[i].segment; Texts.Write(MW, ch);
+              IF (ch = "c") OR (ch = "d") OR (ch = "s") THEN (*in flash memory*)
+                DEC(sec[i].eadr, mod.flashsto - mod.codeexe)
+              END; 
+              IF ch # "v" THEN Texts.WriteHexVLen(MW, sec[i].eadr, 4, FALSE) END; Texts.Write(MW, 09X);
+              Texts.WriteInt(MW, sec[i].size, 1); Texts.WriteLn(MW)
+            END
           END;
-          Files.ReadHalfWord(R, adr); (*entering fixup data*)
-          WHILE adr # 0 DO
-            Files.ReadByte(R, mno); Files.ReadHalfWord(R, sno); Files.ReadHalfWord(R, ofs);
-            Files.ReadByte(R, mnor); Files.ReadHalfWord(R, snor);
-            IF keep THEN
-              IF mno = 0 THEN dest := sec[sno].eadr ELSE dest := import[mno - 1].ent[sno] END;
-              INC(dest, ofs); (*dest contains now the effective address*)
-              IF mnor # 0FFH THEN
-                IF mnor = 0 THEN DEC(dest, sec[snor].eadr) ELSE DEC(dest, import[mnor - 1].ent[snor]) END
-              END;
-              IF ch = "v" THEN (*vector table*)
-                REPEAT i := (adr - 1) DIV 2;
-                  IF vector[i] # 0FFFFH THEN
-                    Texts.WriteString(W, "interrupt vector number"); Texts.WriteInt(W, i, 3); error(duphandler, name1)
-                  END;
-                  vector[i] := dest; adr := vec[i]
-                UNTIL adr = 0;
-              ELSE l := sec[no].eadr; IF ch # "r" THEN DEC(l, mod.codeexe - mod.flashsto) END;
-                REPEAT k := GetWordAt(l + adr - 1); PutWordAt(l + adr - 1, dest); adr := k UNTIL adr = 0
-              END
+          Texts.WriteString(MW, "codeexe"); Texts.Write(MW, 09X); 
+          Texts.WriteHexVLen(MW, mod.codeexe, 4, FALSE); Texts.WriteLn(MW);
+          (*second pass: fixup addresses*)
+          Files.Set(R, Files.Base(R), secfpos); (*rewind rider to beginning of sections list*)
+          no := 0; Files.Read(R, ch);
+          WHILE ch # 0X DO (*go to fixup data*)
+            keep := no MOD 32 IN mm.refm[no DIV 32]; (*fixup the section dependencies if referenced*)
+            Files.ReadString(R, name1); Files.ReadHalfWord(R, k);
+            IF (ch = "c") OR (ch = "d") OR (ch = "s") OR (ch = "v") THEN
+              FOR i := 0 TO k - 1 DO Files.ReadByte(R, mno) END (*skip content*)
             END;
-            Files.ReadHalfWord(R, adr)
+            Files.ReadHalfWord(R, adr); (*entering fixup data*)
+            WHILE adr # 0 DO
+              Files.ReadByte(R, mno); Files.ReadHalfWord(R, sno); Files.ReadHalfWord(R, ofs);
+              Files.ReadByte(R, mnor); Files.ReadHalfWord(R, snor);
+              IF keep THEN
+                IF mno = 0 THEN dest := sec[sno].eadr ELSE dest := import[mno - 1].ent[sno] END;
+                INC(dest, ofs); (*dest contains now the effective address*)
+                IF mnor # 0FFH THEN
+                  IF mnor = 0 THEN DEC(dest, sec[snor].eadr) ELSE DEC(dest, import[mnor - 1].ent[snor]) END
+                END;
+                IF ch = "v" THEN (*vector table*)
+                  REPEAT i := (adr - 1) DIV 2;
+                    IF vector[i] # 0FFFFH THEN
+                      Texts.WriteString(W, "interrupt vector number"); Texts.WriteInt(W, i, 3); error(duphandler, name1)
+                    END;
+                    vector[i] := dest; adr := vec[i]
+                  UNTIL adr = 0;
+                ELSE l := sec[no].eadr; IF ch # "r" THEN DEC(l, mod.codeexe - mod.flashsto) END;
+                  REPEAT k := GetWordAt(l + adr - 1); PutWordAt(l + adr - 1, dest); adr := k UNTIL adr = 0
+                END
+              END;
+              Files.ReadHalfWord(R, adr)
+            END;
+            INC(no); Files.Read(R, ch)
           END;
-          INC(no); Files.Read(R, ch)
-        END;
-        Files.ReadHalfWord(R, k); (*number of entries*)
-        FOR i := 0 TO k - 1 DO Files.ReadHalfWord(R, sno);
-          mod.ent[i] := sec[sno].eadr
-        END;
-        IF GetWordAt(mod.ent[0] - mod.codeexe + mod.flashsto) = 4130H THEN (*module init is empty*)
-          DEC(mod.flashsize, 2); mod.ent[0] := -1; (*mark init address as invalid*)
-          IF mod.codeseg = 1 THEN DEC(RAMAllocPtr, 2) END;
-          DEC(Flash.allocPtr, 2)
-        END;
-
-        Files.Read(R, ch);
-        IF ch # "O" THEN mod := NIL; error(badfile, name) END
-      END ;
+          Files.ReadHalfWord(R, k); (*number of entries*)
+          FOR i := 0 TO k - 1 DO Files.ReadHalfWord(R, sno);
+            mod.ent[i] := sec[sno].eadr
+          END;
+          IF GetWordAt(mod.ent[0] - mod.codeexe + mod.flashsto) = 4130H THEN (*module init is empty*)
+            DEC(mod.flashsize, 2); mod.ent[0] := -1; (*mark init address as invalid*)
+            IF mod.codeseg = 1 THEN DEC(RAMAllocPtr, 2) END;
+            DEC(Flash.allocPtr, 2)
+          END;
+          Files.Read(R, ch);
+          IF ch # "O" THEN mod := NIL; error(badfile, name) END
+        END
+      END;
       IF res >= badkey THEN importing := name END;
       Texts.WriteLn(MW)
     END;

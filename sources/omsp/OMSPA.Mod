@@ -21,14 +21,17 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   (*Addressing mode names*)
     Register* = 0; Indexed* = 1; Symbolic* = 2; Absolute* = 3; Indirect* = 4;
-    IndirectIncr* = 5; Immediate* = 6; Immediate2* = 7; Undefined* = 255;
+    IndirectIncr* = 5; Immediate* = 6; Undefined* = 255;
 
   (*Instruction size*)
     Byte* = {6}; Word* = {}; 
 
+  (*Emit offset flag*)
+    EmitOffset* = {16};
+
   (* opcodes *)
   (*Jump*)
-  JMPh* = 20H;
+    JMPh* = 20H;
   
   (*double operands*)
   (*|0100|*) MOV* = 4; (*hardware native operations*)
@@ -119,13 +122,14 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   BEGIN
     IF sam = Register THEN ASSERT(SReg # CG2); params := params + Rm
     ELSIF sam = Indexed THEN ASSERT(~(SReg IN {PC, SR, CG2}));
-      IF SOff # 0 THEN params := params + Im; emitSOff := TRUE ELSE params := params + IRm END
+      IF (EmitOffset*params # {}) OR (SOff # 0) THEN params := params + Im; emitSOff := TRUE ELSE params := params + IRm END
     ELSIF sam = Symbolic THEN SReg := PC; params := params + Im; emitSOff := TRUE
     ELSIF sam = Absolute THEN SReg := SR; params := params + Im; emitSOff := TRUE
     ELSIF sam = Indirect THEN ASSERT(~(SReg IN {SR, CG2})); params := params + IRm
     ELSIF sam = IndirectIncr THEN ASSERT(~(SReg IN {SR, CG2})); params := params + IRAm
-    ELSIF sam = Immediate THEN 
-      IF (SOff = 4) & (op # PUSH) (*W/A CPU4 errata*) THEN SReg := CG1; params := params + IRm
+    ELSIF sam = Immediate THEN
+      IF EmitOffset*params # {} THEN SReg := PC; params := params + IRAm; emitSOff := TRUE (*don't use constant generator*)
+      ELSIF (SOff = 4) & (op # PUSH) (*W/A CPU4 errata*) THEN SReg := CG1; params := params + IRm
       ELSIF (SOff = 8) & (op # PUSH) THEN SReg := CG1; params := params + IRAm
       ELSIF SOff = 0 THEN SReg := CG2; params := params + Rm
       ELSIF SOff = 1 THEN SReg := CG2; params := params + Im
@@ -135,7 +139,6 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       ELSIF (op = SUB) & (SOff < -1) THEN op := ADD; SOff := -SOff; encSrc(op, SReg, sam, SOff, emitSOff, params)
       ELSE SReg := PC; params := params + IRAm; emitSOff := TRUE
       END
-    ELSIF sam = Immediate2 THEN SReg := PC; params := params + IRAm; emitSOff := TRUE (*don't use constant generator*)
     ELSE S.DebugHex("encSrc sam", sam); ASSERT(FALSE)
     END;
   END encSrc;
@@ -156,7 +159,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   PROCEDURE PutDO*(VAR c: ModuleCode; op: INTEGER; s, d: Item; params: SET);
     VAR emitSOff, emitDOff: BOOLEAN; t, ts, td: Item;
       e: INTEGER;
-  BEGIN (*emit format I instruction*) ASSERT(params = params*Byte); emitSOff := FALSE; emitDOff := FALSE;
+  BEGIN (*emit format I instruction*) ASSERT(params - (Byte+EmitOffset) = {}); emitSOff := FALSE; emitDOff := FALSE;
     ts := s; td := d;
     IF op = MUL THEN 
       IF s.am = Immediate THEN ASSERT(s.ofs < ORD({16}));
@@ -216,7 +219,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
 
   PROCEDURE PutSO*(VAR c: ModuleCode; op: INTEGER; ds: Item; params: SET);
     VAR emitDSOff: BOOLEAN; spi, t, tds: Item;
-  BEGIN (*emit format II instruction*) ASSERT(params = params*Byte);
+  BEGIN (*emit format II instruction*) ASSERT(params - (Byte+EmitOffset) = {});
     tds := ds;
     emitDSOff := FALSE; spi.reg := SP; spi.am := IndirectIncr; spi.ofs := 0;
     IF op = POP THEN PutDO(c, MOV, spi, ds, Word) (*emulation*)
