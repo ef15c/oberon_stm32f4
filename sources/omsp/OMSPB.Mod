@@ -204,7 +204,7 @@ MODULE OMSPB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           NEW(par); par.class := class; Read(R, tmp); par.rdo := tmp = 1; Files.ReadByte(R, par.register);
           InType(R, thismod, par.type); par.next := obj; obj := par; INC(np); Read(R, class)
         END ;
-        t.dsc := obj; t.nofpar := np; t.size := 0;
+        t.dsc := obj; t.nofpar := np; t.size := 2;
       END ;
       Files.ReadString(R, modname);
       IF modname[0] #  0X THEN  (*re-import ========*)

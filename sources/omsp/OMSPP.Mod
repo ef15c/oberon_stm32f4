@@ -835,7 +835,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       NEW(type); type.form := B.Proc; dmy := 0;
       type.ur := {4..15}; (*all non saved registers can be destroyed for dynamic procedures*)
       IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); type.ur := type.ur - TOSET(sr.a) END;
-      ProcedureType(type, dmy); type.dsc := B.topScope.next; InsertResultRegister(type); B.CloseScope
+      ProcedureType(type, dmy); type.dsc := B.topScope.next; InsertResultRegister(type); B.CloseScope; type.size := G.WordSize
     ELSE S.Mark("illegal type")
     END
   END Type0;

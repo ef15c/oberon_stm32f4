@@ -484,17 +484,18 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN t := c0;
     IF ~x.ptr THEN x.ptr := TRUE;
       IF x.mode = B.Par THEN x.mode := B.Var;
-        IF x.b # 0 THEN t.a := x.b; x.type := B.intType; PutDO(A.ADD, t, x) END
+        IF x.b # 0 THEN t.a := x.b; PutDO(A.ADD, t, x) END
       ELSIF x.mode = B.Var THEN
         IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE); x.mode := Reg; x.reg := A.SP; x.rdo := TRUE;
-          IF x.a + frame # 0 THEN t.a := x.a + frame; x.type := B.intType; PutDO(A.ADD, t, x) END
+          IF x.a + frame # 0 THEN t.a := x.a + frame; PutDO(A.ADD, t, x) END
         ELSE (*global or imported*) x.mode := B.Const; x.ladr := TRUE;
         END
-      ELSIF x.mode = RegI THEN x.mode := Reg; x.type := B.intType; x.rdo := FALSE;
+      ELSIF x.mode = RegI THEN x.mode := Reg; x.rdo := FALSE;
         IF x.a # 0 THEN t.ladr := x.ladr; t.a := x.a; PutDO(A.ADD, t, x); x.ladr := FALSE END
       ELSIF ~(x.mode IN {B.Var, B.StoredConst, Absol}) THEN S.Mark("not addressable")
       END
-    END
+    END;
+    x.type := B.intType
 (*
     VAR t!: Item;
   BEGIN t.mode := B.Const; t.type := B.intType; t.obj := NIL;
@@ -1060,7 +1061,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = B.StoredConst THEN ASSERT(x.c = 0);
       s := GetSection(x.a); adr := x.b + 1; val := UpdateChain(s, adr, y.a, y);
       IF y.mode = B.Const THEN
-        IF y.type.form IN {B.Bool, B.Int, B.Set, B.Pointer, B.NilTyp} THEN StoreConstInt(s.org + x.b, x.type.size, val)
+        IF y.type.form IN {B.Bool, B.Int, B.Proc, B.Set, B.Pointer, B.NilTyp} THEN StoreConstInt(s.org + x.b, x.type.size, val)
         ELSE (* TODO*) S.Mark("not implemented"); S.DebugHex("form", y.type.form);
         END
       ELSIF y.mode = Absol THEN StoreConstInt(adr, x.type.size, val)
@@ -1459,9 +1460,9 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Val*(VAR x: Item; t: B.Type);
   BEGIN (*if x is integer constant, set x.c to 1 indication that address is known at compile time*)
-    IF (t.form = B.Proc) THEN
+(*    IF (t.form = B.Proc) THEN
       IF (x.mode = B.Const) & (x.type.form IN {B.Int, B.Pointer}) THEN x.c := 1 ELSE S.Mark("not allowed") END
-    END
+    END*)
   END Val;
 
   PROCEDURE Open*;

@@ -31,6 +31,11 @@ END MSPFlash.
 
 OMSPP.Compile MSPFlash.Mod~
 
+OMSPTool.DecSym MSPFlash.sms
+decode MSPFlash.sms
+MSPFlash 6F801689  3
+   9 flashBlock [0  form = 10 [^9] leaf UR 00F0( class = 2 R6 [^4] class = 2 R5 [^7] class = 2 R4 [^7])]     1
+
 OMSPTool.DecObj MSPFlash.mpc
 decode MSPFlash.mpc
 MSPFlash 6F801689

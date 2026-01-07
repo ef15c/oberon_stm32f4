@@ -1,9 +1,12 @@
 MODULE preserveMSPFlash;
   IMPORT  SYSTEM, MSPFlashTypes;
 (*import this module before any else if you want to use the flashBlock procedure
-   provided by the bootloader*)
+   provided by the bootloader at adress 200H*)
 
-  CONST flashBlock* = SYSTEM.VAL(MSPFlashTypes.flashBlockType, 200H);
-  VAR dummy*: ARRAY 96 OF BYTE; (*protect the flashBlock function installed in RAM from overwiting*)
+  VAR flashBlock*: MSPFlashTypes.flashBlockType-; dummy: ARRAY 96 OF BYTE; (*protect the flashBlock function installed in RAM from overwiting*)
 
+BEGIN flashBlock := SYSTEM.VAL(MSPFlashTypes.flashBlockType, SYSTEM.ADR(dummy));
 END preserveMSPFlash.
+
+OMSPP.Compile preserveMSPFlash.Mod/s~
+OMSPTool.DecSym preserveMSPFlash.sms
