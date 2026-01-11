@@ -76,13 +76,13 @@ MODULE pcd8544;
       00 00 02 01 00      00 80 40 00 00      7E 43 43 7E 00      7E 73 73 7E 00
       7E 7F 7F 7E 00      20 3C 7E 3C 20$;
 
-  TYPE Callback = PROCEDURE {4..15};
+  TYPE Callback = PROCEDURE {4..15}; SendDataProc = PROCEDURE {5..15} (d: BYTE* );
 
   VAR (*Store LCD state cannot be queried from the device, so must be memorized*)
     XAddr*, YAddr*, Vop*: BYTE; FunctionSet*: BYTESET; composeChar: CHAR;
-    select, deselect, setData, setCommand: Callback;
+    select, deselect, setData, setCommand: Callback; sendD: SendDataProc;
 
-  PROCEDURE doSend(d: SET* );
+  PROCEDURE track(d: SET* );
   (*do the real job*)
   BEGIN (*Memorize state of LCD screen*)
     IF d*FUNCTION_SET_MASK = FUNCTION_SET THEN FunctionSet := d
@@ -93,9 +93,6 @@ MODULE pcd8544;
     ELSIF BIT(FunctionSet, H) & (d*SET_VOP_MASK = SET_VOP) THEN
       Vop := ORD(d*(SET_VOP_MASK/INVERT))
     END;
-    REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (*Wait for USCI availability*)
-    M.UCA0TXBUF^ := ORD(d); (*USCI A is ready, send character*)
-    REPEAT UNTIL ~BIT(M.UCA0STAT^, M.UCBUSY); (*Wait for end of transmission*)
     IF DATA IN d THEN (*Send data : need to update X and Y addresses*)
       IF  BIT(FunctionSet, V) THEN INC(YAddr); (*One bank down to the bottom*)
         IF YAddr >= VBANKS THEN YAddr := 0; INC(XAddr); (*One row to the right*)
@@ -107,13 +104,13 @@ MODULE pcd8544;
         END
       END
     END;
-  END doSend;
+  END track;
 
   PROCEDURE send*(d: SET);
   (*send a command or data to LCD*)
   BEGIN select; (*Select LCD for SPI communication*)
     IF DATA IN d THEN setData ELSE setCommand END; (*Set Data/Command line for Nokia 5110 LCD*)
-    doSend(d);
+    track(d); sendD(ORD(d));
     deselect (*Deselect LCD for SPI communication*)
   END send;
 
@@ -125,8 +122,8 @@ MODULE pcd8544;
     IF car > 7EX (*Load accent in compose character*) THEN composeChar := car
     ELSE
       FOR i := 0 TO 4 DO (*Compose character with accent and send it to LCD*)
-        column := TOSET(ORD(font[i + (ORD(car) - 20H)*GLYPH_WIDTH]));
-        IF composeChar # 0X THEN BIS(column, composeFont[i + (ORD(composeChar) - 7FH)*GLYPH_WIDTH]) END;
+        column := TOSET(ORD(font[i + (0 + ORD(car) - 20H)*GLYPH_WIDTH]));
+        IF composeChar # 0X THEN BIS(column, composeFont[i + (0 + ORD(composeChar) - 7FH)*GLYPH_WIDTH]) END;
         send({DATA} + column);
       END; send({DATA}); (*Space between characters*) composeChar := 0X
     END
@@ -161,8 +158,8 @@ MODULE pcd8544;
   PROCEDURE Init*;
   BEGIN send(FUNCTION_SET + H); (* function set PD = 0 and V = 0, select extended instruction set (H = 1 mode) *)
     Delay.CyclesX3(10);
-    send(TEMP_CONTROL); (*set TC = 00 *) send(BIAS_SYSTEM + TOSET(3)); (*set BS = 011*)
-    send(SET_VOP +  TOSET(3AH)); (* set VOP =  a+58 x b [V]*)
+    send(TEMP_CONTROL + TOSET(2)); (*set TC = 10 *) send(BIAS_SYSTEM + TOSET(3)); (*set BS = 011*)
+    send(SET_VOP +  TOSET(70)); (* set VOP =  a+70 x b [V]*)
     send(FUNCTION_SET); (*select normal instruction set (H = 0 mode)*)
     send(DISPLAY_CONTROL + {D}); (*display control set normal mode (D = 1 and E = 0)*)
   END Init;
@@ -181,20 +178,21 @@ MODULE pcd8544;
      * nbc : number of digits to output
      * pad : padding character*)
     VAR str: ARRAY 12 OF CHAR;
-  BEGIN SetAddr(6*nx, ny); String.FromLong(th, tl, nbc, str); WriteString(str)
+  BEGIN SetAddr(6*nx, ny); String.FromLong(th, tl, nbc, pad, str); WriteString(str)
   END WriteLongint;
 
-  PROCEDURE setCallbacks*(sel, desel, setD, setC: Callback* );
-  BEGIN select := sel; deselect := desel; setData := setD; setCommand := setC
+  PROCEDURE setCallbacks*(sel, desel, setD, setC: Callback*; send: SendDataProc* );
+  BEGIN select := sel; deselect := desel; setData := setD; setCommand := setC; sendD := send;
   END setCallbacks;
 
 BEGIN XAddr := 0; YAddr := 0; Vop := 0; FunctionSet := FUNCTION_SET + PD; composeChar := 0X
 END pcd8544.
 
 OMSPP.Compile pcd8544.Mod/s~
+
 OMSPTool.DecSym pcd8544.sms
 decode pcd8544.sms
-pcd8544 9F8FAE37  3
+pcd8544 139EDDCB  3
    1 NOp [^6]       0
    1 NOP_MASK [^6]     511
    1 FUNCTION_SET [^6]      32
@@ -223,20 +221,20 @@ pcd8544 9F8FAE37  3
    9 send [0  form = 10 [^9] UR 0030( class = 2 [^6])]     5
    9 WriteChar [0  form = 10 [^9] UR C030( class = 2 [^3])]     6
    9 WriteString [0  form = 10 [^9] UR C030( class = 3# [0  form = 12 [^3]  len = -1  size = 4])]     7
-   9 SetAddr [0  form = 10 [^9] UR 8030( class = 2 [^1] class = 2 [^1])]     8
+   9 SetAddr [0  form = 10 [^9] UR C030( class = 2 [^1] class = 2 [^1])]     8
    9 GetAddr [0  form = 10 [^9] leaf UR 0030( class = 3 R5 [^1] class = 3 R4 [^1])]     9
-   9 Clear [0  form = 10 [^9] UR 8030()]    10
+   9 Clear [0  form = 10 [^9] UR C030()]    10
    9 Init [0  form = 10 [^9] UR 0030()]    11
    9 SetVop [0  form = 10 [^9] UR C030( class = 2 [^4])]    12
    9 WriteLongint [0  form = 10 [^9] UR DFF0( class = 2 [^3] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4])]    13
-   9 setCallbacks [0  form = 10 [^9] leaf UR 00F0( class = 2 R7 [19  form = 10 [^9] UR 0000()] class = 2 R6 [^19] class = 2 R5 [^19] class = 2 R4 [^19])]    14
+   9 setCallbacks [0  form = 10 [^9] leaf UR 01F0( class = 2 R8 [19  form = 10 [^9] leaf UR 0010( class = 2 R4 [^1])] class = 2 R7 [20  form = 10 [^9] UR 0000()] class = 2 R6 [^20] class = 2 R5 [^20] class = 2 R4 [^20])]    14
 
 OMSPTool.DecObj pcd8544.mpc
 decode pcd8544.mpc
-pcd8544 9F8FAE37
+pcd8544 139EDDCB
 imports:
 	msp430g2553 BBD31A01
-	String 6528ABA7
+	String 938D3CFC
 	msp430delay AAE4F156
 
 section     0	s  476	
@@ -274,7 +272,10 @@ fixups:
 section    10	r    2	setCommand
 fixups:
 
-section    11	c  202	doSend
+section    11	r    2	sendD
+fixups:
+
+section    12	c  186	track
  0000	     4405	MOV R4,R5
  0002	     F035	AND #504,R5
  0004	     01F8
@@ -328,61 +329,53 @@ section    11	c  202	doSend
  0064	     007F
  0066	     45C2	MOV.B R5,&0
  0068	     0000
- 006A	     B3E2	BIT.B #2,&3
- 006C	     0003
- 006E	     27FD	JEQ $-4, goes to  006A
- 0070	     44C2	MOV.B R4,&103
- 0072	     0067
- 0074	     B3D2	BIT.B #1,&101
- 0076	     0065
- 0078	     23FD	JNE $-4, goes to  0074
- 007A	     B034	BIT #256,R4
- 007C	     0100
- 007E	     2424	JEQ $+74, goes to  00C8
- 0080	     B3E2	BIT.B #2,&81
- 0082	     0051
- 0084	     2411	JEQ $+36, goes to  00A8
- 0086	     53D2	ADD.B #1,&45
- 0088	     002D
- 008A	     90F2	CMP.B #6,&137
- 008C	     0006
+ 006A	     B034	BIT #256,R4
+ 006C	     0100
+ 006E	     2424	JEQ $+74, goes to  00B8
+ 0070	     B3E2	BIT.B #2,&81
+ 0072	     0051
+ 0074	     2411	JEQ $+36, goes to  0098
+ 0076	     53D2	ADD.B #1,&45
+ 0078	     002D
+ 007A	     90F2	CMP.B #6,&121
+ 007C	     0006
+ 007E	     0079
+ 0080	     280A	JNC $+22, goes to  0096
+ 0082	     43C2	MOV.B #0,&127
+ 0084	     007F
+ 0086	     53D2	ADD.B #1,&75
+ 0088	     004B
+ 008A	     90F2	CMP.B #84,&137
+ 008C	     0054
  008E	     0089
- 0090	     280A	JNC $+22, goes to  00A6
+ 0090	     2802	JNC $+6, goes to  0096
  0092	     43C2	MOV.B #0,&143
  0094	     008F
- 0096	     53D2	ADD.B #1,&75
- 0098	     004B
- 009A	     90F2	CMP.B #84,&153
- 009C	     0054
- 009E	     0099
- 00A0	     2802	JNC $+6, goes to  00A6
- 00A2	     43C2	MOV.B #0,&159
- 00A4	     009F
- 00A6	     3C10	JMP $+34, goes to  00C8
- 00A8	     53D2	ADD.B #1,&165
- 00AA	     00A5
- 00AC	     90F2	CMP.B #84,&171
- 00AE	     0054
+ 0096	     3C10	JMP $+34, goes to  00B8
+ 0098	     53D2	ADD.B #1,&149
+ 009A	     0095
+ 009C	     90F2	CMP.B #84,&155
+ 009E	     0054
+ 00A0	     009B
+ 00A2	     280A	JNC $+22, goes to  00B8
+ 00A4	     43C2	MOV.B #0,&161
+ 00A6	     00A1
+ 00A8	     53D2	ADD.B #1,&133
+ 00AA	     0085
+ 00AC	     90F2	CMP.B #6,&171
+ 00AE	     0006
  00B0	     00AB
- 00B2	     280A	JNC $+22, goes to  00C8
+ 00B2	     2802	JNC $+6, goes to  00B8
  00B4	     43C2	MOV.B #0,&177
  00B6	     00B1
- 00B8	     53D2	ADD.B #1,&149
- 00BA	     0095
- 00BC	     90F2	CMP.B #6,&187
- 00BE	     0006
- 00C0	     00BB
- 00C2	     2802	JNC $+6, goes to  00C8
- 00C4	     43C2	MOV.B #0,&193
- 00C6	     00C1
- 00C8	     4130	RET
+ 00B8	     4130	RET
 fixups:
  0069	s0.4
- 00B7	s0.2
- 00C7	s0.3
- 0083	s0.5
+ 00A7	s0.2
+ 00B7	s0.3
+ 0073	s0.5
 
-section    12	c   36	send
+section    13	c   44	send
  0000	     1292	CALL &0
  0002	     0000
  0004	     B0B1	BIT #256,2(SP)
@@ -398,17 +391,22 @@ section    12	c   36	send
  0018	     0002
  001A	     12B0	CALL #0
  001C	     0000
- 001E	     1292	CALL &0
- 0020	     0000
- 0022	     4130	RET
+ 001E	     4114	MOV 2(SP),R4
+ 0020	     0002
+ 0022	     1292	CALL &0
+ 0024	     0000
+ 0026	     1292	CALL &0
+ 0028	     0000
+ 002A	     4130	RET
 fixups:
- 0021	s0.8
- 001D	s0.11
+ 0029	s0.8
+ 0025	s0.11
+ 001D	s0.12
  0015	s0.10
  000F	s0.9
  0003	s0.7
 
-section    13	c  154	WriteChar
+section    14	c  154	WriteChar
  0000	     8221	SUB #4,SP
  0002	     407F	MOV.B #136,R15
  0004	     0088
@@ -438,12 +436,12 @@ section    13	c  154	WriteChar
  0034	     3829	JL $+84, goes to  0088
  0036	     415F	MOV.B 6(SP),R15
  0038	     0006
- 003A	     807F	SUB.B #32,R15
+ 003A	     803F	SUB #32,R15
  003C	     0020
- 003E	     4F4E	MOV.B R15,R14
- 0040	     5E4E	ADD.B R14,R14
- 0042	     5E4E	ADD.B R14,R14
- 0044	     5E4F	ADD.B R14,R15
+ 003E	     4F0E	MOV R15,R14
+ 0040	     5E0E	ADD R14,R14
+ 0042	     5E0E	ADD R14,R14
+ 0044	     5E0F	ADD R14,R15
  0046	     412E	MOV @SP,R14
  0048	     5F0E	ADD R15,R14
  004A	     4ED1	MOV.B 0(R14),2(SP)
@@ -454,12 +452,12 @@ section    13	c  154	WriteChar
  0054	     240D	JEQ $+28, goes to  0070
  0056	     425F	MOV.B &83,R15
  0058	     0053
- 005A	     807F	SUB.B #127,R15
+ 005A	     803F	SUB #127,R15
  005C	     007F
- 005E	     4F4E	MOV.B R15,R14
- 0060	     5E4E	ADD.B R14,R14
- 0062	     5E4E	ADD.B R14,R14
- 0064	     5E4F	ADD.B R14,R15
+ 005E	     4F0E	MOV R15,R14
+ 0060	     5E0E	ADD R14,R14
+ 0062	     5E0E	ADD R14,R14
+ 0064	     5E0F	ADD R14,R15
  0066	     412E	MOV @SP,R14
  0068	     5F0E	ADD R15,R14
  006A	     DED1	BIS.B 0(R14),2(SP)
@@ -487,12 +485,12 @@ section    13	c  154	WriteChar
  0096	     5221	ADD #4,SP
  0098	     4130	RET
 fixups:
- 008F	s0.12
+ 008F	s0.13
  006D	s0.1
  004D	s0.0
  0095	s0.6
 
-section    14	c   42	WriteString
+section    15	c   42	WriteString
  0000	     8321	SUB #2,SP
  0002	     4381	MOV #0,0(SP)
  0004	     0000
@@ -515,9 +513,9 @@ section    14	c   42	WriteString
  0026	     5321	ADD #2,SP
  0028	     4130	RET
 fixups:
- 001D	s0.13
+ 001D	s0.14
 
-section    15	c   78	SetAddr
+section    16	c   82	SetAddr
  0000	     8321	SUB #2,SP
  0002	     42D1	MOV.B &0,0(SP)
  0004	     0000
@@ -530,38 +528,40 @@ section    15	c   78	SetAddr
  0012	     12B0	CALL #0
  0014	     0000
  0016	     5321	ADD #2,SP
- 0018	     403F	MOV #128,R15
- 001A	     0080
- 001C	     D11F	BIS 6(SP),R15
- 001E	     0006
- 0020	     120F	PUSH R15
- 0022	     12B0	CALL #21
- 0024	     0015
- 0026	     5321	ADD #2,SP
- 0028	     403F	MOV #64,R15
- 002A	     0040
- 002C	     D11F	BIS 4(SP),R15
- 002E	     0004
- 0030	     120F	PUSH R15
- 0032	     12B0	CALL #37
- 0034	     0025
- 0036	     5321	ADD #2,SP
- 0038	     92D1	CMP.B &11,0(SP)
- 003A	     000B
- 003C	     0000
- 003E	     2405	JEQ $+12, goes to  004A
- 0040	     416F	MOV.B @SP,R15
- 0042	     120F	PUSH R15
- 0044	     12B0	CALL #53
- 0046	     0035
- 0048	     5321	ADD #2,SP
- 004A	     5321	ADD #2,SP
- 004C	     4130	RET
+ 0018	     415F	MOV.B 6(SP),R15
+ 001A	     0006
+ 001C	     403E	MOV #128,R14
+ 001E	     0080
+ 0020	     DF0E	BIS R15,R14
+ 0022	     120E	PUSH R14
+ 0024	     12B0	CALL #21
+ 0026	     0015
+ 0028	     5321	ADD #2,SP
+ 002A	     415F	MOV.B 4(SP),R15
+ 002C	     0004
+ 002E	     403E	MOV #64,R14
+ 0030	     0040
+ 0032	     DF0E	BIS R15,R14
+ 0034	     120E	PUSH R14
+ 0036	     12B0	CALL #39
+ 0038	     0027
+ 003A	     5321	ADD #2,SP
+ 003C	     92D1	CMP.B &11,0(SP)
+ 003E	     000B
+ 0040	     0000
+ 0042	     2405	JEQ $+12, goes to  004E
+ 0044	     416F	MOV.B @SP,R15
+ 0046	     120F	PUSH R15
+ 0048	     12B0	CALL #57
+ 004A	     0039
+ 004C	     5321	ADD #2,SP
+ 004E	     5321	ADD #2,SP
+ 0050	     4130	RET
 fixups:
- 0047	s0.12
- 003B	s0.5
+ 004B	s0.13
+ 003F	s0.5
 
-section    16	c   14	GetAddr
+section    17	c   14	GetAddr
  0000	     42D4	MOV.B &0,0(R4)
  0002	     0000
  0004	     0000
@@ -573,7 +573,7 @@ fixups:
  0009	s0.3
  0003	s0.2
 
-section    17	c   44	Clear
+section    18	c   44	Clear
  0000	     8321	SUB #2,SP
  0002	     1203	PUSH #0
  0004	     1203	PUSH #0
@@ -597,10 +597,10 @@ section    17	c   44	Clear
  0028	     5321	ADD #2,SP
  002A	     4130	RET
 fixups:
- 001F	s0.12
- 0009	s0.15
+ 001F	s0.13
+ 0009	s0.16
 
-section    18	c   70	Init
+section    19	c   70	Init
  0000	     1230	PUSH #33
  0002	     0021
  0004	     12B0	CALL #0
@@ -610,8 +610,8 @@ section    18	c   70	Init
  000C	     000A
  000E	     12B0	CALL #0
  0010	     0000
- 0012	     1230	PUSH #4
- 0014	     0004
+ 0012	     1230	PUSH #6
+ 0014	     0006
  0016	     12B0	CALL #7
  0018	     0007
  001A	     5321	ADD #2,SP
@@ -620,8 +620,8 @@ section    18	c   70	Init
  0020	     12B0	CALL #25
  0022	     0019
  0024	     5321	ADD #2,SP
- 0026	     1230	PUSH #186
- 0028	     00BA
+ 0026	     1230	PUSH #198
+ 0028	     00C6
  002A	     12B0	CALL #35
  002C	     0023
  002E	     5321	ADD #2,SP
@@ -638,9 +638,9 @@ section    18	c   70	Init
  0044	     4130	RET
 fixups:
  0011	s3.1
- 0041	s0.12
+ 0041	s0.13
 
-section    19	c   68	SetVop
+section    20	c   68	SetVop
  0000	     8321	SUB #2,SP
  0002	     42D1	MOV.B &0,0(SP)
  0004	     0000
@@ -676,10 +676,10 @@ section    19	c   68	SetVop
  0040	     5321	ADD #2,SP
  0042	     4130	RET
 fixups:
- 003D	s0.12
+ 003D	s0.13
  0031	s0.5
 
-section    20	c   80	WriteLongint
+section    21	c   86	WriteLongint
  0000	     8031	SUB #12,SP
  0002	     000C
  0004	     411F	MOV 20(SP),R15
@@ -700,32 +700,35 @@ section    20	c   80	WriteLongint
  0022	     001A
  0024	     1211	PUSH 22(SP)
  0026	     0016
- 0028	     1230	PUSH #12
- 002A	     000C
- 002C	     410F	MOV SP,R15
- 002E	     523F	ADD #8,R15
- 0030	     120F	PUSH R15
- 0032	     12B0	CALL #0
- 0034	     0000
- 0036	     5031	ADD #10,SP
- 0038	     000A
- 003A	     1230	PUSH #12
- 003C	     000C
- 003E	     410F	MOV SP,R15
- 0040	     532F	ADD #2,R15
- 0042	     120F	PUSH R15
- 0044	     12B0	CALL #0
- 0046	     0000
- 0048	     5221	ADD #4,SP
- 004A	     5031	ADD #12,SP
- 004C	     000C
- 004E	     4130	RET
+ 0028	     1251	PUSH.B 22(SP)
+ 002A	     0016
+ 002C	     1230	PUSH #12
+ 002E	     000C
+ 0030	     410F	MOV SP,R15
+ 0032	     503F	ADD #10,R15
+ 0034	     000A
+ 0036	     120F	PUSH R15
+ 0038	     12B0	CALL #0
+ 003A	     0000
+ 003C	     5031	ADD #12,SP
+ 003E	     000C
+ 0040	     1230	PUSH #12
+ 0042	     000C
+ 0044	     410F	MOV SP,R15
+ 0046	     532F	ADD #2,R15
+ 0048	     120F	PUSH R15
+ 004A	     12B0	CALL #0
+ 004C	     0000
+ 004E	     5221	ADD #4,SP
+ 0050	     5031	ADD #12,SP
+ 0052	     000C
+ 0054	     4130	RET
 fixups:
- 0047	s0.14
- 0035	s2.1
- 0019	s0.15
+ 004D	s0.15
+ 003B	s2.1
+ 0019	s0.16
 
-section    21	c   18	setCallbacks
+section    22	c   22	setCallbacks
  0000	     4482	MOV R4,&0
  0002	     0000
  0004	     4582	MOV R5,&0
@@ -734,14 +737,17 @@ section    21	c   18	setCallbacks
  000A	     0000
  000C	     4782	MOV R7,&0
  000E	     0000
- 0010	     4130	RET
+ 0010	     4882	MOV R8,&0
+ 0012	     0000
+ 0014	     4130	RET
 fixups:
+ 0013	s0.11
  000F	s0.10
  000B	s0.9
  0007	s0.8
  0003	s0.7
 
-section    22	c   24	module body
+section    23	c   24	module body
  0000	     43C2	MOV.B #0,&0
  0002	     0000
  0004	     43C2	MOV.B #0,&0
@@ -761,11 +767,11 @@ fixups:
  0007	s0.3
  0003	s0.2
 
-section    23	v   64	vector table
+section    24	v   64	vector table
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
  FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
 fixups:
 
 entries:
-   22    2    3    4    5   12   13   14   15   16
-   17   18   19   20   21
+   23    2    3    4    5   13   14   15   16   17
+   18   19   20   21   22

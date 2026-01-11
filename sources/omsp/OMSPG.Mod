@@ -231,6 +231,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF AllocUp THEN res := r4 ELSE res := r15 END
   END resultRegister;
 
+  PROCEDURE funcResultRegister*(t: B.Type; VAR res: Item);
+  BEGIN
+    IF t.leaf THEN res := r4 ELSE res := r15 END
+  END funcResultRegister;
+
   PROCEDURE CheckRegs*;
   BEGIN IF RIU # VRS THEN S.Mark("Reg Stack"); RIU := VRS END;
     IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;
@@ -372,7 +377,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     pc1 := mcode.pc; A.PutJ(mcode, A.AL, 0);
     A.fix(mcode, pc0, mcode.pc - pc0 - 2); FixLink(x.a); t := c0;
     A.PutDO(mcode, A.MOV, t, x, A.Word);
-    A.fix(mcode, pc1, mcode.pc - pc1 - 2)
+    A.fix(mcode, pc1, mcode.pc - pc1 - 2);
+    x.mode := Reg; x.type := B.intType
   END loadOrdCond;
 
   PROCEDURE setRAO(op: INTEGER; VAR i: Item; dst: BOOLEAN; VAR nba, bwo: SET);
@@ -411,10 +417,17 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     nba := {}; bw := A.Word; setRAO(op, sd, TRUE, nba, bw);
     IF (sd.reg = A.SP) & ((op = A.CALL) & (sd.am = A.Indexed) OR (op = A.PUSH)) THEN
-      INC(sd.ofs, WordSize) (*SP is predrecemented, so the offset is augmented by 2*)
+      IF sd.am = A.Register THEN
+        (*We need to put the value of SP on stack. We cannot use PUSH SP because SP is
+         decremented before writing in memory*)
+        rh.reg := AllocR(); A.PutDO(mcode, A.MOV, sd, rh, A.Word);
+        sd.reg := rh.reg; INCL(nba, rh.reg)
+      ELSE INC(sd.ofs, WordSize) (*SP is predrecemented, so the offset is augmented by 2*)
+      END
     END;
-    IF op = A.PUSH THEN INC(frame, WordSize) ELSIF op = A.POP THEN DEC(frame, WordSize) END;
+    IF op = A.PUSH THEN INC(frame, WordSize) END;
     A.PutSO(mcode, op, sd, bw); freeSet(nba);
+    IF op = A.POP THEN DEC(frame, WordSize) END
   END PutSO;
 
   PROCEDURE PutJ(cond: BYTE; offset: INTEGER);
@@ -465,7 +478,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE load(VAR x: Item; pr: BYTE); (*load item in a temporary register*)
     VAR t!: Item; tptr: BOOLEAN;
   BEGIN IF x.tmp THEN x.rdo := FALSE END;
-    IF (x.mode # Reg) OR ((~x.tmp OR (pr # 0FFH)) & (x.reg # pr)) THEN (*temporary copy needed*)
+    IF x.mode = Cond THEN loadOrdCond(x, pr)
+    ELSIF (x.mode # Reg) OR ((~x.tmp OR (pr # 0FFH)) & (x.reg # pr)) THEN (*temporary copy needed*)
       t := x; free(x); alloc(x, pr); x.mode := Reg; x.tmp := TRUE; x.rdo := FALSE; x.ladr := FALSE;
       tptr := x.ptr; ASSERT(ORD(tptr) < 2); x.ptr := FALSE; PutDO(A.MOV, t, x); x.ptr := tptr;
     END
@@ -483,6 +497,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR t!: Item;
   BEGIN t := c0;
     IF ~x.ptr THEN x.ptr := TRUE;
+      x.type := B.intType;
       IF x.mode = B.Par THEN x.mode := B.Var;
         IF x.b # 0 THEN t.a := x.b; PutDO(A.ADD, t, x) END
       ELSIF x.mode = B.Var THEN
@@ -494,8 +509,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF x.a # 0 THEN t.ladr := x.ladr; t.a := x.a; PutDO(A.ADD, t, x); x.ladr := FALSE END
       ELSIF ~(x.mode IN {B.Var, B.StoredConst, Absol}) THEN S.Mark("not addressable")
       END
-    END;
-    x.type := B.intType
+    END
 (*
     VAR t!: Item;
   BEGIN t.mode := B.Const; t.type := B.intType; t.obj := NIL;
@@ -823,7 +837,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF s # 0 THEN t := c0; t.a := s; rr := sp; PutDO(A.ADD, t, rr); DEC(frame, s) END;
     IF x.type.base.form = B.NoTyp THEN (*procedure*) RIU := VRS; SetAllocationMode(am)
     ELSE (*function*)
-      x.tmp := TRUE; x.mode := Reg; x.ladr := FALSE; x.ptr := FALSE; resultRegister(rr); x.reg := rr.reg; x.am := A.Register;
+      x.tmp := TRUE; x.mode := Reg; x.ladr := FALSE; x.ptr := FALSE; funcResultRegister(x.type, rr); x.reg := rr.reg; x.am := A.Register;
       RIU := r; SetAllocationMode(am);
       IF rr.reg IN RIU THEN x.tmp := FALSE; load(x, 0FFH) (*move result in a free register*)
       ELSE INCL(RIU, rr.reg)
@@ -1395,7 +1409,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Odd;
 
   PROCEDURE Ord*(VAR x: Item);
-  BEGIN
+  BEGIN IF x.mode = Cond THEN load(x, 0FFH) END
   END Ord;
 
   PROCEDURE Len*(VAR x: Item);

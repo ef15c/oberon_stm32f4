@@ -160,7 +160,7 @@ END bootloader.
 OMSPP.Compile MSPFlash.Mod/s bootloader.Mod/s~
 OMSPL.Link 32 4000H 200H bootloader~
   linking msp430g2553 MSPFlash* Types msp430delay bootloader
-    flash  982, data  166, stack  346 bytes
+    flash  980, data  166, stack  346 bytes
 
 OMSPTool.DecObj bootloader.mpc
 decode bootloader.mpc
@@ -415,7 +415,7 @@ fixups:
  0037	s0.16
  0033	s0.2
 
-section    22	c  522	module body
+section    22	c  520	module body
  0000	     40B2	MOV #23168,&288
  0002	     5A80
  0004	     0120
@@ -433,7 +433,7 @@ section    22	c  522	module body
  001C	     2003	JNE $+8, goes to  0024
  001E	     B2F2	BIT.B #8,&32
  0020	     0020
- 0022	     20ED	JNE $+476, goes to  01FE
+ 0022	     20EC	JNE $+474, goes to  01FC
  0024	     40B2	MOV #-23189,&298
  0026	     A56B
  0028	     012A
@@ -542,14 +542,14 @@ section    22	c  522	module body
  00F6	     3FED	JMP $-36, goes to  00D2
  00F8	     12B0	CALL #0
  00FA	     0000
- 00FC	     3C77	JMP $+240, goes to  01EC
+ 00FC	     3C76	JMP $+238, goes to  01EA
  00FE	     90F2	CMP.B #105,&187
  0100	     0069
  0102	     00BB
  0104	     2003	JNE $+8, goes to  010C
  0106	     12B0	CALL #167
  0108	     00A7
- 010A	     3C70	JMP $+226, goes to  01EC
+ 010A	     3C6F	JMP $+224, goes to  01EA
  010C	     90F2	CMP.B #64,&259
  010E	     0040
  0110	     0103
@@ -566,7 +566,7 @@ section    22	c  522	module body
  0126	     00ED
  0128	     12B0	CALL #251
  012A	     00FB
- 012C	     3C5F	JMP $+192, goes to  01EC
+ 012C	     3C5E	JMP $+190, goes to  01EA
  012E	     90F2	CMP.B #114,&273
  0130	     0072
  0132	     0111
@@ -611,7 +611,7 @@ section    22	c  522	module body
  0180	     8392	SUB #1,&325
  0182	     0145
  0184	     3FDD	JMP $-68, goes to  0140
- 0186	     3C32	JMP $+102, goes to  01EC
+ 0186	     3C31	JMP $+100, goes to  01EA
  0188	     90F2	CMP.B #113,&307
  018A	     0071
  018C	     0133
@@ -620,67 +620,66 @@ section    22	c  522	module body
  0192	     0117
  0194	     4382	MOV #0,&296
  0196	     0128
- 0198	     3C29	JMP $+84, goes to  01EC
+ 0198	     3C28	JMP $+82, goes to  01EA
  019A	     90F2	CMP.B #13,&397
  019C	     000D
  019E	     018D
- 01A0	     2425	JEQ $+76, goes to  01EC
+ 01A0	     2424	JEQ $+74, goes to  01EA
  01A2	     90F2	CMP.B #10,&415
  01A4	     000A
  01A6	     019F
- 01A8	     2421	JEQ $+68, goes to  01EC
+ 01A8	     2420	JEQ $+66, goes to  01EA
  01AA	     4255	MOV.B &423,R5
  01AC	     01A7
  01AE	     12B0	CALL #0
  01B0	     0000
- 01B2	     440F	MOV R4,R15
- 01B4	     5F0F	ADD R15,R15
- 01B6	     5F0F	ADD R15,R15
- 01B8	     5F0F	ADD R15,R15
- 01BA	     5F0F	ADD R15,R15
- 01BC	     4FC2	MOV.B R15,&0
- 01BE	     0000
- 01C0	     12B0	CALL #181
- 01C2	     00B5
- 01C4	     4255	MOV.B &429,R5
- 01C6	     01AD
- 01C8	     12B0	CALL #433
- 01CA	     01B1
- 01CC	     54C2	ADD.B R4,&447
- 01CE	     01BF
- 01D0	     1252	PUSH.B &463
- 01D2	     01CF
- 01D4	     12B0	CALL #0
- 01D6	     0000
- 01D8	     5321	ADD #2,SP
- 01DA	     12B0	CALL #451
- 01DC	     01C3
- 01DE	     90F2	CMP.B #32,&455
- 01E0	     0020
- 01E2	     01C7
- 01E4	     2002	JNE $+6, goes to  01EA
- 01E6	     12B0	CALL #477
- 01E8	     01DD
- 01EA	     3FD7	JMP $-80, goes to  019A
- 01EC	     12B0	CALL #489
- 01EE	     01E9
- 01F0	     90F2	CMP.B #10,&483
- 01F2	     000A
- 01F4	     01E3
- 01F6	     2002	JNE $+6, goes to  01FC
- 01F8	     12B0	CALL #495
- 01FA	     01EF
- 01FC	     3F5C	JMP $-326, goes to  00B6
- 01FE	     1212	PUSH &65506
- 0200	     FFE2
- 0202	     1291	CALL 2(SP)
- 0204	     0002
- 0206	     5321	ADD #2,SP
- 0208	     4130	RET
+ 01B2	     5404	ADD R4,R4
+ 01B4	     5404	ADD R4,R4
+ 01B6	     5404	ADD R4,R4
+ 01B8	     5404	ADD R4,R4
+ 01BA	     44C2	MOV.B R4,&0
+ 01BC	     0000
+ 01BE	     12B0	CALL #181
+ 01C0	     00B5
+ 01C2	     4255	MOV.B &429,R5
+ 01C4	     01AD
+ 01C6	     12B0	CALL #433
+ 01C8	     01B1
+ 01CA	     54C2	ADD.B R4,&445
+ 01CC	     01BD
+ 01CE	     1252	PUSH.B &461
+ 01D0	     01CD
+ 01D2	     12B0	CALL #0
+ 01D4	     0000
+ 01D6	     5321	ADD #2,SP
+ 01D8	     12B0	CALL #449
+ 01DA	     01C1
+ 01DC	     90F2	CMP.B #32,&453
+ 01DE	     0020
+ 01E0	     01C5
+ 01E2	     2002	JNE $+6, goes to  01E8
+ 01E4	     12B0	CALL #475
+ 01E6	     01DB
+ 01E8	     3FD8	JMP $-78, goes to  019A
+ 01EA	     12B0	CALL #487
+ 01EC	     01E7
+ 01EE	     90F2	CMP.B #10,&481
+ 01F0	     000A
+ 01F2	     01E1
+ 01F4	     2002	JNE $+6, goes to  01FA
+ 01F6	     12B0	CALL #493
+ 01F8	     01ED
+ 01FA	     3F5D	JMP $-324, goes to  00B6
+ 01FC	     1212	PUSH &65506
+ 01FE	     FFE2
+ 0200	     1291	CALL 2(SP)
+ 0202	     0002
+ 0204	     5321	ADD #2,SP
+ 0206	     4130	RET
 fixups:
- 01D7	s0.20
- 01D3	s0.1
- 01CB	s0.17
+ 01D5	s0.20
+ 01D1	s0.1
+ 01C9	s0.17
  017F	s0.8
  016F	s0.7
  0193	s0.19
@@ -688,8 +687,8 @@ fixups:
  0183	s0.2
  00F5	s0.18
  013D	s0.21
- 01F5	s0.0
- 01FB	s0.16
+ 01F3	s0.0
+ 01F9	s0.16
  00B1	s0.3
  0177	s0.4
  0109	s0.14

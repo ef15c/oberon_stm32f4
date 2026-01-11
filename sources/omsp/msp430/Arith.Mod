@@ -68,7 +68,7 @@ Arith 1D2566D6  2
 
 OMSPTool.DecObj Arith.mpc
 decode Arith.mpc
-Arith 1D2566D6
+Arith CA33A8B5
 imports:
 
 section     0	c   22	mul16

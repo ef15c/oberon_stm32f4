@@ -113,7 +113,7 @@ MultiPrecisionArith 0E8B91C3  2
 
 OMSPTool.DecObj MultiPrecisionArith.mpc
 decode MultiPrecisionArith.mpc
-MultiPrecisionArith 0E8B91C3
+MultiPrecisionArith 7965D39A
 imports:
 
 section     0	c   40	mulu1632
