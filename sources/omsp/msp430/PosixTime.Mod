@@ -291,8 +291,8 @@ MODULE PosixTime;
 	END
   END settime;
 
-  PROCEDURE TimeToString*(t: Time; nbc: INTEGER; pad: CHAR; VAR str: ARRAY OF CHAR);
-  BEGIN String.FromLong(t.h, t.l, nbc, pad, str)
+  PROCEDURE TimeToString*(t: Time; nbc, len: INTEGER; VAR str: ARRAY OF CHAR);
+  BEGIN String.FromLong(t.h, t.l, nbc, len, str)
   END TimeToString;
 
   PROCEDURE changedsttime*(nextdst: Time);

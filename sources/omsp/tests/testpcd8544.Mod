@@ -45,7 +45,7 @@ MODULE testpcd8544;
 
   PROCEDURE displayT(t: PT.Time; x, y: INTEGER);
     VAR msg: ARRAY 12 OF CHAR;
-  BEGIN PT.TimeToString(t, 1, " ", msg);
+  BEGIN PT.TimeToString(t, 1, 1, msg);
     LCD.SetAddr(x, y); LCD.WriteString(msg)
   END displayT;
 
@@ -56,16 +56,16 @@ MODULE testpcd8544;
     PT.gmhms(PTR(PT.Time, ltime), PTR(PT.Tm, tm));
     displayT(PTR(PT.Time, ltime), 0, 3);
     LCD.GetAddr(x, y);
-    LCD.WriteLongint(0, tm.hour, 3, 0, 2, " "); LCD.WriteChar(":");
-    LCD.WriteLongint(0, tm.min, 6, 0, 2, "0"); LCD.WriteChar(":");
-    LCD.WriteLongint(0, tm.sec, 9, 0, 2, "0");
+    LCD.WriteLongint(0, tm.hour, 3, 0, 1, 2); LCD.WriteChar(":");
+    LCD.WriteLongint(0, tm.min, 6, 0, 2, 2); LCD.WriteChar(":");
+    LCD.WriteLongint(0, tm.sec, 9, 0, 2, 2);
     IF PT.cmp(PTR(PT.Time, old_day), PTR(PT.Time, ltime)) # 0 THEN
       (*do the following only if day has changed, to save few micro amps.*)
       old_day := ltime; PT.localtime(PTR(PT.Time, PT.systemTime), PTR(PT.Tm, tm)); LCD.SetAddr(0, 1);
       LCD.WriteString(dayOfWeek[tm.wday]);
-      LCD.WriteLongint(0, tm.mday, 4, 1, 2, " "); LCD.WriteChar("/");
-      LCD.WriteLongint(0, tm.mon+1, 7, 1, 2, "0"); LCD.WriteChar("/");
-      LCD.WriteLongint(0, tm.year+1900, 10, 1, 4, "0")
+      LCD.WriteLongint(0, tm.mday, 4, 1, 1, 2); LCD.WriteChar("/");
+      LCD.WriteLongint(0, tm.mon+1, 7, 1, 2, 2); LCD.WriteChar("/");
+      LCD.WriteLongint(0, tm.year+1900, 10, 1, 1, 4)
 	END;
     LCD.SetAddr(x, y)
   END displayTime;
@@ -203,6 +203,6 @@ END testpcd8544.
 OMSPP.Compile PosixTime.Mod/s pcd8544.Mod/s testpcd8544.Mod/s ~
 OMSPL.Link 32 4000H 200H testpcd8544 ~
   linking msp430g2553 msp430delay MultiPrecisionArith String pcd8544 Arith PosixTime testpcd8544
-    flash 4210, data   28, stack  484 bytes
+    flash 4310, data   28, stack  484 bytes
 
 OMSPTool.DecObj testpcd8544.mpc

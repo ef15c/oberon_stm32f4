@@ -172,13 +172,13 @@ MODULE pcd8544;
     IF oldFunctionSet # FunctionSet THEN send(oldFunctionSet) END (*Restore previous function set*)
   END SetVop;
 
-  PROCEDURE WriteLongint*(th, tl: INTEGER; nx, ny, nbc: INTEGER; pad: CHAR);
+  PROCEDURE WriteLongint*(th, tl: INTEGER; nx, ny, nbc, len: INTEGER);
     (* th, tl : value to output on display
      * nx, ny : screen coordinates in character unit
      * nbc : number of digits to output
      * pad : padding character*)
     VAR str: ARRAY 12 OF CHAR;
-  BEGIN SetAddr(6*nx, ny); String.FromLong(th, tl, nbc, pad, str); WriteString(str)
+  BEGIN SetAddr(6*nx, ny); String.FromLong(th, tl, nbc, len, str); WriteString(str)
   END WriteLongint;
 
   PROCEDURE setCallbacks*(sel, desel, setD, setC: Callback*; send: SendDataProc* );
