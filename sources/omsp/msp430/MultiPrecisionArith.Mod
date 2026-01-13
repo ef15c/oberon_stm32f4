@@ -46,7 +46,7 @@ MODULE MultiPrecisionArith; (*C. Schoffit 15.09.24 *)
     IF lh < 0 THEN XOR(negate, {0}); XOR(ll, -1); XOR(lh, -1); INC(ll); ADC(lh, 0) END;
     IF nh < 0 THEN XOR(negate, {0}); XOR(nl, -1); XOR(nh, -1); INC(nl); ADC(nh, 0) END;
     th := lh; tl := ll; lh := 0; ll := 0;
-    WHILE (nh # 0) & (nl # 0) DO CLRC; RRC(nh); RRC(nl); IF SYSTEM.COND(C) THEN INC(ll, tl); ADC(lh, th) END; INC(tl, tl); ADC(th, th) END;
+    WHILE (nh # 0) OR (nl # 0) DO CLRC; RRC(nh); RRC(nl); IF SYSTEM.COND(C) THEN INC(ll, tl); ADC(lh, th) END; INC(tl, tl); ADC(th, th) END;
     IF negate THEN XOR(ll, -1); XOR(lh, -1); INC(ll, 1); ADC(lh, 0) END
   END MulLongLong;
 
