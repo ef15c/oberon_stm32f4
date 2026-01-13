@@ -540,8 +540,8 @@ MODULE sDiary;
     LCD.GetAddr(x, y);
     LCD.WriteLongint(0, tm.hour, 3, 0, 1, 2); LCD.WriteChar(":");
     LCD.WriteLongint(0, tm.min, 6, 0, 2, 2); LCD.WriteChar(":");
-    LCD.WriteLongint(0, tm.sec, 9, 0, 2, 2);
-    IF PT.cmp(PTR(PT.Time, old_day), PTR(PT.Time, ltime)) # 0 THEN setVcc;
+    LCD.WriteLongint(0, tm.sec, 9, 0, 2, 2); setVcc;
+    IF PT.cmp(PTR(PT.Time, old_day), PTR(PT.Time, ltime)) # 0 THEN
       (*do the following only if day has changed, to save few micro amps.*)
       old_day := ltime; PT.localtime(PTR(PT.Time, PT.systemTime), PTR(PT.Tm, tm)); LCD.SetAddr(0, 1);
       LCD.WriteString(dayOfWeek[tm.wday]);
