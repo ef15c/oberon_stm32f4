@@ -39,8 +39,7 @@ The Oberon 07 language has no support for defining constants objects like record
 
 Notice the hyphen character after `RadioSetup` type in the VAR clause.
 It means that the variable `confEmitter` is immutable and will be stored in the embedded flash memory.
-The actual definition of this object is computed at compiler or link time and outputted to the
- constant section of the object file.  
+The actual definition of this object is computed at compiler or link time and outputted as a constant section into the object file.  
 Because all the initialization is performed at compile/link time, no executable code is generated in the module's body.
 
 ### New types

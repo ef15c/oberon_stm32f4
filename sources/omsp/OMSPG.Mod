@@ -68,7 +68,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     head, tail, vectors, body, ccs: Section; nofsec: INTEGER;
     mcode, strings: A.ModuleCode; (*strings and module code segments*)
     varsize*: INTEGER; (*RAM counter*)
-    flagsObj: B.Object;
+    flagsItem: Item;
 
     PutDO0: PROCEDURE(op: BYTE; VAR src, dst: Item);
 
@@ -87,13 +87,16 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RETURN (x + (WordSize - 1)) DIV WordSize*WordSize
   END pad;
 
-  PROCEDURE SetFCO(x: A.Item; state: BOOLEAN);
+  PROCEDURE SetFCI(x: A.Item; state: BOOLEAN);
   BEGIN
     CASE x OF
-      Item: IF state THEN flagsObj := x.obj ELSE flagsObj := NIL END
-    | A.Item: flagsObj := NIL
-    END;
-  END SetFCO;
+      Item:
+        IF state THEN flagsItem.obj := x.obj; flagsItem.b := x.b; flagsItem.a := x.a
+        ELSE flagsItem.obj := NIL
+        END
+    | A.Item: flagsItem.obj := NIL
+    END
+  END SetFCI;
 
   PROCEDURE CheckRTImport*(impid: S.Ident);
   BEGIN
@@ -157,7 +160,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END FixLinkWith;
 
   PROCEDURE FixLink*(L: INTEGER);
-  BEGIN FixLinkWith(L, mcode.pc); flagsObj := NIL
+  BEGIN FixLinkWith(L, mcode.pc); flagsItem.obj := NIL
   END FixLink;
 
   PROCEDURE SetAllocationMode*(mode: BOOLEAN);
@@ -990,7 +993,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF op = S.rdiv THEN xset := xset / yset
       END ;
       x.a := SYSTEM.VAL(INTEGER, xset)
-    ELSE (*load(x, 0FFH);*)
+    ELSE
       IF op = S.plus THEN PutDO(A.BIS, y, x)
       ELSIF op = S.minus THEN PutDO(A.BIC, y, x)
       ELSIF op = S.times THEN PutDO(A.AND, y, x)
@@ -1019,7 +1022,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     IF (x.mode = Cond) OR (y.mode = Cond) THEN S.Mark("not implemented") END;
     IF (y.mode = B.Const) & (y.a = 0) &
-      (flagsObj # NIL) & (flagsObj = x.obj) & (op < S.gtr) THEN
+      (flagsItem.obj # NIL) & (flagsItem.obj = x.obj) & (flagsItem.a = x.a) & (flagsItem.b = x.b) & (op < S.gtr) THEN
       IF x.type.size = 1 THEN SetCC(x, urelmap[op - S.eql]) ELSE SetCC(x, relmap[op - S.eql]) END
     ELSE
       AdjustSize(x); AdjustSize(y);
@@ -1266,7 +1269,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Branches, procedure calls, procedure prolog and epilog *)
 
   PROCEDURE Here*(): INTEGER;
-  BEGIN flagsObj := NIL (*this location will likely be referenced*)
+  BEGIN flagsItem.obj := NIL (*this location will likely be referenced*)
   RETURN mcode.pc
   END Here;
 
@@ -1558,7 +1561,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       obj := obj.next
     END ;
     Files.Write(R, "O"); Files.Register(F);
-    flagsObj := NIL;
+    flagsItem.obj := NIL;
     head := NIL; tail := NIL; body := NIL; ccs := NIL;
     vectors.fixup := NIL (*for garbage collection*)
   END Close;
@@ -1575,7 +1578,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     c.mode := Reg; c.tmp := FALSE; c.a := 0
   END initReg;
 
-BEGIN PutDO0 := PutDO; A.SetProcs(GetOffset, AllocR, freeR, SetFCO);
+BEGIN PutDO0 := PutDO; A.SetProcs(GetOffset, AllocR, freeR, SetFCI);
   NEW(vectors); vectors.name := "vector table"; vectors.segment := "v";
   vectors.content := SYSTEM.VAL(Content, SYSTEM.ADR(mcode));
   initConst(cm1, -1); initConst(c0, 0); initConst(c1, 1); initConst(c2, 2);

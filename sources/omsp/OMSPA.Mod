@@ -199,7 +199,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
       IF emitDOff THEN Emit(c, getOfs(d)) END
     END;
     IF op IN {ADD, ADDC, SUBC, SUB, XOR, AND} THEN setFCI(d, TRUE) 
-    ELSIF op IN {DADD, MOV} THEN setFCI(d, FALSE)
+    ELSIF op IN {DADD} THEN setFCI(d, FALSE)
     (*else no change*)
     END;
   END PutDO;

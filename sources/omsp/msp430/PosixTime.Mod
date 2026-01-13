@@ -46,7 +46,7 @@ MODULE PosixTime;
     SECS_IN_DAY = SECS_IN_HR * HRS_IN_DAY; SECS_IN_DAY_l* = SECS_IN_DAY  MOD 10000H; SECS_IN_DAY_h* = SECS_IN_DAY  DIV 10000H;
     JAN11970 = 4; (*Jeudi*)
 
-    TIMEMAX_H = 0FFFFH; TIMEMAX_L = 0FFFFH;
+    TIMEMAX_H = 07FFFH; TIMEMAX_L = 0FFFFH;
 
   TYPE Time* = POINTER TO TimeDesc;
     TimeDesc* = RECORD l*, h*: INTEGER END;
@@ -79,7 +79,7 @@ MODULE PosixTime;
     timeOffset*, systemTime*: TimeDesc; timeIsST: BOOLEAN;
 
   PROCEDURE setMax*(t: Time* );
-  BEGIN t.l := TIMEMAX_H; t.h := TIMEMAX_L
+  BEGIN t.h := TIMEMAX_H; t.l := TIMEMAX_L
   END setMax;
 
   PROCEDURE setMin*(t: Time* );
@@ -295,7 +295,8 @@ MODULE PosixTime;
   BEGIN String.FromLong(t.h, t.l, nbc, pad, str)
   END TimeToString;
 
-  PROCEDURE changedsttime*(nextdst: Time); 
+  PROCEDURE changedsttime*(nextdst: Time);
+(*todo : debug 0 value returned*)
   (*apply Daylight Saving Time transition and compute the next DST transition time*)
     VAR current: TmDesc; isST: BOOLEAN; mon: INTEGER;
   BEGIN (*do some common sense checks and if OK switch for appropriate dst time*)
@@ -383,7 +384,7 @@ section     2	d    8	Tz
 fixups:
 
 section     3	d    4	TimeMax
- FF FF FF FF
+ FF FF FF 7F
 fixups:
 
 section     4	d    4	OneSec
@@ -412,12 +413,13 @@ fixups:
 section    10	r    1	timeIsST
 fixups:
 
-section    11	c   10	setMax
- 0000	     43B4	MOV #-1,0(R4)
- 0002	     0000
- 0004	     43B4	MOV #-1,2(R4)
- 0006	     0002
- 0008	     4130	RET
+section    11	c   12	setMax
+ 0000	     40B4	MOV #32767,2(R4)
+ 0002	     7FFF
+ 0004	     0002
+ 0006	     43B4	MOV #-1,0(R4)
+ 0008	     0000
+ 000A	     4130	RET
 fixups:
 
 section    12	c   10	setMin
@@ -1073,7 +1075,7 @@ fixups:
  0357	s1.1
  016D	s1.2
 
-section    21	c  212	gmtime
+section    21	c  214	gmtime
  0000	     8031	SUB #6,SP
  0002	     0006
  0004	     411F	MOV 10(SP),R15
@@ -1109,82 +1111,83 @@ section    21	c  212	gmtime
  0040	     0008
  0042	     438F	MOV #0,10(R15)
  0044	     000A
- 0046	     93B1	CMP #-1,2(SP)
- 0048	     0002
- 004A	     2003	JNE $+8, goes to  0052
- 004C	     93B1	CMP #-1,0(SP)
- 004E	     0000
- 0050	     243E	JEQ $+126, goes to  00CE
- 0052	     410F	MOV SP,R15
- 0054	     120F	PUSH R15
- 0056	     1211	PUSH 12(SP)
- 0058	     000C
- 005A	     12B0	CALL #0
- 005C	     0000
- 005E	     5221	ADD #4,SP
- 0060	     4381	MOV #0,4(SP)
- 0062	     0004
- 0064	     4115	MOV 2(SP),R5
- 0066	     0002
- 0068	     4116	MOV 2(SP),R6
- 006A	     0002
- 006C	     4307	MOV #0,R7
- 006E	     1207	PUSH R7
- 0070	     1206	PUSH R6
- 0072	     1205	PUSH R5
- 0074	     1211	PUSH 12(SP)
- 0076	     000C
- 0078	     12B0	CALL #0
- 007A	     0000
- 007C	     5321	ADD #2,SP
- 007E	     4135	POP R5
- 0080	     4136	POP R6
- 0082	     4137	POP R7
- 0084	     4F08	MOV R15,R8
- 0086	     12B0	CALL #0
- 0088	     0000
- 008A	     9304	CMP #0,R4
- 008C	     380C	JL $+26, goes to  00A6
- 008E	     1211	PUSH 6(SP)
- 0090	     0006
- 0092	     12B0	CALL #123
- 0094	     007B
- 0096	     5321	ADD #2,SP
- 0098	     8F81	SUB R15,0(SP)
- 009A	     0000
- 009C	     7381	SUBC #0,0(SP)
- 009E	     0000
- 00A0	     5391	ADD #1,4(SP)
- 00A2	     0004
- 00A4	     3FDF	JMP $-64, goes to  0064
- 00A6	     411F	MOV 8(SP),R15
- 00A8	     0008
- 00AA	     411E	MOV 4(SP),R14
- 00AC	     0004
- 00AE	     503E	ADD #70,R14
- 00B0	     0046
- 00B2	     4E8F	MOV R14,10(R15)
- 00B4	     000A
- 00B6	     411F	MOV 8(SP),R15
- 00B8	     0008
- 00BA	     51AF	ADD @SP,6(R15)
- 00BC	     0006
- 00BE	     1211	PUSH 10(SP)
- 00C0	     000A
- 00C2	     410F	MOV SP,R15
- 00C4	     532F	ADD #2,R15
- 00C6	     120F	PUSH R15
- 00C8	     12B0	CALL #0
- 00CA	     0000
- 00CC	     5221	ADD #4,SP
- 00CE	     5031	ADD #6,SP
- 00D0	     0006
- 00D2	     4130	RET
+ 0046	     90B1	CMP #32767,2(SP)
+ 0048	     7FFF
+ 004A	     0002
+ 004C	     2003	JNE $+8, goes to  0054
+ 004E	     93B1	CMP #-1,0(SP)
+ 0050	     0000
+ 0052	     243E	JEQ $+126, goes to  00D0
+ 0054	     410F	MOV SP,R15
+ 0056	     120F	PUSH R15
+ 0058	     1211	PUSH 12(SP)
+ 005A	     000C
+ 005C	     12B0	CALL #0
+ 005E	     0000
+ 0060	     5221	ADD #4,SP
+ 0062	     4381	MOV #0,4(SP)
+ 0064	     0004
+ 0066	     4115	MOV 2(SP),R5
+ 0068	     0002
+ 006A	     4116	MOV 2(SP),R6
+ 006C	     0002
+ 006E	     4307	MOV #0,R7
+ 0070	     1207	PUSH R7
+ 0072	     1206	PUSH R6
+ 0074	     1205	PUSH R5
+ 0076	     1211	PUSH 12(SP)
+ 0078	     000C
+ 007A	     12B0	CALL #0
+ 007C	     0000
+ 007E	     5321	ADD #2,SP
+ 0080	     4135	POP R5
+ 0082	     4136	POP R6
+ 0084	     4137	POP R7
+ 0086	     4F08	MOV R15,R8
+ 0088	     12B0	CALL #0
+ 008A	     0000
+ 008C	     9304	CMP #0,R4
+ 008E	     380C	JL $+26, goes to  00A8
+ 0090	     1211	PUSH 6(SP)
+ 0092	     0006
+ 0094	     12B0	CALL #125
+ 0096	     007D
+ 0098	     5321	ADD #2,SP
+ 009A	     8F81	SUB R15,0(SP)
+ 009C	     0000
+ 009E	     7381	SUBC #0,0(SP)
+ 00A0	     0000
+ 00A2	     5391	ADD #1,4(SP)
+ 00A4	     0004
+ 00A6	     3FDF	JMP $-64, goes to  0066
+ 00A8	     411F	MOV 8(SP),R15
+ 00AA	     0008
+ 00AC	     411E	MOV 4(SP),R14
+ 00AE	     0004
+ 00B0	     503E	ADD #70,R14
+ 00B2	     0046
+ 00B4	     4E8F	MOV R14,10(R15)
+ 00B6	     000A
+ 00B8	     411F	MOV 8(SP),R15
+ 00BA	     0008
+ 00BC	     51AF	ADD @SP,6(R15)
+ 00BE	     0006
+ 00C0	     1211	PUSH 10(SP)
+ 00C2	     000A
+ 00C4	     410F	MOV SP,R15
+ 00C6	     532F	ADD #2,R15
+ 00C8	     120F	PUSH R15
+ 00CA	     12B0	CALL #0
+ 00CC	     0000
+ 00CE	     5221	ADD #4,SP
+ 00D0	     5031	ADD #6,SP
+ 00D2	     0006
+ 00D4	     4130	RET
 fixups:
- 00CB	s0.20
- 0089	s2.12
- 0095	s0.18
- 005D	s0.19
+ 00CD	s0.20
+ 008B	s2.12
+ 0097	s0.18
+ 005F	s0.19
 
 section    22	c   50	localtime
  0000	     8221	SUB #4,SP

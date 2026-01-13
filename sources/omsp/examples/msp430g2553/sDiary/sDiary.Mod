@@ -58,7 +58,7 @@ MODULE sDiary;
     trimmer: INTEGER;
 
     (*for interrupt handlers*)
-    BPReq, ADCReq, PCReq: BOOLEAN;
+    BPReq, ADCReq, NSReq: BOOLEAN; RcdChar: INTEGER;
 
   PROCEDURE select;
   BEGIN BIC(M.P2OUT^, NCE)
@@ -130,18 +130,17 @@ MODULE sDiary;
   END appendHexDigit;
 
   PROCEDURE scheduleNextEvent;
-    VAR i: INTEGER; evt!: EVT;
-  BEGIN nextEventTime.h := -1; nextEventTime.l := -1;
+    VAR i, cmp: INTEGER; evt!: EVT;
+  BEGIN PT.setMax(PTR(PT.Time, nextEventTime));
     nextEventType := NO_EVENT;
 
     (*parse event tab to find the nearest event*)
     i := NB_EVTAB_ELTS - 1; evt := PTR(EVT, evTab[0]);
-    REPEAT
-      (*check current element*)
-      IF PT.cmp(PTR(PT.Time, evt.eti), PTR(PT.Time, nextEventTime)) < 0 THEN
+    REPEAT cmp := PT.cmp(PTR(PT.Time, evt.eti), PTR(PT.Time, nextEventTime)); (*check current element*)
+      IF cmp < 0 THEN
         nextEventType := evt.ety; (*unschedule previous envents*)
         nextEventTime := evt.eti (*record new next event time*)
-      ELSIF PT.cmp(PTR(PT.Time, evt.eti), PTR(PT.Time, nextEventTime)) = 0 THEN
+      ELSIF cmp = 0 THEN
         (*two or more events are scheduled for the same time,
            schedule the event but don't unschedule the others*)
         BIS(nextEventType, evt.ety)
@@ -167,7 +166,7 @@ MODULE sDiary;
     VAR i: INTEGER; evt!: EVT;
   BEGIN i := NB_EVTAB_ELTS - 1; evt := PTR(EVT, evTab[0]);
     REPEAT (*check current element*)
-      IF BIT(evt.ety, eventType) THEN evt.eti := newTime^ END; (*set new scheduled time*)
+      IF evt.ety = eventType THEN evt.eti := newTime^ END; (*set new scheduled time*)
       INC(SYSTEM.VAL(INTEGER, evt), SYSTEM.SIZE(EVTDesc));
       DEC(i)
     UNTIL i < 0
@@ -218,7 +217,7 @@ MODULE sDiary;
               ELSIF cron[2] = 0FFH THEN (*every month day is allowed : try next month day*) INC(lt.mday)
               ELSIF cron[3] = 0FFH THEN (*every month is allowed : try next month*) INC(lt.mon)
               ELSIF cron[4] = 0FFH THEN (*every year is allowed : try next year*) INC(lt.year)
-		      ELSE (*fixed date in the past, return the last possible date*) nextTime^ := PT.TimeMax; done := TRUE
+              ELSE (*fixed date in the past, return the last possible date*) nextTime^ := PT.TimeMax; done := TRUE
               END
             END
           END
@@ -245,7 +244,7 @@ MODULE sDiary;
     IF currentDE.nbSimultaneousEvents > 0 THEN
       FOR i := 1 TO currentDE.nbSimultaneousEvents - 1 DO currentDE.events[i-1] := currentDE.events[i] END;
       DEC(currentDE.nbSimultaneousEvents)
-	END
+    END
   END popEvent;
 
   PROCEDURE findNextDiaryEvent(populate: BOOLEAN; nearestDE: PT.Time);
@@ -284,7 +283,7 @@ MODULE sDiary;
   END findAndArmNextDiaryEvent;
 
   PROCEDURE eraseAllDiaryEvents;
-	VAR seg!: PINTEGER;
+    VAR seg!: PINTEGER;
   BEGIN seg := SYSTEM.VAL(PINTEGER, flashDE);
     M.FCTL3^ := M.FWKEY; (*clear lock*)
     WHILE seg # LAST_FLASH_SEGMENT DO
@@ -358,16 +357,16 @@ MODULE sDiary;
   BEGIN PT.TimeToString(t, 1, " ", msg); respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR(msg)));
   END respondT;
 
-  PROCEDURE parseCommand(c: INTEGER);
+  PROCEDURE parseCommand;
   (* Parse commands sent by UART interface
       Each command start with a letter, following by arguments and terminated by a carriage return
       List of available commands
       a.* : display characters on LCD. Example aHello World ! displays
             this classical sentence to the LCD screen. Must be terminated by a \r.
       b[{C|D|<double hex digit>]* : send raw data to LCD. Must be terminated by a \r.
-     		C indicates that the following is a command
-     		D indicates that the following is data
-     		|<double hex digit> is the command or data to send
+            C indicates that the following is a command
+            D indicates that the following is data
+            <double hex digit> is the command or data to send
       dDDMMYYYYHHMISS : set local date and time. Must be terminated by a \r.
       uDDMMYYYYHHMISS : set UTC date and time. Must be terminated by a \r.
       v : reinit display.
@@ -384,14 +383,15 @@ MODULE sDiary;
       s{0|1}* : Sound off | on. Example: s0 turns sound off. Must be terminated by a \r.
       l{0|1}* : LCD Light off | on. Example: l0 turns LCD light off. Must be terminated by a \r.
   *)
+  VAR c: INTEGER;
   BEGIN
-    IF ~commandBusy THEN
-      IF c >= 100H THEN (*set overflow error*) state := CM_OVERFLOW_ERROR; respondBAD
+    IF ~commandBusy THEN c := RcdChar; RcdChar := 0; BIC(c, {9});
+      IF BIT(c,  {8}) THEN (*set overflow error*) state := CM_OVERFLOW_ERROR; respondBAD
       ELSIF (c = 0DH) & ((state # CM_CREATE_EVENT) OR (parseData >= 64)) THEN
         IF state = CM_SET_DATETIME THEN
           IF parseData = 14 THEN (*the data are complete*)
-			DEC(setTime.mon); (*TM struct need month between 0 and 11*)
-			DEC(setTime.year, 1900); (*TM struct count year from 1900*)
+            DEC(setTime.mon); (*TM struct need month between 0 and 11*)
+            DEC(setTime.year, 1900); (*TM struct count year from 1900*)
             (*adjust nextVccEvent step 1*)
             oldSetTime.h := 0; oldSetTime.l := 0; PT.dec(PTR(PT.Time, oldSetTime), PTR(PT.Time, PT.systemTime));
             adjustEvents(PTR(PT.Time, oldSetTime));
@@ -444,7 +444,7 @@ MODULE sDiary;
 #endif*)
         ELSIF c = ORD("r") THEN state := CM_DELETE_EVENT; DEIndex := 0; (*Diary event Index initialization*)
         ELSIF c = ORD("v") THEN BIC(M.P2OUT^, NRST); (*~RESET going LOW*)
-		  Delay.CyclesX3(10000 DIV 3); BIS(M.P2OUT^, NRST); (*~RESET going HIGH*)
+          Delay.CyclesX3(10000 DIV 3); BIS(M.P2OUT^, NRST); (*~RESET going HIGH*)
           LCD.Clear; LCD.Init;
         ELSIF c = ORD("w") THEN respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR("type="))); respondI(ORD(nextEventType));
           respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR(", time="))); respondT(PTR(PT.Time, nextEventTime));
@@ -511,7 +511,7 @@ MODULE sDiary;
     VAR x, y: BYTE;
   BEGIN LCD.GetAddr(x, y); LCD.SetAddr(0, 0);
     IF vcc >= 2750 THEN (*battery full*) LCD.WriteChar(87X)
-	ELSIF vcc >= 2500 THEN (*battery half charged*) LCD.WriteChar(86X)
+    ELSIF vcc >= 2500 THEN (*battery half charged*) LCD.WriteChar(86X)
     ELSE (*battery low*) LCD.WriteChar(85X)
     END;
     LCD.WriteChar(" ");
@@ -528,13 +528,13 @@ MODULE sDiary;
     LCD.WriteLongint(0, tm.min, 6, 0, 2, "0"); LCD.WriteChar(":");
     LCD.WriteLongint(0, tm.sec, 9, 0, 2, "0");
     IF PT.cmp(PTR(PT.Time, old_day), PTR(PT.Time, ltime)) # 0 THEN setVcc;
-      (*do the following only if day has change, to save few micro amps.*)
+      (*do the following only if day has changed, to save few micro amps.*)
       old_day := ltime; PT.localtime(PTR(PT.Time, PT.systemTime), PTR(PT.Tm, tm)); LCD.SetAddr(0, 1);
       LCD.WriteString(dayOfWeek[tm.wday]);
       LCD.WriteLongint(0, tm.mday, 4, 1, 2, " "); LCD.WriteChar("/");
       LCD.WriteLongint(0, tm.mon+1, 7, 1, 2, "0"); LCD.WriteChar("/");
       LCD.WriteLongint(0, tm.year+1900, 10, 1, 4, " ")
-	END;
+    END;
     LCD.SetAddr(x, y)
   END displayTime;
 
@@ -546,7 +546,7 @@ MODULE sDiary;
    *)
   VAR len: INTEGER; x, y: BYTE; pMsg!: PBYTE; cle!: PT.Time; eoe: PT.TimeDesc;
   BEGIN  pMsg := PTR(PBYTE, currentDE.events[0].titre[0]);
-	(*clear LCD screen*)
+    (*clear LCD screen*)
     LCD.GetAddr(x,  y); LCD.SetAddr(6*12, 0);
     IF PT.cmp(nextDiaryEventTime, PTR(PT.Time, PT.TimeMax)) = 0 THEN
       len := 0; LCD.WriteChar(" ")
@@ -595,11 +595,11 @@ MODULE sDiary;
     rearmEvent(BEEP_OFF_EVENT, PTR(PT.Time, t));
   END rearmBeepOff;
 
-  PROCEDURE buttonPressed; (*mplement action when button is pressed*)
+  PROCEDURE buttonPressed; (*implement action when button is pressed*)
     VAR t: PT.TimeDesc;
-  BEGIN rearmVCCSense;
+  BEGIN rearmVCCSense; t := PT.systemTime;
     IF beepOn > 0 THEN (*stop sound*) beepOn := 0; M.TA0CCTL1^ := M.CM_0 + M.CCIS_0 + M.OUTMOD_0;
-      INC(t.l, 27); ADC(t.h, 0);
+      INC(t.l, 30); ADC(t.h, 0);
       rearmEvent(LCD_POWER_OFF_EVENT, PTR(PT.Time, t)); (*stop LCD in 30s*)
     ELSE BIC(M.P1OUT^, NLIGHT); (*Turn Light On*)
       (*we have to power up the LCD if needed.*)
@@ -607,7 +607,7 @@ MODULE sDiary;
         displayTime; (*but before that, refresh display*)
         LCD.send(LCD.FunctionSet - LCD.PD) (* Request Power on*)
       END;
-      t := PT.systemTime; INC(t.l, 5); ADC(t.h, 0);
+      INC(t.l, 5); ADC(t.h, 0);
       rearmEvent(LIGHT_OFF_EVENT, PTR(PT.Time, t)); (*arm event LIGHT off in 5 seconds*)
       INC(t.l, 295); ADC(t.h, 0);
       rearmEvent(LCD_POWER_OFF_EVENT, PTR(PT.Time, t)); (*power down LCD in 5 minutes*)
@@ -667,7 +667,8 @@ MODULE sDiary;
     ADCReq := TRUE; SYSTEM.BIC_SR_ON_EXIT(M.LPM4_bits)
   END ADC10_ISR_HOOK;
 
-  PROCEDURE* (M.USCIAB0RX_VECTOR) USCI0RX_ISR_HOOK;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) {4..6} USCI0RX_ISR_HOOK;
+  VAR dummy: BYTE*;
   (*
    *  ======== USCI A0/B0 RX Interrupt Handler Generation ========
    *
@@ -702,7 +703,7 @@ MODULE sDiary;
    *)
   BEGIN
     IF BIT(M.IFG2^, M.UCA0RXIFG) THEN
-      PCReq := TRUE; (*process character and overflow condition*)
+      RcdChar :=  ORD({9}) + ORD(M.UCA0STAT^*M.UCOE)*ORD({8}) + M.UCA0RXBUF^; (*process character and overflow condition*)
       (*exit from low power mode to allow background processing of events in main loop*)
       SYSTEM.BIC_SR_ON_EXIT(M.LPM4_bits)
     END
@@ -712,7 +713,7 @@ MODULE sDiary;
   (*
    *  ======== Timer0_A3 Interrupt Service Routine ======== 
    *)
-  BEGIN nextSecond();
+  BEGIN nextSecond(); NSReq := TRUE;
     SYSTEM.BIC_SR_ON_EXIT(M.LPM4_bits)
   END TIMER0_A0_ISR_HOOK;
 
@@ -738,7 +739,7 @@ MODULE sDiary;
         respondI(i); (*send the index on current slot*) respondC("|");
         cb := PTR(PBYTE, cde.titre[0]);
         j := 63; REPEAT respondC(CHR(cb^)); INC(SYSTEM.VAL(INTEGER, cb)); DEC(j); UNTIL j < 0; (*send 64 bytes*)
-		respondC("|")
+        respondC("|")
       END;
       INC(SYSTEM.VAL(INTEGER, cde), SYSTEM.SIZE(ST.DEDesc));
       DEC(i)
@@ -1055,7 +1056,7 @@ BEGIN dayOfWeek[0] := "Dim"; dayOfWeek[1] :="Lun"; dayOfWeek[2] := "Mar"; dayOfW
   M.TA0CTL^ := M.TASSEL_1 + M.ID_0 + M.MC_2;
 
   (*start of sDiary main code*)
-  BPReq := FALSE; ADCReq := FALSE; PCReq := FALSE;
+  BPReq := FALSE; ADCReq := FALSE; NSReq := FALSE; RcdChar := 0;
 
   PT.setMax(PTR(PT.Time, old_day));
 
@@ -1073,7 +1074,7 @@ BEGIN dayOfWeek[0] := "Dim"; dayOfWeek[1] :="Lun"; dayOfWeek[2] := "Mar"; dayOfW
   (*need to wait 10ms, however  30ms are consumed in ADC10 Initilization*)
 
   BIS(M.P2OUT^, NRST); (*release LCD*) LCD.Init; LCD.Clear;
-  parseCommand(0DH);
+  prompt;
   currentDE.nbSimultaneousEvents := 0; (*no diary event scheduled for now*)
   (*find 1st date event*)
   findAndArmNextDiaryEvent(FALSE); (*don't populate currentDE*)
@@ -1083,68 +1084,67 @@ BEGIN dayOfWeek[0] := "Dim"; dayOfWeek[1] :="Lun"; dayOfWeek[2] := "Mar"; dayOfW
     ELSE (*process background actions*)
       IF BPReq THEN buttonPressed END;
       IF ADCReq THEN computeVcc END;
-      IF PCReq THEN REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (*USCI_A0 TX buffer ready?*)
-        parseCommand(1*ORD(M.UCA0STAT^*M.UCOE)*100H + M.UCA0RXBUF^)
-      END;
-      IF ~BIT(LCD.FunctionSet, LCD.PD) THEN displayTime END;
-(*      IF ~BIT(M.UCB0STAT^, M.UCBUSY) THEN (*SPI operation is complete*) BIS(M.P2OUT^, NCE); (*deassert LCD*)*)
-      IF PT.cmp (PTR(PT.Time, PT.systemTime), PTR(PT.Time, nextEventTime)) >= 0 THEN
-        IF BIT(nextEventType, VCC_MEASURE_EVENT - RELATIVE_EVENT) THEN
-          BIS(M.ADC10CTL0^, M.ADC10ON); BIS(M.ADC10CTL0^, M.REFON); (*turn ADC reference ON*)
-          Delay.CyclesX3(129 DIV 3); (*wait for stabilization of ADC reference*)
-          BIS(M.ADC10CTL0^, M.ENC + M.ADC10SC); (*start conversion*)
-          rearmEvent(VCC_MEASURE_EVENT, PTR(PT.Time, PT.TimeMax)) (*VCC measure is not scheduled anymore*)
-        END;
-        IF BIT(nextEventType, DST_EVENT - RELATIVE_EVENT) THEN (*perform DST change and rearm the event for the next DST*) doDSTEvent END;
-        IF BIT(nextEventType, DIARY_EVENT - RELATIVE_EVENT) THEN (*populate the currentDE whit all the events occuring at this precise time*)
-          findAndArmNextDiaryEvent(TRUE); (*arm next diary event and populate currentEV*)
-          (*display the title of the event and do necessary rescheduling*)
-          (*trigger event for next hour as a reminder. This will be cancelled when
-             the user will acknowledge the event by pressing the push button*)
-          IF currentDE.nbSimultaneousEvents # 0 THEN displayEventOneHour;
-            IF BIT(LCD.FunctionSet, LCD.PD) THEN (*LCD is off, turn it on to display the event*)
-              displayTime; (*but before that, refresh display*)
-              LCD.send(LCD.FunctionSet - LCD.PD); (*request Power on*) rearmVCCSense;
-            END;
-            (*turn alarm on*)
-            IF currentDE.nbSimultaneousEvents > 1 THEN beepOn := 15000 ELSE beepOn := 3293 END;
-            M.TA0CCTL1^ := M.CM_0 + M.CCIS_0 + M.OUTMOD_3; M.TA0CCR1^ := M.TA0CCR0^ - beepOn;
-            rearmBeepOff
-          END
-        END;
-        IF BIT(nextEventType, LIGHT_OFF_EVENT - RELATIVE_EVENT) THEN BIS(M.P1OUT^, NLIGHT); (*light off*)
-          rearmEvent(LIGHT_OFF_EVENT, PTR(PT.Time, PT.TimeMax))
-        END;
-        IF BIT(nextEventType, BEEP_OFF_EVENT - RELATIVE_EVENT) THEN
-          IF beepOn # 0 THEN beepOn := 0; M.TA0CCTL1^ := M.CM_0 + M.CCIS_0 + M.OUTMOD_0;
-            LCD.send(LCD.FunctionSet + LCD.PD) (* Request LCD Power off*)
+      IF RcdChar # 0 THEN parseCommand END;
+      IF NSReq THEN
+        IF ~BIT(LCD.FunctionSet, LCD.PD) THEN displayTime END;
+        IF PT.cmp (PTR(PT.Time, PT.systemTime), PTR(PT.Time, nextEventTime)) >= 0 THEN
+          IF BIT(nextEventType, VCC_MEASURE_EVENT - RELATIVE_EVENT) THEN
+            BIS(M.ADC10CTL0^, M.ADC10ON); BIS(M.ADC10CTL0^, M.REFON); (*turn ADC reference ON*)
+            Delay.CyclesX3(129 DIV 3); (*wait for stabilization of ADC reference*)
+            BIS(M.ADC10CTL0^, M.ENC + M.ADC10SC); (*start conversion*)
+            rearmEvent(VCC_MEASURE_EVENT, PTR(PT.Time, PT.TimeMax)) (*VCC measure is not scheduled anymore*)
           END;
-          rearmEvent(BEEP_OFF_EVENT, PTR(PT.Time, PT.TimeMax)) (*unschedule BEEP OFF event*)
+          IF BIT(nextEventType, DST_EVENT - RELATIVE_EVENT) THEN (*perform DST change and rearm the event for the next DST*) doDSTEvent END;
+          IF BIT(nextEventType, DIARY_EVENT - RELATIVE_EVENT) THEN (*populate the currentDE whit all the events occuring at this precise time*)
+            findAndArmNextDiaryEvent(TRUE); (*arm next diary event and populate currentEV*)
+            (*display the title of the event and do necessary rescheduling*)
+            (*trigger event for next hour as a reminder. This will be cancelled when
+               the user will acknowledge the event by pressing the push button*)
+            IF currentDE.nbSimultaneousEvents # 0 THEN displayEventOneHour;
+              IF BIT(LCD.FunctionSet, LCD.PD) THEN (*LCD is off, turn it on to display the event*)
+                displayTime; (*but before that, refresh display*)
+                LCD.send(LCD.FunctionSet - LCD.PD); (*request Power on*) rearmVCCSense;
+              END;
+              (*turn alarm on*)
+              IF currentDE.nbSimultaneousEvents > 1 THEN beepOn := 15000 ELSE beepOn := 3293 END;
+              M.TA0CCTL1^ := M.CM_0 + M.CCIS_0 + M.OUTMOD_3; M.TA0CCR1^ := M.TA0CCR0^ - beepOn;
+              rearmBeepOff
+            END
+          END;
+          IF BIT(nextEventType, LIGHT_OFF_EVENT - RELATIVE_EVENT) THEN BIS(M.P1OUT^, NLIGHT); (*light off*)
+            rearmEvent(LIGHT_OFF_EVENT, PTR(PT.Time, PT.TimeMax))
+          END;
+          IF BIT(nextEventType, BEEP_OFF_EVENT - RELATIVE_EVENT) THEN
+            IF beepOn # 0 THEN beepOn := 0; M.TA0CCTL1^ := M.CM_0 + M.CCIS_0 + M.OUTMOD_0;
+              LCD.send(LCD.FunctionSet + LCD.PD) (* Request LCD Power off*)
+            END;
+            rearmEvent(BEEP_OFF_EVENT, PTR(PT.Time, PT.TimeMax)) (*unschedule BEEP OFF event*)
+          END;
+          IF BIT(nextEventType, LCD_POWER_OFF_EVENT - RELATIVE_EVENT) THEN 
+            LCD.send(LCD.FunctionSet + LCD.PD); (* Request LCD Power off*)
+            rearmEvent(LCD_POWER_OFF_EVENT, PTR(PT.Time, PT.TimeMax)) (*unschedule LCD POWER OFF event*)
+          END;
+          IF BIT(nextEventType,  CLEAR_LCD_EVENT - RELATIVE_EVENT) THEN 
+            (*clear LCD screen and reschedule events*)
+            popEvent;
+            IF currentDE.nbSimultaneousEvents # 0 THEN displayEventOneHour ELSE displayEvent(PTR(PT.Time, PT.TimeMax)) END
+          END;
+          scheduleNextEvent
         END;
-        IF BIT(nextEventType, LCD_POWER_OFF_EVENT - RELATIVE_EVENT) THEN 
-          LCD.send(LCD.FunctionSet + LCD.PD); (* Request LCD Power off*)
-          rearmEvent(LCD_POWER_OFF_EVENT, PTR(PT.Time, PT.TimeMax)) (*unschedule LCD POWER OFF event*)
-        END;
-        IF BIT(nextEventType,  CLEAR_LCD_EVENT - RELATIVE_EVENT) THEN 
-          (*clear LCD screen and reschedule events*)
-          popEvent;
-          IF currentDE.nbSimultaneousEvents # 0 THEN displayEventOneHour ELSE displayEvent(PTR(PT.Time, PT.TimeMax)) END
-        END;
-        scheduleNextEvent
+        NSReq := FALSE;
       END
     END
   UNTIL FALSE
 END sDiary.
 
-OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod Arith.Mod/s MultiPrecisionArith.Mod/s
-  String.Mod/s PosixTime.Mod/s sDiaryTypes.Mod/s
-  msp430delay.Mod/s pcd8544.Mod/s sDiary.Mod/s ~
+OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod MultiPrecisionArith.Mod/s
+  String.Mod/s Arith.Mod/s PosixTime.Mod/s sDiaryTypes.Mod/s msp430delay.Mod/s pcd8544.Mod/s sDiary.Mod/s ~
 
 2800H = 3C00H - NB_DIARY_SLOTS*SYSTEM.SIZE(ST.DEDesc)
 OMSPL.Link 32 2800H 200H sDiary ~
   linking MSPFlashTypes preserveMSPFlash msp430g2553 MultiPrecisionArith String Arith PosixTime sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash 9934, data  293, stack  219 bytes
+    flash10002, data  296, stack  216 bytes
 
 OMSPTool.DecSym sDiary.sms
 
