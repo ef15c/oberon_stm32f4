@@ -373,7 +373,7 @@ MODULE sDiary;
     UNTIL i < 0;
   END sendEvents;
 
-  PROCEDURE parseCommand;
+  PROCEDURE doCommand;
   (* Parse commands sent by UART interface
       Each command start with a letter, following by arguments and terminated by a carriage return
       List of available commands
@@ -400,14 +400,14 @@ MODULE sDiary;
       l{0|1}* : LCD Light off | on. Example: l0 turns LCD light off. Must be terminated by a \r.
   *)
   VAR c: INTEGER;
-  BEGIN c := RcdChar; RcdChar := 0; BIC(c, {9});
+  BEGIN BIC(RcdChar, {9}); c := RcdChar; BIS(M.IE2^, M.UCA0RXIE);
     IF BIT(c,  {8}) THEN (*set overflow error*) state := CM_OVERFLOW_ERROR; respondBAD
     ELSIF (c = 0DH) & ((state # CM_CREATE_EVENT) OR (parseData >= 64)) THEN
       IF state = CM_SET_DATETIME THEN
         IF parseData = 14 THEN (*the data are complete*)
           DEC(setTime.mon); (*TM struct need month between 0 and 11*)
           DEC(setTime.year, 1900); (*TM struct count year from 1900*)
-          (*adjust nextVccEvent step 1*)
+          (*adjust relative events: step 1*)
           oldSetTime.h := 0; oldSetTime.l := 0; PT.dec(PTR(PT.Time, oldSetTime), PTR(PT.Time, PT.systemTime));
           adjustEvents(PTR(PT.Time, oldSetTime));
           PT.settime(PTR(PT.Tm, setTime), PTR(PT.Time, oldSetTime));
@@ -415,7 +415,8 @@ MODULE sDiary;
           oldSetTime := PT.systemTime; PT.setMax(PTR(PT.Time, old_day));
           findAndArmNextDiaryEvent(FALSE); (*setting time and arm next calendar event trigger, don't populate currentDE*)
           currentDE.nbSimultaneousEvents := 0; (*clear currentDE list*)
-          adjustEvents(PTR(PT.Time, PT.systemTime)); (*Adjust nextVccEvent step 2*)
+          (*Adjust relative events: step 2*)
+          adjustEvents(PTR(PT.Time, PT.systemTime));
           scheduleNextEvent
         END
       ELSIF state = CM_SECOND_DIGIT THEN respondBAD
@@ -424,9 +425,9 @@ MODULE sDiary;
         IF parseData = 64 THEN (*he data are complete*)
           DEIndex := createDiaryEvent(); respondI(DEIndex)
         ELSE (*error when creating Event*) respondBAD
-        END;
-        state := CM_INIT; prompt
-      END
+        END
+      END;
+      state := CM_INIT; prompt
     ELSIF state = CM_INIT THEN
       IF c = ORD("a") THEN state := CM_DISPLAY_CHAR
       ELSIF c = ORD("b") THEN state := CM_RAW
@@ -519,6 +520,10 @@ MODULE sDiary;
 			break;
 #endif*)
     END
+  END doCommand;
+
+  PROCEDURE parseCommand;
+  BEGIN WHILE BIT(RcdChar, {9}) DO doCommand END
   END parseCommand;
 
   PROCEDURE setVcc;
@@ -551,7 +556,6 @@ MODULE sDiary;
     END;
     LCD.SetAddr(x, y)
   END displayTime;
-
 
   PROCEDURE displayEvent(nextDiaryEventTime: PT.Time);
   (*
@@ -717,7 +721,8 @@ MODULE sDiary;
    *)
   BEGIN
     IF BIT(M.IFG2^, M.UCA0RXIFG) THEN
-      RcdChar :=  ORD({9}) + ORD(M.UCA0STAT^*M.UCOE)*ORD({8}) + M.UCA0RXBUF^; (*process character and overflow condition*)
+      BIC(M.IE2^, M.UCA0RXIE); (*disable RX interrupt to synchronize with parseCommand*)
+      RcdChar :=  ORD({9}) + ORD(M.UCA0STAT^*M.UCOE)*ORD({8}) + M.UCA0RXBUF^;
       (*exit from low power mode to allow background processing of events in main loop*)
       SYSTEM.BIC_SR_ON_EXIT(M.LPM4_bits)
     END
@@ -1078,9 +1083,9 @@ BEGIN dayOfWeek[0] := "Dim"; dayOfWeek[1] :="Lun"; dayOfWeek[2] := "Mar"; dayOfW
 
   REPEAT SYSTEM.BIS_SR(M.LPM3_bits); (*Enter LPM 3*)
     (*process background actions*)
+    parseCommand;
     IF BPReq THEN buttonPressed END;
     IF ADCReq THEN computeVcc END;
-    IF RcdChar # 0 THEN parseCommand END;
     IF NSReq THEN
       IF ~BIT(LCD.FunctionSet, LCD.PD) THEN displayTime END;
       IF PT.cmp (PTR(PT.Time, PT.systemTime), PTR(PT.Time, nextEventTime)) >= 0 THEN
@@ -1139,7 +1144,7 @@ OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod MultiPr
 OMSPL.Link 32 2800H 200H sDiary ~
   linking MSPFlashTypes preserveMSPFlash msp430g2553 MultiPrecisionArith String Arith PosixTime sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash10078, data  294, stack  218 bytes
+    flash10090, data  294, stack  218 bytes
 
 OMSPTool.DecSym sDiary.sms
 
