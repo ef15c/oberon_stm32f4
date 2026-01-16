@@ -74,7 +74,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE PrintItem(msg: ARRAY OF CHAR; x: Item);
   BEGIN S.DebugString("PrintItem", msg);
-    IF x.obj # NIL THEN S.DebugString("name", x.obj.name) END;
+    IF x.obj # NIL THEN S.DebugString("name", x.obj.name); END;
+    S.DebugHex("type", ORD(x.type));
     S.DebugHex("@", SYSTEM.ADR(x));
     S.DebugHex("mode", x.mode); S.DebugHex("reg", x.reg); 
     S.DebugHex("a", x.a); S.DebugHex("b", x.b); S.DebugHex("c", x.c);
@@ -365,7 +366,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSIF (y.class = B.StoredConst) & (y.type.form = B.Proc) THEN x.ptr := TRUE (*const procs are always pointers*)
     ELSIF y.type.form = B.String THEN x.a := y.val MOD 10000H (*no*); x.b := LSL(LSR(y.val, 16), 16) (*len*)
     END;
-
     x.ladr := (y.lev <= 0) & (y.class = B.Var) OR (y.class = B.StoredConst); (*global and extenal vars and stored contanst have a runtime address*)
     IF (y.lev > 0) & (y.lev # curlev) & ~(y.class IN {B.Const, B.StoredConst}) OR
         (y.lev >= 0) & (y.class = B.StoredConst) & (GetSection(x.a) = NIL) THEN S.Mark("not accessible ")
@@ -691,7 +691,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF (x.mode IN {B.Var, B.StoredConst, B.Par, RegI}) THEN load(x, 0FFH); NilCheck(x.reg); x.mode := RegI; x.a := 0
+    IF x.type.base.form = B.Proc THEN x.ptr := FALSE
+    ELSIF x.mode IN {B.Var, B.StoredConst, B.Par, RegI} THEN load(x, 0FFH); NilCheck(x.reg); x.mode := RegI; x.a := 0
     ELSIF x.mode = Reg THEN x.mode := RegI; x.a := 0
     ELSIF (x.mode = B.Const) & (x.type.form = B.Pointer) THEN x.mode := Absol
     ELSE S.Mark("bad mode in DeRef")

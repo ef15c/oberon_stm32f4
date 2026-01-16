@@ -167,12 +167,16 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END StandFunc;
 
+  PROCEDURE isRecOrPtr(x: G.Item): BOOLEAN;
+    RETURN (x.type.form = B.Record) OR (x.type.form = B.Pointer) & (x.type.base.form = B.Record)
+  END isRecOrPtr;
+
   PROCEDURE selector(VAR x: G.Item);
     VAR y!: G.Item; obj!: B.Object;
   BEGIN
     IF x.obj.class = B.SFunc THEN StandFunc(x, x.obj.val, x.obj.type) END;
     WHILE (sym = S.lbrak) OR (sym = S.period) OR (sym = S.arrow)
-        OR (sym = S.lparen) & (x.type.form IN {B.Record, B.Pointer}) DO
+        OR (sym = S.lparen) & isRecOrPtr(x) DO
       IF sym = S.lbrak THEN
         REPEAT S.Get(sym); expression(y); CheckInt(y); 
           IF x.type.form = B.Array THEN G.Index(x, y); x.type := x.type.base
@@ -198,7 +202,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF x.type.form = B.Pointer THEN G.DeRef(x); x.type := x.type.base; x.rdo := FALSE
         ELSE S.Mark("not a pointer")
         END
-      ELSIF (sym = S.lparen) & (x.type.form IN {B.Record, B.Pointer}) THEN (*type guard*)
+      ELSIF (sym = S.lparen) & isRecOrPtr(x) THEN (*type guard*)
         S.Get(sym);
         IF sym = S.ident THEN
           qualident(obj);
@@ -212,10 +216,16 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END selector;
 
+  PROCEDURE DeRefProc(VAR t: B.Type);
+  BEGIN
+    IF (t.form = B.Pointer) & (t.base # NIL) & (t.base.form = B.Proc) THEN t := t.base END;
+  END DeRefProc;
+
   PROCEDURE EqualSignatures(t0, t1: B.Type): BOOLEAN;
     VAR p0!, p1!: B.Object; com: BOOLEAN;
       i: INTEGER; dr: SET; first: BOOLEAN;
-  BEGIN com := TRUE; dr := t1.ur - t0.ur;
+  BEGIN DeRefProc(t0); DeRefProc(t1);
+    com := TRUE; dr := t1.ur - t0.ur;
     IF dr # {} THEN S.Mark("regs destroyed: "); first := TRUE;
       FOR i := 0 TO 15 DO
         IF i IN dr THEN IF ~first THEN Texts.WriteString(W, ", ") END;
@@ -242,11 +252,12 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
 
   PROCEDURE CompTypes(t0, t1: B.Type; varpar: BOOLEAN): BOOLEAN;
   BEGIN (*check for assignment compatibility*)
+    DeRefProc(t0); DeRefProc(t1);
     RETURN (t0 = t1)    (*openarray assignment disallowed in OMSPG*)
       OR (t0.form = B.Array) & (t1.form = B.Array) & (t0.base =  t1.base) & (t0.len = t1.len)
       OR (t0.form = B.Record) & (t1.form = B.Record)  & IsExtension(t0, t1)
       OR ~varpar &
-        ((t0.form = B.Pointer) & (t1.form = B.Pointer)  & IsExtension(t0.base, t1.base)
+        ((t0.form = B.Pointer) & (t1.form = B.Pointer) & IsExtension(t0.base, t1.base)
         OR (t0.form = B.Proc) & (t1.form = B.Proc) & EqualSignatures(t0, t1)
         OR (t0.form IN {B.Pointer, B.Proc}) & (t1.form = B.NilTyp))
   END CompTypes;
@@ -281,9 +292,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END Parameter;
 
-  PROCEDURE ParamList(x: G.Item);
+  PROCEDURE ParamList(t: B.Type);
     VAR n: INTEGER; par!: B.Object;
-  BEGIN par := x.type.dsc; n := 0;
+  BEGIN par := t.dsc; n := 0;
     IF sym # S.rparen THEN
       Parameter(par); n := 1;
       WHILE sym <= S.comma DO
@@ -294,8 +305,8 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       Check(S.rparen, ") missing")
     ELSE S.Get(sym);
     END;
-    IF n < x.type.nofpar THEN S.Mark("too few params")
-    ELSIF n > x.type.nofpar THEN S.Mark("too many params")
+    IF n < t.nofpar THEN S.Mark("too few params")
+    ELSIF n > t.nofpar THEN S.Mark("too many params")
     END
   END ParamList;
 
@@ -332,13 +343,16 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
     END;
     IF sym = S.ident THEN
       qualident(obj); G.MakeItem(x, obj, level); selector(x); x.rdo := TRUE;
+      IF (x.type.form = B.Pointer) & (x.type.base.form = B.Proc) THEN
+        G.DeRef(x); x.type := x.type.base
+      END;
       IF sym = S.lparen THEN
         S.Get(sym);
         IF (x.type.form = B.Proc) & (x.type.base.form # B.NoTyp) THEN
-          IF isLeaf THEN S.Mark("no call in leaf func"); ParamList(x)
-          ELSE G.PrepCall(x, rx, orx, pau); ParamList(x); G.Call(x, rx, orx, pau); x.type := x.type.base; selector(x)
+          IF isLeaf THEN S.Mark("no call in leaf func"); ParamList(x.type)
+          ELSE G.PrepCall(x, rx, orx, pau); ParamList(x.type); G.Call(x, rx, orx, pau); x.type := x.type.base; selector(x)
           END;
-        ELSE S.Mark("not a function"); ParamList(x)
+        ELSE S.Mark("not a function"); ParamList(x.type)
         END
       END
     ELSIF sym = S.int THEN G.MakeConstItem(x, B.intType, S.ival); S.Get(sym)
@@ -518,6 +532,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         G.MakeItem(x, obj, level);
         IF x.mode = B.SProc THEN StandProc(obj.val)
         ELSE selector(x);
+          IF (x.type.form = B.Pointer) & (x.type.base.form = B.Proc) THEN
+            G.DeRef(x); x.type := x.type.base
+          END;
           IF sym = S.becomes THEN (*assignment*)
             S.Get(sym); CheckReadOnly(x); expression(y);
             IF CompTypes(x.type, y.type, FALSE) THEN
@@ -538,10 +555,10 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
           ELSIF sym = S.lparen THEN (*procedure call*)
             S.Get(sym);
             IF (x.type.form = B.Proc) & (x.type.base.form = B.NoTyp) THEN
-              IF isLeaf THEN S.Mark("no call in leaf proc"); ParamList(x)
-              ELSE G.PrepCall(x, rx, orx, pau); ParamList(x); G.Call(x, rx, orx, pau)
+              IF isLeaf THEN S.Mark("no call in leaf proc"); ParamList(x.type)
+              ELSE G.PrepCall(x, rx, orx, pau); ParamList(x.type); G.Call(x, rx, orx, pau)
               END;
-            ELSE S.Mark("not a procedure"); ParamList(x)
+            ELSE S.Mark("not a procedure"); ParamList(x.type)
             END
           ELSIF x.type.form = B.Proc THEN (*procedure call without parameters*)
             IF x.type.nofpar > 0 THEN S.Mark("missing parameters") END ;
@@ -773,7 +790,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END ProcedureType;
 
   PROCEDURE FormalType0(VAR typ: B.Type; dim: INTEGER);
-    VAR obj!: B.Object; dmy: INTEGER;
+    VAR obj!: B.Object; dmy: INTEGER; t!: B.Type;
   BEGIN
     IF sym = S.ident THEN
       qualident(obj);
@@ -785,8 +802,9 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       FormalType(typ.base, dim+1)
     ELSIF sym = S.procedure THEN
       S.Get(sym); B.OpenScope;
-      NEW(typ); typ.form := B.Proc; dmy := 0; ProcedureType(typ, dmy);
-      typ.dsc := B.topScope.next; InsertResultRegister(typ); B.CloseScope
+      NEW(t); t.form := B.Proc; dmy := 0; ProcedureType(t, dmy);
+      t.dsc := B.topScope.next; InsertResultRegister(t); B.CloseScope;
+      NEW(typ);  typ.form := B.Pointer; typ.size := G.WordSize; typ.base := t
     ELSE S.Mark("identifier expected"); typ := B.noType
     END
   END FormalType0;
@@ -797,7 +815,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
   END CheckRecLevel;
 
   PROCEDURE Type0(VAR type: B.Type);
-    VAR dmy: INTEGER; obj!: B.Object; ptbase!: PtrBase; sr!: G.Item;
+    VAR dmy: INTEGER; obj!: B.Object; ptbase!: PtrBase; sr!: G.Item; t!: B.Type;
   BEGIN type := B.intType; (*sync*)
     IF (sym # S.ident) & (sym < S.array) THEN S.Mark("not a type");
       REPEAT S.Get(sym) UNTIL (sym = S.ident) OR (sym >= S.array)
@@ -832,10 +850,11 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
       END
     ELSIF sym = S.procedure THEN
       S.Get(sym); B.OpenScope;
-      NEW(type); type.form := B.Proc; dmy := 0;
-      type.ur := {4..15}; (*all non saved registers can be destroyed for dynamic procedures*)
-      IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); type.ur := type.ur - TOSET(sr.a) END;
-      ProcedureType(type, dmy); type.dsc := B.topScope.next; InsertResultRegister(type); B.CloseScope; type.size := G.WordSize
+      NEW(t); t.form := B.Proc; dmy := 0;
+      t.ur := {4..15}; (*all non saved registers can be destroyed for dynamic procedures*)
+      IF sym = S.lbrace THEN S.Get(sym); set(sr); CheckConst(sr); Check(S.rbrace, "no }"); t.ur := t.ur - TOSET(sr.a) END;
+      ProcedureType(t, dmy); t.dsc := B.topScope.next; InsertResultRegister(t); B.CloseScope;
+      NEW(type);  type.form := B.Pointer; type.size := G.WordSize; type.base := t
     ELSE S.Mark("illegal type")
     END
   END Type0;
