@@ -51,7 +51,7 @@ MODULE sDiary;
 
     (*global variables for parseCommand procedure*)
     state, DEIndex: INTEGER; setTime: PT.TmDesc; oldSetTime: PT.TimeDesc;
-    cOrD: SET; parseData: INTEGER; (*hex data or index on string sent by host*)
+    cOrD: SET; countData (*count character of string sent by host*), hexData: INTEGER;
 
     (*global variables for nextSecond procedure*)
     trimmer: INTEGER;
@@ -113,17 +113,17 @@ MODULE sDiary;
   END respondBAD;
 
   PROCEDURE appendDigit(VAR dest: INTEGER; c: CHAR);
-    (*add digit to the litteral dest and count the number of digits into parseData*)
+    (*add digit to the number dest*)
   BEGIN
-    IF (c >= "0") & (c <= "9") THEN dest := dest*10 + ORD(c) - ORD("0"); INC(parseData)
+    IF (c >= "0") & (c <= "9") THEN dest := dest*10 + ORD(c) - ORD("0")
     ELSE respondBAD
     END
   END appendDigit;
 
   PROCEDURE appendHexDigit(c: INTEGER);
   BEGIN
-    IF (c >= ORD("0")) & (c < ORD("9") + 1) THEN INC(parseData, c - ORD("0"))
-    ELSIF (c >= ORD("a")) & (c < ORD("f") + 1) THEN INC(parseData, c-(ORD("a") - 10))
+    IF (c >= ORD("0")) & (c < ORD("9") + 1) THEN INC(hexData, c - ORD("0"))
+    ELSIF (c >= ORD("a")) & (c < ORD("f") + 1) THEN INC(hexData, c-(ORD("a") - 10))
     ELSE respondBAD
     END
   END appendHexDigit;
@@ -323,7 +323,7 @@ MODULE sDiary;
   (*store in flash an event found in the structure ramDE
     return the index of the event if success, or a negative value in case of error*)
     VAR res, i: INTEGER; cde!: ST.DE;
-  BEGIN res := -1; i := NB_DIARY_SLOTS - 1; cde := flashDE;
+  BEGIN res := -1; i := 0; cde := flashDE;
     REPEAT
       IF cde.titre[0] = 0FFH THEN (*this slot is free*)
         FB.flashBlock(SYSTEM.VAL(PINTEGER, PTR(ST.DE, ramDE)), SYSTEM.VAL(PINTEGER, cde), 64);
@@ -331,8 +331,8 @@ MODULE sDiary;
         scheduleNextEvent; res := i
       END;
       INC(SYSTEM.VAL(INTEGER, cde), SYSTEM.SIZE(ST.DEDesc));
-      DEC(i)
-    UNTIL (i < 0) OR (res # -1)
+      INC(i)
+    UNTIL (i >= NB_DIARY_SLOTS) OR (res # -1)
 
     RETURN res
   END  createDiaryEvent;
@@ -360,7 +360,7 @@ MODULE sDiary;
   (*send events stored in flash to host*)
     VAR i,j : INTEGER; cde!: ST.DE; fbot: BYTE; (*the first byte of the title*)
       cb!: PBYTE;
-  BEGIN i :=NB_DIARY_SLOTS - 1; cde := flashDE;
+  BEGIN i := 0; cde := flashDE;
     REPEAT fbot := cde.titre[0];
       IF (fbot # 0FFH) & (fbot # 0) THEN (*the slot contains a valid event*)
         respondI(i); (*send the index on current slot*) respondC("|");
@@ -369,8 +369,8 @@ MODULE sDiary;
         respondC("|")
       END;
       INC(SYSTEM.VAL(INTEGER, cde), SYSTEM.SIZE(ST.DEDesc));
-      DEC(i)
-    UNTIL i < 0;
+      INC(i)
+    UNTIL i >= NB_DIARY_SLOTS;
   END sendEvents;
 
   PROCEDURE doCommand;
@@ -399,44 +399,40 @@ MODULE sDiary;
       s{0|1}* : Sound off | on. Example: s0 turns sound off. Must be terminated by a \r.
       l{0|1}* : LCD Light off | on. Example: l0 turns LCD light off. Must be terminated by a \r.
   *)
-  VAR c: INTEGER;
+  VAR c: INTEGER; pdata!: PBYTE;
   BEGIN BIC(RcdChar, {9}); c := RcdChar; BIS(M.IE2^, M.UCA0RXIE);
-    IF BIT(c,  {8}) THEN (*set overflow error*) state := CM_OVERFLOW_ERROR; respondBAD
-    ELSIF (c = 0DH) & ((state # CM_CREATE_EVENT) OR (parseData >= 64)) THEN
-      IF state = CM_SET_DATETIME THEN
-        IF parseData = 14 THEN (*the data are complete*)
-          DEC(setTime.mon); (*TM struct need month between 0 and 11*)
-          DEC(setTime.year, 1900); (*TM struct count year from 1900*)
-          (*adjust relative events: step 1*)
-          oldSetTime.h := 0; oldSetTime.l := 0; PT.dec(PTR(PT.Time, oldSetTime), PTR(PT.Time, PT.systemTime));
-          adjustEvents(PTR(PT.Time, oldSetTime));
-          PT.settime(PTR(PT.Tm, setTime), PTR(PT.Time, oldSetTime));
-          rearmEvent(DST_EVENT, PTR(PT.Time, oldSetTime)); (*setting time and arm DST change trigger*)
-          oldSetTime := PT.systemTime; PT.setMax(PTR(PT.Time, old_day));
-          findAndArmNextDiaryEvent(FALSE); (*setting time and arm next calendar event trigger, don't populate currentDE*)
-          currentDE.nbSimultaneousEvents := 0; (*clear currentDE list*)
-          (*Adjust relative events: step 2*)
-          adjustEvents(PTR(PT.Time, PT.systemTime));
-          scheduleNextEvent
-        END
+    IF BIT(c, {8}) THEN (*set overflow error*) state := CM_OVERFLOW_ERROR; respondBAD
+    ELSIF (c = 0DH) OR (countData = 0) THEN
+      IF (c # 0DH) OR (countData # 0) THEN respondBAD
+      ELSIF state = CM_CREATE_EVENT THEN DEIndex := createDiaryEvent(); respondI(DEIndex)
+      ELSIF state = CM_SET_DATETIME THEN
+        DEC(setTime.mon); (*TM struct need month between 0 and 11*)
+        DEC(setTime.year, 1900); (*TM struct count year from 1900*)
+        (*adjust relative events: step 1*)
+        oldSetTime.h := 0; oldSetTime.l := 0; PT.dec(PTR(PT.Time, oldSetTime), PTR(PT.Time, PT.systemTime));
+        adjustEvents(PTR(PT.Time, oldSetTime));
+        PT.settime(PTR(PT.Tm, setTime), PTR(PT.Time, oldSetTime));
+        rearmEvent(DST_EVENT, PTR(PT.Time, oldSetTime)); (*setting time and arm DST change trigger*)
+        oldSetTime := PT.systemTime; PT.setMax(PTR(PT.Time, old_day));
+        findAndArmNextDiaryEvent(FALSE); (*setting time and arm next calendar event trigger, don't populate currentDE*)
+        currentDE.nbSimultaneousEvents := 0; (*clear currentDE list*)
+        (*Adjust relative events: step 2*)
+        adjustEvents(PTR(PT.Time, PT.systemTime));
+        scheduleNextEvent
       ELSIF state = CM_SECOND_DIGIT THEN respondBAD
       ELSIF state = CM_DELETE_EVENT THEN deleteDiaryEvent(DEIndex)
-      ELSIF state = CM_CREATE_EVENT THEN
-        IF parseData = 64 THEN (*he data are complete*)
-          DEIndex := createDiaryEvent(); respondI(DEIndex)
-        ELSE (*error when creating Event*) respondBAD
-        END
       END;
-      state := CM_INIT; prompt
+      state := CM_INIT; prompt; countData := -1
+    ELSIF state = CM_CREATE_EVENT THEN pdata^ := c; INC(SYSTEM.VAL(INTEGER, pdata)); DEC(countData)
     ELSIF state = CM_INIT THEN
       IF c = ORD("a") THEN state := CM_DISPLAY_CHAR
       ELSIF c = ORD("b") THEN state := CM_RAW
-      ELSIF c = ORD("c") THEN state := CM_CREATE_EVENT; parseData := 0; (*no char read yet*)
+      ELSIF c = ORD("c") THEN state := CM_CREATE_EVENT; pdata :=  SYSTEM.VAL(PBYTE, SYSTEM.ADR(ramDE)); countData := 64
       ELSIF (c = ORD("d")) OR (c = ORD("u")) THEN state := CM_SET_DATETIME;
         setTime.isdst := c = ORD("d"); (*time expressed in local(d) or UTC(u) time*)
         setTime.mday := 0; setTime.mon := 0; setTime.year := 0; setTime.hour := 0; setTime.min := 0; setTime.sec := 0;
-        parseData := 0; (*no char read yet*)
-      ELSIF c = ORD("e") THEN  sendEvents; prompt
+        countData := 14
+      ELSIF c = ORD("e") THEN sendEvents; prompt
       ELSIF c = ORD("i") THEN (*send information about configuration and state to host*)
         respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR(DEVICE_IDENTITY)));
         respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR("|t="))); respondT(PTR(PT.Time, PT.systemTime));
@@ -472,25 +468,21 @@ MODULE sDiary;
     ELSIF state = CM_RAW THEN respondC(CHR(c));
       IF c = ORD("C") THEN cOrD := {} (*command*)
       ELSIF c = ORD("D") THEN cOrD := {8}; (*data*)
-      ELSE parseData := 0; appendHexDigit(c); state := CM_SECOND_DIGIT
+      ELSE hexData := 0; appendHexDigit(c); state := CM_SECOND_DIGIT
       END
-    ELSIF state = CM_SECOND_DIGIT THEN respondC(CHR(c)); RLA(parseData, 4); appendHexDigit(c);
+    ELSIF state = CM_SECOND_DIGIT THEN respondC(CHR(c)); RLA(hexData, 4); appendHexDigit(c);
       (*the data is built, send it to LCD with appropriate command or data signal*)
-      LCD.send(cOrD + TOSET(parseData)); state := CM_RAW
+      LCD.send(cOrD + TOSET(hexData)); state := CM_RAW
     ELSIF state = CM_DISPLAY_CHAR THEN LCD.WriteChar(CHR(c))
     ELSIF state = CM_DELETE_EVENT THEN appendDigit(DEIndex, CHR(c))
-    ELSIF state = CM_CREATE_EVENT THEN
-      IF parseData < SYSTEM.SIZE(ST.DEDesc) THEN SYSTEM.VAL(PBYTE, SYSTEM.ADR(ramDE) + parseData)^ := c; INC(parseData)
-      ELSE respondBAD
-      END
     ELSIF state = CM_SET_DATETIME THEN
-      IF parseData < 2 THEN (*day of month expected*) appendDigit(setTime.mday, CHR(c))
-      ELSIF parseData < 4 THEN (*month expected*) appendDigit(setTime.mon, CHR(c))
-      ELSIF parseData < 8 THEN appendDigit(setTime.year, CHR(c))
-      ELSIF parseData < 10 THEN (*hour (0, 23) expected*) appendDigit(setTime.hour, CHR(c))
-      ELSIF parseData < 12 THEN (*minutes (0, 59) expected*) appendDigit(setTime.min, CHR(c))
-      ELSIF parseData < 14 THEN (*seconds (0, 59) expected*) appendDigit(setTime.sec, CHR(c))
-      END
+      IF countData >= 13 THEN (*day of month expected*) appendDigit(setTime.mday, CHR(c))
+      ELSIF countData >= 11 THEN (*month expected*) appendDigit(setTime.mon, CHR(c))
+      ELSIF countData >=  7 THEN appendDigit(setTime.year, CHR(c))
+      ELSIF countData >= 5 THEN (*hour (0, 23) expected*) appendDigit(setTime.hour, CHR(c))
+      ELSIF countData >= 3 THEN (*minutes (0, 59) expected*) appendDigit(setTime.min, CHR(c))
+      ELSIF countData >= 1 THEN (*seconds (0, 59) expected*) appendDigit(setTime.sec, CHR(c))
+      END; DEC(countData)
 (*#ifdef EXTENDED_COMMANDS
 	case CM_SOUND:
 		respondC(c);
@@ -1064,7 +1056,7 @@ BEGIN dayOfWeek[0] := "Dim"; dayOfWeek[1] :="Lun"; dayOfWeek[2] := "Mar"; dayOfW
 
   beepOn := 0;
   LCD.setCallbacks(select, deselect, setData, setCommand, send); (*register pcd8544 callbacks*)
-  state := 0; currentDE.nbSimultaneousEvents := 0; vcc := 0;
+  state := 0; countData := -1; currentDE.nbSimultaneousEvents := 0; vcc := 0;
   nextEventTime.h := 0; nextEventTime.l := 0; oldSetTime.h := 0; oldSetTime.l := 0;
   nextEventType := {};
 
@@ -1144,7 +1136,7 @@ OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod MultiPr
 OMSPL.Link 32 2800H 200H sDiary ~
   linking MSPFlashTypes preserveMSPFlash msp430g2553 MultiPrecisionArith String Arith PosixTime sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash10096, data  294, stack  218 bytes
+    flash10102, data  296, stack  216 bytes
 
 OMSPTool.DecSym sDiary.sms
 
