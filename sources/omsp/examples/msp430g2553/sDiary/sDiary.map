@@ -128,11 +128,12 @@ oldSetTime	r 0316	4
 cOrD	r 031A	2
 countData	r 031C	2
 hexData	r 031E	2
-trimmer	r 0320	2
-BPReq	r 0322	1
-ADCReq	r 0323	1
-NSReq	r 0324	1
-RcdChar	r 0326	2
+pdata	r 0320	2
+trimmer	r 0322	2
+BPReq	r 0324	1
+ADCReq	r 0325	1
+NSReq	r 0326	1
+RcdChar	r 0328	2
 select	c E848	6
 deselect	c E84E	6
 setData	c E854	6

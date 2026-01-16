@@ -52,6 +52,7 @@ MODULE sDiary;
     (*global variables for parseCommand procedure*)
     state, DEIndex: INTEGER; setTime: PT.TmDesc; oldSetTime: PT.TimeDesc;
     cOrD: SET; countData (*count character of string sent by host*), hexData: INTEGER;
+    pdata: PBYTE;
 
     (*global variables for nextSecond procedure*)
     trimmer: INTEGER;
@@ -399,11 +400,11 @@ MODULE sDiary;
       s{0|1}* : Sound off | on. Example: s0 turns sound off. Must be terminated by a \r.
       l{0|1}* : LCD Light off | on. Example: l0 turns LCD light off. Must be terminated by a \r.
   *)
-  VAR c: INTEGER; pdata!: PBYTE;
+  VAR c: INTEGER;
   BEGIN BIC(RcdChar, {9}); c := RcdChar; BIS(M.IE2^, M.UCA0RXIE);
     IF BIT(c, {8}) THEN (*set overflow error*) state := CM_OVERFLOW_ERROR; respondBAD
     ELSIF (c = 0DH) OR (countData = 0) THEN
-      IF (c # 0DH) OR (countData # 0) THEN respondBAD
+      IF (c # 0DH) OR (countData >= 1) THEN respondBAD
       ELSIF state = CM_CREATE_EVENT THEN DEIndex := createDiaryEvent(); respondI(DEIndex)
       ELSIF state = CM_SET_DATETIME THEN
         DEC(setTime.mon); (*TM struct need month between 0 and 11*)
@@ -478,7 +479,7 @@ MODULE sDiary;
     ELSIF state = CM_SET_DATETIME THEN
       IF countData >= 13 THEN (*day of month expected*) appendDigit(setTime.mday, CHR(c))
       ELSIF countData >= 11 THEN (*month expected*) appendDigit(setTime.mon, CHR(c))
-      ELSIF countData >=  7 THEN appendDigit(setTime.year, CHR(c))
+      ELSIF countData >= 7 THEN appendDigit(setTime.year, CHR(c))
       ELSIF countData >= 5 THEN (*hour (0, 23) expected*) appendDigit(setTime.hour, CHR(c))
       ELSIF countData >= 3 THEN (*minutes (0, 59) expected*) appendDigit(setTime.min, CHR(c))
       ELSIF countData >= 1 THEN (*seconds (0, 59) expected*) appendDigit(setTime.sec, CHR(c))
@@ -1136,7 +1137,7 @@ OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod MultiPr
 OMSPL.Link 32 2800H 200H sDiary ~
   linking MSPFlashTypes preserveMSPFlash msp430g2553 MultiPrecisionArith String Arith PosixTime sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash10102, data  296, stack  216 bytes
+    flash10102, data  298, stack  214 bytes
 
 OMSPTool.DecSym sDiary.sms
 
