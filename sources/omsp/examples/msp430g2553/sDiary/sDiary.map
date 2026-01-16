@@ -154,42 +154,42 @@ findNextDiaryEvent	c ED88	272
 findAndArmNextDiaryEvent	c EE98	40
 eraseAllDiaryEvents	c EEC0	68
 deleteDiaryEvent	c EF04	162
-createDiaryEvent	c EFA6	84
-prompt	c EFFA	12
-respondL	c F006	52
-respondI	c F03A	34
-respondT	c F05C	46
-sendEvents	c F08A	114
-doCommand	c F0FC	1184
-	s F59C	4
-	s F5A0	6
-	s F5A6	4
-	s F5AA	4
-	s F5AE	6
-	s F5B4	8
-	s F5BC	6
+createDiaryEvent	c EFA6	90
+prompt	c F000	12
+respondL	c F00C	52
+respondI	c F040	34
+respondT	c F062	46
+sendEvents	c F090	114
+doCommand	c F102	1184
+	s F5A2	4
+	s F5A6	6
+	s F5AC	4
+	s F5B0	4
+	s F5B4	6
+	s F5BA	8
 	s F5C2	6
 	s F5C8	6
 	s F5CE	6
 	s F5D4	6
-	s F5DA	8
-parseCommand	c F5E2	16
-setVcc	c F5F2	100
-displayTime	c F656	358
-displayEvent	c F7BC	364
-nextSecond	c F928	64
-displayEventOneHour	c F968	38
-rearmVCCSense	c F98E	44
-rearmBeepOff	c F9BA	44
-buttonPressed	c F9E6	196
-computeVcc	c FAAA	68
-PORT1_ISR_HOOK	c FAEE	58
-ADC10_ISR_HOOK	c FB28	30
-USCI0RX_ISR_HOOK	c FB46	70
-TIMER0_A0_ISR_HOOK	c FB8C	20
-TIMER0_A1_ISR_HOOK	c FBA0	38
-doDSTEvent	c FBC6	40
-module body	c FBEE	870
+	s F5DA	6
+	s F5E0	8
+parseCommand	c F5E8	16
+setVcc	c F5F8	100
+displayTime	c F65C	358
+displayEvent	c F7C2	364
+nextSecond	c F92E	64
+displayEventOneHour	c F96E	38
+rearmVCCSense	c F994	44
+rearmBeepOff	c F9C0	44
+buttonPressed	c F9EC	196
+computeVcc	c FAB0	68
+PORT1_ISR_HOOK	c FAF4	58
+ADC10_ISR_HOOK	c FB2E	30
+USCI0RX_ISR_HOOK	c FB4C	70
+TIMER0_A0_ISR_HOOK	c FB92	20
+TIMER0_A1_ISR_HOOK	c FBA6	38
+doDSTEvent	c FBCC	40
+module body	c FBF4	870
 vector table	v	64
 codeexe	 E818
 

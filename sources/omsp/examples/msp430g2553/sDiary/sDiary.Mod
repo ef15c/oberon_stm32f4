@@ -328,7 +328,7 @@ MODULE sDiary;
       IF cde.titre[0] = 0FFH THEN (*this slot is free*)
         FB.flashBlock(SYSTEM.VAL(PINTEGER, PTR(ST.DE, ramDE)), SYSTEM.VAL(PINTEGER, cde), 64);
         findAndArmNextDiaryEvent(FALSE); (*arm next diary event, but don't populate currentDE structure*)
-        scheduleNextEvent
+        scheduleNextEvent; res := i
       END;
       INC(SYSTEM.VAL(INTEGER, cde), SYSTEM.SIZE(ST.DEDesc));
       DEC(i)
@@ -1144,7 +1144,7 @@ OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod MultiPr
 OMSPL.Link 32 2800H 200H sDiary ~
   linking MSPFlashTypes preserveMSPFlash msp430g2553 MultiPrecisionArith String Arith PosixTime sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash10090, data  294, stack  218 bytes
+    flash10096, data  294, stack  218 bytes
 
 OMSPTool.DecSym sDiary.sms
 
