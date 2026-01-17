@@ -43,6 +43,13 @@ MODULE nrf24pRelay;
   BEGIN BIC(PO_DC^, DC)
   END setCommand;
 
+  PROCEDURE send(d: BYTE* );
+  BEGIN
+    REPEAT UNTIL BIT(M.IFG2^, M.UCA0TXIFG); (*Wait for USCI availability*)
+    M.UCA0TXBUF^ := ORD(d); (*USCI A is ready, send character*)
+    REPEAT UNTIL ~BIT(M.UCA0STAT^, M.UCBUSY); (*Wait for end of transmission*)
+  END send;
+
   PROCEDURE service_emi;
     VAR cmd, rep: ARRAY 2 OF BYTESET;
      eob, i: INTEGER;
@@ -373,7 +380,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   radio_state := NOT_CONFIGURED; pos := 1; 
   ownerPipe := -1; nbCycles := 3;
 
-  LCD.setCallbacks(select, deselect, setData, setCommand); (*register pcd8544 callbacks*)
+  LCD.setCallbacks(select, deselect, setData, setCommand, send); (*register pcd8544 callbacks*)
 
   (*
    *  ======== Flash_2xx_graceInit ========
@@ -651,7 +658,7 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
   N.init(emetteur); N.powerUp(emetteur);
   MH.init(PTR(MH.Instance, control), NIL, config_frame_handler, 0);
 
-  REPEAT LCD.WriteLongint(0, nbCycles, 11, 1, 3, "-");
+  REPEAT LCD.WriteLongint(0, nbCycles, 13, 1, 1, 1);
     service_emi(); (*Process pending interrupt coming from the emitter*)
     IF radio_state = NOT_CONFIGURED THEN (*Init receiver nRF24l01+ breakout*)
       IF wdtReset OR (recepteur.radio.pipes_count = 0FFH) THEN initConfCom
@@ -682,9 +689,9 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
       ELSE displayStatusText("Nchg OK,->host")
       END; radio_state := HOST_NOTIFIED
     END;
-    LCD.WriteLongint(nbRecush, nbRecusl, 4, 2, 10, " "); (*display receiving stats*)
-    LCD.WriteLongint(nbOKh, nbOKl, 4, 3, 10, " ");
-    LCD.WriteLongint(nbKOh, nbKOl, 4, 4, 10, " "); (*display transmiting stats*)
+    LCD.WriteLongint(nbRecush, nbRecusl, 4, 2, 1, 10); (*display receiving stats*)
+    LCD.WriteLongint(nbOKh, nbOKl, 4, 3, 1, 10);
+    LCD.WriteLongint(nbKOh, nbKOl, 4, 4, 1, 10); (*display transmiting stats*)
     service_rec;
     (* Entering in low power mode *)
     enablePushButton;
@@ -696,10 +703,10 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD; (*stop watchdog timer*)
 END nrf24pRelay.
 
 System.Free StackTrace OMSPP OMSPL OMSPTool OMSPD OMSPG OMSPA OMSPB OMSPS~
-OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s pcd8544.Mod/s nrf24pRelay.Mod/s ~
+OMSPP.Compile nrf24l01p.Mod/s nrf24pRelayTypes.Mod/s minihdlc.Mod/s String.Mod/s pcd8544.Mod/s nrf24pRelay.Mod/s ~
 OMSPL.Link 32 4000H 200H nrf24pRelay~
   linking msp430g2553 msp430delay nrf24l01p nrf24pRelayTypes minihdlc Arith MultiPrecisionArith String
  pcd8544 nrf24pRelay
-    flash 7510, data  292, stack  220 bytes
+    flash 6704, data  294, stack  218 bytes
 
 OMSPTool.DecObj nrf24pRelay.mpc

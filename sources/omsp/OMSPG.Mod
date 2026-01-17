@@ -506,11 +506,12 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF x.mode = B.Var THEN
         IF x.c > 0 THEN (*local*) ASSERT(x.tmp = FALSE); x.mode := Reg; x.reg := A.SP; x.rdo := TRUE;
           IF x.a + frame # 0 THEN t.a := x.a + frame; PutDO(A.ADD, t, x) END
-        ELSE (*global or imported*) x.mode := B.Const; x.ladr := TRUE;
+        ELSE (*global or imported*) x.mode := B.Const; x.ladr := TRUE
         END
+      ELSIF x.mode = B.StoredConst THEN x.mode := B.Const; x.ladr := TRUE
       ELSIF x.mode = RegI THEN x.mode := Reg; x.rdo := FALSE;
         IF x.a # 0 THEN t.ladr := x.ladr; t.a := x.a; PutDO(A.ADD, t, x); x.ladr := FALSE END
-      ELSIF ~(x.mode IN {B.Var, B.StoredConst, Absol}) THEN S.Mark("not addressable")
+      ELSIF x.mode # Absol THEN S.Mark("not addressable")
       END
     END
 (*
@@ -1083,7 +1084,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         ELSE (* TODO*) S.Mark("not implemented"); S.DebugHex("form", y.type.form);
         END
       ELSIF y.mode = Absol THEN StoreConstInt(adr, x.type.size, val)
-      ELSE S.Mark("not allowed is Store"); S.DebugHex("mode", y.mode);
+      ELSE S.Mark("not allowed is Store"); PrintItem("Store", y);
       END
     ELSE PutDO(A.MOV, y, x); free(y); free(x)
     END
