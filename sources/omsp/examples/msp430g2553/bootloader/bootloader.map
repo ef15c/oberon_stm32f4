@@ -43,7 +43,7 @@ waitFlash	c C126	8
 flushBuffer	c C12E	40
 addByteInBuffer	c C156	28
 getHexNumber	c C172	60
-module body	c C1AE	520
+module body	c C1AE	514
 vector table	v	64
 codeexe	 C064
 

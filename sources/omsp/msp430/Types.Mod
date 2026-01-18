@@ -7,7 +7,7 @@ END Types.
 
 OMSPTool.DecObj Types.mpc
 decode Types.mpc
-Types B849A980
+Types 5D7B970E
 imports:
 
 section     0	d    8	PPROC
@@ -28,7 +28,6 @@ entries:
 
 OMSPTool.DecSym Types.sms
 decode Types.sms
-Types B849A980  3
-   5 procedure [19  form = 10 [^9] UR FFF0()]()
-   5 PPROC [20  form = 13 [^9]{  exno = 1  extlev = 0  size = 2 { p [0  form = 10 [^9] UR FFF0()]   0}]()
-
+Types 5D7B970E  3
+   5 procedure [19  form = 7 [0  form = 10 [^9] UR FFF0()]]()
+   5 PPROC [20  form = 13 [^9]{  exno = 1  extlev = 0  size = 2 { p [0  form = 7 [0  form = 10 [^9] UR FFF0()]]   0}]()

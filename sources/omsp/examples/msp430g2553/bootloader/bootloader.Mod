@@ -1,7 +1,7 @@
 MODULE bootloader;
   IMPORT SYSTEM, M := msp430g2553, MSPFlash, Types, Delay := msp430delay;
 
-  CONST APP_RESET_VECTOR = SYSTEM.VAL(Types.PPROC, 0FFE2H);
+  CONST APP_START = SYSTEM.VAL(Types.PPROC, 0FFE2H);
     NOWHERE = SYSTEM.VAL(PBYTE, 0A000H); (*non mapped address*)
     BUF_SIZE = 64;
 
@@ -154,13 +154,13 @@ BEGIN M.WDTCTL^ := M.WDTPW + M.WDTHOLD;
       serialInChar; (* get next char or skip \r *) IF cc = 0AX THEN serialInChar (* Skip \n *) END
     UNTIL FALSE
   END;
-  APP_RESET_VECTOR.p; (* Start user application *)
+  APP_START.p; (* Start user application *)
 END bootloader.
 
 OMSPP.Compile MSPFlash.Mod/s bootloader.Mod/s~
 OMSPL.Link 32 4000H 200H bootloader~
   linking msp430g2553 MSPFlash* Types msp430delay bootloader
-    flash  980, data  166, stack  346 bytes
+    flash  974, data  166, stack  346 bytes
 
 OMSPTool.DecObj bootloader.mpc
 decode bootloader.mpc
@@ -168,7 +168,7 @@ bootloader 2BB965A8
 imports:
 	msp430g2553 BBD31A01
 	MSPFlash 6F801689
-	Types B849A980
+	Types 5D7B970E
 	msp430delay AAE4F156
 
 section     0	r    1	cc
@@ -415,7 +415,7 @@ fixups:
  0037	s0.16
  0033	s0.2
 
-section    22	c  520	module body
+section    22	c  514	module body
  0000	     40B2	MOV #23168,&288
  0002	     5A80
  0004	     0120
@@ -670,12 +670,9 @@ section    22	c  520	module body
  01F6	     12B0	CALL #493
  01F8	     01ED
  01FA	     3F5D	JMP $-324, goes to  00B6
- 01FC	     1212	PUSH &65506
+ 01FC	     1292	CALL &65506
  01FE	     FFE2
- 0200	     1291	CALL 2(SP)
- 0202	     0002
- 0204	     5321	ADD #2,SP
- 0206	     4130	RET
+ 0200	     4130	RET
 fixups:
  01D5	s0.20
  01D1	s0.1
