@@ -26,7 +26,7 @@ will be placed in the generated firmware.
 
 A new example includind a bootloader and code in RAM feature has been added (bootloader and sDiary)
 
-##Hardware
+## Hardware
 The base board PCB can be ordered [here](https://www.pcbway.com/project/shareproject/Oberon_STM32F429I_DISCO_station_af64426e.html)  
 ## Previous releases
 A rudimentary image manipulation module is available. It allows to display 8bpp indexed colors BMP and can take screenshots.
