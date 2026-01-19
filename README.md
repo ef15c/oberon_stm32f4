@@ -1,8 +1,35 @@
 # Oberon STM32F4
 Portage of Oberon system to stm32f429i-disco board<br><br>
-**Version 13 released!**
+
+**Version 14 released!**
 ## Oberon System
-A rudimentary image manipulation module has been added. It allows to display 8bpp indexed colors BMP and can take screenshots.
+**Improvements:**  
+
+* Edit.ChangeOffset allows formatting indices and exponents in texts  
+* Mouse wheel support in text frames
+* Scrolling text is now faster
+* VGA stability improved
+* HOME and END keys sopported
+* NIL dereferences (trap 4) detection improved
+* tests of OM4 compiler with Advent Of Code 2025 puzzles
+
+**Fixes:**
+
+* CapsLock sometimes freezes keyboard fixed
+* LED blinking on system panic fixed
+* wrong mouse pointer shape in text frames fixed
+
+## MSP430 Oberon compiler
+The compiler and linker were rewritten in order to eliminate unused code and data.  
+Libraries can now include many procedures and only the ones used in the program
+will be placed in the generated firmware.  
+
+A new example includind a bootloader and code in RAM feature has been added (bootloader and sDiary)
+
+##Hardware
+The base board PCB can be ordered [here](https://www.pcbway.com/project/shareproject/Oberon_STM32F429I_DISCO_station_af64426e.html)  
+## Previous releases
+A rudimentary image manipulation module is available. It allows to display 8bpp indexed colors BMP and can take screenshots.
   
 ![Screenshot](https://raw.githubusercontent.com/ef15c/oberon_stm32f4/refs/heads/main/sources/graph/screenshot7C99C356.png)
   
