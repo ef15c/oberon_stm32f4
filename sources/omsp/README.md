@@ -1,15 +1,10 @@
 # MSP430 Oberon compiler
 ## Differences from previous releases
-The main point is the adding support of <b>stored objects</b>. This can be seen as immutable variables initialized at compile time and stored in flash.
-Lot of bug fixes and improvements have been added.  
-Two examples Thermometre (MSP430G2231) and nRF24l01+ relay (MSP430G2553) have been added.  
-  
-Details:
+The compiler and linker were rewritten in order to eliminate unused code and data.  
+Libraries can now include many procedures and only the ones used in the program
+will be placed in the generated firmware.  
 
-* Cleaning of the code
-* Minor bugs fixed
-* Adding stored objects
-* Adding the standard function <B>PTR</B> (see below)
+A new example including a bootloader and code in RAM feature has been added (bootloader and sDiary).
 
 ## Language differences from Oberon 07 for Cortex M4
 ### Stored objects

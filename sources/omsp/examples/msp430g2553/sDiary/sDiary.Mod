@@ -678,8 +678,7 @@ MODULE sDiary;
     ADCReq := TRUE; SYSTEM.BIC_SR_ON_EXIT(M.LPM4_bits)
   END ADC10_ISR_HOOK;
 
-  PROCEDURE* (M.USCIAB0RX_VECTOR) {4..6} USCI0RX_ISR_HOOK;
-  VAR dummy: BYTE*;
+  PROCEDURE* (M.USCIAB0RX_VECTOR) {4, 5} USCI0RX_ISR_HOOK;
   (*
    *  ======== USCI A0/B0 RX Interrupt Handler Generation ========
    *
@@ -1137,7 +1136,7 @@ OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod MultiPr
 OMSPL.Link 32 2800H 200H sDiary ~
   linking MSPFlashTypes preserveMSPFlash msp430g2553 MultiPrecisionArith String Arith PosixTime sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash10102, data  298, stack  214 bytes
+    flash10098, data  298, stack  214 bytes
 
 OMSPTool.DecSym sDiary.sms
 

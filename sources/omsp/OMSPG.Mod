@@ -199,7 +199,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF pr # 0FFH THEN RH := pr
     ELSE RH := RB; WHILE (RIU*{RH} # {}) & (RH # RL) DO nextR(RH) END
     END;
-    IF RH = RL THEN S.Mark("register stack overflow"); ASSERT(FALSE); RH := 8 END;
+    IF RH = RL THEN S.Mark("register stack overflow"); RH := 8 END;
     allocR(RH); rh.reg := RH
 
     RETURN RH
@@ -639,8 +639,8 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode IN {B.Var, B.StoredConst} THEN IF x.c > 0 THEN INC(x.a, y.val) ELSE INC(x.b,  y.val) END
     ELSIF x.mode IN {RegI, Absol} THEN INC(x.a, y.val)
     ELSIF x.mode = B.Par THEN INC(x.b, y.val)
-    ELSIF (x.mode = B.Const) & (y.type.form = B.Proc) THEN INC(x.a, y.val); x.mode := Absol
-    ELSE S.Mark("not implemented"); S.DebugHex("x.mode", x.mode)
+    ELSIF (x.mode = B.Const) & (y.type.form = B.Pointer) & (y.type.base.form = B.Proc) THEN INC(x.a, y.val); x.mode := Absol
+    ELSE S.Mark("not implemented"); PrintItem("Field", x)
     END
   END Field;
 
@@ -810,7 +810,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     r := RIU; IF x.mode IN {Reg, RegI} THEN EXCL(r, x.reg) END;
     or := x.type.ur*r; (*overwritten registers currently in use by the caller*)
     SaveRegs(or); RIU := RIU - or;
-    IF (x.mode # B.StoredConst) & (x.mode > B.Par) THEN push(x, 2) END;
+    IF ~(x.mode IN {B.StoredConst, Absol}) & (x.mode > B.Par) THEN push(x, 2) END;
     IF x.obj.type.leaf THEN SetAllocationMode(Register) END;
     PRU := PRU + (x.type.ur - or)
   END PrepCall;
@@ -835,7 +835,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF x.mode = B.StoredConst THEN
       IF x.c > 0 THEN x.c := 0 END; (*inner procedure are called the same way as global procedures*) 
       PutSO(A.CALL, x)
-    ELSE IF x.mode > B.Par THEN x.mode := RegI; x.reg := A.SP; x.a := s; INC(s, WordSize) END;
+    ELSE IF (x.mode # Absol) & (x.mode > B.Par) THEN x.mode := RegI; x.reg := A.SP; x.a := s; INC(s, WordSize) END;
       IF traps[5] # NIL THEN t := c0; PutDO(A.CMP, t, x); Trap(A.EQ, 5) END;
       PutSO(A.CALL, x); free(x)
     END;
@@ -1081,10 +1081,10 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       s := GetSection(x.a); adr := x.b + 1; val := UpdateChain(s, adr, y.a, y);
       IF y.mode = B.Const THEN
         IF y.type.form IN {B.Bool, B.Int, B.Proc, B.Set, B.Pointer, B.NilTyp} THEN StoreConstInt(s.org + x.b, x.type.size, val)
-        ELSE (* TODO*) S.Mark("not implemented"); S.DebugHex("form", y.type.form);
+        ELSE (* TODO*) S.Mark("not implemented"); PrintItem("Store Const", y);
         END
       ELSIF y.mode = Absol THEN StoreConstInt(adr, x.type.size, val)
-      ELSE S.Mark("not allowed is Store"); PrintItem("Store", y);
+      ELSE S.Mark("not allowed is Store"); PrintItem("Store other", y);
       END
     ELSE PutDO(A.MOV, y, x); free(y); free(x)
     END
@@ -1494,7 +1494,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     vectors.size := 0; FOR i := 1 TO 32 DO EmitWord(vectors, 0FFFFH); END; vectors.fixup := NIL;
     (*initialise segments*)
     head := NIL; tail := NIL; body := NIL; ccs := NIL;nofsec := 0;
-    RIU := {};
+    RIU := {}; VRS := {};
     rh.reg := 15; rh.am := A.Register; rh.ofs := 0; rh.obj := NIL; rh.mode := Reg; rh.type := B.intType;
     SetAllocationMode(Stack)
   END Open;

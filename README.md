@@ -9,7 +9,7 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 * Mouse wheel support in text frames
 * Scrolling text is now faster
 * VGA stability improved
-* HOME and END keys sopported
+* HOME and END keys supported
 * NIL dereferences (trap 4) detection improved
 * tests of OM4 compiler with Advent Of Code 2025 puzzles
 
@@ -24,7 +24,7 @@ The compiler and linker were rewritten in order to eliminate unused code and dat
 Libraries can now include many procedures and only the ones used in the program
 will be placed in the generated firmware.  
 
-A new example includind a bootloader and code in RAM feature has been added (bootloader and sDiary)
+A new example including a bootloader and code in RAM feature has been added (bootloader and sDiary).
 
 ## Hardware
 The base board PCB can be ordered [here](https://www.pcbway.com/project/shareproject/Oberon_STM32F429I_DISCO_station_af64426e.html)  
