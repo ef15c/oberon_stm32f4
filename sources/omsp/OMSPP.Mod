@@ -158,6 +158,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         ELSE S.Mark("must be a type")
         END
       ELSIF fct = 19 THEN (*COND*) CheckConst(x); CheckInt(x); G.Condition(x)
+      ELSIF fct = 20 THEN (*SXT*) CheckInt(x); IF x.type.size # 1 THEN S.Mark("not BYTE") END; G.Sxt(x)
       ELSIF fct = 22 THEN (*Int Compare*)
         CheckInt(x); CheckInt(y); CheckConst(z); CheckInt(z); G.IntCompare(x, y, z)
       ELSE ASSERT(FALSE)

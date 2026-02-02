@@ -74,7 +74,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
   TYPE
     ModuleCode* = RECORD
       pc*: INTEGER; (*program counter*)
-      code*: ARRAY maxCode OF BYTE;   (*MSP instructions are multiple of 16bit words, but this size does not exists in Oberon 07 cross compiler*)
+      code*: ARRAY maxCode OF BYTE (*MSP instructions are multiple of 16bit words, but this size does not exists in Oberon 07 cross compiler*)
     END;
     Item* = RECORD reg*, am*: BYTE; ofs*: INTEGER END;
 
@@ -176,7 +176,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
           END
         END
       END
-    ELSIF op IN {DIv, MOd} THEN
+    ELSIF op IN {DIv, MOd} THEN e := 0;
       IF (s.am = Immediate) & (s.ofs < ORD({16})) & (log2(s.ofs, e) = 1) THEN
         IF op = DIv THEN WHILE e > 0 DO ASSERT(d.am = Register); PutSO0(c, RRA, d, params - Byte); DEC(e) END
         ELSE (*op = MOd*) t.reg := 0; t.am := Immediate; t.ofs := LSL(1, e) - 1; PutDO(c, AND, t, d, params)
@@ -228,7 +228,7 @@ MODULE OMSPA; (*C. Schoffit 19.05.24 Instruction encoder for MSP430 processor*)
     ELSIF op = NOP0 THEN (*do nothing*)
     ELSIF op = NEG THEN t.reg := 0; t.am := Immediate; t.ofs := -1; (*emulated by software*)
       PutDO(c, XOR, t, ds, params); t.ofs := 1; PutDO(c, ADD, t, ds, params)
-    ELSE ASSERT(op < 100H);
+    ELSE ASSERT(op < 100H); ASSERT((op = RRC) OR (op = RRA) OR (op = PUSH) OR (params*Byte = Word));
       encSrc(op, tds.reg, tds.am, tds.ofs, emitDSOff, params);
 
       ASSERT(tds.reg < 16);

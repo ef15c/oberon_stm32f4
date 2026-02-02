@@ -84,10 +84,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     S.DebugHex("tmp", ORD(x.tmp)); S.DebugHex("rdo", ORD(x.rdo))
   END PrintItem;
 
-  PROCEDURE pad(x: INTEGER): INTEGER;
-    RETURN (x + (WordSize - 1)) DIV WordSize*WordSize
-  END pad;
-
   PROCEDURE SetFCI(x: A.Item; state: BOOLEAN);
   BEGIN
     CASE x OF
@@ -326,10 +322,6 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR s!: Section;
   BEGIN s := GetSection(o.val); s.size := s.content.pc - s.org
   END EndP;
-
-  PROCEDURE CheckWord(val: INTEGER);
-  BEGIN ASSERT((val >= -ORD({15})) & (val < ORD({16})))
-  END CheckWord;
 
   PROCEDURE UpdateChain(s: Section; pos, val: INTEGER; x: Item): INTEGER;
     VAR res: INTEGER; f!: Fixup;
@@ -1473,6 +1465,11 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     SetCC(x, A.NE)
   END Bit;
 
+  PROCEDURE Sxt*(VAR x: Item);
+    VAR tmp: BOOLEAN;
+  BEGIN load(x, 0FFH); tmp := convertSize(x, B.intType); PutSO(A.SXT, x)
+  END Sxt;
+
   PROCEDURE Condition*(VAR x: Item);
   BEGIN (*x.mode = Const*) SetCC(x, x.a)
   END Condition;
@@ -1526,7 +1523,7 @@ MODULE OMSPG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Close*(VAR modid: S.Ident; key, nofent: INTEGER; codeseg: BYTE);
     VAR obj!: B.Object; s!: Section;
-      i, j, nofimps: INTEGER;
+      nofimps: INTEGER;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*) A.PutNO(mcode, A.RET); body.size := mcode.pc - body.org; 
