@@ -444,7 +444,7 @@ MODULE sDiary;
         respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR("|Bell="))); respondI(ORD(PT.cmp(getEventTime(DIARY_EVENT), PTR(PT.Time, PT.TimeMax))));
         respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR("|st="))); respondT(PTR(PT.Time, oldSetTime));
         respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR("|bf="))); respondL(0,baseFreq);
-        respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR("|ec="))); respondI(extraCycles);
+        respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR("|ec="))); respondI(SXT(extraCycles));
         respondS(SYSTEM.VAL(PBYTE, SYSTEM.ADR("|tp="))); respondI(trimPeriod);
         prompt
 (*#ifdef EXTENDED_COMMANDS
@@ -583,7 +583,7 @@ MODULE sDiary;
   PROCEDURE nextSecond;
   BEGIN INC(M.TA0CCR0^, baseFreq); (*prochaine interruption dans une seconde*)
     IF beepOn > 0 THEN M.TA0CCR1^ := M.TA0CCR0^ - beepOn END; (*beepOn : duree du beep en 32768 emes de secondes*)
-    IF trimmer = 0 THEN INC(M.TA0CCR0^, extraCycles) (*add extra cycles*) END;
+    IF trimmer = 0 THEN INC(M.TA0CCR0^, SXT(extraCycles)) (*add extra cycles*) END;
     INC(trimmer); IF trimmer >= trimPeriod THEN trimmer := 0 END;
     PT.tick (*yes, we are one second older!*)
   END nextSecond;
@@ -1136,7 +1136,7 @@ OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod MultiPr
 OMSPL.Link 32 2800H 200H sDiary ~
   linking MSPFlashTypes preserveMSPFlash msp430g2553 MultiPrecisionArith String Arith PosixTime sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash10098, data  298, stack  214 bytes
+    flash10102, data  298, stack  214 bytes
 
 OMSPTool.DecSym sDiary.sms
 
