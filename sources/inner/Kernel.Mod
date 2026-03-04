@@ -24,7 +24,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   VAR allocated*, NofSectors*: INTEGER;
     heapOrg*, heapLim*: INTEGER;
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
-    SPHWM*: INTEGER; bootParams*: INTEGER;
+    SPHWM*, SVCReturnAddress*, bootParams*: INTEGER;
     tick: INTEGER;
 
     list0*, list1*, list2*, list3*: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
@@ -284,11 +284,13 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
 
   PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
     VAR param: BYTE;
-  BEGIN SYSTEM.GET(f.returnAddress - 2, param);
+  BEGIN SVCReturnAddress := f.returnAddress - 2;
+    SYSTEM.GET(SVCReturnAddress, param);
     IF param = 0 THEN (*Allocate dynamic memory*) New(f.r0, f.r1)
     ELSIF param = 1 THEN BSP.led(f.r0)
     ELSIF param = 2 THEN LongDiv.DivL(SYSTEM.VAL(LongDiv.DivParam, f))
-    END; setSPHWM
+    END; setSPHWM;
+    SVCReturnAddress := 0
   END SVCallHandler;
 
   PROCEDURE defaultHandler; (*infinite loop*)
@@ -325,6 +327,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SYSTEM.PUT(BSP.MPU_BASE + BSP.RASR, {BSP.XN} + BSP.AP_NO_ACCESS + BSP.TEX_LEVEL0 + {BSP.C, BSP.S} + 
       TOSET(20*2) + {BSP.RASR_ENABLE});
 
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.CCR, {BSP.STKALIGN} + {BSP.DIV_0_TRP}); (*activate DIV by zero trap*)
     SYSTEM.PUT(BSP.SCB_BASE + BSP.CPACR, (BSP.CP10m + BSP.CP11m)); (*set CP10 and CP11 full access to activate FPU*)
     BSP.InitRTC;
     Install(SYSTEM.ADR(Trap), BSP.VecTabBase+BSP.UsageFaultExcNum*4);  (*install temporary trap*)

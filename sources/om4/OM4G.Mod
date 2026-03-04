@@ -198,15 +198,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.Put0(mcode, progbaseIndic + x.a)
   END GetStaticVarAddress;
   
-  PROCEDURE NilCheck(a: BYTE);
-  BEGIN
-(*experimental: test MPU region 00H 1FH non accessible
-    IF check THEN
-      IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, a, RH, 0) END ;
-      Trap(A.EQ, 4) 
-    END*)
-  END NilCheck;
-
   (* loading of operands and addresses into registers *)
 
   PROCEDURE AllocAdrRegs(x: Item);
@@ -443,7 +434,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
-    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x); NilCheck(x.r)
+    IF x.mode IN {B.Var, B.Par, RegI} THEN load(x)
     ELSIF x.mode # Reg THEN S.Mark("bad mode in DeRef") END;
     x.mode := RegI; x.a := 0; x.b := 0
   END DeRef;
@@ -737,11 +728,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       (*make room for x*) A.encMOVReg(mcode, ib, y.r); A.encMOVReg(mcode, ib+1, y.r+1); y.r := ib
     END; (*y register is now out of the way*)
     yIsVar := y.mode # B.Const; load(x); IF RH < x.r + 2 THEN RH := x.r+2 END; (*preserve dividend*)
-    (*TBD*)convertInt(y, B.longintType); load(y); IF RH < y.r + 2 THEN RH := y.r+2 END; (*preserve divisor*)
+    convertInt(y, B.longintType); load(y); IF RH < y.r + 2 THEN RH := y.r+2 END; (*preserve divisor*)
     (*move x into R0-R1 and y into R2-R3*)
     IF x.r # 0 THEN A.encMOVReg(mcode, 0, x.r); A.encMOVReg(mcode, 1, x.r+1) END;
     IF y.r # 2 THEN A.encMOVReg(mcode, 2, y.r); A.encMOVReg(mcode, 3, y.r+1) END;
-    IF check & yIsVar THEN  A.encCMPImm(mcode, 2, RH, 1); A.encDPImm32(mcode, A.SBc, RH, 3, RH, 0, TRUE); Trap(A.LT, 6) END;
+(*    IF check & yIsVar THEN  A.encCMPImm(mcode, 2, RH, 1); A.encDPImm32(mcode, A.SBc, RH, 3, RH, 0, TRUE); Trap(A.LT, 6) END;*)
     A.Put1(mcode, A.SVC + 2); (*Call 64bit integer division code in Kernel module*)
     IF xr < rr THEN A.encMOVReg(mcode, xr, rr); A.encMOVReg(mcode, xr+1, rr+1)
     ELSIF xr > rr THEN A.encMOVReg(mcode, xr+1, rr+1); A.encMOVReg(mcode, xr, rr) (*reverse order to avoid xr corruption *)
@@ -754,28 +745,23 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN convertInt(y, x.type);
     IF op = S.div THEN
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
-        IF y.a > 0 THEN x.a := x.a DIV y.a ELSE S.Mark("bad divisor") END
+        IF y.a # 0 THEN x.a := x.a DIV y.a ELSE S.Mark("bad divisor") END
       ELSIF (y.mode = B.Const) & (y.a >= 2) & (A.log2(y.a, e) = 1) THEN y.a := e; Asr(x, y)
       ELSIF y.mode = B.Const THEN
         IF y.a > 0 THEN
           IF isLongint(x.type) THEN doDivL(x, y, 2)
-          ELSE load(x); load(y); A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+          ELSE load(x); load(y); A.encDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
           END
         ELSE S.Mark("bad divisor")
         END
       ELSE
         IF isLongint(x.type) THEN doDivL(x, y, 2)
-        ELSE load(y);
-          IF check THEN 
-            IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, y.r, RH, 0) END;
-            Trap(A.LE, 6)
-          END;
-          load(x); A.encUDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
+        ELSE load(y); load(x); A.encDIV(mcode, RH-2, x.r, y.r); DEC(RH); x.r := RH-1
         END
       END
     ELSE (*op = S.mod*)
       IF (x.mode = B.Const) & (y.mode = B.Const) THEN
-        IF y.a > 0 THEN x.a := x.a MOD y.a ELSE S.Mark("bad modulus") END
+        IF y.a # 0 THEN x.a := x.a MOD y.a ELSE S.Mark("bad modulus") END
       ELSIF (y.mode = B.Const) & (y.a >= 2) & (A.log2(y.a, e) = 1) THEN load(x);
         IF isLongint(x.type) THEN
           IF e < 32 THEN A.encMOVImm32(mcode, x.r+1, 0, A.NSF) ELSE A.encBFC(mcode, x.r+1, e-32, 31) END
@@ -784,19 +770,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF y.mode = B.Const THEN
         IF y.a > 0 THEN
           IF isLongint(x.type) THEN doDivL(x, y, 0)
-          ELSE load(x); load(y); A.encUDIV(mcode, RH, x.r, y.r);
+          ELSE load(x); load(y); A.encDIV(mcode, RH, x.r, y.r);
             A.encMUL(mcode, RH, RH, y.r); A.encDPReg(mcode, A.SUB, RH-2, x.r, RH, A.LSl, 0, TRUE);
             DEC(RH); x.r := RH-1
           END
         ELSE S.Mark("bad modulus") END
       ELSE
         IF isLongint(x.type) THEN doDivL(x, y, 0)
-        ELSE load(y);
-          IF check THEN 
-            IF ~mcode.lastInstrSetFlags THEN A.encCMPImm(mcode, y.r, RH, 0) END;
-            Trap(A.LE, 6)
-          END;
-          load(x); A.encUDIV(mcode, RH, x.r, y.r); A.encMUL(mcode, RH, RH, y.r); A.encDPReg(mcode, A.SUB, RH-2, x.r, RH, A.LSl, 0, TRUE);
+        ELSE load(y); load(x); A.encDIV(mcode, RH, x.r, y.r);
+          A.encMUL(mcode, RH, RH, y.r); A.encDPReg(mcode, A.SUB, RH-2, x.r, RH, A.LSl, 0, TRUE);
           DEC(RH); x.r := RH-1
         END
       END

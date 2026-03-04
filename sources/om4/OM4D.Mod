@@ -382,6 +382,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       
       (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426*)
       UnsDiv = {20..21, 4..7};
+      SignDiv = {20, 4..7};
       (*T32MSK81 010 0000 Unsigned Multiply Long UMULL on page A7-435*)
       UnsLongMUL = {21};
 
@@ -1068,6 +1069,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*UDIV<c> <Rd>,<Rn>,<Rm>*)
           Rd := b3 MOD A.C4; Rn := b2 MOD A.C4; Rm := b4 MOD A.C4;
           WriteOp(W, op, "UDIV", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
+        ELSIF op*T32MSK81 = SignDiv THEN
+          (*T32MSK81 001 1111 Signed Divide SDIV on page A7-350*)
+          (*SDIV<c> <Rd>,<Rn>,<Rm>*)
+          Rd := b3 MOD A.C4; Rn := b2 MOD A.C4; Rm := b4 MOD A.C4;
+          WriteOp(W, op, "SDIV", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
         ELSIF op*T32MSK81 = UnsLongMUL THEN
           (*T32MSK81 010 0000 Unsigned Multiply Long UMULL on page A7-435*)
           (*UMULL<c> <RdLo>,<RdHi>,<Rn>,<Rm>*)

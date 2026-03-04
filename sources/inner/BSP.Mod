@@ -38,7 +38,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       BUSFAULTACT* = 1; MEMFAULTACT* = 0;
     CFSR* = 28H;
       UFSR_Mask* = {16..31}; BFSR_Mask* = {8..15}; MMFSR_Mask* = {0..7};
-      NOCP* = 19; INVSTATE* = 17; PRECISERR* = 9; STKERR* = 12; IACCVIOL* = 0; DACCVIOL* = 1;
+      DIVBYZERO* = 25; NOCP* = 19; INVSTATE* = 17; PRECISERR* = 9; STKERR* = 12; IACCVIOL* = 0; DACCVIOL* = 1;
     MMFAR* = 34H; BFAR* = 38H;
     CPACR* = 88H;
       CP11m* = {22..23}; CP10m* = {20..21};

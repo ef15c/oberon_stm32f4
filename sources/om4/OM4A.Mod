@@ -222,6 +222,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     MULT2*  = 0FB00F000H;
     (*|1111/1011/0000/ Rn /1111/ Rd /0000/ Rm |
       MUL<c> <Rd>,<Rn>,<Rm>*)
+    SDIV*= 0FB90F0F0H;
+    (*|1111/1011/1001/ Rn /1111/ Rd /1111/ Rm |
+      SDIV<c><q> {<Rd>,} <Rn>, <Rm>*)
     UDIV*  = 0FBB0F0F0H;
     (*|1111/1011/1011/ Rn /1111/ Rd /1111/ Rm |
       UDIV<c><q> {<Rd>,} <Rn>, <Rm>*)
@@ -735,12 +738,12 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     co.lastInstrSetFlags := FALSE
   END encMUL;
   
-  PROCEDURE encUDIV*(VAR co: ModuleCode; a, b, c: BYTE);
+  PROCEDURE encDIV*(VAR co: ModuleCode; a, b, c: BYTE);
   BEGIN
     ASSERT((a < 15) & (a # 13) & (b < 15) & (b # 13) & (c < 15) & (c # 13));
-    doPut0(co, UDIV + format3Reg4(a, b, c));
+    doPut0(co, SDIV + format3Reg4(a, b, c));
     co.lastInstrSetFlags := FALSE
-  END encUDIV;
+  END encDIV;
   
   PROCEDURE encFPMOVReg*(VAR co: ModuleCode; op: INTEGER; r, s: BYTE);
   BEGIN

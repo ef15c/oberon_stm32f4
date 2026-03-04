@@ -12,7 +12,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     CFSR = BSP.SCB_BASE + BSP.CFSR; ICSR = BSP.SCB_BASE + BSP.ICSR; BFAR = BSP.SCB_BASE + BSP.BFAR;
     MMFAR = BSP.SCB_BASE + BSP.MMFAR;
     NOCP = BSP.NOCP; INVSTATE = BSP.INVSTATE; STKERR = BSP.STKERR; PRECISERR = BSP.PRECISERR;
-    DACCVIOL = BSP.DACCVIOL; IACCVIOL = BSP.IACCVIOL;
+    DACCVIOL = BSP.DACCVIOL; IACCVIOL = BSP.IACCVIOL; DIVBYZERO = BSP.DIVBYZERO;
     PENDSVSET = BSP.PENDSVSET;
     UFSR_Mask = BSP.UFSR_Mask; BFSR_Mask = BSP.BFSR_Mask; MMFSR_Mask = BSP.MMFSR_Mask;
 
@@ -469,10 +469,15 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       SYSTEM.GET(f.returnAddress, inst);
       w := inst DIV 10000H MOD 10H;
     ELSIF INVSTATE IN cfsr THEN w := 5 (*probably illegal procedure call*)
+    ELSIF DIVBYZERO IN cfsr THEN w := 6 (*division by zero*);
+      INC(f.returnAddress, 4) (*return to next instruction*)
     END;
-    IF w = 5 THEN TrappedAdr := f.lr ELSE TrappedAdr := f.returnAddress END;
+    IF Kernel.SVCReturnAddress # 0 THEN TrappedAdr := Kernel.SVCReturnAddress
+    ELSIF w = 5 THEN TrappedAdr := f.lr
+    ELSE TrappedAdr := f.returnAddress
+    END;
     (*Trigger abort by requesting a PendSV interrupt*)
-    IF cfsr - {NOCP, INVSTATE} # {} THEN (*other fault*)
+    IF cfsr - {NOCP, INVSTATE, DIVBYZERO} # {} THEN (*other fault*)
       BSP.led(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
@@ -525,8 +530,9 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       inst := inst DIV 10H; (*inst contains 1110/110p/pppp/pppp/pppp/0ppp/pppp*)
       inst := (inst DIV 100H*80H + inst MOD 80H) MOD 100000H;
       Texts.WriteLn(W); Texts.WriteString(W, "  pos "); Texts.WriteInt(W, inst, 4)
-    ELSIF DACCVIOL IN cfsr THEN w := 4; (*probably NIL dereference*)
-    ELSIF cfsr*{IACCVIOL, INVSTATE} # {} THEN w := 5; (*probably illegal procedure call*)
+    ELSIF DACCVIOL IN cfsr THEN w := 4 (*probably NIL dereference*)
+    ELSIF cfsr*{IACCVIOL, INVSTATE} # {} THEN w := 5 (*probably illegal procedure call*)
+    ELSIF DIVBYZERO IN cfsr THEN w := 6 (*division by zero*)
     ELSIF STKERR IN cfsr THEN w := 9; (*Bus Fault: stack overflow*)
       (*trying to find nearest return adress*) i := 0;
       REPEAT TrappedAdr := stack.stack[i] - 1; INC(i) UNTIL ((TrappedAdr >= modBase) & (TrappedAdr < Modules.AllocPtr)) OR (i >= stack.len);

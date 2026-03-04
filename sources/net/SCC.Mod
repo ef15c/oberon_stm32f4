@@ -145,7 +145,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     UNTIL res # 0;
     WriteReg1(7, 30H); (*reset TX_DS and/or MAX-RT*)
     IF (res = 1) & flush THEN (*MAX-RT*) StartCmd(0E1H); SYSTEM.PUT(netSelectOut, 1) END;
-    timeout := (res # 2)
+    timeout := res = 1
   END xmitPayload;
 
   PROCEDURE doSubSend(src, len: INTEGER; VAR timeout: BOOLEAN; flush: BOOLEAN);
@@ -163,11 +163,11 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     VAR i, data: INTEGER;
   BEGIN
     doSubSend(src, SubPacket, timeout, TRUE);
-    IF ~timeout THEN 
+(*    IF ~timeout THEN*)
       FOR i := 0 TO SubPacket-4 BY 4 DO (*Compute CRC*)
         SYSTEM.GET(src+i, data); CRC32.write(data)
       END
-    END
+(*    END*)
   END SubSnd;
 
   PROCEDURE SubRcvReq(VAR timeout: BOOLEAN);
@@ -264,16 +264,16 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     WHILE (len > 0) & (i < SubPacket) DO payload[i] := dat[off]; INC(i); INC(off); DEC(len) END;
     WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
     SubSnd(SYSTEM.ADR(payload), timeout);
-    WHILE ~timeout & (len # 0) DO i := 0; (*send the rest*)
+    WHILE (*~timeout &*) (len # 0) DO i := 0; (*send the rest*)
       WHILE (len > 0) & (i < SubPacket) DO payload[i] := dat[off]; INC(i); INC(off); DEC(len) END;
       WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
       SubSnd(SYSTEM.ADR(payload), timeout);
     END;
-    IF ~timeout THEN
+(*    IF ~timeout THEN*)
       SYSTEM.PUT(SYSTEM.ADR(payload), CRC32.read()); (*send CRC*)
       i := 4; WHILE i < SubPacket DO payload[i] := 0; INC(i) END;
       SubSnd(SYSTEM.ADR(payload), timeout)
-    END;
+(*    END*)
   END SendPacket;
 
   PROCEDURE Available*(): INTEGER;

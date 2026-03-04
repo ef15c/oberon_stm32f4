@@ -6,11 +6,12 @@ MODULE LongDiv;
   PROCEDURE DivL*(VAR p: DivParam);
     (* Divides 2 64bit integers. D is dividend, S is divisor
         at exit D becomes D MOD S and S becomes D DIV S *)
-    VAR clzd, clzs, coef, coef2: INTEGER; neg: BOOLEAN; q, rd: LONGINT;
+    VAR clzd, clzs, coef, coef2: INTEGER; neg: SET; q, rd: LONGINT;
   BEGIN (* Int64 division *)
-    IF p.S > 0 THEN
-      neg := FALSE;
-      IF p.D < 0 THEN neg := TRUE; p.D := -p.D END;
+    IF p.S = 0 THEN clzd := SYSTEM.VAL(INTEGER, p.D) DIV SYSTEM.VAL(INTEGER, p.S) (* force DIVBYZERO exception*)
+    ELSE neg := {};
+      IF p.S < 0 THEN p.S := -p.S; neg := {0} END;
+      IF p.D < 0 THEN p.D := -p.D; neg := neg / {0, 1} END;
       clzd := CLZ(p.D); clzs :=  CLZ(p.S);
       IF (clzd >= 32) & (clzs >= 32) THEN (*both D and S fit in INTEGER, we can use 32bit division*)
         clzd := SYSTEM.VAL(INTEGER, p.D) DIV SYSTEM.VAL(INTEGER, p.S); 
@@ -25,7 +26,9 @@ MODULE LongDiv;
             IF coef2 > 0 THEN q := LSL(q, coef2); rd := LSR(rd, coef2); DEC(coef, coef2) END
           END; p.S := q
         END
-      END; IF neg THEN p.D := -p.D; p.S := -p.S END
+      END;
+      IF 0 IN neg THEN p.S := -p.S END; (*negate quotient*)
+      IF 1 IN neg THEN p.D := -p.D END (*negate remainder*)
     END
   END DivL;
 END LongDiv.
