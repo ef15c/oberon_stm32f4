@@ -460,7 +460,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     END
   END ledsOnOff;
 
-  PROCEDURE configureGPIO(port: INTEGER; m1b, m2b, m4bl, m4bh, m, os, ot, pup, afrl, afrh: SET);
+  PROCEDURE configureGPIO*(port: INTEGER; m1b, m2b, m4bl, m4bh, m, os, ot, pup, afrl, afrh: SET);
     VAR reg: SET;
   BEGIN
     SYSTEM.GET(port + OSPEEDR, reg); SYSTEM.PUT(port + OSPEEDR, reg - m2b + os);

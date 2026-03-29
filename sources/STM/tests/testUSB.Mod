@@ -1,0 +1,23 @@
+MODULE testUSB;
+  IMPORT SYSTEM, BSP;
+
+  CONST VBUS_OC = 4;
+
+  PROCEDURE VBUS_ON*;
+  BEGIN SYSTEM.PUT(BSP.GPIOC + BSP.BSRR, LSL({VBUS_OC}, 16))
+  END VBUS_ON;
+
+  PROCEDURE VBUS_OFF*;
+  BEGIN SYSTEM.PUT(BSP.GPIOC + BSP.BSRR, {VBUS_OC})
+  END VBUS_OFF;
+
+BEGIN (*PC4 Output, push pull, low speed*)
+   SYSTEM.PUT(BSP.GPIOC + BSP.BSRR, {VBUS_OC});
+   BSP.configureGPIO(BSP.GPIOC, {VBUS_OC}, LSL(BSP.MASK2, VBUS_OC*2), {}, {}, LSL(BSP.OUTPUT_MODE, VBUS_OC*2), {}, {}, {}, {}, {})
+END testUSB.
+
+OM4P.Compile testUSB.Mod/s ~
+System.Free testUSB ~
+
+testUSB.VBUS_ON
+testUSB.VBUS_OFF
