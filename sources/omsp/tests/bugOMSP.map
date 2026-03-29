@@ -1,7 +1,45 @@
-Module bugOMSP
-send	c C000	4
-p	c C004	18
-module body	c C016	10
+Module Arith
+mul16	c C000	22
+divmod16	c C016	64
+module body	c C056	2
 vector table	v	64
 codeexe	 C000
+
+Module MultiPrecisionArith
+MulLongLong	c C056	104
+DivLongLong	c C0BE	136
+CmpLongLong	c C146	24
+module body	c C15E	2
+vector table	v	64
+codeexe	 C056
+
+Module String
+module body	c C15E	2
+vector table	v	64
+codeexe	 C15E
+
+Module PosixTime
+mon_len	d C15E	12
+mon_day	d C16A	24
+timeOffset	r 0200	4
+systemTime	r 0204	4
+setMin	c C182	10
+inc	c C18C	12
+dec	c C198	12
+LEAPYEAR	c C1A4	62
+DAYS_IN_YR	c C1E2	16
+gmhms	c C1F2	104
+mktime	c C25A	954
+gmtime	c C614	208
+localtime	c C6E4	50
+module body	c C716	18
+vector table	v	64
+codeexe	 C15E
+
+Module bugOMSP
+time	r 0208	4
+tm	r 020C	18
+module body	c C728	28
+vector table	v	64
+codeexe	 C728
 

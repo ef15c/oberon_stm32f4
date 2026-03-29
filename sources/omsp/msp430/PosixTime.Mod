@@ -103,8 +103,7 @@ MODULE PosixTime;
   END dec;
 
   PROCEDURE LEAPYEAR(y: INTEGER* ): BOOLEAN;
-    VAR res: BOOLEAN* ;
-  BEGIN INC(y, 1970);
+  BEGIN INC(y, 1900);
     RETURN (y MOD 4 = 0) & ((y MOD 100 # 0) OR (y MOD 400 = 0))
   END LEAPYEAR;
 
@@ -113,6 +112,8 @@ MODULE PosixTime;
   END DAYS_IN_YR;
 
   PROCEDURE gmhms*(ltime: Time; res: Tm);
+  (*Compute only hour, min, sec in res record.
+     At return, ltime contains the number of days since 01/01/1970*)
     VAR th: INTEGER;
   BEGIN
     (*------------------------------------------------------------------*)
@@ -129,7 +130,10 @@ MODULE PosixTime;
   END gmhms;
 
   PROCEDURE mktime*(tm: Tm; time: Time);
+  (*Returns the number of second from 01/01/1970 in the parameter time
+    corresponding to the local time expressed in the parameter tm*)
     VAR daycount, tmp: TimeDesc; mdays, adjust: INTEGER;
+      done: BOOLEAN;
   BEGIN
     (*-----------------------------------------------------------------*)
     (* HANDLE SECONDS.  IF TOO MANY OR TOO FEW, MODIFY MINUTES.        *)
@@ -149,6 +153,7 @@ MODULE PosixTime;
     IF tm.hour < 0 THEN adjust := -((-tm.hour + 23) DIV 24) ELSE adjust := tm.hour DIV 24 END;
     INC(tm.mday, adjust); DEC(tm.hour, Arith.mul16(adjust, 24));
 
+    done := FALSE;
     REPEAT
       (*-----------------------------------------------------------------*)
       (* HANDLE MONTHS.   IF TOO MANY OR TOO FEW, MODIFY YEARS           *)
@@ -167,9 +172,9 @@ MODULE PosixTime;
         (* CALCULATE NUMBER OF DAYS IN THIS MONTH.                         *)
         (*-----------------------------------------------------------------*)
         mdays := mon_len[tm.mon] + ORD((tm.mon = 1) & LEAPYEAR(tm.year));
-        IF tm.mday > mdays THEN DEC(tm.mday, mdays); INC(tm.mon) END
+        IF tm.mday > mdays THEN DEC(tm.mday, mdays); INC(tm.mon) ELSE done := TRUE END
       END
-    UNTIL tm.mday <= mdays;
+    UNTIL done;
 
     (*--------------------------------------------------------------------*)
     (* WE CAN NOW BE SURE THAT ALL FIELDS IN THE TIME STRUCTURE ARE RIGHT *)
@@ -206,12 +211,12 @@ MODULE PosixTime;
       (* TO DETERMINE THE YEAR, INSTEAD OF DIVIDING BY 365, DO A SUBTRACT *)
       (* LOOP THAT ACCOUNTS FOR LEAP YEARS.                               *)
       (*------------------------------------------------------------------*)
-      year := 0;
+      year := 70;
       WHILE MP.CmpLongLong(ltime.h, ltime.l, 0, DAYS_IN_YR(year)) >= 0 DO
         DEC(ltime.l, DAYS_IN_YR(year)); SBC(ltime.l, 0); INC(year)
       END;
 
-      res.year :=  year+70; INC(res.mday, ltime.l);
+      res.year := year; INC(res.mday, ltime.l);
 
       (*------------------------------------------------------------------*)
       (* MAKE VALUES IN res INTO A VALID TIME.                          *)

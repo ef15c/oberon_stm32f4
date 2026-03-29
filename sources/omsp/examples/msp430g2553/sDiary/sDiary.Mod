@@ -1136,7 +1136,7 @@ OMSPP.Compile MSPFlashTypes.Mod/s preserveMSPFlash.Mod/s msp430g2553.Mod MultiPr
 OMSPL.Link 32 2800H 200H sDiary ~
   linking MSPFlashTypes preserveMSPFlash msp430g2553 MultiPrecisionArith String Arith PosixTime sDiaryTypes
  msp430delay pcd8544 sDiary
-    flash10102, data  298, stack  214 bytes
+    flash10092, data  298, stack  214 bytes
 
 OMSPTool.DecSym sDiary.sms
 
