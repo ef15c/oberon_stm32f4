@@ -10,7 +10,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     MSP = 8; PSP = 9;
     APSRnzcv = 15; (*APSR_nzcv is encoded as <Rt> = '1111'*)
     NBS = 32; (* Number of single float registers in the FPU bank *)
-    maxStrx = 3000; maxTD = 160; maxFOS = 1000;
+    maxStrx = 6000; maxTD = 160; maxFOS = 1000;
     
     Reg = 10; RegI = 11; Cond = 12; FPReg = 13; (*internal item modes*)
 
@@ -213,7 +213,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN
     ASSERT(target IN {Reg, FPReg});
     ASSERT((target # FPReg) OR (x.type.form = B.Real));
-    IF x.type.size = 1 THEN op := A.LDRB ELSE op := A.LDR END ;
+    IF x.type.size = 1 THEN op := A.LDRB ELSIF x.type.size = 2 THEN op := A.LDRH ELSE op := A.LDR END ;
     IF x.mode # target THEN
       IF x.mode = B.Const THEN
         IF x.type.form = B.Proc THEN
@@ -948,7 +948,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF ~(y.mode IN {Reg, FPReg}) THEN
       IF y.type.form = B.Real THEN loadFP(y) ELSE load(y) END
     END;
-    IF x.type.size = 1 THEN op := A.STRB ELSE op := A.STR END ;
+    IF x.type.size = 1 THEN op := A.STRB ELSIF x.type.size = 2 THEN op := A.STRH ELSE op := A.STR END ;
     IF x.mode = B.Var THEN
       IF x.r > 0 THEN (*local*)
         IF y.mode = FPReg THEN ASSERT((x.a) MOD A.C2 = 0);

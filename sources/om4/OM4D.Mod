@@ -259,6 +259,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       StrRegByteImmT2 = {23};
       (*T32MSK61 110 xxxxxx Store Register STR (immediate) on page A7-386*)
       StrRegImmT3 = {22..23};
+      (*T32MSK61 101 xxxxxx Store Register Halfword STRH(immediate) on page A7-397*)
+      StrRegHalfwordImmT2 = {21, 23};
 
       (*T32MSK62 010 1xxxxx Store Register STR (immediate) on page A7-386*)
       StrRegImmT4 = {22, 11};
@@ -278,6 +280,12 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       (*T32MSK72 00 1xx1xx not 1111 not 1111 Load Register Byte LDRB (immediate) on page A7-252*)
       LdrRegByteT3 = {11, 8};
 
+      (*T32MSK7 11 00xx011 x Load halfword, memory hints on page A5-147*)
+      LdrHalfwordOrMemHints = {27..28, 20..21};
+      (*T32MSK71 01 xxxxxx Rn not 1111 and Rt not 1111 Load Register Halfword LDRH (immediate) on page A7-264*)
+      LdrRegHalfwordT2 = {23};
+      (*T32MSK72 00 1xx1xx not 1111 not 1111 Load Register Halfword LDRH (immediate) on page A7-264*)
+      LdrRegHalfwordT3 = {11, 8};
 
       (*T32MSK72 00 1xx1xx not 1111 LDR (immediate) on page A7-246*)
       LdrRegImmOrLit2 = {11, 8};
@@ -510,7 +518,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       StRegSP = {12};
       (*T16MSK52 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
       LdRegSP = {11..12};
-      
+      (*T16MSK52 1000 0xx Store Register Halfword STRH(immediate) on page A7-397*)
+      StRegHalfword = {};
+      (*T16MSK52 1000 1xx Load Register Halfword LDRH(immediate) on page A7-264*)
+      LdRegHalfword = {11};
+
       (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
       CmpImm = {13, 11};
       (*T16MSK11 100xx: Move MOV (immediate) on page A7-291*)
@@ -687,7 +699,12 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
-        ELSE Texts.WriteString(W, "TODO: not StrRegImmT4")
+        ELSIF op*T32MSK61 = StrRegHalfwordImmT2 THEN
+          (*T32MSK61 101 xxxxxx Store Register Halfword STRH (immediate) on page A7-397*)
+          (*STRH<c>.W <Rt>,[<Rn>,#<imm12>]*)
+          WriteOp(W, op, "STRH", FALSE, FALSE);  WriteReg(W, Rt); Texts.WriteString(W, " [ "); WriteReg(W, Rn);
+          Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD A.C12, 1); Texts.WriteString(W, " ]")
+        ELSE Texts.WriteString(W, "TODO: other Store single data item on page A5-149")
         END
       ELSIF op*T32MSK7 = LdrWord THEN
         (*T32MSK7 11 00xx101 x Load word on page A5-146*)
@@ -924,7 +941,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           WriteOp(W, op, "LDRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
           Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD A.C12, 1); Texts.WriteString(W, " ]")
         ELSIF (op*T32MSK72 = LdrRegByteT3) & (Rn # 15) & (Rt # 15) THEN
-          (*T32MSK72? 00 1xx1xx not 1111 not 1111 Load Register Byte LDRB (immediate) on page A7-252*)
+          (*T32MSK72  00 1xx1xx not 1111 not 1111 Load Register Byte LDRB (immediate) on page A7-252*)
           (*LDRB<c> <Rt>,[<Rn>,#-<imm8>]
             LDRB<c> <Rt>,[<Rn>],#+/-<imm8>
             LDRB<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
@@ -936,7 +953,29 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
         ELSE Texts.WriteString(W, "TODO other LdrByteOrMemHints on page A5-148")
-        END 
+        END
+      ELSIF op*T32MSK7 = LdrHalfwordOrMemHints THEN
+        (*T32MSK7 11 00xx011 x Load halfword, memory hints on page A5-147*)
+        Rn := b2 MOD A.C4; Rt := b3 DIV A.C4;
+        IF (op*T32MSK71 = LdrRegHalfwordT2) & (Rn # 15) & (Rt # 15)  THEN
+          (*T32MSK71 01 xxxxxx Rn not 1111 and Rt not 1111 Load Register Halfword LDRH (immediate) on page A7-264*)
+          (*LDRH<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
+          WriteOp(W, op, "LDRH", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " ["); WriteReg(W, Rn);
+          Texts.WriteString(W, " + "); Texts.WriteInt(W, ORD(op) MOD A.C12, 1); Texts.WriteString(W, " ]")
+        ELSIF (op*T32MSK72 = LdrRegHalfwordT3) & (Rn # 15) & (Rt # 15) THEN
+          (*T32MSK72  00 1xx1xx not 1111 not 1111 Load Register Halfword LDRH (immediate) on page A7-264*)
+          (*LDRH<c> <Rt>,[<Rn>,#-<imm8>]
+            LDRH<c> <Rt>,[<Rn>],#+/-<imm8>
+            LDRH<c> <Rt>,[<Rn>,#+/-<imm8>]!*)
+          WriteOp(W, op, "LDRH", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ "); WriteReg(W, Rn);
+          IF ~(10 IN op) THEN (*post-indexed*) Texts.WriteString(W, " ]") END;
+          IF 9 IN op THEN (*add*) Texts.WriteString(W, " + ") ELSE Texts.WriteString(W, " - ") END;
+          Texts.WriteInt(W, b4, 1);
+          IF 10 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
+            IF 8 IN op THEN (*write-back*) Texts.Write(W, "!") END
+          END
+        ELSE Texts.WriteString(W, "TODO other LdrHalfwordOrMemHints on page A5-147")
+        END
       ELSIF op*T32MSK2 = DataProcShiftedReg THEN
         (*T32MSK2 01 01xxxxx x Data processing (shifted register) on page A5-150*)
         Rd := b3 MOD A.C4; Rn := b2 MOD A.C4;
@@ -1414,7 +1453,23 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           Rt := b1 MOD A.C3;
           WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ SP + ");
           Texts.WriteInt(W, b2*A.C2, 1); Texts.WriteString(W, " ]")
-        ELSE Texts.WriteString(W, "TODO: not LdRegSP")
+        ELSIF op*T16MSK52 = StRegHalfword THEN
+          (*T16MSK52 1000 1xx Load Register Halfword LDRH(immediate) on page A7-264*)
+          (*LDRH<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
+          Rt := b2 MOD A.C3; Rn := LSR(b2, 3) MOD A.C3;
+          WriteOp(W, op, "STRH", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ ");
+          WriteReg(W, Rn); Texts.WriteString(W, " + ");
+          Texts.WriteInt(W, (b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2)*A.C1, 1);
+          Texts.WriteString(W, " ]")
+        ELSIF op*T16MSK52 = LdRegHalfword THEN
+          (*T16MSK52 1000 0xx Store Register Halfword STRH(immediate) on page A7-397*)
+          (*STRH<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
+          Rt := b2 MOD A.C3; Rn := b2 DIV A.C3 MOD A.C3;
+          WriteOp(W, op, "LDRH", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ ");
+          WriteReg(W, Rn); Texts.WriteString(W, " + ");
+          Texts.WriteInt(W, (b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2)*A.C1, 1);
+          Texts.WriteString(W, " ]")
+        ELSE Texts.WriteString(W, "TODO: other Load/store single data item on page A5-133")
         END
       ELSIF op*T16MSK5 = LdStSingleT1 THEN
         (*T16MSK5 011xxx Load/store single data item on page A5-133*)

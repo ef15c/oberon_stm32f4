@@ -16,8 +16,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     (* form values*)
       Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; Real* = 5; Set* = 6;
       Pointer* = 7; NilTyp* = 8; NoTyp* = 9; Proc* = 10;
-      String* = 11; Array* = 12; Record* = 13; LongInt* = 14;
-      LastForm = LongInt;
+      String* = 11; Array* = 12; Record* = 13; LongInt* = 14; HalfWord* = 15;
+      LastForm = HalfWord;
       
   TYPE Object* = POINTER TO ObjDesc;
     Module* = POINTER TO ModDesc;
@@ -67,7 +67,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   VAR topScope*, universe, system*: Object;
     byteType*, boolType*, charType*: Type;
     intType*, realType*, setType*, nilType*, noType*,
-    longintType*, strType*: Type;
+    longintType*, strType*, halfwordType*: Type;
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
 
@@ -392,6 +392,7 @@ BEGIN
   noType := type(NoTyp, NoTyp, 4);
   strType := type(String, String, 8);
   longintType := type(LongInt, Int, 8);
+  halfwordType := type(HalfWord, Int, 2);
     
   (*initialize universe with data types and in-line procedures;
     LED, ADC, SBC; LDPSR, LDREG, REG, COND are not in language definition*)
@@ -431,6 +432,7 @@ BEGIN
   enter("REAL", Typ, realType, 0);
   enter("LONGINT", Typ, longintType, 0);
   enter("INTEGER", Typ, intType, 0);
+  enter("HALFWORD", Typ, halfwordType, 0);
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
   
   system := NIL;  (* initialize "unsafe" pseudo-module SYSTEM*)
