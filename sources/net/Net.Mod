@@ -1,5 +1,5 @@
 MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
-  IMPORT Files, Texts, SCC, Oberon;
+  IMPORT Kernel, Files, Texts, SCC, Oberon;
 
   CONST PakSize = 512;
     T0 = 300; (*timeout*)
@@ -88,7 +88,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
         IF ~R.eof THEN buf[k] := x; INC(k) END
       UNTIL R.eof OR (k = PakSize); retry := 20; nseqno := (seqno + 1) MOD 8;
       REPEAT Send(seqno, k, buf); ReceiveHead(T0); DEC(retry);
-        IF head1.typ # nseqno + ACK THEN SCC.Delayms(100); END
+        IF head1.typ # nseqno + ACK THEN Kernel.Delayms(100); END
       UNTIL (head1.typ = nseqno + ACK) OR (retry = 0);
       seqno := nseqno; len := len + k;
       IF head1.typ # seqno + ACK THEN
@@ -112,7 +112,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
        seqno := (seqno + 1) MOD 8; len := len + head1.len;
        REPEAT Send(seqno + ACK, 0, dmy); ReceiveHead(T0); DEC(retry) UNTIL head1.valid OR (retry = 0);
        IF k < PakSize THEN done := TRUE END
-     ELSE SCC.Delayms(100); DEC(retry);
+     ELSE Kernel.Delayms(100); DEC(retry);
        IF retry = 0 THEN
          Texts.WriteString(W, " failed"); done := FALSE; k := 0
        END ; retry := 20;

@@ -33,12 +33,6 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   BEGIN W := w; log := l
   END SetWriter;
 
-  PROCEDURE Delayms*(d: INTEGER);
-    VAR beg: INTEGER;
-  BEGIN beg := Kernel.Time();
-    REPEAT UNTIL Kernel.Time() - beg > d
-  END Delayms;
-  
   PROCEDURE SPIn(src, dst, n: INTEGER);
     VAR sc, rc: INTEGER; data: BYTE;
   BEGIN (*send/rcv n bytes to/from SPI*) ASSERT(n>0);
@@ -140,7 +134,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   PROCEDURE xmitPayload(VAR timeout: BOOLEAN; flush: BOOLEAN);
     VAR res: INTEGER; status: BYTE;
   BEGIN SYSTEM.PUT(netEnableOut, 1); (*start xmit pulse*); BSP.Delayus(12); SYSTEM.PUT(netEnableOut, 0);
-    REPEAT Delayms(1); SYSTEM.PUT(netSelectOut, 0); SPIr(status); (*NOP*); SYSTEM.PUT(netSelectOut, 1);
+    REPEAT Kernel.Delayms(1); SYSTEM.PUT(netSelectOut, 0); SPIr(status); (*NOP*); SYSTEM.PUT(netSelectOut, 1);
       res := status DIV 10H MOD 4
     UNTIL res # 0;
     WriteReg1(7, 30H); (*reset TX_DS and/or MAX-RT*)
@@ -195,7 +189,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     ELSE rcvd := FALSE;
       REPEAT
         SubRcvReq(timeout);
-        WHILE timeout & (Kernel.Time() - t1 <= time) DO Delayms(1); xmitPayload(timeout, FALSE) END;
+        WHILE timeout & (Kernel.Time() - t1 <= time) DO Kernel.Delayms(1); xmitPayload(timeout, FALSE) END;
         IF timeout THEN FlushTX ELSE rcvd := RXFIFOAvail() END
       UNTIL rcvd OR (Kernel.Time() - t1 > time)
     END;
@@ -207,14 +201,14 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   BEGIN 
     ReadReg1(0, config);
     IF config # 7EH THEN WriteReg1(0, 7EH); (*CONFIG <= mask ints; EN_CRC(2 byte), PWR_UP, PTX*)
-      Delayms(8)
+      Kernel.Delayms(8)
     END;
     Flush
   END PowerUp;
 
   PROCEDURE Start*(channel: BYTE; pipeName: ARRAY OF CHAR);
     VAR len: INTEGER;
-  BEGIN SYSTEM.PUT(netEnableOut, 0); Delayms(5);
+  BEGIN SYSTEM.PUT(netEnableOut, 0); Kernel.Delayms(5);
     len := 0; WHILE (len < LEN(pipeName)) & (pipeName[len] # 0X) DO INC(len) END;
     WriteReg1(0, 7CH); (*CONFIG <= mask ints; EN_CRC(2 byte), PWR_DOWN, PTX*)
     Flush; WriteReg1(7, 70H); (*STATUS <= clear ints*)
@@ -317,7 +311,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
   END Stop;
 
   PROCEDURE Wait1Sec*;
-  BEGIN Delayms(1000)
+  BEGIN Kernel.Delayms(1000)
   END Wait1Sec;
 
   PROCEDURE ShowRxPacket*(VAR W: Texts.Writer);

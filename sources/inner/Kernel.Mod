@@ -229,6 +229,12 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN RETURN tick
   END Time;
 
+  PROCEDURE Delayms*(d: INTEGER);
+    VAR beg: INTEGER;
+  BEGIN beg := Time();
+    REPEAT UNTIL Time() - beg > d
+  END Delayms;
+  
   PROCEDURE Clock*(): INTEGER;
     VAR d,  h, newss, ss: INTEGER;
   BEGIN
