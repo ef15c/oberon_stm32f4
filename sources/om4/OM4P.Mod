@@ -708,7 +708,9 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       END ;
       Check(S.colon, "colon expected"); Type(tp);
       IF (tp.form = B.Array) & (tp.len < 0) THEN S.Mark("dyn array not allowed") END ;
-      IF tp.size > 1 THEN offset := (offset+3) DIV 4 * 4 END ;
+      IF tp.size > 2 THEN offset := (offset+3) DIV 4 * 4
+      ELSIF tp.size > 1 THEN offset := (offset+1) DIV 2 * 2
+      END;
       offset := offset + n * tp.size; off := offset; obj0 := obj;
       WHILE obj0 # bot DO obj0.type := tp; obj0.lev := 0; off := off - tp.size; obj0.val := off; obj0 := obj0.next END ;
       bot := obj;
@@ -905,7 +907,9 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
           IF unsafe & ~obj.unsafe THEN umm := TRUE END;
           IF ~unsafe & obj.unsafe THEN umf := TRUE END;
           obj.type := tp; obj.lev := level;
-          IF tp.size > 1 THEN varsize := (varsize + 3) DIV 4 * 4 (*align*) END ;
+          IF tp.size > 2 THEN varsize := (varsize + 3) DIV 4 * 4 (*align*)
+          ELSIF  tp.size > 1 THEN varsize := (varsize + 1) DIV 2 * 2 (*align*)
+          END;
           obj.val := varsize; varsize := varsize + obj.type.size;
           IF obj.expo THEN obj.exno := exno; INC(exno) END ;
           IF onetimeinit THEN obj.rdo := TRUE END;
