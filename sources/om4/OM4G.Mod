@@ -45,7 +45,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     tdx, strx: INTEGER;
     entry: INTEGER;   (*main entry point*)
     RH: INTEGER;      (*in use registers R[0] ... R[H-1]*)
-    RL: INTEGER; (*register limit*)
     SH: INTEGER;      (*in use floating point registers S[0] ... S[H-1]*)
     frame: INTEGER;   (*frame offset changed in SaveRegs and RestoreRegs*)
     fixORGP, fixORGC, fixORGV, fixORGT: INTEGER;   (*origins of lists of locations to be fixed up by loader*)
@@ -81,7 +80,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE incR;
   BEGIN
-    IF RH < RL THEN INC(RH) ELSE S.Mark("register stack overflow"); RH := 8 END
+    IF RH < mcode.limit THEN INC(RH) ELSE S.Mark("register stack overflow"); RH := 8 END
   END incR;
 
   PROCEDURE dincR;
@@ -95,7 +94,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE SetRH*(r: BYTE);
   BEGIN
-    ASSERT(r < A.C4);
+    ASSERT(r <= mcode.limit);
     RH := r
   END SetRH;
   
@@ -185,6 +184,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE GetStaticVarAddress(VAR chain: INTEGER; x: Item; a: BYTE);
     VAR progbaseIndic: INTEGER;
   BEGIN ASSERT(x.type # NIL); ASSERT((x.r <= 0) & (a < 13)); progbaseIndic := 0;
+    A.CheckOverflow(mcode, a);
     (*If x.r = 0, x.a contains the offset of the variable computed at compile time,
       else if x.r < 0, x.a contains the variable or procedure number*)
     IF mcode.pc-chain > A.C25 THEN S.Mark("too many instructions") END;
@@ -201,8 +201,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* loading of operands and addresses into registers *)
 
   PROCEDURE AllocAdrRegs(x: Item);
-  BEGIN
- incR; (*one register for the pointer itself*)
+  BEGIN incR; (*one register for the pointer itself*)
     IF x.dip & isLongint(x.type) THEN (*allocate register(s) for in place pointer dereference*)
       WHILE RH < x.r + x.type.size DIV WordSize DO incR END
     END
@@ -219,7 +218,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
         IF x.type.form = B.Proc THEN
           IF x.r > 0 THEN S.Mark("not allowed")
           ELSIF x.r = 0 THEN A.encAdr(mcode, RH, x.a+1)
-          ELSE GetStaticVarAddress(fixORGC, x, RH) 
+          ELSE GetStaticVarAddress(fixORGC, x, RH)
           END;
           x.r := RH; incR
         ELSE
@@ -610,7 +609,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF y.mode = B.Const THEN
       IF y.a <= 0 THEN S.Mark("shift amount must be positive")
       ELSIF y.a < 32 THEN
-        IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.LSl, x.r+1, x.r+1, y.a); A.encDPReg(mcode, A.ORR, x.r+1, x.r+1, x.r, A.LSr, 32-y.a, TRUE) END;
+        IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.LSl, x.r+1, x.r+1, y.a);
+          A.encDPReg(mcode, A.ORR, x.r+1, x.r+1, x.r, A.LSr, 32-y.a, TRUE)
+        END;
         A.encShiftImm5(mcode, A.LSl, x.r, x.r, y.a)
       ELSIF y.a < 64 THEN
         IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.LSl, x.r+1, x.r, y.a-32); A.encMOVImm32(mcode, x.r, 0, A.NSF)
@@ -673,7 +674,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       ELSIF y.a = 32 THEN 
         IF isLongint(x.type) THEN A.encMOVReg(mcode, x.r, x.r+1); A.encShiftImm5(mcode, A.ASr, x.r+1, x.r+1, 31) END
       ELSIF y.a < 64 THEN
-        IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.ASr, x.r, x.r+1, y.a-32); A.encShiftImm5(mcode, A.ASr, x.r+1, x.r+1, 31)
+        IF isLongint(x.type) THEN A.encShiftImm5(mcode, A.ASr, x.r, x.r+1, y.a-32);
+          A.encShiftImm5(mcode, A.ASr, x.r+1, x.r+1, 31)
         ELSE A.encMOVImm32(mcode, x.r, 0, A.Any)
         END
       ELSE
@@ -732,7 +734,6 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     (*move x into R0-R1 and y into R2-R3*)
     IF x.r # 0 THEN A.encMOVReg(mcode, 0, x.r); A.encMOVReg(mcode, 1, x.r+1) END;
     IF y.r # 2 THEN A.encMOVReg(mcode, 2, y.r); A.encMOVReg(mcode, 3, y.r+1) END;
-(*    IF check & yIsVar THEN  A.encCMPImm(mcode, 2, RH, 1); A.encDPImm32(mcode, A.SBc, RH, 3, RH, 0, TRUE); Trap(A.LT, 6) END;*)
     A.Put1(mcode, A.SVC + 2); (*Call 64bit integer division code in Kernel module*)
     IF xr < rr THEN A.encMOVReg(mcode, xr, rr); A.encMOVReg(mcode, xr+1, rr+1)
     ELSIF xr > rr THEN A.encMOVReg(mcode, xr+1, rr+1); A.encMOVReg(mcode, xr, rr) (*reverse order to avoid xr corruption *)
@@ -1195,16 +1196,17 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       A.encMRS(mcode, 0, PSP)
     END;
 
-    IF reglim >= 0 THEN (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
-      RL := reglim+1;
-      IF reglim >= 4 THEN
-        A.PushRegs(mcode, 4, reglim); OfsPTOS(reglim - 3, 0, TRUE) (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*)
+    IF reglim >= 0 THEN ASSERT(reglim <= SP);
+      IF reglim > 4 THEN (*protect usable registers, assuming that R0 to R3 are already saved in interrupt frame*)
+        A.PushRegs(mcode, 4, reglim - 1); OfsPTOS(reglim - 4, 0, TRUE)
       END
+    ELSE reglim := SP
     END;
 
-    IF locblksize - parblksize # 0 THEN (*reserve memory for variables*)
+    IF locblksize - parblksize # 0 THEN (*reserve memory for variables*) mcode.limit := PC; (*to allow update of PC*)
       A.encDPImm32(mcode, A.SUB, SP, SP, r, locblksize - parblksize, FALSE); OfsPTOS((locblksize - parblksize) DIV 4, 0, TRUE)
     END;
+    mcode.limit := reglim; (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
     IF r > 0 THEN A.PushRegs(mcode, 0, r-1); OfsPTOS(r, 0, TRUE) END; (*reserve memory for parameters and initialize them*)
 
     (*PUSH T1 LR *) A.Put1(mcode, A.PUSHT1 + A.C8); OfsPTOS(1, 1, TRUE)
@@ -1215,9 +1217,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     IF form # B.NoTyp THEN 
       IF x.type.form = B.Real THEN loadFP(x); ELSE load(x) END
     END;
+    mcode.limit := PC; (*to allow update of SP*)
     (*POP T3 LR *) A.encMemImm8PUW(mcode, A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
     IF size # 4 THEN A.encDPImm32(mcode, A.ADD, SP, SP, RH, size - 4, FALSE); OfsPTOS((4 - size) DIV 4, 0, TRUE) END;
-    IF reglim >= 0 THEN IF reglim >= 4 THEN A.PopRegs(mcode, 4, reglim); OfsPTOS(3 - reglim, 0, TRUE) END; RL := SP END;
+    IF reglim >= 0 THEN IF reglim > 4 THEN A.PopRegs(mcode, 4, reglim - 1); OfsPTOS(4 - reglim, 0, TRUE) END; mcode.limit := SP END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos MOD 10000H # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
     A.Put1(mcode, A.BX + LR*A.C3); RH := 0; SH := 0
   END Return;
@@ -1262,7 +1265,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   BEGIN loadAdr(x); zr := RH; incR; A.encMemImm32(mcode, A.LDR, zr, x.r, RH, 0);
     IF inorex = 0 THEN op := A.ORR ELSE op := A.BIC END ;
     IF y.mode = B.Const THEN A.encDPImm32(mcode, op, zr, zr, RH, LSL(1, y.a), TRUE)
-    ELSE load(y); A.encMOVImm32(mcode, RH, 1, A.Any); A.encShiftReg(mcode, A.LSl, y.r, RH, y.r, TRUE); A.encDPReg(mcode, op, zr, zr, y.r, A.LSl, 0, TRUE); DEC(RH)
+    ELSE load(y); A.encMOVImm32(mcode, RH, 1, A.Any); A.encShiftReg(mcode, A.LSl, y.r, RH, y.r, TRUE);
+      A.encDPReg(mcode, op, zr, zr, y.r, A.LSl, 0, TRUE); DEC(RH)
     END ;
     A.encMemImm32(mcode, A.STR, zr, x.r, RH, 0); DEC(RH, 2)
   END Include;
@@ -1502,7 +1506,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGV := 0; fixORGC := 0; fixORGT := 0; check := v # 0;
     IF v = 0 THEN version := 0; mcode.pc := 4; (*Make room for the jump to entry point instruction*)
     ELSE version := 2
-    END; RL := SP
+    END; mcode.limit := SP
   END Open;
 
   PROCEDURE SetDataSize*(vc, cc: INTEGER);
@@ -1550,7 +1554,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*)
-    IF version # 0 THEN (*POP T3 LR *) A.encMemImm8PUW(mcode, A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
+    IF version # 0 THEN mcode.limit := PC; (*to allow update of SP*)
+      (*POP T3 LR *) A.encMemImm8PUW(mcode, A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
       A.Put1(mcode, A.BX + LR*A.C3)
     END ;
     obj := B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0; nofusedextprocs := 0;
