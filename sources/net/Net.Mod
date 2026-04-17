@@ -1,5 +1,5 @@
 MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
-  IMPORT Kernel, Files, Texts, SCC, Oberon;
+  IMPORT BSP, Kernel, Files, Texts, SCC, Oberon;
 
   CONST PakSize = 512;
     T0 = 300; (*timeout*)
@@ -123,7 +123,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
   END ReceiveData;
 
   PROCEDURE reply(msg: INTEGER);
-  BEGIN LED(msg*2);
+  BEGIN BSP.ledsOnOff(TOSET(msg*2), {});
     IF msg = 0 THEN Texts.WriteString(W, " done")
     ELSIF msg = 1 THEN Texts.WriteString(W, " no link")
     ELSIF msg = 2 THEN Texts.WriteString(W, " no permission")
@@ -225,7 +225,7 @@ MODULE Net; (*NW 3.7.88 / 25.8.91 / PR 7.8.13 / 9.12.13 CS 20/01/24*)
       FindPartner(S.s, k);
       IF k = 0 THEN
         GetPar(S, end);
-        WHILE (Texts.Pos(S) < end) & (S.class = Texts.Name) DO
+        WHILE (Texts.Pos(S) < end) & (S.class = Texts.Name) DO BSP.ledsOnOff({}, {1..5});
           Texts.WriteString(W, S.s); k := 0;
           AppendS(Oberon.User, buf, k); AppendW(Oberon.Password, buf, 4, k);
           AppendS(S.s, buf, k);

@@ -1,5 +1,5 @@
 MODULE OM4Tool;  (*NW 18.2.2013
-  C. Schoffit 25.02.25*)
+  C. Schoffit 16.04.26: improve register usage check*)
   IMPORT SYSTEM, Files, Texts, Oberon, OM4B, OM4A, OM4D, Modules;
 
   TYPE
@@ -25,7 +25,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
     IF b < 80H THEN n := b ELSE n := b - 100H END
   END Read;
 
-  PROCEDURE ReadType(VAR R: Files.Rider);
+  PROCEDURE ReadType(VAR R: Files.Rider; version: INTEGER);
     VAR key, len, lev, size, off: INTEGER;
       ref, class, form, readonly: INTEGER;
       name, modname: ARRAY 32 OF CHAR;
@@ -33,31 +33,35 @@ MODULE OM4Tool;  (*NW 18.2.2013
     IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1); IF -ref <= OM4B.String THEN form := -ref END
     ELSE Texts.WriteInt(W, ref, 1);
       Read(R, form); Texts.WriteString(W, "  form = "); Texts.WriteInt(W, form, 1);
-      IF form = OM4B.Pointer THEN ReadType(R)
+      IF form = OM4B.Pointer THEN ReadType(R, version)
       ELSIF form = OM4B.Array THEN
-        ReadType(R); Files.ReadNum(R, len); Files.ReadNum(R, size);
+        ReadType(R, version); Files.ReadNum(R, len); Files.ReadNum(R, size);
         Texts.WriteString(W, "  len = "); Texts.WriteInt(W, len, 1);
         Texts.WriteString(W, "  size = "); Texts.WriteInt(W, size, 1)
       ELSIF form = OM4B.Record THEN
-        ReadType(R);  (*base type*)
+        ReadType(R, version);  (*base type*)
         Files.ReadNum(R, off); Texts.WriteString(W, "  exno = "); Texts.WriteInt(W, off, 1); 
         Files.ReadNum(R, off); Texts.WriteString(W, "  extlev = "); Texts.WriteInt(W, off, 1);
         Files.ReadNum(R, size); Texts.WriteString(W, "  size = "); Texts.WriteInt(W, size, 1);
         Texts.Write(W, " "); Texts.Write(W, "{"); Read(R, class);
         WHILE class # 0 DO (*fields*)
           Files.ReadString(R, name);
-          IF name[0] # 0X THEN Texts.Write(W, " "); Texts.WriteString(W, name); ReadType(R)
+          IF name[0] # 0X THEN Texts.Write(W, " "); Texts.WriteString(W, name); ReadType(R, version)
           ELSE Texts.WriteString(W, " --")
           END ;
           Files.ReadNum(R, off); Texts.WriteInt(W, off, 4); Read(R, class)
         END ;
         Texts.Write(W, "}")
       ELSIF form = OM4B.Proc THEN
-        ReadType(R); Texts.Write(W, "("); Read(R, class);
+        ReadType(R, version);
+        IF version = 2 THEN Files.ReadNum(R, class);
+          Texts.WriteString(W, " ur = "); Texts.WriteInt(W, class, 1)
+        END;
+        Texts.WriteString(W, " ("); Read(R, class);
         WHILE class # 0 DO
           Texts.WriteString(W, " class = "); Texts.WriteInt(W, class, 1); Read(R, readonly);
           IF readonly = 1 THEN Texts.Write(W, "#") END ;
-          ReadType(R); Read(R, class)
+          ReadType(R, version); Read(R, class)
         END ;
         Texts.Write(W, ")")
       END ;
@@ -72,7 +76,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   END ReadType;
 
   PROCEDURE DecSym*;  (*decode symbol file*)
-    VAR class, typno, k: INTEGER;
+    VAR class, version, typno, k: INTEGER;
       name: ARRAY 32 OF CHAR;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
@@ -84,12 +88,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadInt(R, k); Files.ReadInt(R, k);
         Files.ReadString(R, name); Texts.WriteString(W, name); Texts.WriteHex(W, k);
-        Read(R, class); Texts.WriteInt(W, class, 3); (*sym file version*)
-        IF class = OM4B.versionkey THEN
+        Read(R, version); Texts.WriteInt(W, version, 3); (*sym file version*)
+        IF version <= OM4B.versionkey THEN
           Texts.WriteLn(W); Read(R, class);
           WHILE class # 0 DO
             Texts.WriteInt(W, class, 4); Files.ReadString(R, name); Texts.Write(W, " "); Texts.WriteString(W, name);
-            ReadType(R);
+            ReadType(R, version);
             IF class = OM4B.Typ THEN
               Texts.Write(W, "("); Read(R, class);
               WHILE class # 0 DO  (*pointer base fixup*)

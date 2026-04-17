@@ -65,12 +65,23 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     INC(errcnt); errpos := p + 4
   END Mark;
 
+  PROCEDURE WriteInt*(i, l: INTEGER);
+  BEGIN IF errcnt < 26 THEN Texts.WriteInt(W, i, l); Texts.Append(Oberon.Log, W.buf) END
+  END WriteInt;
+
   PROCEDURE DebugHex*(msg: ARRAY OF CHAR; v: INTEGER);
     VAR p: INTEGER;
   BEGIN p := Pos();
     Texts.WriteLn(W); Texts.WriteString(W, msg); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
     Texts.WriteHex(W, v); Texts.Append(Oberon.Log, W.buf)
   END DebugHex;
+
+  PROCEDURE DebugString*(msg, v: ARRAY OF CHAR);
+    VAR p: INTEGER;
+  BEGIN p := Pos();
+    Texts.WriteLn(W); Texts.WriteString(W, msg); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
+    Texts.WriteString(W, v); Texts.Append(Oberon.Log, W.buf)
+  END DebugString;
 
   PROCEDURE Identifier(VAR sym: INTEGER);
     VAR i, k: INTEGER;

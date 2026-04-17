@@ -284,11 +284,11 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     (*stop*) BSP.led(w + 64); REPEAT UNTIL FALSE
   END Trap;
 
-  PROCEDURE^3 IncTick;
+  PROCEDURE* IncTick;
   BEGIN INC(tick); setSPHWM
   END IncTick;
 
-  PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
+  PROCEDURE*^5 SVCallHandler(VAR f: ExceptionFrameDesc);
     VAR param: BYTE;
   BEGIN SVCReturnAddress := f.returnAddress - 2;
     SYSTEM.GET(SVCReturnAddress, param);

@@ -1,4 +1,6 @@
 MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F processor*) 
+  (*C. Schoffit 16.04.26: improve register usage check*)
+  IMPORT S := OM4S, B := OM4B;
   IMPORT S := OM4S;
   
   CONST NSF* = {0}; (*Don't set flags*) SF* = {1}; (*Set flags*) Any* = NSF + SF; (*use the shortest instruction*)
@@ -292,7 +294,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
       pc*: INTEGER; (*program counter*)
       nbRmnITBlockInsts: INTEGER; (*Number of remaining instructions in current IT block*)
       lastInstrSetFlags*: BOOLEAN; (*TRUE if last instructions set flags*)
-      limit*: BYTE; (*limit available register to {0..limit - 1}*)
+      allowSPUpdate*, (*update of SP allowed*)
+      regovfl*: BOOLEAN;   (*overflow condition in the current statement*)
+      procType*: B.Type; (*current procedure type for recording the number of registers used*)
       code*: ARRAY maxCode OF BYTE;   (*Cortex M4 thumb uses 16bit half-words, but this size does not exists in Oberon 07*)
       pos*: ARRAY maxCode DIV 2 OF INTEGER
     END;
@@ -494,8 +498,15 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     END; PutLE(c, adr)
   END encJumpImm32;
 
-  PROCEDURE CheckOverflow*(c: ModuleCode; reg: BYTE);
-  BEGIN IF (reg >= c.limit) & (reg # LR) THEN  S.Mark("register stack overflow"); c.limit := SP; ASSERT(FALSE) END;
+  PROCEDURE CheckOverflow*(c: ModuleCode; VAR reg: BYTE);
+  BEGIN
+    IF reg >= SP THEN
+      IF (reg # LR) & ~(c.allowSPUpdate & (reg = SP)) THEN
+        IF ~c.regovfl THEN S.Mark("register stack overflow") END;
+        c.regovfl := TRUE; reg := SP - 1
+      END
+    ELSIF (c.procType # NIL) & (reg + 1 > c.procType.len) THEN c.procType.len := reg + 1
+    END;
   END CheckOverflow;
 
   PROCEDURE encMOVImm32*(VAR c: ModuleCode; reg: BYTE; val: INTEGER; setFlags: SET);
@@ -808,7 +819,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     c.lastInstrSetFlags := FALSE
   END encBFC;
   
-  PROCEDURE encMRS*(VAR c: ModuleCode; a, s: INTEGER);
+  PROCEDURE encMRS*(VAR c: ModuleCode; a, s: BYTE);
   (*|1111/0011/1110/1111/1000/ Rd /  SY/Sm  |
     MRS<c> <Rd>,<spec_reg>*)
   BEGIN ASSERT(a < C4); ASSERT(s IN {0..9, 16..20}); CheckOverflow(c, a);
@@ -816,7 +827,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     c.lastInstrSetFlags := FALSE
   END encMRS;
 
-  PROCEDURE encMSR*(VAR c: ModuleCode; a, s: INTEGER);
+  PROCEDURE encMSR*(VAR c: ModuleCode; a, s: BYTE);
   (*|1111/0011/1000/ Rn /1000/Mq00/  SY/Sm  |
     MSR<c> <spec_reg>,<Rn>
     Mq is set as "10" to prevent unpredictable behaviour*)

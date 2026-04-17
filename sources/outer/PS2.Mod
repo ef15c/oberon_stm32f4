@@ -36,7 +36,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
   VAR mkb*: MKB; mkbBlock: MKDataBlock; keyboard*: Device;
     KBLeds: SET;
 
-  PROCEDURE^3 PutByteInFIFOBuffer(VAR dev: DeviceDesc);
+  PROCEDURE PutByteInFIFOBuffer(VAR dev: DeviceDesc);
     CONST YO = 7; XO = 6; YS = 5; XS = 4; MBO = 3; BM = 2; BR = 1; BL = 0;
       MaxMove = 200;
     VAR curTick, x, y, dx, dy, dz: INTEGER; flags: SET;
@@ -70,7 +70,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     END
   END PutByteInFIFOBuffer;
 
-  PROCEDURE^3 requestToSend(VAR dev: DeviceDesc);
+  PROCEDURE requestToSend(VAR dev: DeviceDesc);
     VAR clockBit: BOOLEAN;
   BEGIN
     IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, ON) END;
@@ -81,7 +81,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     (*now, wait for device to generate clock pulses*)
   END requestToSend;
 
-  PROCEDURE^3 SendByteAsync*(VAR dev: DeviceDesc; data: BYTE);
+  PROCEDURE SendByteAsync*(VAR dev: DeviceDesc; data: BYTE);
     VAR i: INTEGER; parity: BYTE;
   BEGIN parity := 1;
     dev.direction := HOST_TO_DEVICE; dev.dataOut := (data + 200H)*2;
@@ -114,7 +114,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     RETURN answer
   END WaitForAnswer;
 
-  PROCEDURE^3 ProcessData*(VAR dev: DeviceDesc); (*Process a data bit from/to a PS/2 port.*)
+  PROCEDURE ProcessData*(VAR dev: DeviceDesc); (*Process a data bit from/to a PS/2 port.*)
   (* Warning : this function is call via a GPIO interrupt : keep it as fast as possible *)
     VAR clockBit, dataBit: BOOLEAN;
   BEGIN SYSTEM.GET(dev.clock_In, clockBit); SYSTEM.GET(dev.data_In, dataBit);
@@ -246,18 +246,3 @@ BEGIN mkb := SYSTEM.VAL(MKB, SYSTEM.ADR(mkbBlock));
 END PS2.
 
 OM4Tool.DecSym PS2.sm4
-decode PS2.sm4
-PS2 F85B00D1  1
-   1 BUFFERSIZE [^4]      16
-   5 MKB [15  form = 7 [16  form = 13 [^9]  exno = 1  extlev = 0  size = 40 { z [^4]  36 MH [^4]  32 MW [^4]  28 MD [^4]  24 KB [17  form = 13 [^9]  exno = 0  extlev = 0  size = 24 { buffer [0  form = 12 [^1]  len = 16  size = 16]   8 tail [^4]   4 head [^4]   0}]   0}]]()
-   5 MKDataBlock [^16]( ->  15)
-   5 Device [18  form = 7 [19  form = 13 [^9]  exno = 2  extlev = 0  size = 88 { --  60 keyboardLED [^4]  36 mouseLED [^4]  32 data_Out [^4]  24 clock_Out [^4]  20 data_In [^4]  16 clock_In [^4]  12 clockPin [^1]   4}]]()
-   5 DeviceDesc [^19]( ->  18)
-   2 mkb [^15]     3
-   2 keyboard [^18]     4
-   1 SendByteAsync [0  form = 10 [^9]( class = 2 [^1] class = 3 [^19])]       5
-   1 WaitForAnswer [0  form = 10 [^4]( class = 2 [^4] class = 3 [^19])]       6
-   1 ProcessData [0  form = 10 [^9]( class = 3 [^19])]       7
-   1 SetCapsLock [0  form = 10 [^9]( class = 2 [^2])]       8
-   1 InitDevice [0  form = 10 [^9]( class = 3 [^19])]       9
-

@@ -6,7 +6,7 @@ OM4X.Load BootLoad.hex
 (*no more used: OM4X.WriteASM BootLoad.m4c BootLoad.s ~*)
 
 Commands for generation of the boot file (inner core)
-OM4P.Compile BSP.Mod SDCard.Mod LongDiv.Mod Kernel.Mod FileDir.Mod Files.Mod Modules.Mod ~
+OM4P.Compile BSP.Mod/s SDCard.Mod/s LongDiv.Mod/s Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s ~
 OM4L.Link Modules ~
 OM4L.Load Modules.bin ~
  ** or/and **
@@ -14,29 +14,29 @@ OM4L.LinkEF Modules ~
 OM4L.LoadEF Modules.efb OM4L.CompareEF Modules.efb
 
 Commands for generation of outer core
-OM4P.Compile PS2.Mod InputAzerty.Mod Display.Mod Viewers.Mod Fonts.Mod Texts.Mod
-  Oberon.Mod MenuViewers.Mod TextFrames.Mod System.Mod Edit.Mod OnStartup.Mod ~
+OM4P.Compile PS2.Mod/s InputAzerty.Mod/s Display.Mod/s Viewers.Mod/s Fonts.Mod/s Texts.Mod/s
+  Oberon.Mod/s MenuViewers.Mod/s TextFrames.Mod/s System.Mod/s Edit.Mod/s
+  CRC32.Mod/s SCC.Mod/s Net.Mod/s OnStartup.Mod/s ~
 ** optional **
 OM4L.LinkEF System ~
 OM4L.LoadEF System.efb OM4L.CompareEF System.efb
 
-Commands for generation of net
-OM4P.Compile TextsEx.Mod SCC.Mod Net.Mod ~
-OM4P.Compile RS232.Mod ~
-
-Commands for generation of the compiler
-OM4P.Compile CRC32.Mod FilesEx.Mod OM4S.Mod OM4B.Mod OM4A.Mod OM4G.Mod OM4P.Mod
-  OM4X.Mod FLASH.Mod OM4L.Mod OM4D.Mod OM4Tool.Mod StackTrace.Mod ~
-** optional **
-OM4L.LinkEF Modules System Edit OnStartup OM4L OM4P ~
-OM4L.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
+Commands for generation of UART
+OM4P.Compile RS232.Mod/s ~
 
 Command for generation of tools
-OM4P.Compile Tools.Mod HeapTool.Mod SystemLog.Mod BMP.Mod Image.Mod ~
+OM4P.Compile Tools.Mod/s HeapTool.Mod/s SystemLog.Mod/s BMP.Mod/s Image.Mod/s FilesEx.Mod/s ~
+
+Commands for generation of the compiler
+OM4P.Compile FLASH.Mod/s OM4S.Mod/s OM4B.Mod/s OM4A.Mod/s OM4G.Mod/s OM4P.Mod/s
+  OM4X.Mod/s OM4L.Mod/s OM4D.Mod/s OM4Tool.Mod/s StackTrace.Mod/s ~
+** optional **
+OM4L.LinkEF Modules System Edit OnStartup Image OM4L OM4P ~
+OM4L.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
 
 Commands for generation of graphic system
-OM4P.Compile Graphics.Mod GraphicFrames.Mod Draw.Mod Rectangles.Mod Curves.Mod
-  MacroTool.Mod GraphTool.Mod ~
+OM4P.Compile Graphics.Mod/s GraphicFrames.Mod/s Draw.Mod/s Rectangles.Mod/s Curves.Mod/s
+  MacroTool.Mod/s GraphTool.Mod/s ~
 
 Command for generating programs
 OM4P.Compile Hilbert.Mod Sierpinski.Mod Blink.Mod Stars.Mod ~

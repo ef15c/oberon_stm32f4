@@ -93,7 +93,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE SubRcv(dst: INTEGER; VAR len: BYTE);
     VAR i, data: INTEGER; dat: BYTE;
-  BEGIN LED({2});
+  BEGIN BSP.ledsOnOff({2}, {});
     StartCmd(60H); SPIr(len); (*R_RX_PL_WID*)
     SYSTEM.PUT(netSelectOut, 1);
     ASSERT(len MOD 4 = 0);
@@ -110,6 +110,7 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
     ELSE len := 0
     END;
     WriteReg1(7, 40H); (*done; STATUS <= clear RX_DR*)
+    BSP.ledsOnOff({}, {2})
   END SubRcv;
 
   PROCEDURE FlushRX;
@@ -144,13 +145,14 @@ MODULE SCC; (*NW 13.11.87 / 22.8.90 Ceres-2; nRF24L01+ version PR 21.7.13 / 23.1
 
   PROCEDURE doSubSend(src, len: INTEGER; VAR timeout: BOOLEAN; flush: BOOLEAN);
     VAR i: INTEGER; x, dat: BYTE;
-  BEGIN LED({1});
+  BEGIN BSP.ledsOnOff({1}, {});
     ASSERT(len-1 IN {0..SubPacket-1});
     StartCmd(0A0H); (*W_TX_PAYLOAD*)
     FOR i := 0 TO len-1 DO
       SYSTEM.GET(src+i, dat); SPIw(dat)
     END; SYSTEM.PUT(netSelectOut, 1); (*end of W_TX_PAYLOAD command*)
-    xmitPayload(timeout, flush)
+    xmitPayload(timeout, flush);
+    BSP.ledsOnOff({}, {1})
   END doSubSend;
 
   PROCEDURE SubSnd(src: INTEGER; VAR timeout: BOOLEAN);

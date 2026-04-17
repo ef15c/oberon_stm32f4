@@ -1,5 +1,6 @@
 MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   C. Schoffit 12/11/2023 for Cortex M4 STM32I-DISCO*)
+  (*C. Schoffit 16.04.26: improve register usage check*)
   IMPORT Files, CRC32, S := OM4S;
   (*Definition of data types Object and Type, which together form the data structure
     called "symbol table". Contains procedures for creation of Objects, and for search:
@@ -8,7 +9,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     Import and Export. This module contains the list of standard identifiers, with which
     the symbol table (universe), and that of the pseudo-module SYSTEM are initialized. *)
 
-  CONST versionkey* = 1; maxTypTab = 64;
+  CONST versionkey* = 2; maxTypTab = 64;
     (* class values*) Head* = 0;
       Const* = 1; Var* = 2; Par* = 3; Fld* = 4; Typ* = 5;
       SProc* = 6; SFunc* = 7; Mod* = 8;
@@ -38,7 +39,10 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     TypeDesc* = RECORD
       form*, ref*, mno*: INTEGER;  (*ref is only used for import/export*)
       nofpar*: INTEGER;  (*for procedures, extension level for records*)
-      len*: INTEGER;  (*for arrays, len < 0 => open array; for records: adr of descriptor*)
+      len*: INTEGER;  (*for arrays, len < 0 => open array; for records: adr of descriptor
+                                  for procedure, number of used registers
+                                  min value is 4 to improve symbol file stability.
+                                  This works because R0 to R3 are automatically saved in the exception frame*)
       dsc*, typobj*: Object;
       base*: Type;  (*for arrays, records, pointers*)
       size*: INTEGER;  (*in bytes; always multiple of 4, except for Byte, Bool and Char*)
@@ -161,7 +165,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     IF b < 80H THEN x := b ELSE x := b - 100H END
   END Read;
   
-  PROCEDURE InType(VAR R: Files.Rider; thismod: Object; VAR T: Type);
+  PROCEDURE InType(VAR R: Files.Rider; thismod: Object; VAR T: Type; version: INTEGER);
     VAR key: INTEGER;
       ref, class, form, np, readonly: INTEGER;
       fld!, par!, obj!, mod!, last!: Object;
@@ -171,11 +175,11 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     IF ref < 0 THEN T := typtab[-ref]  (*already read*)
     ELSE NEW(t); T := t; typtab[ref] := t; t.mno := thismod.lev;
       Read(R, form); t.form := form;
-      IF form = Pointer THEN InType(R, thismod, t.base); t.size := 4
+      IF form = Pointer THEN InType(R, thismod, t.base, version); t.size := 4
       ELSIF form = Array THEN
-        InType(R, thismod, t.base); Files.ReadNum(R, t.len); Files.ReadNum(R, t.size)
+        InType(R, thismod, t.base, version); Files.ReadNum(R, t.len); Files.ReadNum(R, t.size)
       ELSIF form = Record THEN
-        InType(R, thismod, t.base);
+        InType(R, thismod, t.base, version);
         IF t.base.form = NoTyp THEN t.base := NIL; obj := NIL ELSE obj := t.base.dsc END ;
         Files.ReadNum(R, t.len); (*TD adr/exno*)
         Files.ReadNum(R, t.nofpar);  (*ext level*)
@@ -185,16 +189,17 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           NEW(fld); fld.class := class; Files.ReadString(R, fld.name);
           IF last = NIL THEN t.dsc := fld ELSE last.next := fld END ;
           last := fld;
-          IF fld.name[0] # 0X THEN fld.expo := TRUE; InType(R, thismod, fld.type) ELSE fld.expo := FALSE; fld.type := nilType END ;
+          IF fld.name[0] # 0X THEN fld.expo := TRUE; InType(R, thismod, fld.type, version) ELSE fld.expo := FALSE; fld.type := nilType END ;
           Files.ReadLongNum(R, fld.val); Read(R, class)
         END ;
         IF last = NIL THEN t.dsc := obj ELSE last.next := obj END
       ELSIF form = Proc THEN
-        InType(R, thismod, t.base);
+        InType(R, thismod, t.base, version);
+        IF version = 2 THEN Files.ReadNum(R, t.len) ELSE t.len := 13 END; (*nof used registers in procedure*)
         obj := NIL; np := 0; Read(R, class);
         WHILE class # 0 DO  (*parameters*)
           NEW(par); par.class := class; Read(R, readonly); par.rdo := readonly = 1; 
-          InType(R, thismod, par.type); par.next := obj; obj := par; INC(np); Read(R, class)
+          InType(R, thismod, par.type, version); par.next := obj; obj := par; INC(np); Read(R, class)
         END ;
         t.dsc := obj; t.nofpar := np; t.size := 4
       END ;
@@ -215,7 +220,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   END InType;
   
   PROCEDURE Import*(VAR modid, modid1: S.Ident);
-    VAR key: INTEGER; class, k: INTEGER;
+    VAR key: INTEGER; class, version, k: INTEGER;
       obj!: Object;  t!: Type;
       thismod!: Object;
       modname, fname: S.Ident;
@@ -228,12 +233,12 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadInt(R, key); Files.ReadInt(R, key); Files.ReadString(R, modname);
         thismod := ThisModule(modid, modid1, TRUE, key); thismod.rdo := TRUE;
-        Read(R, class); (*version key*)
-        IF class # versionkey THEN S.Mark("wrong version") END ;
+        Read(R, version); (*version key*)
+        IF version > versionkey THEN S.Mark("wrong version") END ;
         Read(R, class);
         WHILE class # 0 DO
           NEW(obj); obj.class := class; Files.ReadString(R, obj.name);
-          InType(R, thismod, obj.type); obj.lev := -thismod.lev;
+          InType(R, thismod, obj.type, version); obj.lev := -thismod.lev;
           IF class = Typ THEN
             t := obj.type; t.typobj := obj; Read(R, k);  (*fixup bases of previously declared pointer types*)
             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
@@ -301,7 +306,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
           fld := fld.next
         END ;
         Write(R, 0)
-      ELSIF t.form = Proc THEN OutType(R, t.base, 0); OutPar(R, t.dsc, t.nofpar); Write(R, 0)
+      ELSIF t.form = Proc THEN OutType(R, t.base, 0); Files.WriteNum(R, t.len); OutPar(R, t.dsc, t.nofpar); Write(R, 0)
       END ;
       IF (t.mno > 0) & (obj # NIL) THEN  (*re-export, output name*)
         mod := topScope.next;

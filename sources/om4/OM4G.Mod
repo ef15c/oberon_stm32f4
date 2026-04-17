@@ -1,6 +1,7 @@
 MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   C. Schoffit 19/10/2023 code generator for Cortex M4 STM32I-DISCO*)
-  IMPORT SYSTEM, Files, A := OM4A, S := OM4S, B := OM4B;
+  (*C. Schoffit 16.04.26: improve register usage check*)
+  IMPORT SYSTEM, Files, S := OM4S, B := OM4B, A := OM4A;
   (*Code generator for Oberon compiler targetting Cortex M4F processor.
      Procedural interface to Parser OM4P; result in record "code".
      Procedure Close writes code-files*)
@@ -44,8 +45,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   VAR varsize, typesize: INTEGER;   (*variable index, type index*)
     tdx, strx: INTEGER;
     entry: INTEGER;   (*main entry point*)
-    RH: INTEGER;      (*in use registers R[0] ... R[H-1]*)
-    SH: INTEGER;      (*in use floating point registers S[0] ... S[H-1]*)
+    RH: BYTE;      (*in use registers R[0] ... R[H-1]*)
+    SH: BYTE;      (*in use floating point registers S[0] ... S[H-1]*)
     frame: INTEGER;   (*frame offset changed in SaveRegs and RestoreRegs*)
     fixORGP, fixORGC, fixORGV, fixORGT: INTEGER;   (*origins of lists of locations to be fixed up by loader*)
     check*: BOOLEAN;   (*emit run-time checks*)
@@ -79,8 +80,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END FixLink;
 
   PROCEDURE incR;
-  BEGIN
-    IF RH < mcode.limit THEN INC(RH) ELSE S.Mark("register stack overflow"); RH := 8 END
+  BEGIN A.CheckOverflow(mcode, RH); INC(RH)
   END incR;
 
   PROCEDURE dincR;
@@ -94,13 +94,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE SetRH*(r: BYTE);
   BEGIN
-    ASSERT(r <= mcode.limit);
+    ASSERT(r < SP);
     RH := r
   END SetRH;
   
   PROCEDURE CheckRegs*;
   BEGIN
-    IF RH # 0 THEN S.Mark("Reg Stack"); RH := 0 END ;
+    IF ~mcode.regovfl & (RH # 0) THEN S.Mark("Reg Stack") END; RH := 0; mcode.regovfl := FALSE;
     IF SH # 0 THEN S.Mark("FP Reg Stack"); SH := 0 END ;
     IF mcode.pc >= A.maxCode - 40 THEN S.Mark("program too long") END ;
     IF frame # 0 THEN S.Mark("frame error"); frame := 0 END
@@ -1139,6 +1139,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     r := RH; IF RH > 0 THEN A.SaveRegs(mcode, RH, frame); OfsPTOS(r, r, TRUE); RH := 0 END;
     s := SH; IF SH > 0 THEN A.SaveFPRegs(mcode, SH, frame); OfsPTOS(s, s, TRUE); SH := 0 END;
     IF xr >= 0 THEN A.PushRegs(mcode, xr, xr); INC(frame, 4); OfsPTOS(1, 1, TRUE) END;
+    (*check if callee alter other registers*)
+    IF (mcode.procType # NIL) & (x.type.len > mcode.procType.len) THEN mcode.procType.len := x.type.len END
   END PrepCall;
 
   PROCEDURE Call*(VAR x: Item; r, s: INTEGER);
@@ -1183,13 +1185,16 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     END
   END Call;
 
-  PROCEDURE Enter*(parblksize, locblksize: INTEGER; int: BOOLEAN; reglim: INTEGER);
+  PROCEDURE SetProcType*(t: B.Type);
+  BEGIN mcode.procType := t;
+  END SetProcType;
+
+  PROCEDURE Enter*(parblksize, locblksize: INTEGER; expframe: BOOLEAN; reglim: INTEGER);
     VAR r: INTEGER;
   BEGIN OfsPTOS(0, -1, FALSE); frame := 0;
     IF locblksize >= A.C16 THEN S.Mark("local variables size exeeded") END;
     r := (parblksize-4) DIV 4;
-    IF int THEN (*interrupt procedure, lot of registers are already saved in interrupt frame*)
-      (*Store interrupt frame address in R0*)
+    IF expframe THEN (*Store exception frame address in R0*)
       A.encDPImm32(mcode, A.TST, 0, LR, r, 4, TRUE);
       A.IfThen(mcode, "E", A.EQ);
       A.encMRS(mcode, 0, MSP);
@@ -1203,10 +1208,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     ELSE reglim := SP
     END;
 
-    IF locblksize - parblksize # 0 THEN (*reserve memory for variables*) mcode.limit := PC; (*to allow update of PC*)
+    IF locblksize - parblksize # 0 THEN (*reserve memory for variables*) mcode.allowSPUpdate := TRUE; (*to allow update of SP*)
       A.encDPImm32(mcode, A.SUB, SP, SP, r, locblksize - parblksize, FALSE); OfsPTOS((locblksize - parblksize) DIV 4, 0, TRUE)
     END;
-    mcode.limit := reglim; (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
+    mcode.allowSPUpdate := FALSE; (*sets the number of usable registers. This is useful to ensure that interrupt handlers do not corrupt registers*)
     IF r > 0 THEN A.PushRegs(mcode, 0, r-1); OfsPTOS(r, 0, TRUE) END; (*reserve memory for parameters and initialize them*)
 
     (*PUSH T1 LR *) A.Put1(mcode, A.PUSHT1 + A.C8); OfsPTOS(1, 1, TRUE)
@@ -1214,15 +1219,23 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Return*(form: INTEGER; VAR x: Item; size: INTEGER; reglim: INTEGER);
   BEGIN
+    (*check register limit overflow*)
+    IF reglim >= 0 THEN
+      IF mcode.procType.len > reglim THEN S.Mark("reg destroyed up to R");
+        S.WriteInt(mcode.procType.len - 1, 1)
+      ELSE mcode.procType.len := 4; (*registers R4 and above are protected*)
+      END
+    END;
     IF form # B.NoTyp THEN 
       IF x.type.form = B.Real THEN loadFP(x); ELSE load(x) END
     END;
-    mcode.limit := PC; (*to allow update of SP*)
+    mcode.allowSPUpdate := TRUE; (*to allow update of SP*)
     (*POP T3 LR *) A.encMemImm8PUW(mcode, A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
     IF size # 4 THEN A.encDPImm32(mcode, A.ADD, SP, SP, RH, size - 4, FALSE); OfsPTOS((4 - size) DIV 4, 0, TRUE) END;
-    IF reglim >= 0 THEN IF reglim > 4 THEN A.PopRegs(mcode, 4, reglim - 1); OfsPTOS(4 - reglim, 0, TRUE) END; mcode.limit := SP END;
+    mcode.allowSPUpdate := FALSE;
+    IF reglim >= 0 THEN IF reglim > 4 THEN A.PopRegs(mcode, 4, reglim - 1); OfsPTOS(4 - reglim, 0, TRUE) END END;
     IF frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos MOD 10000H # 0 THEN S.DebugHex("stack seg", frmOfsSegs.Segs[frmOfsSegs.NofSegs].ofsptos) END;
-    A.Put1(mcode, A.BX + LR*A.C3); RH := 0; SH := 0
+    A.Put1(mcode, A.BX + LR*A.C3); RH := 0; SH := 0; mcode.procType := NIL
   END Return;
 
   (* In-line code procedures*)
@@ -1506,7 +1519,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     tdx := 0; strx := 0; RH := 0; SH := 0; fixORGP := 0; fixORGV := 0; fixORGC := 0; fixORGT := 0; check := v # 0;
     IF v = 0 THEN version := 0; mcode.pc := 4; (*Make room for the jump to entry point instruction*)
     ELSE version := 2
-    END; mcode.limit := SP
+    END
   END Open;
 
   PROCEDURE SetDataSize*(vc, cc: INTEGER);
@@ -1514,7 +1527,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END SetDataSize;
 
   PROCEDURE Header*;
-  BEGIN entry := mcode.pc; OfsPTOS(0, -1, FALSE);
+  BEGIN entry := mcode.pc; OfsPTOS(0, -1, FALSE); mcode.procType := NIL;
     IF version = 0 THEN A.modify(mcode, 0, A.BT4 + A.formatEvenImm25(mcode.pc-4))
     ELSE (*PUSH T1 LR *) A.Put1(mcode, A.PUSHT1 + A.C8); OfsPTOS(1, 1, TRUE)
     END
@@ -1554,8 +1567,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       name: S.Ident;
       F!: Files.File; R!: Files.Rider;
   BEGIN  (*exit code*)
-    IF version # 0 THEN mcode.limit := PC; (*to allow update of SP*)
+    IF version # 0 THEN mcode.allowSPUpdate := TRUE; (*to allow update of SP*)
       (*POP T3 LR *) A.encMemImm8PUW(mcode, A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
+      mcode.allowSPUpdate := FALSE;
       A.Put1(mcode, A.BX + LR*A.C3)
     END ;
     obj := B.topScope.next; nofimps := 0; comsize := 4; nofptrs := 0; nofusedextprocs := 0;

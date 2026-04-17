@@ -1,5 +1,6 @@
 MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   C. Schoffit 05.02.25 Oberon compiler for Cortex M4 in Oberon-07*)
+  (*C. Schoffit 16.04.26: improve register usage check*)
   IMPORT Display, Texts, Oberon, S := OM4S, B := OM4B, G := OM4G;
   (*Author: Niklaus Wirth, 2014.
     Parser of Oberon-Cortex M4 compiler. Uses Scanner OM4S to obtain symbols (tokens),
@@ -174,7 +175,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE EqualSignatures(t0, t1: B.Type): BOOLEAN;
     VAR p0!, p1!: B.Object; com: BOOLEAN;
   BEGIN com := TRUE;
-    IF (t0.base = t1.base) & (t0.nofpar = t1.nofpar) THEN
+    IF (t0.base = t1.base) & (t0.nofpar = t1.nofpar) & (t0.len >= t1.len) THEN
       p0 := t0.dsc; p1 := t1.dsc;
       WHILE p0 # NIL DO
         IF (p0.class = p1.class) &  (p0.rdo = p1.rdo) &
@@ -776,7 +777,11 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       FormalType(typ.base, dim+1)
     ELSIF sym = S.procedure THEN
       S.Get(sym); B.OpenScope;
-      NEW(typ); typ.form := B.Proc; typ.size := G.WordSize; dmy := 0; ProcedureType(typ, dmy);
+      NEW(typ); typ.form := B.Proc; typ.size := G.WordSize; dmy := 0;
+      IF sym = S.arrow THEN S.Get(sym); typ.len := S.ival; Check(S.int, "missing register limit");
+      ELSE typ.len := 13
+      END;
+      ProcedureType(typ, dmy);
       typ.dsc := B.topScope.next; B.CloseScope
     ELSE S.Mark("identifier expected"); typ := B.noType
     END
@@ -824,6 +829,9 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     ELSIF sym = S.procedure THEN
       S.Get(sym); B.OpenScope;
       NEW(type); type.form := B.Proc; type.size := G.WordSize; dmy := 0;
+      IF sym = S.arrow THEN S.Get(sym); type.len := S.ival; Check(S.int, "missing register limit");
+      ELSE type.len := 13
+      END;
       ProcedureType(type, dmy); type.dsc := B.topScope.next; B.CloseScope
     ELSE S.Mark("illegal type")
     END
@@ -937,15 +945,18 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       locblksize, parblksize, L: INTEGER;
       int: BOOLEAN; reglim: INTEGER;
   BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym); 
-    IF sym = S.times THEN S.Get(sym); int := TRUE END ;
+    IF sym = S.times THEN S.Get(sym); int := TRUE END;
     IF sym = S.arrow THEN S.Get(sym); reglim := S.ival; Check(S.int, "missing register limit");
+    ELSIF int THEN reglim := 4 (*exception handlers must preserve the registers R4 to R12*)
     ELSE reglim := -1
     END;
+    IF (reglim > 0) & (reglim < 4) OR (reglim > 13) THEN S.Mark("must be in 4..13"); reglim := 13 END;
     IF sym = S.ident THEN
       S.CopyId(procid); S.Get(sym);
       B.NewObj(proc, S.id, B.Const);
       parblksize := 4;
       NEW(type); type.form := B.Proc; type.size := G.WordSize;
+      type.len := 4; G.SetProcType(type);
       proc.type := type; proc.lev := level; 
       CheckExport(proc.expo);
       IF proc.expo THEN proc.exno := exno; INC(exno) END ;
@@ -958,9 +969,10 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       IF sym = S.procedure THEN
         L := 0; G.FJump(L);
         REPEAT ProcedureDecl; Check(S.semicolon, "no ;") UNTIL sym # S.procedure;
-        G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next
+        G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next;
+        G.SetProcType(type) (*restore current procedure type for counting the number of used registers*)
       END ;
-      G.Enter(parblksize, locblksize, int, reglim);
+      G.Enter(parblksize, locblksize, int & (type.nofpar > 0), reglim);
       IF sym = S.begin THEN S.Get(sym); StatSequence END ;
       IF sym = S.return THEN
         S.Get(sym); expression(x);
