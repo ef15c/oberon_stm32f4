@@ -278,17 +278,17 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN IF SYSTEM.REG(13) < SPHWM THEN SPHWM := SYSTEM.REG(13) END
   END setSPHWM;
 
-  PROCEDURE* Trap(VAR f: ExceptionFrameDesc);
+  PROCEDURE^4 Trap(VAR f: ExceptionFrameDesc);
     VAR u, w: INTEGER;
   BEGIN SYSTEM.GET(f.returnAddress, u); w := u DIV 10000H MOD 10H; (*trap number*)
     (*stop*) BSP.led(w + 64); REPEAT UNTIL FALSE
   END Trap;
 
-  PROCEDURE* IncTick;
+  PROCEDURE^4 IncTick;
   BEGIN INC(tick); setSPHWM
   END IncTick;
 
-  PROCEDURE*^5 SVCallHandler(VAR f: ExceptionFrameDesc);
+  PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
     VAR param: BYTE;
   BEGIN SVCReturnAddress := f.returnAddress - 2;
     SYSTEM.GET(SVCReturnAddress, param);

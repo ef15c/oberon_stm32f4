@@ -412,7 +412,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     UNTIL FALSE
   END Loop;
 
-  PROCEDURE* ps2_1IrqHandler;
+  PROCEDURE^4 ps2_1IrqHandler;
     VAR pr: SET;
   BEGIN SYSTEM.GET(PR, pr);
     IF ps2[0].clockPin IN pr THEN
@@ -421,7 +421,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     END
   END ps2_1IrqHandler;
 
-  PROCEDURE* ps2_2IrqHandler;
+  PROCEDURE^4 ps2_2IrqHandler;
     VAR pr: SET;
   BEGIN SYSTEM.GET(PR, pr);
     IF ps2[1].clockPin IN pr THEN

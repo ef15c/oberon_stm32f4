@@ -943,11 +943,10 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       procid: S.Ident;
       x!: G.Item;
       locblksize, parblksize, L: INTEGER;
-      int: BOOLEAN; reglim: INTEGER;
-  BEGIN (* ProcedureDecl *) int := FALSE; S.Get(sym); 
-    IF sym = S.times THEN S.Get(sym); int := TRUE END;
+      expframe: BOOLEAN; reglim: INTEGER;
+  BEGIN (* ProcedureDecl *) expframe := FALSE; S.Get(sym); 
+    IF sym = S.times THEN S.Get(sym); expframe := TRUE END; (*expose exception frame to the handler*)
     IF sym = S.arrow THEN S.Get(sym); reglim := S.ival; Check(S.int, "missing register limit");
-    ELSIF int THEN reglim := 4 (*exception handlers must preserve the registers R4 to R12*)
     ELSE reglim := -1
     END;
     IF (reglim > 0) & (reglim < 4) OR (reglim > 13) THEN S.Mark("must be in 4..13"); reglim := 13 END;
@@ -956,6 +955,9 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       B.NewObj(proc, S.id, B.Const);
       parblksize := 4;
       NEW(type); type.form := B.Proc; type.size := G.WordSize;
+      (*type.len stores the number of registers used.
+        The initial value is 4 because the Cortex-M4 exception/interrupt calling mechanism
+        automatically save registers R0 to R3*)
       type.len := 4; G.SetProcType(type);
       proc.type := type; proc.lev := level; 
       CheckExport(proc.expo);
@@ -972,7 +974,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         G.FixOne(L); proc.val := G.Here(); proc.type.dsc := B.topScope.next;
         G.SetProcType(type) (*restore current procedure type for counting the number of used registers*)
       END ;
-      G.Enter(parblksize, locblksize, int & (type.nofpar > 0), reglim);
+      G.Enter(parblksize, locblksize, expframe, reglim);
       IF sym = S.begin THEN S.Get(sym); StatSequence END ;
       IF sym = S.return THEN
         S.Get(sym); expression(x);
