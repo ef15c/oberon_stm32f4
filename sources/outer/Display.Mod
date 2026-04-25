@@ -4,7 +4,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   IMPORT SYSTEM, BSP;
 
   CONST black* = 0; white* = 255;  (*black = background*) midgrey* = 49H; (*010 010 01*)
-     red* = 0E0H; yellow* = 0FCH;
+    red* = 0E0H; green* = 1CH; blue* = 3H; yellow* = 0FCH; magenta* = 0E3H; cyan* = 1FH;
     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
     Base* = BSP.Display_FBA; Width* = BSP.Display_Width; Height* = BSP.Display_Height; NofBPP* = BSP.Display_BPP;
     Span = BSP.Display_Pitch;
@@ -17,10 +17,11 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         X*, Y*, W*, H*: INTEGER;
         handle*: Handler
       END ;
+    Line* = ARRAY (Width + 3) DIV 4*4 OF BYTE;
 
-  VAR arrow*, star*, hook*, updown*, block*, cross*, grey*: INTEGER;
-    (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
-    
+  VAR arrow*, star*, hook*, updown*, block*, cross*, grey*: INTEGER; (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
+    pattern: SET;
+
   PROCEDURE Handle*(F: Frame; VAR M: FrameMsg);
   BEGIN
     IF (F # NIL) & (F.handle # NIL) THEN F.handle(F, M) END
@@ -28,7 +29,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   (* raster ops *)
   PROCEDURE Dot*(col, x, y, mode: INTEGER);
-    VAR a, pp: INTEGER; u, s, pattern: SET;
+    VAR a, pp: INTEGER; u, s: SET;
   BEGIN a := Base + x DIV NofPixperWord*4 + (Height-1-y)*Span; pp := x MOD NofPixperWord*NofBPP;
     pattern := SYSTEM.VAL(SET, 0+col + 256*(col + 256*(col + 256*col)));
     s := {pp .. pp+NofBPP-1}; SYSTEM.GET(a, u);
@@ -39,7 +40,10 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END Dot;
 
   PROCEDURE ReplConst*(col, x, y, w, h, mode: INTEGER);
-    VAR al, ar, a0, a1, i, ppl, ppr: INTEGER; left, right, mid, pix, pixl, pixr, pattern: SET;
+    CONST STREAM7_BASE = BSP.DMA2_BASE + BSP.STREAM_PARAM_SIZE*7;
+      s7En = BSP.PeriphBBAlias + (STREAM7_BASE + BSP.SxCR - BSP.PeriphBase + BSP.SxCR_EN DIV 8)*32 + BSP.SxCR_EN MOD 8*4;
+    VAR al, ar, a0, a1, i, ppl, ppr: INTEGER; left, right, mid, pix, pixl, pixr: SET;
+      en: INTEGER;
   BEGIN al := Base + (Height-1-y)*Span;
     ar := (x+w-1) DIV NofPixperWord*4 + al; al := x DIV NofPixperWord*4 + al;
     ppl := x MOD NofPixperWord*NofBPP; ppr := (x+w-1) MOD NofPixperWord*NofBPP;
@@ -58,6 +62,13 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     ELSIF ar > al THEN
       left := {ppl .. 31}; right := {0 .. ppr+NofBPP-1};
       a0 := al;
+      IF  mode = replace THEN ASSERT((ar - a0 - 4) DIV 4 < 10000H);
+            REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
+            SYSTEM.PUT(STREAM7_BASE + BSP.SxCR, LSL(SYSTEM.VAL(SET, 1), BSP.CHSEL) + (*LSL(BSP.INCR4, BSP.MBURST) +*)
+              LSL(BSP.INCR4, BSP.PBURST) + LSL({1}, BSP.MSIZE) + LSL({1}, BSP.PSIZE) + BSP.MINCm +
+              BSP.MEMORY_TO_MEMORY);
+            SYSTEM.PUT(STREAM7_BASE + BSP.SxFCR, BSP.DMDISm + BSP.FULL_FIFO);
+      END;
       FOR i := 1 TO h DO
         SYSTEM.GET(a0, pixl); SYSTEM.GET(ar, pixr);
         IF mode = invert THEN
@@ -66,7 +77,16 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
           SYSTEM.PUT(ar, pixr / (right*pattern))
         ELSIF mode = replace THEN
           SYSTEM.PUT(a0, pixl - left + left*pattern);
-          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, pattern) END ;
+          (*FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, pattern) END ;*)
+          (*use DMA*)
+          IF a0+4 < ar THEN
+            REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
+            SYSTEM.PUT(BSP.DMA2_BASE + BSP.HIFCR, LSL(BSP.STREAM_FLAGSm, BSP.HI_OFS7)); (*Clear all DMA2 stream 7 interrupt flags*)
+            SYSTEM.PUT(STREAM7_BASE + BSP.SxPAR, SYSTEM.ADR(pattern));
+            SYSTEM.PUT(STREAM7_BASE + BSP.SxM0AR, a0 + 4);
+            SYSTEM.PUT(STREAM7_BASE + BSP.SxNDTR, (ar - a0 - 4) DIV 4);
+           SYSTEM.PUT(s7En, 1); (*don't use TRUE because this register must be accessed by words (32 bits)*)
+          END;
           SYSTEM.PUT(ar, pixr - right + right*pattern)
         ELSE (*mode = paint *)
           SYSTEM.PUT(a0, pixl + left*pattern);
@@ -74,6 +94,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
           SYSTEM.PUT(ar, pixr + right*pattern)
         END ;
         DEC(ar, Span); DEC(a0, Span)
+      END;
+      IF  mode = replace THEN
+        REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
       END
     END
   END ReplConst;
@@ -211,6 +234,11 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       END
     END
   END ReplPattern;
+
+  PROCEDURE GetLine*(y: INTEGER; l: Line);
+    VAR a: INTEGER;
+  BEGIN a := Base + (Height-1-y)*Span; SYSTEM.COPY(a, SYSTEM.ADR(l), SYSTEM.SIZE(Line) DIV 4)
+  END GetLine;
 
 (*only for testing:
   PROCEDURE test1;
