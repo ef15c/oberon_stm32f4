@@ -122,7 +122,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
         MINC* = 10; PINC* = 9; CIRC* = 8; PFCTRL* = 5; SxCR_TCIE* = 4; HTIE* = 3;
        TEIE* = 2; DMEIE* = 1; SxCR_EN* = 0;
       CHSELm* = {CHSEL..CHSEL+2}; MBURSTm* = {23..24}; PBURSTm* = {21..22}; PLm* = {16..17}; MSIZEm* = {13..14}; DMA_PSIZEm* = {11..12};
-      MINCm* = {MINC}; DIRm* = {6..7}; PFCTRLm* = {PFCTRL}; SxCR_TCIEm* = {SxCR_TCIE}; HTIEm* = {HTIE}; TEIEm* = {TEIE}; DMEIEm* = {DMEIE};
+      MINCm* = {MINC}; PINCm* = {PINC};
+      DIRm* = {6..7}; PFCTRLm* = {PFCTRL}; SxCR_TCIEm* = {SxCR_TCIE}; HTIEm* = {HTIE}; TEIEm* = {TEIE}; DMEIEm* = {DMEIE};
 
       SINGLE_TRANSFERT* = {}; INCR4* = {0}; INCR8* = {1}; INCR16* = {0, 1};
       SBYTE* = {}; SHALF_WORD* = {0}; SWORD* = {1};
@@ -651,10 +652,29 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   END InitCRC;
 
   PROCEDURE InitDisplay*;
-    VAR reg: SET;
+    CONST STREAM7_BASE = DMA2_BASE + STREAM_PARAM_SIZE*7;
+      s7En = PeriphBBAlias + (STREAM7_BASE + SxCR - PeriphBase + SxCR_EN DIV 8)*32 + SxCR_EN MOD 8*4;
+    VAR reg: SET; en, nb, d: INTEGER;
       i: INTEGER; r, g, b: BYTE;
   BEGIN Display_InitGPIOs; reg := {0, 2, 5, 8, 10, 13, 16, 18, 21, 24, 26, 29};
-    FOR i := 0 TO Display_Height*Display_Pitch - 4 BY 4 DO SYSTEM.PUT(Display_FBA + i, reg) END; (*CLear screen*)
+    (*CLear screen*)
+    (*FOR i := 0 TO Display_Height*Display_Pitch - 4 BY 4 DO SYSTEM.PUT(Display_FBA + i, reg) END;*)
+    REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
+    SYSTEM.PUT(STREAM7_BASE + SxCR, LSL(TOSET(1), CHSEL) + LSL(INCR4, MBURST) +
+      LSL(INCR4, PBURST) + LSL({1}, MSIZE) + LSL({1}, PSIZE) + MINCm + MEMORY_TO_MEMORY);
+
+    SYSTEM.PUT(STREAM7_BASE + SxFCR, DMDISm + FULL_FIFO);
+    i := Display_Height*Display_Pitch DIV 4; d := Display_FBA;
+    REPEAT IF i >= 10000H THEN nb := 0FFFFH ELSE nb := i END;
+      SYSTEM.PUT(DMA2_BASE + HIFCR, LSL(STREAM_FLAGSm, HI_OFS7)); (*Clear all DMA2 stream 7 interrupt flags*)
+      SYSTEM.PUT(STREAM7_BASE + SxPAR, SYSTEM.ADR($25 25 25 25$));
+      SYSTEM.PUT(STREAM7_BASE + SxM0AR, d);
+      SYSTEM.PUT(STREAM7_BASE + SxNDTR, nb);
+      SYSTEM.PUT(s7En, 1); (*don't use TRUE because this register must be accessed by words (32 bits)*)
+      DEC(i, nb); INC(d, nb*4);
+      REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0 (*Wait until previous transfer is complete*)
+    UNTIL i = 0;
+
     (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
     SYSTEM.GET(RCC_BASE + PLLSAICFGR, reg);
     SYSTEM.PUT(RCC_BASE + PLLSAICFGR, reg - (PLLSAINm + PLLSAIRm) + SYSTEM.VAL(SET, LSL(160, 6) + LSL(2, 28))); (*PLLSAIN = 160, PLLSAIR = 2*)
