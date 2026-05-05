@@ -1,7 +1,6 @@
 MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F processor*) 
   (*C. Schoffit 16.04.26: improve register usage check*)
   IMPORT S := OM4S, B := OM4B;
-  IMPORT S := OM4S;
   
   CONST NSF* = {0}; (*Don't set flags*) SF* = {1}; (*Set flags*) Any* = NSF + SF; (*use the shortest instruction*)
     (*Register name*) SP = 13; LR = 14; PC = 15;
@@ -327,8 +326,8 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     memPUWimm8map: ARRAY 6 OF INTEGER;
     memimm12map: ARRAY 6 OF INTEGER;
 
-  PROCEDURE log2*(m: INTEGER; VAR e: INTEGER): INTEGER;
-  BEGIN e := 0;
+  PROCEDURE log2*(m: LONGINT; VAR e: INTEGER): LONGINT;
+  BEGIN ASSERT(m > 0); e := 0;
     WHILE ~ODD(m) DO m := LSR(m, 1); INC(e) END ;
     RETURN m
   END log2;

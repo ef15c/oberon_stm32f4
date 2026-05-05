@@ -1391,7 +1391,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END Sqrt;
 
   PROCEDURE Odd*(VAR x: Item);
-  BEGIN load(x); A.encShiftImm5(mcode, A.ROr, x.r, x.r, 1); SetCC(x, A.MI); DEC(RH)
+  BEGIN x.type := B.intType; load(x); A.encShiftImm5(mcode, A.ROr, x.r, x.r, 1); SetCC(x, A.MI); DEC(RH)
   END Odd;
 
   PROCEDURE Floor*(VAR x: Item);
@@ -1503,7 +1503,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE Adr*(VAR x: Item);
   BEGIN 
-    IF x.mode IN {B.Var, B.Par, RegI} THEN loadAdr(x)
+    IF x.mode IN {B.Var, B.Par, RegI} THEN x.type := B.intType; loadAdr(x)
     ELSIF (x.mode = B.Const) & (x.type.form = B.Proc) THEN load(x)
     ELSIF (x.mode = B.Const) & (x.type.form = B.String) THEN loadStringAdr(x)
     ELSE S.Mark("not addressable")

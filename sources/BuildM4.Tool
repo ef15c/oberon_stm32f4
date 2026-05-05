@@ -25,7 +25,7 @@ Commands for generation of UART
 OM4P.Compile RS232.Mod/s ~
 
 Command for generation of tools
-OM4P.Compile Tools.Mod/s HeapTool.Mod/s SystemLog.Mod/s BMP.Mod/s Image.Mod/s FilesEx.Mod/s ~
+OM4P.Compile Tools.Mod/s HeapTool.Mod/s Math.Mod/s SystemLog.Mod/s BMP.Mod/s Image.Mod/s FilesEx.Mod/s ~
 
 Commands for generation of the compiler
 OM4P.Compile FLASH.Mod/s OM4S.Mod/s OM4B.Mod/s OM4A.Mod/s OM4G.Mod/s OM4P.Mod/s
