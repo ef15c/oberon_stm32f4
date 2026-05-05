@@ -102,9 +102,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
               Texts.Write(W, ")")
             ELSIF class = OM4B.Const THEN
               IF Form = OM4B.Real THEN Files.ReadInt(R, k)
-              ELSIF Form = OM4B.String THEN Files.ReadInt(R, k); Texts.WriteInt(W, k DIV 10000H, 6); (*len*) k := k MOD 10000H
+              ELSIF Form = OM4B.String THEN Files.ReadInt(R, k); Texts.WriteString(W, "len:");
+                Texts.WriteInt(W, k DIV 10000H, 6); (*len*);
+                k := k MOD 10000H (*offset*)
               ELSE Files.ReadNum(R, k)
-              END; Texts.WriteInt(W, k, 8);
+              END;
+              Texts.WriteInt(W, k, 8);
             ELSIF class = OM4B.Var THEN
               Files.ReadNum(R, k); Texts.WriteInt(W, k, 6);  (*exno*)
             END ;

@@ -192,7 +192,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.Put0(mcode, a*A.C28 + (-x.r)*A.C24 + (mcode.pc-chain) DIV A.C1);
     chain := mcode.pc-4;
     IF x.r < 0 THEN IF x.type.form = B.Proc THEN progbaseIndic := A.C8 END;
-      INC(progbaseIndic, LSL(x.b, 9))
+      IF x.type.form # B.String THEN INC(progbaseIndic, LSL(x.b, 9)) END
     END;
     (* MOVT a, #imm16 *)
     A.Put0(mcode, progbaseIndic + x.a)
@@ -323,7 +323,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   END loadTypTagAdr;
 
   PROCEDURE loadStringAdr(VAR x: Item);
-  BEGIN 
+  BEGIN
     IF x.r = 0 THEN x.a := typesize + x.a END; GetStaticVarAddress(fixORGC, x, RH);
     incR; x.mode := Reg; x.r := RH-1
   END loadStringAdr;
@@ -1626,7 +1626,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     WHILE obj # NIL DO  (*entries*)
       IF obj.exno # 0 THEN ASSERT(obj.exno = i); INC(i);
         IF (obj.class = B.Const) & (obj.type.form = B.Proc) OR (obj.class = B.Var) THEN Files.WriteInt(R, obj.val)
-        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN Files.WriteInt(R, obj.val MOD 10000H + varsize)
+        ELSIF (obj.class = B.Const) & (obj.type.form = B.String) THEN Files.WriteInt(R, obj.val MOD 10000H + typesize)
         ELSIF obj.class = B.Typ THEN
           IF obj.type.form = B.Record THEN ASSERT((obj.type.len >= 0) & (obj.type.len < A.C16)); Files.WriteInt(R,  obj.type.len MOD A.C16)
           ELSIF (obj.type.form = B.Pointer) & ((obj.type.base.typobj = NIL) OR (obj.type.base.typobj.exno = 0)) THEN
