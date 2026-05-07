@@ -246,7 +246,10 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF fct = 22 THEN (*Int Compare*)
         CheckInt(x); CheckInt(y); CheckConst(z); CheckInt(z); G.IntCompare(x, y, z)
       ELSIF fct = 23 THEN (*reverse bits*) CheckInt(x); G.Rbit(x)
-      ELSIF fct = 24 THEN (*TOSET*) CheckInt(x)
+      ELSIF fct = 24 THEN (*TOSET*) CheckInt(x);
+        IF x.type.size = 1 THEN restyp := B.byteSetType
+        ELSIF x.type.size = 2 THEN restyp := B.halfSetType
+        END
       ELSIF fct = 25 THEN (*count leading zeros*) CheckInt(x); G.Clz(x)
       ELSIF fct = 26 THEN (*exclusive OR*); G.XOR(x, y); restyp := x.type
       END ;
@@ -547,7 +550,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
               G.StoreStruct(x, y)
             ELSIF (x.type.form = B.Array) & (x.type.base.form = B.Char) & (y.type.form = B.String) THEN
               G.CopyString(x, y)
-            ELSIF (x.type.form = B.Int) & (y.type.form = B.Int) THEN G.Store(x, y)  (*BYTE*)
+            ELSIF (x.type.form = B.Int) & (y.type.form = B.Int) THEN G.Store(x, y)  (*BYTE, HALFWORD*)
+            ELSIF (x.type.form = B.Set) & (y.type.form = B.Set) THEN G.Store(x, y)  (*BYTESET, HALFSET*)
             ELSIF (x.type.form = B.Char) & (y.type.form = B.String) & (y.b = 2) THEN
               G.StrToChar(y); G.Store(x, y)
             ELSE S.Mark("illegal assignment")

@@ -18,7 +18,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; Real* = 5; Set* = 6;
       Pointer* = 7; NilTyp* = 8; NoTyp* = 9; Proc* = 10;
       String* = 11; Array* = 12; Record* = 13; LongInt* = 14; HalfWord* = 15;
-      LastForm = HalfWord;
+      ByteSet* = 16; HalfSet* = 17;
+      LastForm = HalfSet;
       
   TYPE Object* = POINTER TO ObjDesc;
     Module* = POINTER TO ModDesc;
@@ -71,7 +72,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
   VAR topScope*, universe, system*: Object;
     byteType*, boolType*, charType*: Type;
     intType*, realType*, setType*, nilType*, noType*,
-    longintType*, strType*, halfwordType*: Type;
+    longintType*, strType*, halfwordType*,
+    byteSetType*, halfSetType*: Type;
     nofmod, Ref: INTEGER;
     typtab: ARRAY maxTypTab OF Type;
 
@@ -173,6 +175,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
       name, modname: S.Ident;
   BEGIN Read(R, ref);
     IF ref < 0 THEN T := typtab[-ref]  (*already read*)
+    ELSIF (ref > 0) & (ref <= LastForm) THEN S.Mark("recompile import")
     ELSE NEW(t); T := t; typtab[ref] := t; t.mno := thismod.lev;
       Read(R, form); t.form := form;
       IF form = Pointer THEN InType(R, thismod, t.base, version); t.size := 4
@@ -392,12 +395,14 @@ BEGIN
   charType := type(Char, Char,1);
   intType := type(Int, Int, 4);
   realType := type(Real, Real, 4);
-  setType := type(Set, Set,4);
+  setType := type(Set, Set, 4);
   nilType := type(NilTyp, NilTyp, 4);
   noType := type(NoTyp, NoTyp, 4);
   strType := type(String, String, 8);
   longintType := type(LongInt, Int, 8);
   halfwordType := type(HalfWord, Int, 2);
+  byteSetType := type(ByteSet, Set, 1);
+  halfSetType := type(HalfSet, Set, 2);
     
   (*initialize universe with data types and in-line procedures;
     LED, ADC, SBC; LDPSR, LDREG, REG, COND are not in language definition*)
@@ -438,6 +443,8 @@ BEGIN
   enter("LONGINT", Typ, longintType, 0);
   enter("INTEGER", Typ, intType, 0);
   enter("HALFWORD", Typ, halfwordType, 0);
+  enter("BYTESET", Typ, byteSetType, 0);
+  enter("HALFSET", Typ, halfSetType, 0);
   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
   
   system := NIL;  (* initialize "unsafe" pseudo-module SYSTEM*)
