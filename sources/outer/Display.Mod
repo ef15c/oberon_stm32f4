@@ -10,6 +10,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     Span = BSP.Display_Pitch;
     NofPixperWord* = 32 DIV NofBPP;
 
+    STREAM7_BASE = BSP.DMA2_BASE + BSP.STREAM_PARAM_SIZE*7;
+    s7En = BSP.PeriphBBAlias + (STREAM7_BASE + BSP.SxCR - BSP.PeriphBase + BSP.SxCR_EN DIV 8)*32 + BSP.SxCR_EN MOD 8*4;
+
   TYPE Frame* = POINTER TO FrameDesc;
     FrameMsg* = RECORD END ;
     Handler* = PROCEDURE (F: Frame; VAR M: FrameMsg);
@@ -40,8 +43,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END Dot;
 
   PROCEDURE ReplConst*(col, x, y, w, h, mode: INTEGER);
-    CONST STREAM7_BASE = BSP.DMA2_BASE + BSP.STREAM_PARAM_SIZE*7;
-      s7En = BSP.PeriphBBAlias + (STREAM7_BASE + BSP.SxCR - BSP.PeriphBase + BSP.SxCR_EN DIV 8)*32 + BSP.SxCR_EN MOD 8*4;
     VAR al, ar, a0, a1, i, ppl, ppr: INTEGER; left, right, mid, pix, pixl, pixr: SET;
       en: INTEGER;
   BEGIN al := Base + (Height-1-y)*Span;
@@ -63,11 +64,11 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       left := {ppl .. 31}; right := {0 .. ppr+NofBPP-1};
       a0 := al;
       IF  mode = replace THEN ASSERT((ar - a0 - 4) DIV 4 < 10000H);
-            REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
-            SYSTEM.PUT(STREAM7_BASE + BSP.SxCR, LSL(SYSTEM.VAL(SET, 1), BSP.CHSEL) + (*LSL(BSP.INCR4, BSP.MBURST) +*)
-              LSL(BSP.INCR4, BSP.PBURST) + LSL({1}, BSP.MSIZE) + LSL({1}, BSP.PSIZE) + BSP.MINCm +
-              BSP.MEMORY_TO_MEMORY);
-            SYSTEM.PUT(STREAM7_BASE + BSP.SxFCR, BSP.DMDISm + BSP.FULL_FIFO);
+        REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
+        SYSTEM.PUT(STREAM7_BASE + BSP.SxCR, LSL(SYSTEM.VAL(SET, 1), BSP.CHSEL) +
+          LSL(BSP.INCR4, BSP.PBURST) + LSL({1}, BSP.MSIZE) + LSL({1}, BSP.PSIZE) + BSP.MINCm +
+          BSP.MEMORY_TO_MEMORY);
+        SYSTEM.PUT(STREAM7_BASE + BSP.SxFCR, BSP.DMDISm + BSP.FULL_FIFO);
       END;
       FOR i := 1 TO h DO
         SYSTEM.GET(a0, pixl); SYSTEM.GET(ar, pixr);
@@ -85,7 +86,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
             SYSTEM.PUT(STREAM7_BASE + BSP.SxPAR, SYSTEM.ADR(pattern));
             SYSTEM.PUT(STREAM7_BASE + BSP.SxM0AR, a0 + 4);
             SYSTEM.PUT(STREAM7_BASE + BSP.SxNDTR, (ar - a0 - 4) DIV 4);
-           SYSTEM.PUT(s7En, 1); (*don't use TRUE because this register must be accessed by words (32 bits)*)
+            SYSTEM.PUT(s7En, 1); (*don't use TRUE because this register must be accessed by words (32 bits)*)
           END;
           SYSTEM.PUT(ar, pixr - right + right*pattern)
         ELSE (*mode = paint *)
@@ -148,12 +149,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       src, dst, spill: SET;
       m0, m1, m2, m3: SET;
   BEGIN
-    ASSERT((w >= 0) & (h >= 0));
-    ASSERT((sx >= 0) & (sx+w < Width));
-    ASSERT((sy >= 0) & (sy+h < Height));
-    ASSERT((dx >= 0) & (dx+w < Width));
-    ASSERT((dy >= 0) & (dy+h < Height));
-    
     u0 := sx DIV NofPixperWord; u1 := sx MOD NofPixperWord; u2 := (sx+w) DIV NofPixperWord;
     v0 := dx DIV NofPixperWord; v1 := dx MOD NofPixperWord; v3 := (dx+w) MOD NofPixperWord;
     sa := Base + u0*4 + (Height-1-sy)*Span; da := Base + v0*4 + (Height-1-dy)*Span;
@@ -291,7 +286,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END test5;
 *)
 
-BEGIN (*BSP.InitDisplay;*)
+BEGIN
   arrow := SYSTEM.ADR($ 0F00 0F00
      00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
      00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00

@@ -86,6 +86,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     END
   END UpdateMark;
 
+(*
   PROCEDURE SetChangeMark (F: Frame; on: BOOLEAN);  (*in corner*)
   BEGIN
     IF F.H > menuH THEN
@@ -94,6 +95,14 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       END
     END
   END SetChangeMark;
+*)
+
+  PROCEDURE SetChangeMarkInMenu(F: Frame; on: BOOLEAN);
+  BEGIN
+    IF on THEN  Display.CopyPattern(Display.white, Display.block, F.X+F.W-12, F.Y+2, Display.paint)
+    ELSE Display.ReplConst(F.col, F.X+F.W-12, F.Y+2, 8, 8, Display.replace)
+    END
+  END SetChangeMarkInMenu;
 
   PROCEDURE Width (VAR R: Texts.Reader; len: INTEGER): INTEGER;
     VAR patadr, pos: INTEGER; ox, dx, x, y, w, h: INTEGER;
@@ -264,7 +273,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
         END
       END
     END ;
-    SetChangeMark(F, F.text.changed)
+(*    SetChangeMark(F, F.text.changed)*)
   END Show;
 
   PROCEDURE LocateLine (F: Frame; y: INTEGER; VAR loc: Location);
@@ -684,7 +693,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
 
   PROCEDURE Modify* (F: Frame; id, dY, Y, H: INTEGER);
   BEGIN
-    Mark(F, FALSE); RemoveMarks(F); SetChangeMark(F,  FALSE);
+    Mark(F, FALSE); RemoveMarks(F); (* SetChangeMark(F,  FALSE);*)
     IF id = MenuViewers.extend THEN
       IF dY > 0 THEN Display.CopyBlock(F.X, F.Y, F.W, F.H, F.X, F.Y + dY, 0); F.Y := F.Y + dY END;
       Extend(F, Y)
@@ -692,7 +701,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       Reduce(F, Y + dY);
       IF dY > 0 THEN Display.CopyBlock(F.X, F.Y, F.W, F.H, F.X, Y, 0); F.Y := Y END
     END;
-    IF F.H > 0 THEN Mark(F, TRUE); SetChangeMark(F,  F.text.changed) END
+    IF F.H > 0 THEN Mark(F, TRUE)(*; SetChangeMark(F,  F.text.changed)*) END
   END Modify;
 
   PROCEDURE Open* (F: Frame; H: Display.Handler; T: Texts.Text; org: INTEGER;
@@ -733,13 +742,13 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   END GetSelection;
 
   PROCEDURE Update* (F: Frame; VAR M: UpdateMsg);
-  BEGIN (*F.text = M.text*) SetChangeMark(F, FALSE);
+  BEGIN (*F.text = M.text*) (*SetChangeMark(F, FALSE);*)
     RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
     IF M.id = replace THEN Replace(F, M.beg, M.end)
     ELSIF M.id = insert THEN Insert(F, M.beg, M.end)
     ELSIF M.id = delete THEN Delete(F, M.beg, M.end)
     END ;
-    SetChangeMark(F,  F.text.changed)
+    (*SetChangeMark(F,  F.text.changed)*)
   END Update;
 
   PROCEDURE PosUpLine(text: Texts.Text; pos, nl: INTEGER): INTEGER;
@@ -773,7 +782,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       IF Keys = {2} THEN   (*ML, scroll up*)
         TrackLine(F, X, Y, pos, keysum);
         IF (pos >= 0) & (keysum = {2}) THEN
-          SetChangeMark(F, FALSE);
+(*          SetChangeMark(F, FALSE);*)
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
           Show(F, pos)
         END
@@ -786,14 +795,14 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
           ELSIF 2 IN keysum THEN pos := F.text.len - 100
           ELSE pos := (F.Y + F.H - Y) * (F.text.len) DIV F.H
           END ;
-          SetChangeMark(F, FALSE);
+(*          SetChangeMark(F, FALSE);*)
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
           Show(F, pos)
         END
       ELSIF Keys = {0} THEN   (*MR, scroll down*)
         TrackLine(F, X, Y, pos, keysum);
         IF keysum = {0} THEN
-          SetChangeMark(F, FALSE);
+(*          SetChangeMark(F, FALSE);*)
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
           Show(F, PosUpLine(F.text, pos, (F.H - F.top - F.bot) DIV lsp - 2))
         END
@@ -843,7 +852,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
           END
         END
       ELSIF (Keys = {}) & (Z # 0) THEN Z := Z*3; (*scroll three lines by wheel step*)
-        SetChangeMark(F, FALSE);
+(*        SetChangeMark(F, FALSE);*)
         RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
         pos := F.org;
         IF Z < 0 THEN (*mouse wheel scroll down*)
@@ -875,7 +884,10 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       Oberon.CopyMsg: Copy(F, F1); M.F := F1 |
       MenuViewers.ModifyMsg: Modify(F, M.id, M.dY, M.Y, M.H) |
       CopyOverMsg: CopyOver(F, M.text, M.beg, M.end) |
-      UpdateMsg: IF F.text = M.text THEN Update(F, M) END
+      UpdateMsg: IF F.text = M.text THEN Update(F, M) END;
+        IF (F.next # NIL) & (F.next(Frame).text = M.text) THEN
+         SetChangeMarkInMenu(F, F.next(Frame).text.changed)
+        END
       END
     END
   END Handle;
