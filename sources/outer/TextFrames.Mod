@@ -99,8 +99,8 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
 
   PROCEDURE SetChangeMarkInMenu(F: Frame; on: BOOLEAN);
   BEGIN
-    IF on THEN  Display.CopyPattern(Display.white, Display.block, F.X+F.W-12, F.Y+2, Display.paint)
-    ELSE Display.ReplConst(F.col, F.X+F.W-12, F.Y+2, 8, 8, Display.replace)
+    IF on THEN  Display.CopyPattern(Display.white, Display.block, F.X+F.W-11, F.Y+2, Display.paint)
+    ELSE Display.ReplConst(F.col, F.X+F.W-11, F.Y+2, 8, 8, Display.replace)
     END
   END SetChangeMarkInMenu;
 

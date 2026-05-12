@@ -656,9 +656,10 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       s7En = PeriphBBAlias + (STREAM7_BASE + SxCR - PeriphBase + SxCR_EN DIV 8)*32 + SxCR_EN MOD 8*4;
     VAR reg: SET; en, nb, d: INTEGER;
       i: INTEGER; r, g, b: BYTE;
-  BEGIN Display_InitGPIOs; reg := {0, 2, 5, 8, 10, 13, 16, 18, 21, 24, 26, 29};
+  BEGIN Display_InitGPIOs;
     (*CLear screen*)
-    (*FOR i := 0 TO Display_Height*Display_Pitch - 4 BY 4 DO SYSTEM.PUT(Display_FBA + i, reg) END;*)
+    (* reg := {0, 2, 5, 8, 10, 13, 16, 18, 21, 24, 26, 29};
+    FOR i := 0 TO Display_Height*Display_Pitch - 4 BY 4 DO SYSTEM.PUT(Display_FBA + i, reg) END;*)
     REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
     SYSTEM.PUT(STREAM7_BASE + SxCR, LSL(TOSET(1), CHSEL) + LSL(INCR4, MBURST) +
       LSL(INCR4, PBURST) + LSL({1}, MSIZE) + LSL({1}, PSIZE) + MINCm + MEMORY_TO_MEMORY);

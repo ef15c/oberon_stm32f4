@@ -95,7 +95,7 @@ trap number trap cause
 10          User abort
 
 Memory Barrier Instructions:
-Elle peuvent être placées à l'aide de la procédure SYSTEM.MBI(<type>)
+Elles peuvent être placées à l'aide de la procédure SYSTEM.MBI(<type>)
 type:
  1 DMB,
  2 DSB et

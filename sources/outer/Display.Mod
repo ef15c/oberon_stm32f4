@@ -374,7 +374,7 @@ BEGIN
      FF 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00$);
   grey := SYSTEM.ADR($ 04 02 0000 
      FF 00 FF 00
-      00 FF 00 FF$);
+     00 FF 00 FF$);
 
   (*only for testing:
   test1; test3; test4; test5;*)

@@ -101,19 +101,22 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     VAR pvadr, offadr, offset, tag, p, q, r: INTEGER;
   BEGIN SYSTEM.GET(pref, pvadr); (*pointers < heapOrg considered NIL*)
     WHILE pvadr # 0 DO
-      SYSTEM.GET(pvadr, p); SYSTEM.GET(p-4, offadr);
-      (*WARNING heapOrg is negative, so signed comparison p >= heapOrg won't work*)
-      IF (*p >= heapOrg*) SYSTEM.CMP(p, heapOrg, CS) & (offadr = 0) THEN q := p;   (*mark elements in data structure with root p*)
-        REPEAT SYSTEM.GET(p-4, offadr);
-          IF offadr = 0 THEN SYSTEM.GET(p-8, tag); offadr := tag + 16 ELSE INC(offadr, 4) END ;
-          SYSTEM.PUT(p-4, offadr); SYSTEM.GET(offadr, offset);
-          IF offset # -1 THEN (*down*)
-            SYSTEM.GET(p+offset, r); SYSTEM.GET(r-4, offadr);
-            IF (*r >= heapOrg*) SYSTEM.CMP(r, heapOrg, CS) & (offadr = 0) THEN SYSTEM.PUT(p+offset, q); q := p; p := r END
-          ELSE (*up*) SYSTEM.GET(q-4, offadr); SYSTEM.GET(offadr, offset);
-            IF p # q THEN SYSTEM.GET(q+offset, r); SYSTEM.PUT(q+offset, p); p := q; q := r END
-          END
-        UNTIL (p = q) & (offset = -1)
+      SYSTEM.GET(pvadr, p);
+      (*WARNING heapOrg is a negative integer, so signed comparison p >= heapOrg won't work*)
+      IF (* p >= heapOrg *) SYSTEM.CMP(p, heapOrg, CS) THEN (*this is a object allocated on heap*)
+        SYSTEM.GET(p-4, offadr);
+        IF offadr = 0 THEN q := p;   (*mark elements in data structure with root p*)
+          REPEAT SYSTEM.GET(p-4, offadr);
+            IF offadr = 0 THEN SYSTEM.GET(p-8, tag); offadr := tag + 16 ELSE INC(offadr, 4) END ;
+            SYSTEM.PUT(p-4, offadr); SYSTEM.GET(offadr, offset);
+            IF offset # -1 THEN (*down*)
+              SYSTEM.GET(p+offset, r); SYSTEM.GET(r-4, offadr);
+              IF (*r >= heapOrg*) SYSTEM.CMP(r, heapOrg, CS) & (offadr = 0) THEN SYSTEM.PUT(p+offset, q); q := p; p := r END
+            ELSE (*up*) SYSTEM.GET(q-4, offadr); SYSTEM.GET(offadr, offset);
+              IF p # q THEN SYSTEM.GET(q+offset, r); SYSTEM.PUT(q+offset, p); p := q; q := r END
+            END
+          UNTIL (p = q) & (offset = -1)
+        END
       END ;
       INC(pref, 4); SYSTEM.GET(pref, pvadr)
     END
