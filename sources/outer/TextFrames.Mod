@@ -69,23 +69,12 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     END
   END ReplConst;
 
-(*
-  PROCEDURE FlipSM(X, Y: INTEGER);
-    VAR DW, DH: INTEGER;
-  BEGIN DW := Display.Width; DH := Display.Height;
-    IF X < 3 THEN X := 3 ELSIF X > DW - 4 THEN X := DW - 4 END;
-    IF Y < 6 THEN Y := 6 ELSIF Y > DH - 24 THEN Y := DH - 24 END;
-    Display.CopyPattern(Display.white, Display.updown, X-3, Y-3, Display.invert)
-  END FlipSM;
-*)
 
   PROCEDURE HideSM(X, Y: INTEGER);
   END HideSM;
 
   PROCEDURE ShowSM(X, Y: INTEGER);
-  BEGIN
-(*    Display.ShowUpdownL2(X, Y)*)
-    Display.SetMousePattern(Display.updownL2, X, Y)
+  BEGIN Display.SetMousePattern(Display.updownL2, X, Y)
   END ShowSM;
 
   PROCEDURE UpdateMark (F: Frame);  (*in scroll bar*)
@@ -96,17 +85,6 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       Display.ReplConst(Display.white, F.X + 1, F.Y + F.H - 1 - F.markH, markW, 1, Display.invert)
     END
   END UpdateMark;
-
-(*
-  PROCEDURE SetChangeMark (F: Frame; on: BOOLEAN);  (*in corner*)
-  BEGIN
-    IF F.H > menuH THEN
-      IF on THEN  Display.CopyPattern(Display.white, Display.block, F.X+F.W-12, F.Y+F.H-12, Display.paint)
-      ELSE Display.ReplConst(F.col, F.X+F.W-12, F.Y+F.H-12, 8, 8, Display.replace)
-      END
-    END
-  END SetChangeMark;
-*)
 
   PROCEDURE SetChangeMarkInMenu(F: Frame; on: BOOLEAN);
   BEGIN
@@ -247,7 +225,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
           L.next := L0; INC(botY, F.Y);
           WHILE ~L.eot & (curY >= botY) DO L := L.next; DEC(curY, lsp) END;
           L.next := F.trailer; UpdateMark(F)
-        ELSE (*code original en jaune ci-dessous*)
+        ELSE
           Mark(F, FALSE);
           Display.ReplConst(F.col, F.X + F.left, F.Y, F.W - F.left, F.H, Display.replace);
           botY := F.Y; F.Y := F.Y + F.H; F.H := 0;
@@ -284,7 +262,6 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
         END
       END
     END ;
-(*    SetChangeMark(F, F.text.changed)*)
   END Show;
 
   PROCEDURE LocateLine (F: Frame; y: INTEGER; VAR loc: Location);
@@ -383,7 +360,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       LocateChar(F, X - F.X, Y - F.Y, F.carloc);
       FlipCaret(F); keysum := {};
       REPEAT Input.Mouse(keys, X, Y, Z); keysum := keysum + keys;
-        Oberon.DrawMouseArrow(X, Y); LocateChar(F, X - F.X, Y - F.Y, loc);
+        LocateChar(F, X - F.X, Y - F.Y, loc);
         IF loc.pos # F.carloc.pos THEN FlipCaret(F); F.carloc := loc; FlipCaret(F) END
       UNTIL keys = {};
       F.hasCar := TRUE
@@ -433,7 +410,6 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       REPEAT
         Input.Mouse(keys, X, Y, Z);
         keysum := keysum + keys;
-        Oberon.DrawMouseArrow(X, Y);
         LocateChar(F, X - F.X, Y - F.Y, loc);
         IF loc.pos < F.selbeg.pos THEN loc := F.selbeg END;
         INC(loc.pos); loc.x := loc.x + loc.dx;
@@ -458,7 +434,6 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       keysum := {};
       REPEAT Input.Mouse(keys, X, Y, Z);
         keysum := keysum + keys;
-        Oberon.DrawMouse(ScrollMarker, X, Y);
         LocateLine(F, Y - F.Y, new);
         IF new.org # old.org THEN
           ReplConst(Display.white, F, F.X + F.left, F.Y + old.y - dsr, old.lin.wid, 2, Display.invert);
@@ -481,7 +456,6 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       keysum := {};
       REPEAT
         Input.Mouse(keys, X, Y, Z); keysum := keysum + keys;
-        Oberon.DrawMouseArrow(X, Y);
         LocateString(F, X - F.X, Y - F.Y, new);
         IF new.pos # old.pos THEN
           ReplConst(Display.white, F, F.X + old.x, F.Y + old.y - dsr, old.dx, 2, Display.invert);
@@ -704,7 +678,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
 
   PROCEDURE Modify* (F: Frame; id, dY, Y, H: INTEGER);
   BEGIN
-    Mark(F, FALSE); RemoveMarks(F); (* SetChangeMark(F,  FALSE);*)
+    Mark(F, FALSE); RemoveMarks(F);
     IF id = MenuViewers.extend THEN
       IF dY > 0 THEN Display.CopyBlock(F.X, F.Y, F.W, F.H, F.X, F.Y + dY, 0); F.Y := F.Y + dY END;
       Extend(F, Y)
@@ -712,7 +686,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       Reduce(F, Y + dY);
       IF dY > 0 THEN Display.CopyBlock(F.X, F.Y, F.W, F.H, F.X, Y, 0); F.Y := Y END
     END;
-    IF F.H > 0 THEN Mark(F, TRUE)(*; SetChangeMark(F,  F.text.changed)*) END
+    IF F.H > 0 THEN Mark(F, TRUE) END
   END Modify;
 
   PROCEDURE Open* (F: Frame; H: Display.Handler; T: Texts.Text; org: INTEGER;
@@ -753,13 +727,12 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   END GetSelection;
 
   PROCEDURE Update* (F: Frame; VAR M: UpdateMsg);
-  BEGIN (*F.text = M.text*) (*SetChangeMark(F, FALSE);*)
+  BEGIN (*F.text = M.text*)
     RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
     IF M.id = replace THEN Replace(F, M.beg, M.end)
     ELSIF M.id = insert THEN Insert(F, M.beg, M.end)
     ELSIF M.id = delete THEN Delete(F, M.beg, M.end)
-    END ;
-    (*SetChangeMark(F,  F.text.changed)*)
+    END 
   END Update;
 
   PROCEDURE PosUpLine(text: Texts.Text; pos, nl: INTEGER): INTEGER;
@@ -789,31 +762,28 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       L!: Line;
   BEGIN
     IF (X < F.X + Min(F.left, barW)) & (F.bot # 0) THEN  (*scroll bar*)
-      Oberon.DrawMouse(ScrollMarker, X, Y); keysum := Keys;
+      ScrollMarker.Draw(X, Y); keysum := Keys;
       IF Keys = {2} THEN   (*ML, scroll up*)
         TrackLine(F, X, Y, pos, keysum);
         IF (pos >= 0) & (keysum = {2}) THEN
-(*          SetChangeMark(F, FALSE);*)
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
           Show(F, pos)
         END
       ELSIF Keys = {1} THEN   (*MM*)  keysum := Keys;
         REPEAT Input.Mouse(Keys, X, Y, Z); keysum := keysum + Keys;
-          Oberon.DrawMouse(ScrollMarker, X, Y)
+          ScrollMarker.Draw(X, Y)
         UNTIL Keys = {};
         IF keysum # {0, 1, 2} THEN
           IF 0 IN keysum THEN pos := 0
           ELSIF 2 IN keysum THEN pos := F.text.len - 100
           ELSE pos := (F.Y + F.H - Y) * (F.text.len) DIV F.H
           END ;
-(*          SetChangeMark(F, FALSE);*)
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
           Show(F, pos)
         END
       ELSIF Keys = {0} THEN   (*MR, scroll down*)
         TrackLine(F, X, Y, pos, keysum);
         IF keysum = {0} THEN
-(*          SetChangeMark(F, FALSE);*)
           RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
           Show(F, PosUpLine(F.text, pos, (F.H - F.top - F.bot) DIV lsp - 2))
         END
@@ -839,7 +809,9 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
         END
       ELSIF 1 IN Keys THEN  (*MM: call*)
         TrackWord(F, X, Y, pos, keysum);
-        IF (pos >= 0) & ~(0 IN keysum) THEN Display.SetMousePattern(Display.busy, X, Y); Call(F, pos, 2 IN keysum) END
+        IF (pos >= 0) & ~(0 IN keysum) THEN Display.SetMousePattern(Display.busy, X, Y);
+          Call(F, pos, 2 IN keysum)
+        END
       ELSIF 2 IN Keys THEN  (*ML: set caret*)
         Oberon.PassFocus(Viewers.This(F.X, F.Y));
         TrackCaret(F, X, Y, keysum);
@@ -863,7 +835,6 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
           END
         END
       ELSIF (Keys = {}) & (Z # 0) THEN Z := Z*3; (*scroll three lines by wheel step*)
-(*        SetChangeMark(F, FALSE);*)
         RemoveMarks(F); Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
         pos := F.org;
         IF Z < 0 THEN (*mouse wheel scroll down*)
@@ -939,7 +910,6 @@ BEGIN NEW(TBuf); NEW(DelBuf);
   dsr := -Fonts.Default.minY;
   selH := lsp; markW := lsp DIV 2;
   eolW := lsp DIV 2;
-(*  ScrollMarker.Fade := FlipSM; ScrollMarker.Draw := FlipSM;*)
   ScrollMarker.Fade := HideSM; ScrollMarker.Draw := ShowSM;
   Texts.OpenWriter(W); W.col := Display.white; Texts.OpenWriter(KW)
 END TextFrames.
