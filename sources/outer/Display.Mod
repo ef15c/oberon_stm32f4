@@ -27,7 +27,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   VAR
     (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
     arrowL2*, star*, hook*, updownL2*, block*, cross*, grey*, busy*: INTEGER;
-(*    arrow*, updown*: INTEGER;*)
     pattern: SET; (*cannot be in Core Coupled Memory to be accessible from DMA*)
     ms: Pattern;
 
@@ -272,14 +271,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   BEGIN ms := SYSTEM.VAL(Pattern, pat); MovePattern(x, y);
   END ShowPatternL2;
 
-  PROCEDURE ShowArrowL2*(x, y: INTEGER);
-  BEGIN ShowPatternL2(arrowL2, x, y)
-  END ShowArrowL2;
-
-  PROCEDURE ShowUpdownL2*(x, y: INTEGER);
-  BEGIN ShowPatternL2(updownL2, x, y)
-  END ShowUpdownL2;
-
   PROCEDURE DisableL2*;
   BEGIN SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CR, {});
     SYSTEM.PUT(BSP.imr, TRUE) (*reload shadow registers immediately*)
@@ -298,24 +289,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END L2Init;
 
 BEGIN
-(*
-  arrow := SYSTEM.ADR($ 0F 00 0F 00
-     00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
-     00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00
-     00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00
-     00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00 00
-     00 00 00 00 00 00 00 00 00 FF FF FF 00 00 00 00
-     00 00 00 00 00 00 00 00 FF FF FF 00 00 00 00 00
-     00 00 00 00 00 00 00 FF FF FF 00 00 00 00 00 00
-     FF 00 00 00 00 00 FF FF FF 00 00 00 00 00 00 00
-     FF FF 00 00 00 FF FF FF 00 00 00 00 00 00 00 00
-     FF FF FF 00 FF FF FF 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
-     FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
-*)
   arrowL2 := SYSTEM.ADR($ 0F 00 0F 00
      FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00
