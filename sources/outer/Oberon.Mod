@@ -438,6 +438,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END initModules;
 
 BEGIN User[0] := 0X; prevZ := 0;
+  Star.Fade := FlipStar; Star.Draw := FlipStar;
   OpenCursor(Pointer);
   PS2.SetMmcbk(Display.MovePattern);
   DrawMouseArrow(Display.Width DIV 2, Display.Height DIV 2);
