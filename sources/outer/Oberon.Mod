@@ -51,7 +51,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   VAR User*: ARRAY 8 OF CHAR; Password*: INTEGER;
     Arrow*, Star*: Marker;
-    Mouse, Pointer: Cursor;
+    (*Mouse, *)Pointer: Cursor;
     FocusViewer*: Viewers.Viewer;
     Log*: Texts.Text;
 
@@ -107,6 +107,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   (*cursor handling*)
 
+(*
   PROCEDURE FlipArrow (X, Y: INTEGER);
   BEGIN
     IF X < CL THEN
@@ -117,7 +118,17 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     IF Y < 14 THEN Y := 14 ELSIF Y > DH THEN Y := DH END;
     Display.CopyPattern(Display.white, Display.arrow, X, Y - 14, Display.invert)
   END FlipArrow;
-     
+*)
+
+  PROCEDURE HideArrow(X, Y: INTEGER);
+  END HideArrow;
+
+  PROCEDURE ShowArrow(X, Y: INTEGER);
+  BEGIN
+(*    Display.ShowArrowL2(X, Y)*)
+    Display.SetMousePattern(Display.arrowL2, X, Y)
+  END ShowArrow;
+
   PROCEDURE FlipStar (X, Y: INTEGER);
   BEGIN
     IF X < CL THEN
@@ -148,15 +159,17 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END DrawCursor;
 
   PROCEDURE DrawMouse*(m: Marker; x, y: INTEGER);
-  BEGIN DrawCursor(Mouse, m, x, y)
+  BEGIN (*DrawCursor(Mouse, m, x, y)*)
+    m.Draw(x, y)
   END DrawMouse;
 
   PROCEDURE DrawMouseArrow*(x, y: INTEGER);
-  BEGIN DrawCursor(Mouse, Arrow, x, y)
+  BEGIN (*DrawCursor(Mouse, Arrow, x, y)*)
+    ShowArrow(x, y)
   END DrawMouseArrow;
 
   PROCEDURE FadeMouse*;
-  BEGIN FadeCursor(Mouse)
+  BEGIN (*FadeCursor(Mouse)*)
   END FadeMouse;
 
   PROCEDURE DrawPointer*(x, y: INTEGER);
@@ -167,9 +180,11 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE RemoveMarks* (X, Y, W, H: INTEGER);
   BEGIN
+(*
     IF (Mouse.X > X - 16) & (Mouse.X < X + W + 16) & (Mouse.Y > Y - 16) & (Mouse.Y < Y + H + 16) THEN
       FadeCursor(Mouse)
     END;
+*)
     IF (Pointer.X > X - 8) & (Pointer.X < X + W + 8) & (Pointer.Y > Y - 8) & (Pointer.Y < Y + H + 8) THEN
       FadeCursor(Pointer)
     END
@@ -178,7 +193,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   PROCEDURE HandleFiller (V: Display.Frame; VAR M: Display.FrameMsg);
   BEGIN
     CASE M OF
-    InputMsg: IF M.id = track THEN DrawCursor(Mouse, Arrow, M.X, M.Y) END |
+    InputMsg: IF M.id = track THEN (*DrawCursor(Mouse, Arrow, M.X, M.Y)*)ShowArrow(M.X, M.Y) END |
     ControlMsg: IF M.id = mark THEN DrawCursor(Pointer, Star, M.X, M.Y) END |
     Viewers.ViewerMsg:
       IF (M.id = Viewers.restore) & (V.W > 0) & (V.H > 0) THEN
@@ -386,17 +401,16 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
         ELSIF ch = SETSTAR THEN
           N.id := mark; N.X := X; N.Y := Y; V := Viewers.This(X, Y); V.handle(V, N)
         ELSE M.id := consume; M.ch := ch; M.fnt := CurFnt; M.col := CurCol; M.voff := CurOff;
-          BSP.ledsOnOff({6}, {});
           FocusViewer.handle(FocusViewer, M); DEC(ActCnt)
         END
       ELSIF keys # {} THEN
         M.id := track; M.X := X; M.Y := Y; M.keys := keys;
-        BSP.ledsOnOff({6}, {});
+        BSP.ledsOnOff({6}, {}); prevX := -1; (*force mouse redrawing after command execution*)
         REPEAT V := Viewers.This(M.X, M.Y); V.handle(V, M); Input.Mouse(M.keys, M.X, M.Y, M.Z)
         UNTIL M.keys = {};
         DEC(ActCnt)
       ELSE
-        IF (X # prevX) OR (Y # prevY) OR (Z # prevZ) OR ~Mouse.on THEN
+        IF (X # prevX) OR (Y # prevY) OR (Z # prevZ) (*OR ~Mouse.on*) THEN
           M.id := track; M.X := X; M.Z := Z - prevZ;
           IF Y >= Display.Height THEN Y := Display.Height END ;
           BSP.ledsOnOff({6}, {});
@@ -461,9 +475,12 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END initModules;
 
 BEGIN User[0] := 0X; prevZ := 0;
-  Arrow.Fade := FlipArrow; Arrow.Draw := FlipArrow;
+  (*Arrow.Fade := FlipArrow; Arrow.Draw := FlipArrow;*)
+  Arrow.Fade := HideArrow; Arrow.Draw := ShowArrow;
   Star.Fade := FlipStar; Star.Draw := FlipStar;
-  OpenCursor(Mouse); OpenCursor(Pointer);
+  (*OpenCursor(Mouse);*) OpenCursor(Pointer);
+  PS2.SetMmcbk(Display.MovePattern);
+  Display.ShowArrowL2(Display.Width DIV 2, Display.Height DIV 2);
 
   DW := Display.Width; DH := Display.Height; CL := DW;
   OpenDisplay(DW DIV 8 * 5, Display.Width - DW DIV 8 * 5, DH);

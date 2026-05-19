@@ -69,6 +69,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     END
   END ReplConst;
 
+(*
   PROCEDURE FlipSM(X, Y: INTEGER);
     VAR DW, DH: INTEGER;
   BEGIN DW := Display.Width; DH := Display.Height;
@@ -76,6 +77,16 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     IF Y < 6 THEN Y := 6 ELSIF Y > DH - 24 THEN Y := DH - 24 END;
     Display.CopyPattern(Display.white, Display.updown, X-3, Y-3, Display.invert)
   END FlipSM;
+*)
+
+  PROCEDURE HideSM(X, Y: INTEGER);
+  END HideSM;
+
+  PROCEDURE ShowSM(X, Y: INTEGER);
+  BEGIN
+(*    Display.ShowUpdownL2(X, Y)*)
+    Display.SetMousePattern(Display.updownL2, X, Y)
+  END ShowSM;
 
   PROCEDURE UpdateMark (F: Frame);  (*in scroll bar*)
     VAR oldH: INTEGER;
@@ -624,7 +635,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   BEGIN M.id := op; M.text := T; M.beg := beg; M.end := end; Viewers.Broadcast(M)
   END NotifyDisplay;
 
-  PROCEDURE Call* (F: Frame; pos: INTEGER; new: BOOLEAN);
+  PROCEDURE Call(F: Frame; pos: INTEGER; new: BOOLEAN);
     VAR S!: Texts.Scanner; res: INTEGER;
   BEGIN
     Texts.OpenScanner(S, F.text, pos); Texts.Scan(S);
@@ -828,7 +839,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
         END
       ELSIF 1 IN Keys THEN  (*MM: call*)
         TrackWord(F, X, Y, pos, keysum);
-        IF (pos >= 0) & ~(0 IN keysum) THEN Call(F, pos, 2 IN keysum) END
+        IF (pos >= 0) & ~(0 IN keysum) THEN Display.SetMousePattern(Display.busy, X, Y); Call(F, pos, 2 IN keysum) END
       ELSIF 2 IN Keys THEN  (*ML: set caret*)
         Oberon.PassFocus(Viewers.This(F.X, F.Y));
         TrackCaret(F, X, Y, keysum);
@@ -928,6 +939,7 @@ BEGIN NEW(TBuf); NEW(DelBuf);
   dsr := -Fonts.Default.minY;
   selH := lsp; markW := lsp DIV 2;
   eolW := lsp DIV 2;
-  ScrollMarker.Fade := FlipSM; ScrollMarker.Draw := FlipSM;
+(*  ScrollMarker.Fade := FlipSM; ScrollMarker.Draw := FlipSM;*)
+  ScrollMarker.Fade := HideSM; ScrollMarker.Draw := ShowSM;
   Texts.OpenWriter(W); W.col := Display.white; Texts.OpenWriter(KW)
 END TextFrames.

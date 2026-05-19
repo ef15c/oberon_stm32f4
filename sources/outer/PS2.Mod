@@ -15,12 +15,15 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       buffer*: ARRAY BUFFERSIZE OF BYTE
     END;
 
+    Callback = PROCEDURE^4(x, y: INTEGER);
+
     MKB* = POINTER TO MKDataBlock;
     MKDataBlock* = RECORD
       KB*: CircularBufferDesc;
       MD*: INTEGER; (*mouse data*)
       MW*, MH*: INTEGER; (*mouse limits*)
-      z*: INTEGER (*z data*)
+      z*: INTEGER; (*z data*)
+     mmcbk*: Callback(*mouse move notification callback*)
     END;
 
   Device* = POINTER TO DeviceDesc;
@@ -61,7 +64,8 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
             INC(y, dy); IF y < 0 THEN y := 0 ELSIF y >= mkb.MH THEN y := mkb.MH - 1 END;
             INC(mkb.z, dz); IF mkb.z < -ORD({30}) THEN mkb.z := -ORD({30}) ELSIF mkb.z > ORD({30}) THEN mkb.z := ORD({30}) END;
             (*Pack mouse report in Oberon's format*)
-            mkb.MD := LSL(ORD(flags*{BM, BR}), 23) + LSL(ORD(flags*{BL}), 26) + x MOD 1000H + LSL(y MOD 1000H, 12)
+            mkb.MD := LSL(ORD(flags*{BM, BR}), 23) + LSL(ORD(flags*{BL}), 26) + x MOD 1000H + LSL(y MOD 1000H, 12);
+            IF mkb.mmcbk # NIL THEN mkb.mmcbk(x, y) END
           END
         END
       END
@@ -216,7 +220,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
           END
         END
       END;
-      dev.tickLastReport := Kernel.Time(); dev.buf.tail := 0; mkb.MW := 1366; mkb.MH := 768;
+      dev.tickLastReport := Kernel.Time(); dev.buf.tail := 0;
       dev.connectedDevice := MOUSE;
       SendByteAsync(dev, 0F4H); (*Enable data reporting*)
       res := WaitForAnswer(dev, 35);
@@ -242,7 +246,13 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
     ProbeDevice(dev);
   END InitDevice;
 
+  PROCEDURE SetMmcbk*(c: Callback);
+  BEGIN mkb.mmcbk := c
+  END SetMmcbk;
+
 BEGIN mkb := SYSTEM.VAL(MKB, SYSTEM.ADR(mkbBlock));
+  mkb.MW := BSP.Display_Width; mkb.MH := BSP.Display_Height;
+  mkb.MD := mkb.MW DIV 2 + LSL(mkb.MH DIV 2, 12)
 END PS2.
 
 OM4Tool.DecSym PS2.sm4

@@ -21,9 +21,15 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         handle*: Handler
       END ;
     Line* = ARRAY (Width + 3) DIV 4*4 OF BYTE;
+    Pattern = POINTER TO PatternDesc;
+    PatternDesc = RECORD w, ox, h, oy: BYTE END;
 
-  VAR arrow*, star*, hook*, updown*, block*, cross*, grey*: INTEGER; (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
-    pattern: SET;
+  VAR
+    (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
+    arrowL2*, star*, hook*, updownL2*, block*, cross*, grey*, busy*: INTEGER;
+(*    arrow*, updown*: INTEGER;*)
+    pattern: SET; (*cannot be in Core Coupled Memory to be accessible from DMA*)
+    ms: Pattern;
 
   PROCEDURE Handle*(F: Frame; VAR M: FrameMsg);
   BEGIN
@@ -235,59 +241,65 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   BEGIN a := Base + (Height-1-y)*Span; SYSTEM.COPY(a, SYSTEM.ADR(l), SYSTEM.SIZE(Line) DIV 4)
   END GetLine;
 
-(*only for testing:
-  PROCEDURE test1;
-    VAR x, y: INTEGER;
+  PROCEDURE MovePattern*(xc, yc: INTEGER);
+    VAR xl, xr, yt, yb, x0, y0, w, h: INTEGER;
   BEGIN
-    CopyPattern(white, arrow, 0, 0, paint);
-    CopyPattern(white, star, 1, 20, paint);
-    CopyPattern(white, hook, 2, 40, paint);
-    CopyPattern(white, updown, 3, 60, paint);
-    CopyPattern(white, block, 0, 80, paint);
-    CopyPattern(white, cross, 0, 100, paint);
-    CopyPattern(white, grey, 0, 300, paint)
-  END test1;
-  
-  PROCEDURE test2;
-    VAR x, y: INTEGER;
-  BEGIN
-    FOR y := 0 TO Height-1 - 15 DO
-      FOR x := 0 TO Width-1 - 15 DO     
-        CopyPattern(white, arrow, x, y, invert);
-        CopyPattern(white, arrow, x, y, invert)
-      END
+    IF ms # NIL THEN yc := Height - 1 - yc; (*convert Oberon y-coordinate in LTDC coordinate*)
+      xl := xc - ms.ox; xr := xc + ms.w - 1 - ms.ox;
+      yt := yc - ms.oy; yb := yc + ms.h - 1 - ms.oy;
+      (*clipping*) x0 := xl; y0 := yt; w := ms.w; h := ms.h;
+      IF xl < 0 THEN x0 := 0; INC(w, xl) END;
+      IF xr >= Width THEN INC(w, Width - 1 - xr) END;
+      IF yt < 0 THEN y0 := 0; INC(h, yt) END;
+      IF yb >= Height THEN INC(h, Height - 1 - yb) END;
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CFBAR, ORD(ms) + 4 + (x0 - xl) + ms.w*(y0 - yt));
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CFBLR,
+        LSL(0 + ms.w*BSP.Display_BPP DIV 8, 16) + (w + 3)*BSP.Display_BPP DIV 8);
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WHPCR, LSL(356+1 + x0 + w-1, 16) + 356+1 + x0);
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WVPCR, LSL(27+1 + y0 + h-1, 16) + 27+1 + y0);
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CR, {BSP.COLKEN, BSP.LEn}); (*enable layer 2 with transparent color*)
+      SYSTEM.PUT(BSP.vbr, TRUE) (*reload shadow registers immediately*)
     END
-  END test2;
-  
-  PROCEDURE test3;
-    VAR x, y: INTEGER;
+  END MovePattern;
+
+  PROCEDURE SetMousePattern*(pat, x, y: INTEGER);
+    VAR pms!: Pattern;
+  BEGIN pms := ms; ms := SYSTEM.VAL(Pattern, pat);
+    IF pms # ms THEN MovePattern(x, y) END
+  END SetMousePattern;
+
+  PROCEDURE ShowPatternL2*(pat, x, y: INTEGER);
+  BEGIN ms := SYSTEM.VAL(Pattern, pat); MovePattern(x, y);
+  END ShowPatternL2;
+
+  PROCEDURE ShowArrowL2*(x, y: INTEGER);
+  BEGIN ShowPatternL2(arrowL2, x, y)
+  END ShowArrowL2;
+
+  PROCEDURE ShowUpdownL2*(x, y: INTEGER);
+  BEGIN ShowPatternL2(updownL2, x, y)
+  END ShowUpdownL2;
+
+  PROCEDURE DisableL2*;
+  BEGIN SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CR, {});
+    SYSTEM.PUT(BSP.imr, TRUE) (*reload shadow registers immediately*)
+  END DisableL2;
+
+  PROCEDURE L2Init*;
+    VAR reg: SET;
   BEGIN
-    Dot(white, 0, 0, paint);
-    Dot(white, 4, 20, paint);
-    Dot(white, 5, 40, paint);
-    Dot(white, 3, 60, paint)
-  END test3;
-  
-  PROCEDURE test4;
-    VAR x, y: INTEGER;
-  BEGIN
-    ReplConst(white, 100, 100, 200, 200, invert);
-    ReplConst(white, 350, 350, 200, 200, invert);
-    ReplConst(white, 2, 400, 1, 20, paint);
-  END test4;
-  
-  PROCEDURE test5;
-    VAR x, y: INTEGER;
-  BEGIN
-    CopyBlock(400, 400, 100, 200, 600, 550, replace);
-    CopyBlock(0, 0, 18, 75, 19, 76, replace);
-    CopyBlock(19, 76, 18, 16, 37, 76, replace);
-    CopyBlock(19, 76, 18, 75, 37, 151, replace);
-  END test5;
-*)
+    (*Layer 2*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2PFCR, 5); (*pixel format L8*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CKCR, 0); (*transparent color*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2DCCR, 0); (*Default color transparent black*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CACR, 255); (*constant alpha value 1*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2BFCR, LSL(6, 8) + 7); (*blending factors 1 and 2 Pixel Alpha x Constant Alpha*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CFBLNR, 15);
+  END L2Init;
 
 BEGIN
-  arrow := SYSTEM.ADR($ 0F00 0F00
+(*
+  arrow := SYSTEM.ADR($ 0F 00 0F 00
      00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF 00
      00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00
      00 00 00 00 00 00 00 00 00 00 00 FF FF FF 00 00
@@ -303,6 +315,24 @@ BEGIN
      FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
      FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00$);
+*)
+  arrowL2 := SYSTEM.ADR($ 0F 00 0F 00
+     FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00
+     FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00
+     FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00
+     FF FF FF 40 FF FF FF 00 00 00 00 00 00 00 00
+     FF FF 40 20 40 FF FF FF 00 00 00 00 00 00 00
+     FF 40 20 00 20 40 FF FF FF 00 00 00 00 00 00
+     40 20 00 00 00 20 40 FF FF FF 00 00 00 00 00
+     20 00 00 00 00 00 20 40 FF FF FF 00 00 00 00
+     00 00 00 00 00 00 00 20 40 FF FF FF 00 00 00
+     00 00 00 00 00 00 00 00 20 40 FF FF FF 00 00
+     00 00 00 00 00 00 00 00 00 20 40 FF FF FF 00
+     00 00 00 00 00 00 00 00 00 00 20 40 FF FF FF
+     00 00 00 00 00 00 00 00 00 00 00 20 40 FF FF$);
+
   star := SYSTEM.ADR($ 0F00  0F00 
      00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00
      00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00
@@ -319,6 +349,7 @@ BEGIN
      00 00 FF 00 00 00 00 FF 00 00 00 00 FF 00 00 00
      00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00
      00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00$);
+
   hook := SYSTEM.ADR($ 0C00  0C00 
      FF FF FF 00 00 00 00 00 FF FF FF FF
      FF FF FF 00 00 00 00 FF FF FF FF 00
@@ -332,7 +363,8 @@ BEGIN
      FF FF FF 00 00 00 00 00 00 00 00 00
      FF FF 00 00 00 00 00 00 00 00 00 00
      FF 00 00 00 00 00 00 00 00 00 00 00$);
-  updown := SYSTEM.ADR($ 0800  0E00 
+
+  updownL2 := SYSTEM.ADR($ 08 04  0E 07 
      00 00 00 FF FF 00 00 00
      00 00 FF FF FF FF 00 00
      00 FF FF FF FF FF FF 00
@@ -347,6 +379,7 @@ BEGIN
      00 FF FF FF FF FF FF 00
      00 00 FF FF FF FF 00 00
      00 00 00 FF FF 00 00 00$);
+
   block := SYSTEM.ADR($ 0800  0800 
      FF FF FF FF FF FF FF FF
      FF FF FF FF FF FF FF FF
@@ -356,6 +389,7 @@ BEGIN
      FF FF 00 00 00 00 FF FF
      FF FF FF FF FF FF FF FF
      FF FF FF FF FF FF FF FF$);
+
   cross := SYSTEM.ADR($ 0F00  0F00 
      FF 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00
      00 FF 00 00 00 00 00 00 00 00 00 00 00 FF 00 00
@@ -372,10 +406,26 @@ BEGIN
      00 00 FF 00 00 00 00 00 00 00 00 00 FF 00 00 00
      00 FF 00 00 00 00 00 00 00 00 00 00 00 FF 00 00
      FF 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00$);
-  grey := SYSTEM.ADR($ 04 02 0000 
+
+  grey := SYSTEM.ADR($ 0400 0200 
      FF 00 FF 00
      00 FF 00 FF$);
 
-  (*only for testing:
-  test1; test3; test4; test5;*)
+  busy := SYSTEM.ADR($ 08 04  0E07 
+     FF FF FF FF FF FF FF FF
+     FF 01 01 01 01 01 01 FF
+     00 FF 01 01 01 01 FF 00
+     00 FF 01 01 01 01 FF 00
+     00 00 FF FF FF FF 00 00
+     00 00 FF FF FF FF 00 00
+     00 00 00 FF FF 00 00 00
+     00 00 00 FF FF 00 00 00
+     00 00 FF 01 01 FF 00 00
+     00 00 FF 01 01 FF 00 00
+     00 FF FF FF FF FF FF 00
+     00 FF FF FF FF FF FF 00
+     FF FF FF FF FF FF FF FF
+     FF FF FF FF FF FF FF FF$);
+
+  L2Init
 END Display.
