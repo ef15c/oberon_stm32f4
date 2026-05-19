@@ -171,21 +171,43 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     BCCR* = 2CH; BCREDm* = {16..23}; BCGREENm* = {8..15}; BCBLUEm* = {0..8};
 
-    L0CR* = 84H; CLUTEN* = 4; COLKEN* = 1; LEN* = 0;
-    CLUTENm* = {CLUTEN}; COLKENm* = {COLKEN}; LENm* = {LEN};
-    l0En* = PeriphBBAlias + (LTDC_BASE + L0CR - PeriphBase + LEN DIV 8)*32 + LEN MOD 8*4;
-    l0Cluten* = PeriphBBAlias + (LTDC_BASE + L0CR - PeriphBase + CLUTEN DIV 8)*32 + CLUTEN MOD 8*4;
+    L1CR* = 84H;
+      CLUTEN* = 4; COLKEN* = 1; LEn* = 0;
+      CLUTENm* = {CLUTEN}; COLKENm* = {COLKEN}; LENm* = {LEn};
+    L1WHPCR* = 88H;
+      WHSPPOSm* = {16..27}; WHSTPOSm* = {0..11};
+    L1WVPCR* = 8CH;
+      WVSPPOSm* = {16..26}; WVSTPOSm* = {0..10};
+    L1CKCR* = 90H;
+    L1PFCR* = 94H; 
+      PFm* = {0..2};
+    L1CACR* = 98H;
+      CONSTAm* = {0..7};
+    L1DCCR* = 9CH;
+      DCALPHAm* = {24..31}; DCREDm* = {16..23}; DCGREENm* = {8..15}; DCBLUEm* = {0..7};
+    L1BFCR* = 0A0H;
+      BF1m* = {8..10}; BF2m* = {0..2};
+    L1CFBAR* = 0ACH;
+    L1CFBLR* = 0B0H;
+      CFBPm* = {16..28}; CFBLLm* = {0..12};
+    L1CFBLNR* = 0B4H;
+      CFBLNRm* = {0..10};
+    L1CLUTWR* = 0C4H;
+      CLUTADDm* = {24..31}; REDm* = {16..23}; GREEMm* = {8..15}; BLUEm* = {0..7};
 
-    L0WHPCR* = 88H; WHSPPOSm* = {16..27}; WHSTPOSm* = {0..11};
-    L0WVPCR* = 8CH; WVSPPOSm* = {16..26}; WVSTPOSm* = {0..10};
-    L0PFCR* = 94H; PFm* = {0..2};
-    L0CACR* = 98H; CONSTAm* = {0..7};
-    L0DCCR* = 9CH; DCALPHAm* = {24..31}; DCREDm* = {16..23}; DCGREENm* = {8..15}; DCBLUEm* = {0..7};
-    L0BFCR* = 0A0H; BF1m* = {8..10}; BF2m* = {0..2};
-    L0CFBAR* = 0ACH;
-    L0CFBLR* = 0B0H; CFBPm* = {16..28}; CFBLLm* = {0..12};
-    L0CFBLNR* = 0B4H; CFBLNRm* = {0..10};
-    L0CLUTWR* = 0C4H; CLUTADDm* = {24..31}; REDm* = {16..23}; GREEMm* = {8..15}; BLUEm* = {0..7};
+    LxSIZE* = 80H;
+    L2CR* = L1CR + LxSIZE;
+    L2WHPCR* = L1WHPCR + LxSIZE;
+    L2WVPCR* = L1WVPCR + LxSIZE;
+    L2CKCR* = L1CKCR + LxSIZE;
+    L2PFCR* = L1PFCR + LxSIZE; 
+    L2CACR* = L1CACR + LxSIZE;
+    L2DCCR* = L1DCCR + LxSIZE;
+    L2BFCR* = L1BFCR + LxSIZE;
+    L2CFBAR* = L1CFBAR + LxSIZE;
+    L2CFBLR* = L1CFBLR + LxSIZE;
+    L2CFBLNR* = L1CFBLNR + LxSIZE;
+    L2CLUTWR* = L1CLUTWR + LxSIZE;
 
     (*PWR*)
     PWR_BASE* = 40007000H;
@@ -436,7 +458,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     Display_Width* = 1366; Display_Height* = 768; Display_BPP* = 8;
     Display_FBA* = 0D0000000H;
 
-    Display_Pitch* = (Display_Width*8 DIV Display_BPP+63) DIV 64*64;
+    Display_Pitch* = (Display_Width*Display_BPP DIV 8+63) DIV 64*64;
 
   VAR Leds*: ARRAY 7 OF INTEGER;
 
@@ -657,6 +679,21 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     VAR reg: SET; en, nb, d: INTEGER;
       i: INTEGER; r, g, b: BYTE;
   BEGIN Display_InitGPIOs;
+    (*Init and start LTDC*)
+    (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
+    SYSTEM.PUT(RCC_BASE + PLLSAICFGR, LSL(4, 24) + LSL(160, 6) + LSL(2, 28)); (*PLLSAIQ = 4, PLLSAIN = 160, PLLSAIR = 2*)
+    SYSTEM.GET(RCC_BASE + DCKCFGR, reg); SYSTEM.PUT(RCC_BASE + DCKCFGR, reg - PLLSAIDIVRm); (*PLLSADIVR = 2*)
+    SYSTEM.PUT(pllsaiEn, TRUE); REPEAT UNTIL SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
+
+    (*LTDC*) SYSTEM.PUT(rcc_ltdcEn, TRUE); SYSTEM.GET(rcc_ltdcEn, reg); (*delay*)
+    SYSTEM.GET(LTDC_BASE + GCR, reg); SYSTEM.PUT(LTDC_BASE + GCR, reg - (DEPOLm + PCPOLm) + (HSPOLm + VSPOLm)); (*HS and VS polarity high*)
+    SYSTEM.PUT(LTDC_BASE + SSCR, LSL(143, 16) + 3); (*HSW 143, VSH 3*)
+    SYSTEM.PUT(LTDC_BASE + BPCR, LSL(356, 16) + 27); (*AHBP 356, AVBP 27*)
+    SYSTEM.PUT(LTDC_BASE + ACWR, LSL(1722, 16) + 795); (*AAW 1722, AAH 795*)
+    SYSTEM.PUT(LTDC_BASE + TWCR, LSL(1792, 16) + 798); (*Total Width 1792, height 798*)
+    SYSTEM.PUT(LTDC_BASE + BCCR, 0); (*Background red, green and blue 0*)
+    SYSTEM.PUT(gcr_ltdcEn, TRUE);
+
     (*CLear screen*)
     (* reg := {0, 2, 5, 8, 10, 13, 16, 18, 21, 24, 26, 29};
     FOR i := 0 TO Display_Height*Display_Pitch - 4 BY 4 DO SYSTEM.PUT(Display_FBA + i, reg) END;*)
@@ -676,41 +713,23 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0 (*Wait until previous transfer is complete*)
     UNTIL i = 0;
 
-    (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
-    SYSTEM.GET(RCC_BASE + PLLSAICFGR, reg);
-    SYSTEM.PUT(RCC_BASE + PLLSAICFGR, reg - (PLLSAINm + PLLSAIRm) + SYSTEM.VAL(SET, LSL(160, 6) + LSL(2, 28))); (*PLLSAIN = 160, PLLSAIR = 2*)
-    SYSTEM.GET(RCC_BASE + DCKCFGR, reg); SYSTEM.PUT(RCC_BASE + DCKCFGR, reg - PLLSAIDIVRm); (*PLLSADIVR = 2*)
-    SYSTEM.PUT(pllsaiEn, TRUE); REPEAT UNTIL SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
-
-    (*LTDC*) SYSTEM.PUT(rcc_ltdcEn, TRUE); SYSTEM.GET(rcc_ltdcEn, reg); (*delay*)
-    SYSTEM.GET(LTDC_BASE + GCR, reg); SYSTEM.PUT(LTDC_BASE + GCR, reg - (DEPOLm + PCPOLm) + (HSPOLm + VSPOLm)); (*HS and VS polarity high*)
-    SYSTEM.GET(LTDC_BASE + SSCR, reg); SYSTEM.PUT(LTDC_BASE + SSCR, reg - (HSWm + VSHm) + SYSTEM.VAL(SET, LSL(143, 16) + 3)); (*HS size 143, VS size 3*)
-    SYSTEM.GET(LTDC_BASE + BPCR, reg); SYSTEM.PUT(LTDC_BASE + BPCR, reg - (AHBPm + AVBMm) + SYSTEM.VAL(SET, LSL(356, 16) + 27)); (*Acc HBP 356, AVBP 27*)
-    SYSTEM.GET(LTDC_BASE + ACWR, reg); SYSTEM.PUT(LTDC_BASE + ACWR, reg - (AAWm + AAHm) + SYSTEM.VAL(SET, LSL(1722, 16) + 795)); (*Acc AW 1722, AAH 795*)
-    SYSTEM.GET(LTDC_BASE + TWCR, reg);
-    SYSTEM.PUT(LTDC_BASE + TWCR, reg - (TOTALWm + TOTALHm) + SYSTEM.VAL(SET, LSL(1792, 16) + 798)); (*Total Width 1792, height 798*)
-    SYSTEM.GET(LTDC_BASE + BCCR, reg); SYSTEM.PUT(LTDC_BASE + BCCR, reg - (BCREDm + BCGREENm + BCBLUEm)); (*Background red, green and blue 0*)
-    SYSTEM.PUT(gcr_ltdcEn, TRUE);
-
-    (*Layer 0*)
-    SYSTEM.GET(LTDC_BASE + L0WHPCR, reg);
-    SYSTEM.PUT(LTDC_BASE + L0WHPCR, reg - (WHSPPOSm + WHSTPOSm) + SYSTEM.VAL(SET, LSL(1722, 16) + 356+1));(*first visible pixel 357, last 1722*)
-    SYSTEM.GET(LTDC_BASE + L0WVPCR, reg);
-    SYSTEM.PUT(LTDC_BASE + L0WVPCR, reg - (WVSPPOSm + WVSTPOSm) + SYSTEM.VAL(SET, LSL(795, 16) + 27+1));(*first visible line 28, last 795*)
-    SYSTEM.PUT(LTDC_BASE + L0PFCR, 5); (*pixel format L8*)
-    SYSTEM.PUT(LTDC_BASE + L0DCCR, 0); (*Default color transparent black*)
-    SYSTEM.PUT(LTDC_BASE + L0CACR, 255); (*constant alpha value 1*)
-    SYSTEM.PUT(LTDC_BASE + L0BFCR, LSL(6, 8) + 7); (*blending factors 1 and 2 Pixel Alpha x Constant Alpha*)
-    SYSTEM.PUT(LTDC_BASE + L0CFBAR, Display_FBA);
-    SYSTEM.PUT(LTDC_BASE + L0CFBLR, LSL(Display_Pitch, 16) + (Display_Width + 3)*8 DIV Display_BPP);
-    SYSTEM.PUT(LTDC_BASE + L0CFBLNR, Display_Height);
-    SYSTEM.PUT(l0En, FALSE); (*disable layer 0 for CLUT update*)
+    (*Layer 1*)
+    SYSTEM.PUT(LTDC_BASE + L1WHPCR, LSL(1722, 16) + 356+1); (*first visible pixel 357, last 1722*)
+    SYSTEM.PUT(LTDC_BASE + L1WVPCR, LSL(795, 16) + 27+1); (*first visible line 28, last 795*)
+    SYSTEM.PUT(LTDC_BASE + L1PFCR, 5); (*pixel format L8*)
+    SYSTEM.PUT(LTDC_BASE + L1DCCR, 0); (*Default color transparent black*)
+    SYSTEM.PUT(LTDC_BASE + L1CACR, 255); (*constant alpha value 1*)
+    SYSTEM.PUT(LTDC_BASE + L1BFCR, LSL(6, 8) + 7); (*blending factors 1 and 2 Pixel Alpha x Constant Alpha*)
+    SYSTEM.PUT(LTDC_BASE + L1CFBAR, Display_FBA);
+    SYSTEM.PUT(LTDC_BASE + L1CFBLR, LSL(Display_Pitch, 16) + (Display_Width + 3)*Display_BPP DIV 8);
+    SYSTEM.PUT(LTDC_BASE + L1CFBLNR, Display_Height);
+    SYSTEM.PUT(LTDC_BASE + L1CR, {}); (*disable layer 1 for CLUT update*)
     SYSTEM.PUT(imr, TRUE); (*reload shadow registers immediately*)
     FOR i := 0 TO 255 DO r := LSR(i, 5) MOD 8; g := LSR(i, 2) MOD 8; b := i MOD 4;
-      SYSTEM.PUT(LTDC_BASE + L0CLUTWR, LSL(i, 24) + LSL(r*255 DIV 7, 16) + LSL(g*255 DIV 7, 8) + b*255 DIV 3)
+      SYSTEM.PUT(LTDC_BASE + L1CLUTWR, LSL(i, 24) + LSL(r*255 DIV 7, 16) + LSL(g*255 DIV 7, 8) + b*255 DIV 3)
     END;
-    SYSTEM.PUT(LTDC_BASE + L0CR, CLUTENm + LENm); (*finally (re)enable layer 0 and color lookup table*)
-    SYSTEM.PUT(imr, TRUE) (*reload shadow registers immediately*)
+    SYSTEM.PUT(LTDC_BASE + L1CR, CLUTENm + LENm); (*finally (re)enable layer 1 and color lookup table*)
+    SYSTEM.PUT(vbr, TRUE) (*reload shadow registers during vertical blanking*)
   END InitDisplay;
 
   PROCEDURE InitNRF24L01P*;
