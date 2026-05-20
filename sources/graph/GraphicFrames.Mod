@@ -98,6 +98,7 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
     IF F.graph.changed THEN SetChangeMark(F, 1) END
   END Restore;
 
+(*
   PROCEDURE FlipCross(X, Y: INTEGER);
   BEGIN
     IF X < CL THEN
@@ -108,6 +109,14 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
     IF Y < 7 THEN Y := 7 ELSIF Y > DH THEN Y := DH - 7 END;
     Display.CopyPattern(Display.white, Display.cross, X-7, Y-7, Display.invert)
   END FlipCross;
+*)
+
+  PROCEDURE HideCross(X, Y: INTEGER);
+  END HideCross;
+
+  PROCEDURE ShowCross(X, Y: INTEGER);
+  BEGIN Display.SetMousePattern(Display.cross, X, Y)
+  END ShowCross;
 
   PROCEDURE Focus*(): Frame;
     VAR FQ!: FocusQuery;
@@ -237,7 +246,7 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
 
   PROCEDURE Edit(F: Frame; x0, y0: INTEGER; k0: SET);
     VAR obj!: Graphics.Object;
-      x1, y1, w, h, t: INTEGER;
+      x1, y1, z, w, h, t: INTEGER;
       beg, end, time: INTEGER;
       k1, k2: SET;
       mark!, newmark!: Location;
@@ -245,11 +254,11 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
       Fd!: Frame;
       G!: Graphics.Graph;
   BEGIN k1 := k0; G := F.graph;
-    REPEAT Input.Mouse(k2, x1, y1); k1 := k1 + k2;
+    REPEAT Input.Mouse(k2, x1, y1, z); k1 := k1 + k2;
       DEC(x1, (x1-F.x) MOD 4); DEC(y1, (y1-F.y) MOD 4);
-      Oberon.DrawMouse(Crosshair, x1, y1)
+      (*Oberon.DrawMouse(Crosshair, x1, y1)*)
     UNTIL  k2 = {};
-    Oberon.FadeMouse;
+(*    Oberon.FadeMouse;*)
     IF k0 = {2} THEN (*left key*)
       w := ABS(x1-x0); h := ABS(y1-y0);
       IF k1 = {2} THEN
@@ -373,7 +382,7 @@ MODULE GraphicFrames; (*NW 18.4.88 / 18.11.2013 / 27.8.2018*)
       Oberon.InputMsg:
         IF M.id = Oberon.track THEN
           x := M.X - (M.X - G.x) MOD 4; y := M.Y - (M.Y - G.y) MOD 4;
-          IF M.keys # {} THEN Edit(G, x, y, M.keys) ELSE Oberon.DrawMouse(Crosshair, x, y) END
+          IF M.keys # {} THEN Edit(G, x, y, M.keys) ELSE (*Oberon.DrawMouse(Crosshair, x, y)*) Crosshair.Draw(x, y) END
         ELSIF M.id = Oberon.consume THEN
           IF M.ch = 7FX THEN (*DEL*)
             Erase(G); Graphics.Delete(G.graph); Mark(G, 1)
@@ -534,17 +543,18 @@ BEGIN NEW(TBuf); Texts.OpenBuf(TBuf);
 
   (*dotted := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 0000 0000 0000 0000$);
   dotted1 := SYSTEM.ADR($2004 0000 1111 1111 0000 0000 4444 4444 0000 0000$);*)
-  dotted := SYSTEM.ADR($ 04 04 0000
+  dotted := SYSTEM.ADR($ 04 00 04 00
      FF 00 00 00
      00 00 00 00
      00 00 00 00
      00 00 00 00$);
-  dotted1 := SYSTEM.ADR($ 04 04 0000
+  dotted1 := SYSTEM.ADR($ 04 00  04 00
      FF 00 00 00
      00 00 00 00
      00 00 FF 00
      00 00 00 00$);
 
-  Crosshair.Fade := FlipCross; Crosshair.Draw := FlipCross;
+(*  Crosshair.Fade := FlipCross; Crosshair.Draw := FlipCross;*)
+  Crosshair.Fade := HideCross; Crosshair.Draw := ShowCross;
   Graphics.InstallDrawMethods(DrawLine, DrawCaption, DrawMacro)
 END GraphicFrames.

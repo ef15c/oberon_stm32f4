@@ -98,7 +98,7 @@ MODULE Image;
       ELSE (*center image*) INC(fr.y, (fr.h - dh.height) DIV 2); fr.h := dh.height
       END;
       IF fr.h > 0 THEN BMP.DisplayImage(F.R, bh, dh, cm, fr) END
-    END;
+    END
   END ShowImage;
 
   PROCEDURE Handler(F: Display.Frame; VAR M: Display.FrameMsg);
@@ -160,10 +160,7 @@ END Image.
 
 OM4P.Compile BMP.Mod/s Image.Mod/s~
 System.Free Image BMP~
-Image.Show img8bpprle.bmp
-Image.Infos img8bpprle.bmp
-
-Image.Show img8bpp.bmp
-Image.Infos img8bpp.bmp
+Image.Show OberonLogoInverse.bmp
+Image.Infos OberonLogoInverse.bmp
 
 Image.ScreenShot

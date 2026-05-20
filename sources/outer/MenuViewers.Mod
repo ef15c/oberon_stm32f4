@@ -202,7 +202,9 @@ MODULE MenuViewers; (*JG 26.8.90 / 16.9.93 / NW 10.3.2013*)
     VAR V!: Viewer;
   BEGIN NEW(V);
     V.handle := Handle; V.dsc := Menu; V.dsc.next := Main; V.menuH := menuH;
-    Viewers.Open(V, X, Y); Restore(V); RETURN V
+    Viewers.Open(V, X, Y); Restore(V)
+
+    RETURN V
   END New;
 
 END MenuViewers.
