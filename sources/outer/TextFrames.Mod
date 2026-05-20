@@ -848,7 +848,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   END Edit;
 
   PROCEDURE Handle* (F: Display.Frame; VAR M: Display.FrameMsg);
-    VAR F1!: Frame;
+    VAR F1!: Frame; Fn!: Display.Frame;
   BEGIN
     CASE F OF Frame:
       CASE M OF
@@ -866,10 +866,12 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       Oberon.CopyMsg: Copy(F, F1); M.F := F1 |
       MenuViewers.ModifyMsg: Modify(F, M.id, M.dY, M.Y, M.H) |
       CopyOverMsg: CopyOver(F, M.text, M.beg, M.end) |
-      UpdateMsg: IF F.text = M.text THEN Update(F, M) END;
-        IF (F.next # NIL) & (F.next(Frame).text = M.text) THEN
-         SetChangeMarkInMenu(F, F.next(Frame).text.changed)
-        END
+      UpdateMsg: IF F.text = M.text THEN Update(F, M) END; Fn := F.next;
+        IF Fn # NIL THEN 
+          CASE Fn OF Frame:
+            IF Fn.text = M.text THEN SetChangeMarkInMenu(F, Fn.text.changed) END
+          END
+        END;
       END
     END
   END Handle;
