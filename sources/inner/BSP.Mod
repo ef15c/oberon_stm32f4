@@ -569,8 +569,9 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       maskG_2b = LSL(MASK2, 6*2) + LSL(MASK2, 10*2) + LSL(MASK2, 11*2) + LSL(MASK2, 12*2);
       maskG_4bl = LSL(MASK4, 6*4);
       maskG_4bh = LSL(MASK4, 10 MOD 8*4) + LSL(MASK4, 11 MOD 8*4) + LSL(MASK4, 12 MOD 8*4);
-    VAR reg: SET;
-  BEGIN SYSTEM.PUT(cmp_pd, 1); (*enable I/O compensation cell*)
+    VAR reg: SET; res: BYTE;
+  BEGIN SYSTEM.PUT(syscfgEn, TRUE); SYSTEM.GET(syscfgEn, res); (*delay*)
+    SYSTEM.PUT(cmp_pd, 1); (*enable I/O compensation cell*)
     SYSTEM.GET(RCC_BASE + AHB1ENR, reg); SYSTEM.PUT(RCC_BASE + AHB1ENR, reg + {GPIOAEN, GPIOBEN, GPIOCEN, GPIODEN, GPIOGEN});
     SYSTEM.GET(RCC_BASE + AHB1ENR, reg); (*delay*)
     (**LTDC GPIO Configuration

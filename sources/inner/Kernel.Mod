@@ -109,15 +109,16 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
           REPEAT SYSTEM.GET(p-4, offadr);
             IF offadr = 0 THEN SYSTEM.GET(p-8, tag); offadr := tag + 16 ELSE INC(offadr, 4) END ;
             SYSTEM.PUT(p-4, offadr); SYSTEM.GET(offadr, offset);
-            IF offset # -1 THEN (*down*)
-              SYSTEM.GET(p+offset, r); SYSTEM.GET(r-4, offadr);
-              IF (*r >= heapOrg*) SYSTEM.CMP(r, heapOrg, CS) & (offadr = 0) THEN SYSTEM.PUT(p+offset, q); q := p; p := r END
+            IF offset # -1 THEN (*down*) SYSTEM.GET(p+offset, r);
+              IF (*r >= heapOrg*) SYSTEM.CMP(r, heapOrg, CS) THEN SYSTEM.GET(r-4, offadr);
+                IF offadr = 0 THEN SYSTEM.PUT(p+offset, q); q := p; p := r END
+              END
             ELSE (*up*) SYSTEM.GET(q-4, offadr); SYSTEM.GET(offadr, offset);
               IF p # q THEN SYSTEM.GET(q+offset, r); SYSTEM.PUT(q+offset, p); p := q; q := r END
             END
           UNTIL (p = q) & (offset = -1)
         END
-      END ;
+      END;
       INC(pref, 4); SYSTEM.GET(pref, pvadr)
     END
   END Mark;
@@ -323,6 +324,13 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE Init;
     VAR i: INTEGER;
   BEGIN SYSTEM.GET(40002850H, bootParams);
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.AIRCR, LSL(5FAH, 16) + LSL(3, 8)); (*4 bits for group priority field*)
+    (*set interrupt priorities*)
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.SysTickExcNum - 4), CHR(LSL(10, 4)));
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.BusFaultExcNum - 4), CHR(LSL(1, 4)));
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.UsageFaultExcNum - 4), CHR(LSL(1, 4)));
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.SVCallExcNum - 4), CHR(LSL(2, 4)));
+    SYSTEM.PUT(BSP.SCB_BASE + BSP.SHPR1 + (BSP.PendSVExcNum - 4), CHR(LSL(15, 4)));
     (*relocate vector table at beginning of SRAM*)
     SYSTEM.GET(08000000H, i); SYSTEM.PUT(20000000H, i); SYSTEM.GET(08000004H, i); SYSTEM.PUT(20000004H, i); 
     FOR i := 20000008H TO 200001A8H BY 4 DO SYSTEM.PUT(i, SYSTEM.ADR(defaultHandler)) END; (*initialize vectors to default trap*)
