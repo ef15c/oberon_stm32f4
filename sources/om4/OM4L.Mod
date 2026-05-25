@@ -501,6 +501,6 @@ BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Boot linker/loader  AP 6.8.
   limit := Kernel.heapOrg; (*The end of the module space is the beginning of the heap*)
   IF limit = 0 THEN limit := Kernel.stackOrg - Kernel.stackSize END; (*Hack if ran on RISC-5 machine*)
   sdram.org := 0D0201000H; sdram.size := limit - sdram.org; (*usable SDRAM area between system variables and heap*)
-  flash.org := 08004000H; flash.size := 200000H - 4000H; (*usable flash area after the bootloader*)
-  sram.org := 20000600H; sram.size := 30000H - 600H - 100H; (*usable sram area between sdcard buffer and main stack*)
+  flash.org := 08004000H; flash.size := 200000H - 4000H; (*2080768 bytes of usable flash area after the bootloader*)
+  sram.org := 20000600H; sram.size := 30000H - 600H - 100H; (*194816 bytes of usable sram area between sdcard buffer and main stack*)
 END OM4L.
