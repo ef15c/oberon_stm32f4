@@ -6,7 +6,7 @@ MODULE HALHCD;
   * @brief   HCD HAL module.
   ******************************************************************************
   *)
-  IMPORT SYSTEM, ll := LLUSB, Def := USBHDef;
+  IMPORT SYSTEM, Log := USBLog, ll := LLUSB, Def := USBHDef;
 
   CONST
   (** @defgroup HCD_Exported_Types_Group1 HCD State Structure definition
@@ -145,6 +145,7 @@ MODULE HALHCD;
     (* Handle Host Port Interrupts *)
     SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, hprt0);
     hprt0_dup := hprt0 - ({ll.HPRT_PENA} + {ll.HPRT_PCDET} + {ll.HPRT_PENCHNG} + {ll.HPRT_POCCHNG});
+    Log.Debug("Port 0 HPRT: "); Log.DebugSet(hprt0); Log.DebugLn;
     (* Check whether Port Connect detected *)
     IF ll.HPRT_PCDET IN hprt0 THEN
       IF ll.HPRT_PCSTS IN hprt0 THEN hhcd.ConnectCallback(hhcd) END;
@@ -307,6 +308,7 @@ MODULE HALHCD;
     VAR USBx_HCi!: ll.OTGHostChannel; flags: SET; num_packets: INTEGER; purbs: BYTE;
   BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
+    Log.Debug("Channel "); Log.DebugInt(chnum, 1); Log.DebugString(" interrupt flags: "); Log.DebugSet(flags); Log.DebugLn;
     IF ll.HCINT_AHBERR IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_AHBERR);
       hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
     ELSIF ll.HCINT_ACK IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_ACK);
@@ -388,7 +390,7 @@ MODULE HALHCD;
           USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
         END
       END;
-      (*in STM otiginal code, hhcd.HC_NotifyURBChangeCallback in called only if one of the previous cases match*)
+      (*in STM original code, hhcd.HC_NotifyURBChangeCallback in called only if one of the previous cases match*)
       IF hhcd.hc[chnum].urb_state # purbs THEN
         hhcd.HC_NotifyURBChangeCallback(hhcd, chnum, hhcd.hc[chnum].urb_state)
       END
@@ -438,6 +440,7 @@ MODULE HALHCD;
   BEGIN flags := ll.ReadInterrupts(hhcd.Instance);
     (* Ensure that we are in host mode *)
     IF (ll.GetMode(hhcd.Instance) = ll.USB_HOST_MODE) & (flags # {}) (* Avoid spurious interrupt *) THEN
+      IF flags - {ll.GINTSTS_SOF} # {} THEN Log.Debug("Core interrupt register: "); Log.DebugSet(flags); Log.DebugLn END;
       IF ll.GINTSTS_PXFR_INCOMPISOOUT IN flags THEN (* Incomplete periodic transfer, acknowledge the interrupt *)
         hhcd.Instance.GINTSTS := {ll.GINTSTS_PXFR_INCOMPISOOUT}
       END;
@@ -467,10 +470,12 @@ MODULE HALHCD;
       IF ll.GINTSTS_SOF IN flags THEN hhcd.SOFCallback(hhcd); hhcd.Instance.GINTSTS := {ll.GINTSTS_SOF} END;
       (* Handle Host channel Interrupt *)
       IF ll.GINTSTS_HCINT IN flags THEN interrupt := ll.HC_ReadInterrupt(hhcd.Instance);
+        Log.Debug("Host all channels interrupt: "); Log.DebugSet(interrupt); Log.DebugLn;
         ASSERT(hhcd.Init.Host_channels <= 12);
         FOR i := 0 TO hhcd.Init.Host_channels - 1 DO
           IF i MOD 10H IN interrupt THEN
             SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + i*ll.HOST_CHANNEL_SIZE, reg);
+            Log.Debug("Host channel "); Log.DebugInt(i, 1); Log.DebugString(" characteristics: "); Log.DebugSet(reg); Log.DebugLn;
             IF ll.HCCHAR_EPDIR IN reg THEN HC_IN_IRQHandler(hhcd, i) ELSE HC_OUT_IRQHandler(hhcd, i) END
           END
         END;

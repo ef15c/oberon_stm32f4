@@ -24,6 +24,7 @@ MODULE USBHHIDApp;
     Log.User("OTG FS HID Host");
     Log.User("USBH lib started.");
     Log.User("");
+    Log.Flush
   END InitApplication;
 
   (**
@@ -69,6 +70,13 @@ MODULE USBHHIDApp;
     END
   END Run;
 
+  PROCEDURE Stop*;
+  BEGIN USBH.Stop(hUSBHost); USBH.DeInit(hUSBHost);
+    Log.User("USBH lib stopped.");
+    Oberon.Remove(processTask);
+    Log.Flush
+  END Stop;
+
 BEGIN (*Appli_state := APPLICATION_IDLE *)
   NEW(hUSBHost)
 END USBHHIDApp.
@@ -85,4 +93,8 @@ System.DeleteFiles LLUSB.sm4 USBH.sm4 USBHConf.sm4 USBHCore.sm4 USBHCtlReq.sm4 U
  USBHHID.sm4 USBHHIDApp.sm4 USBHHIDClass.sm4 USBHHIDKeybd.sm4 USBHHIDMouse.sm4
  USBHHal.sm4 USBHIoReq.sm4 USBHPipes.sm4 USBLog.sm4 HALHCD.sm4~
 
+System.Free USBHHIDApp USBHHID USBHHIDKeybd USBHHIDMouse USBHHIDClass USBH USBHHal HALHCD
+ USBHCore LLUSB USBHCtlReq USBHIoReq USBHPipes USBHDef USBHConf USBLog~
+
 USBHHIDApp.Run
+USBHHIDApp.Stop

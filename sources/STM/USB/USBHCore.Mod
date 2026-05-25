@@ -71,12 +71,11 @@ MODULE USBHCore;
   * @retval USBH_Status
   *)
   PROCEDURE Disconnect*(phost: Def.Handle);
-    VAR res: BYTE;
   BEGIN (* update device connection states *)
     phost.device.is_disconnected := TRUE;
     phost.device.is_connected := FALSE;
     phost.device.PortEnabled := FALSE;
-    res := phost.Stop(phost); (* Stop Host *)
+    phost.Stop(phost); (* Stop Host *)
     (* Free Control Pipes *)
     Pipes.Free(phost, phost.Control.pipe_in);
     Pipes.Free(phost, phost.Control.pipe_out);
@@ -89,7 +88,7 @@ MODULE USBHCore;
   * @retval None
   *)
   PROCEDURE PortEnabled*(phost: Def.Handle);
-  BEGIN phost.device.PortEnabled := FALSE
+  BEGIN phost.device.PortEnabled := TRUE
   END PortEnabled;
 
   (**

@@ -6,7 +6,7 @@ MODULE LLUSB;
   * @brief   HCD HAL module.
   ******************************************************************************
   *)
-  IMPORT SYSTEM, Kernel, Def := USBHDef;
+  IMPORT SYSTEM, Kernel, Log := USBLog, Def := USBHDef;
 
   CONST
   (*!< USB registers base address *)
@@ -1154,6 +1154,7 @@ MODULE LLUSB;
       END
     END disableChannel;
   BEGIN USBx_HCi := SYSTEM.VAL(OTGHostChannel, ORD(USBx) + HOST_CHANNEL_BASE + hc_num*HOST_CHANNEL_SIZE);
+    Log.Debug("Halt request for channel "); Log.DebugInt(hc_num, 1); Log.DebugLn;
     (* In buffer DMA, Channel disable must not be programmed for non-split periodic channels.
      At the end of the next uframe/frame (in the worst case), the core generates a channel halted
      and disables the channel automatically. *)

@@ -45,8 +45,8 @@ MODULE USBH;
     phost.device.EnumCnt := 0;
 
     (* Reset the device record *)
-    FOR i := 0 TO Conf.MAX_SIZE_CONFIGURATION DO phost.device.CfgDesc_Raw[i] :=  0 END;
-    FOR i := 0 TO Conf.MAX_DATA_BUFFER DO phost.device.Data.buf[i] :=  0 END;
+    FOR i := 0 TO Conf.MAX_SIZE_CONFIGURATION - 1 DO phost.device.CfgDesc_Raw[i] :=  0 END;
+    FOR i := 0 TO Conf.MAX_DATA_BUFFER - 1 DO phost.device.Data.buf[i] :=  0 END;
     phost.device.DevDesc := zeroDev^;
     phost.device.CfgDesc := zeroCfg^;
   END DeInitStateMachine;
@@ -73,11 +73,31 @@ MODULE USBH;
       phost.device.is_disconnected := FALSE;
       phost.device.is_ReEnumerated := FALSE;
       IF pUsrFunc # NIL THEN phost.pUser := pUsrFunc END; (* Assign User process *)
-      status := UH.Init(phost) (* Initialize low level driver *)
+      status := UH.Init(phost); (* Initialize low level driver *)
+      Log.Flush
     END
 
     RETURN status
   END Init;
+
+  (**
+  * @brief  HCD_DeInit
+  *         De-Initialize the Host portion of the driver.
+  * @param  phost: Host Handle
+  * @retval USBH Status
+  *)
+  PROCEDURE DeInit*(phost: Def.Handle);
+  BEGIN DeInitStateMachine(phost);
+    (* Restore default Device connection states *)
+    phost.device.PortEnabled := FALSE;
+    phost.device.is_connected := FALSE;
+    phost.device.is_disconnected := FALSE;
+    phost.device.is_ReEnumerated := FALSE;
+    phost.device.RstCnt := 0;
+    phost.device.EnumCnt := 0;
+    IF phost.pData # 0 THEN UH.Stop(phost) END;
+    Log.Flush
+  END DeInit;
 
   (**
   * @brief  USBH_RegisterClass
@@ -95,7 +115,8 @@ MODULE USBH;
       ELSE Log.Error("Max Class Number reached"); status := Def.FAIL
       END
     ELSE Log.Error("Invalid Class handle"); status := Def.FAIL
-    END
+    END;
+    Log.Flush
 
     RETURN status
   END RegisterClass;
@@ -142,7 +163,8 @@ MODULE USBH;
       Log.UserString("Protocol : "); Log.UserHexVLen(phost.device.CfgDesc.Itf_Desc[interface].bInterfaceProtocol, 2, FALSE); Log.User("h");
     ELSE Log.Error("Cannot Select This Interface.");
       status := Def.FAIL
-    END
+    END;
+    Log.Flush
 
     RETURN status
   END SelectInterface;
@@ -156,7 +178,26 @@ MODULE USBH;
   PROCEDURE Start*(phost: Def.Handle);
   BEGIN UH.Start(phost); (* Start the low level driver  *)
     UH.DriverVBUS(phost, TRUE); (* Activate VBUS on the port *)
+    Log.Flush
   END Start;
+
+  (**
+  * @brief  USBH_Stop
+  *         Stop the USB Host Core.
+  * @param  phost: Host Handle
+  * @retval USBH Status
+  *)
+  PROCEDURE Stop*(phost: Def.Handle);
+  BEGIN
+    (* DeActivate VBUS on the port *)
+    UH.DriverVBUS(phost, FALSE);
+    (* Stop and cleanup the low level driver  *)
+    UH.Stop(phost);
+    (* Free Control Pipes *)
+    Pipes.Free(phost, phost.Control.pipe_in);
+    Pipes.Free(phost, phost.Control.pipe_out);
+    Log.Flush
+  END Stop;
 
   (**
   * @brief  USBH_HandleEnum
@@ -422,7 +463,8 @@ MODULE USBH;
         Start(phost) (* Start the host and re-enable Vbus *)
       ELSE UH.Start(phost) (* Device Disconnection Completed, start USB Driver *)
       END
-    END
+    END;
+    Log.Flush
   END Process;
 
 END USBH.

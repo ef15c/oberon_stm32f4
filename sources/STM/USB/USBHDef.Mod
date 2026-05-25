@@ -308,7 +308,7 @@ MODULE USBHDef;
       id*: BYTE;
       pData*: INTEGER; (*pointer to arbirary data*)
       pUser*: UserCallback;
-      Stop*: Callback;
+      Stop*: PROCEDURE^5(phost: Handle);
       OpenPipe*: PROCEDURE(phost: Handle; pipe_num, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD);
       SetToggle*: PROCEDURE(phost: Handle; pipe: BYTE; toggle: BOOLEAN);
       ClosePipe*: PROCEDURE(phost: Handle; pipe_num: BYTE);

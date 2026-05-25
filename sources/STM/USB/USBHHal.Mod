@@ -36,7 +36,7 @@ MODULE USBHHal;
   * @retval None
   *)
   PROCEDURE^5 OTG_HS_IRQHandler;
-  BEGIN HCD.IRQHandler(hhcd)
+  BEGIN HCD.IRQHandler(hhcd); LED({4})
   END OTG_HS_IRQHandler;
 
   PROCEDURE MspInit(hhcd: HCD.Handle);
@@ -45,7 +45,7 @@ MODULE USBHHal;
     (* On STM32F429I-DISCO, USB OTG HS Core will operate in Full speed mode.
         GPIOB and GPIOC are already clocked in BSP *)
     (* EMBEDDED Physical interface and  VBUS Pin *)
-    BSP.configureGPIO(BSP.GPIOB, {13, 14, 15}, LSL(BSP.MASK2, 13) + LSL(BSP.MASK2, 14) + LSL(BSP.MASK2, 15), {},
+    BSP.configureGPIO(BSP.GPIOB, {13, 14, 15}, LSL(BSP.MASK2, 13*2) + LSL(BSP.MASK2, 14*2) + LSL(BSP.MASK2, 15*2), {},
       LSL(BSP.MASK4, 13 MOD 8*4) + LSL(BSP.MASK4, 14 MOD 8*4) + LSL(BSP.MASK4, 15 MOD 8*4),
       LSL(BSP.INPUT_MODE, 13*2) + LSL(BSP.AF_MODE, 14*2) + LSL(BSP.AF_MODE, 15*2), (*PB13 as input and PB14, PB15 as AF*)
       LSL(BSP.HIGH_SPEED, 14*2) + LSL(BSP.HIGH_SPEED, 15*2), (*PB14 and PB15 high speed*)
@@ -293,12 +293,8 @@ MODULE USBHHal;
   * @param  phost: Host handle
   * @retval USBH Status
   *)
-  PROCEDURE Stop(phost: Def.Handle): BYTE;
-    VAR res: BYTE;
+  PROCEDURE Stop*(phost: Def.Handle);
   BEGIN HCD.Stop(SYSTEM.VAL(HCD.Handle, phost.pData));
-    res := Def.OK;
-
-    RETURN res
   END Stop;
 
   (**

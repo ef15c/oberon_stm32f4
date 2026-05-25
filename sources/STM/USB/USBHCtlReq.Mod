@@ -38,8 +38,7 @@ MODULE USBHCtlReq;
       phost.Control.state := Def.CTRL_SETUP_WAIT
     ELSIF phost.Control.state = Def.CTRL_SETUP_WAIT THEN
       URB_Status := phost.GetURBState(phost, phost.Control.pipe_out);
-      (* case SETUP packet sent successfully *)
-      IF URB_Status = Def.URB_DONE THEN
+      IF URB_Status = Def.URB_DONE THEN (* case SETUP packet sent successfully *)
         direction := phost.Control.setup.bmRequestType*Def.REQ_DIR_MASK;
         (* check if there is a data stage *)
         IF phost.Control.setup.wLength # 0 THEN

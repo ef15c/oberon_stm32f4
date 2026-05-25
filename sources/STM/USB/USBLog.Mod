@@ -23,8 +23,28 @@ MODULE USBLog;
   BEGIN Texts.WriteHexVLen(W, x, n, lz)
   END UserHexVLen;
 
+  PROCEDURE UserSet*(s: SET);
+    VAR i, j: INTEGER; sep: ARRAY 3 OF CHAR;
+  BEGIN sep := "{"; i := 0;
+    WHILE i < 32 DO j := i+1;
+      IF i IN s THEN Texts.WriteString(W, sep); sep := ", ";
+        Texts.WriteInt(W, i, 1);
+        IF j IN s THEN Texts.WriteString(W, "..");
+          WHILE (j < 32) & (j+1 IN s) DO INC(j) END;
+          Texts.WriteInt(W, j, 1); INC(j)
+        END
+      END;
+      i := j
+    END;
+    Texts.Write(W, "}")
+  END UserSet;
+
+  PROCEDURE UserLn*;
+  BEGIN Texts.WriteLn(W);
+  END UserLn;
+
   PROCEDURE User*(msg: ARRAY OF CHAR);
-  BEGIN UserString(msg); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  BEGIN UserString(msg); UserLn;
   END User;
 
   PROCEDURE Error*(msg: ARRAY OF CHAR);
@@ -32,13 +52,32 @@ MODULE USBLog;
   END Error;
 
   PROCEDURE Debug*(msg: ARRAY OF CHAR);
+  BEGIN Texts.WriteString(W, "DEBUG: "); Texts.WriteString(W, msg)
   END Debug;
 
   PROCEDURE DebugString*(msg: ARRAY OF CHAR);
+  BEGIN UserString(msg)
   END DebugString;
 
   PROCEDURE DebugInt*(val, len: INTEGER);
+  BEGIN UserInt(val, len)
   END DebugInt;
+
+  PROCEDURE DebugHexVLen*(x, n: INTEGER; lz: BOOLEAN);
+  BEGIN UserHexVLen(x, n, lz)
+  END DebugHexVLen;
+
+  PROCEDURE DebugSet*(s: SET);
+  BEGIN UserSet(s)
+  END DebugSet;
+
+  PROCEDURE DebugLn*;
+  BEGIN UserLn
+  END DebugLn;
+
+  PROCEDURE Flush*;
+  BEGIN Texts.Append(Oberon.Log, W.buf)
+  END Flush;
 
 BEGIN Texts.OpenWriter(W)
 END USBLog.
