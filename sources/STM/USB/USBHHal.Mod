@@ -48,7 +48,7 @@ MODULE USBHHal;
     BSP.configureGPIO(BSP.GPIOB, {13, 14, 15}, LSL(BSP.MASK2, 13*2) + LSL(BSP.MASK2, 14*2) + LSL(BSP.MASK2, 15*2), {},
       LSL(BSP.MASK4, 13 MOD 8*4) + LSL(BSP.MASK4, 14 MOD 8*4) + LSL(BSP.MASK4, 15 MOD 8*4),
       LSL(BSP.INPUT_MODE, 13*2) + LSL(BSP.AF_MODE, 14*2) + LSL(BSP.AF_MODE, 15*2), (*PB13 as input and PB14, PB15 as AF*)
-      LSL(BSP.HIGH_SPEED, 14*2) + LSL(BSP.HIGH_SPEED, 15*2), (*PB14 and PB15 high speed*)
+      LSL(BSP.VERY_HIGH_SPEED, 14*2) + LSL(BSP.VERY_HIGH_SPEED, 15*2), (*PB14 and PB15 very high speed*)
       {} (*push pull*), {} (*no pull up nor pul down*), {},
       LSL(TOSET(12), 14 MOD 8*4) + LSL(TOSET(12), 15 MOD 8*4) (* PB14 and PB15 ad alternate function OTG HS *)
     );

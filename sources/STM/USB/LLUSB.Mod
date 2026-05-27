@@ -422,8 +422,10 @@ MODULE LLUSB;
 
   (********************  Bit definition for USB_OTG_HCTSIZ register  ********************)
     HCTSIZ_XFRSIZ_Msk* = {0..18}; (*!< Transfer size *)
-    HCTSIZ_PKTCNT_Msk* = {19..28}; (*!< Packet count *)
-    HCTSIZ_DPID_Msk* = {29..30}; (*!< Data PID *)
+    HCTSIZ_PKTCNT_Pos* = 19;
+    HCTSIZ_PKTCNT_Msk* = {HCTSIZ_PKTCNT_Pos..28}; (*!< Packet count *)
+    HCTSIZ_DPID_Pos* = 29;
+    HCTSIZ_DPID_Msk* = {HCTSIZ_DPID_Pos..30}; (*!< Data PID *)
     HCTSIZ_DOPING* = 31; (*!< Do PING *)
     HCTSIZ_DOPING_Msk* = {HCTSIZ_DOPING};
 
@@ -903,7 +905,7 @@ MODULE LLUSB;
         HCINTMSK_DTERRM, HCINTMSK_AHBERR, HCINTMSK_NAKM};
       IF 7 IN TOSET(epnum) THEN INCL(USBx_HCi.HCINTMSK, HCINTMSK_BBERRM)
       ELSIF ORD(USBx) = HS_PERIPH_BASE THEN
-        USBx_HCi.HCINTMSK := {HCINTMSK_NYET, HCINTMSK_ACKM}
+        USBx_HCi.HCINTMSK := USBx_HCi.HCINTMSK + {HCINTMSK_NYET, HCINTMSK_ACKM}
       END
     ELSIF ep_type = Def.EP_TYPE_INTR THEN
       USBx_HCi.HCINTMSK := {HCINTMSK_XFRCM, HCINTMSK_STALLM, HCINTMSK_TXERRM,
@@ -949,7 +951,7 @@ MODULE LLUSB;
     VAR USBx_HCi!: OTGHostChannel;
   BEGIN
     USBx_HCi := SYSTEM.VAL(OTGHostChannel, ORD(USBx) + HOST_CHANNEL_BASE + ch_num*HOST_CHANNEL_SIZE);
-    USBx_HCi.HCTSIZ := LSL(TOSET(1), 19)*HCTSIZ_PKTCNT_Msk + {HCTSIZ_DOPING};
+    USBx_HCi.HCTSIZ := LSL(TOSET(1), HCTSIZ_PKTCNT_Pos)*HCTSIZ_PKTCNT_Msk + {HCTSIZ_DOPING};
     (* Set host channel enable *)
     USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {HCCHAR_CHDIS} + {HCCHAR_CHENA};
   END DoPing;
@@ -1016,8 +1018,8 @@ MODULE LLUSB;
       END;
       (* Initialize the HCTSIZn register *)
       USBx_HCi.HCTSIZ := TOSET(hc.XferSize)*HCTSIZ_XFRSIZ_Msk +
-        LSL(TOSET(num_packets), 19)*HCTSIZ_PKTCNT_Msk +
-        LSL(TOSET(hc.data_pid), 29)*HCTSIZ_DPID_Msk;
+        LSL(TOSET(num_packets), HCTSIZ_PKTCNT_Pos)*HCTSIZ_PKTCNT_Msk +
+        LSL(TOSET(hc.data_pid), HCTSIZ_DPID_Pos)*HCTSIZ_DPID_Msk;
       IF dma THEN USBx_HCi.HCDMA := hc.xfer_buff (* xfer_buff MUST be 32-bits aligned *) END;
       (*if frame count is even, the next frame is odd*)
       USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - HCCHAR_ODDFRM_Msk +
@@ -1055,6 +1057,7 @@ MODULE LLUSB;
       IF hc.ep_is_in THEN INCL(tmpreg, HCCHAR_EPDIR) ELSE EXCL(tmpreg, HCCHAR_EPDIR) END;
       INCL(tmpreg, HCCHAR_CHENA);
       USBx_HCi.HCCHAR := tmpreg;
+      Log.Debug("In HC_StartXfer, HCCHAR is "); Log.DebugSet(USBx_HCi.HCCHAR); Log.DebugLn;
       IF dma THEN (* dma mode *) cont := FALSE END
     END;
     IF cont THEN

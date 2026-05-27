@@ -309,6 +309,7 @@ MODULE HALHCD;
   BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
     Log.Debug("Channel "); Log.DebugInt(chnum, 1); Log.DebugString(" interrupt flags: "); Log.DebugSet(flags); Log.DebugLn;
+    Log.Debug("Interrupt mask: "); Log.DebugSet(USBx_HCi.HCINTMSK); Log.DebugLn;
     IF ll.HCINT_AHBERR IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_AHBERR);
       hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
     ELSIF ll.HCINT_ACK IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_ACK);

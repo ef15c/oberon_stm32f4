@@ -787,7 +787,7 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
     SYSTEM.PUT(BSP.RCC_BASE + BSP.CFGR, reg - (BSP.PPRE1m + BSP.PPRE2m + BSP.HPREm + BSP.SWm) +
       (LSL(BSP.HCLK_DIV16, BSP.PPRE1) + LSL(BSP.HCLK_DIV16, BSP.PPRE2) + {1}));
     REPEAT SYSTEM.GET(BSP.RCC_BASE + BSP.CFGR, reg) UNTIL (reg*BSP.SWSm) = {3}; (*wait until system clock is ready*)
-    (*set target dividers for APB1 and APN2*)
+    (*set target dividers for APB1 and APB2*)
     SYSTEM.PUT(BSP.RCC_BASE + BSP.CFGR, reg - (BSP.PPRE1m + BSP.PPRE2m) + (LSL(BSP.HCLK_DIV4, BSP.PPRE1) + LSL(BSP.HCLK_DIV2, BSP.PPRE2)));
     SYSTEM.PUT(BSP.SYST_RVR, BSP.HCLKFreq*1000 - 1)
   END SystemClockInit;

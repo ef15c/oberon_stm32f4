@@ -8,26 +8,26 @@ MODULE USBLog;
 
   IMPORT Texts, Oberon;
 
-  VAR W: Texts.Writer;
+  VAR W: Texts.Writer; wrnum, rdnum: INTEGER;
 
   (* DEBUG logging *)
   PROCEDURE UserString*(msg: ARRAY OF CHAR);
-  BEGIN Texts.WriteString(W, msg)
+  BEGIN Texts.WriteString(W, msg); INC(wrnum)
   END UserString;
 
   PROCEDURE UserInt*(val, len: INTEGER);
-  BEGIN Texts.WriteInt(W, val, len)
+  BEGIN Texts.WriteInt(W, val, len);  INC(wrnum)
   END UserInt;
 
   PROCEDURE UserHexVLen*(x, n: INTEGER; lz: BOOLEAN);
-  BEGIN Texts.WriteHexVLen(W, x, n, lz)
+  BEGIN Texts.WriteHexVLen(W, x, n, lz);  INC(wrnum)
   END UserHexVLen;
 
   PROCEDURE UserSet*(s: SET);
-    VAR i, j: INTEGER; sep: ARRAY 3 OF CHAR;
-  BEGIN sep := "{"; i := 0;
+    VAR i, j: INTEGER; first: BOOLEAN;
+  BEGIN first := TRUE; i := 0; Texts.Write(W, "{");
     WHILE i < 32 DO j := i+1;
-      IF i IN s THEN Texts.WriteString(W, sep); sep := ", ";
+      IF i IN s THEN IF first THEN first := FALSE ELSE Texts.WriteString(W, ", ") END;
         Texts.WriteInt(W, i, 1);
         IF j IN s THEN Texts.WriteString(W, "..");
           WHILE (j < 32) & (j+1 IN s) DO INC(j) END;
@@ -36,15 +36,15 @@ MODULE USBLog;
       END;
       i := j
     END;
-    Texts.Write(W, "}")
+    Texts.Write(W, "}"); INC(wrnum)
   END UserSet;
 
   PROCEDURE UserLn*;
-  BEGIN Texts.WriteLn(W);
+  BEGIN Texts.WriteLn(W); INC(wrnum)
   END UserLn;
 
   PROCEDURE User*(msg: ARRAY OF CHAR);
-  BEGIN UserString(msg); UserLn;
+  BEGIN UserString(msg); UserLn
   END User;
 
   PROCEDURE Error*(msg: ARRAY OF CHAR);
@@ -52,7 +52,7 @@ MODULE USBLog;
   END Error;
 
   PROCEDURE Debug*(msg: ARRAY OF CHAR);
-  BEGIN Texts.WriteString(W, "DEBUG: "); Texts.WriteString(W, msg)
+  BEGIN Texts.WriteString(W, "DEBUG: "); Texts.WriteString(W, msg); INC(wrnum)
   END Debug;
 
   PROCEDURE DebugString*(msg: ARRAY OF CHAR);
@@ -76,7 +76,7 @@ MODULE USBLog;
   END DebugLn;
 
   PROCEDURE Flush*;
-  BEGIN Texts.Append(Oberon.Log, W.buf)
+  BEGIN IF wrnum # rdnum THEN Texts.Append(Oberon.Log, W.buf); INC(rdnum) END
   END Flush;
 
 BEGIN Texts.OpenWriter(W)
