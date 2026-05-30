@@ -16,7 +16,7 @@ MODULE USBHHal;
   ******************************************************************************
   *)
 
-  IMPORT SYSTEM, BSP, Kernel, Def := USBHDef, Core := USBHCore, ll := LLUSB, HCD := HALHCD;
+  IMPORT SYSTEM, BSP, Kernel, Log := USBLog, Def := USBHDef, Core := USBHCore, ll := LLUSB, HCD := HALHCD;
 
   CONST
     (*TODO: relocate in BSP Module*)
@@ -55,7 +55,7 @@ MODULE USBHHal;
     SYSTEM.PUT(othsEn, TRUE); SYSTEM.GET(othsEn, en) (*delay*); (* Enable USB HS Clocks *)
     (* Configure Power Switch Vbus Pin *)
     SYSTEM.PUT(POWERSW_PORT + BSP.BSRR, {POWERSW_VBUS});
-    BSP.configureGPIO(POWERSW_PORT, {POWERSW_VBUS}, LSL(BSP.MASK2, POWERSW_VBUS), {}, {},
+    BSP.configureGPIO(POWERSW_PORT, {POWERSW_VBUS}, LSL(BSP.MASK2, POWERSW_VBUS*2), {}, {},
       LSL(BSP.OUTPUT_MODE, POWERSW_VBUS*2), {}, {}, {}, {}, {});
     Kernel.Delayms(200); (* Delay is need for stabilising the Vbus Low *)
     SYSTEM.PUT(BSP.NVIC_IPR + OTGHS_IRQNum - 16, CHR(LSL(11, 4))); (* Set USBHS Interrupt priority lower than SysTick *)
@@ -327,7 +327,8 @@ MODULE USBHHal;
     phost.pData := ORD(hhcd);
     (* Initialize LL Driver *)
     IF HCD.Init(hhcd) # ll.HAL_OK THEN res := Def.FAIL
-    ELSE Core.SetTimer(phost, HCD.GetCurrentFrame(hhcd)); res := Def.OK
+    ELSE Core.SetTimer(phost, HCD.GetCurrentFrame(hhcd)); res := Def.OK;
+      Log.UserString("Core version: "); Log.UserHexVLen(ORD(hhcd.Instance.GSNPSID), 8, FALSE); Log.UserLn
     END;
     (*Oberon specific callbacks*)
     phost.Stop := Stop;

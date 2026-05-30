@@ -12,11 +12,11 @@ MODULE HALHCD;
   (** @defgroup HCD_Exported_Types_Group1 HCD State Structure definition
   * @{
   *)
-    STATE_RESET = 0;
-    STATE_READY = 1;
-    STATE_ERROR = 2;
-    STATE_BUSY = 3;
-    STATE_TIMEOUT = 4;
+    STATE_RESET* = 0;
+    STATE_READY* = 1;
+    STATE_ERROR* = 2;
+    STATE_BUSY* = 3;
+    STATE_TIMEOUT* = 4;
 
   (** @defgroup HCD_Speed HCD Speed
   * @{
@@ -140,12 +140,11 @@ MODULE HALHCD;
   * @retval None
   *)
   PROCEDURE Port_IRQHandler(hhcd: Handle);
-  VAR res: BYTE; hprt0, hprt0_dup: SET; USBx_HOST!: ll.OTGHostMode;
+  VAR res: BYTE; hprt0, hprt0_dup, fslspcs: SET; USBx_HOST!: ll.OTGHostMode;
   BEGIN USBx_HOST := SYSTEM.VAL(ll.OTGHostMode, ORD(hhcd.Instance) + ll.HOST_BASE);
     (* Handle Host Port Interrupts *)
     SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, hprt0);
-    hprt0_dup := hprt0 - ({ll.HPRT_PENA} + {ll.HPRT_PCDET} + {ll.HPRT_PENCHNG} + {ll.HPRT_POCCHNG});
-    Log.Debug("Port 0 HPRT: "); Log.DebugSet(hprt0); Log.DebugLn;
+    hprt0_dup := hprt0 - {ll.HPRT_PENA, ll.HPRT_PCDET, ll.HPRT_PENCHNG, ll.HPRT_POCCHNG};
     (* Check whether Port Connect detected *)
     IF ll.HPRT_PCDET IN hprt0 THEN
       IF ll.HPRT_PCSTS IN hprt0 THEN hhcd.ConnectCallback(hhcd) END;
@@ -157,11 +156,13 @@ MODULE HALHCD;
       IF ll.HPRT_PENA IN hprt0 THEN
         IF hhcd.Init.phy_itface = ll.EMBEDDED_PHY THEN
           IF hprt0*ll.HPRT_PSPD_Msk = ll.HPRT_PSPD_LOW_SPEED THEN
-            res := ll.InitFSLSPClkSel(hhcd.Instance, ll.HCFG_6_MHZ)
-          ELSE res := ll.InitFSLSPClkSel(hhcd.Instance, ll.HCFG_48_MHZ)
-          END
+            fslspcs := ll.HCFG_6_MHZ
+          ELSE fslspcs := ll.HCFG_48_MHZ
+          END;
+          res := ll.InitFSLSPClkSel(hhcd.Instance, fslspcs)
         ELSIF hhcd.Init.speed = SPEED_FULL THEN USBx_HOST.HFIR := ll.HFIR_60_MHZ
         END;
+        ll.SetXFSIZ(hhcd.Instance); (*workaround channel hang with CHDIS and CHENA set*)
         hhcd.PortEnabledCallback(hhcd)
       ELSE hhcd.PortDisabledCallback(hhcd)
       END
@@ -182,21 +183,21 @@ MODULE HALHCD;
     VAR USBx_HCi!: ll.OTGHostChannel; flags: SET;
   BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
-    IF ll.HCINT_AHBERR IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_AHBERR);
+    IF ll.HCINT_AHBERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_AHBERR};
       hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_BBERR IN flags THEN INCL(USBx_HCi.HCINT, ll. HCINT_BBERR);
+    ELSIF ll.HCINT_BBERR IN flags THEN USBx_HCi.HCINT := {ll. HCINT_BBERR};
       hhcd.hc[chnum].state := ll.HC_BBLERR; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_STALL IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_STALL);
+    ELSIF ll.HCINT_STALL IN flags THEN USBx_HCi.HCINT := {ll.HCINT_STALL};
       hhcd.hc[chnum].state := ll.HC_STALL; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_DTERR IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_DTERR);
+    ELSIF ll.HCINT_DTERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_DTERR};
       hhcd.hc[chnum].state := ll.HC_DATATGLERR; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_TXERR IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_TXERR);
+    ELSIF ll.HCINT_TXERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_TXERR};
       hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
     END;
     IF ll. HCINT_FRMOR IN flags THEN  ll.HC_Halt(hhcd.Instance, chnum);
-      INCL(USBx_HCi.HCINT, ll.HCINT_FRMOR);
+      USBx_HCi.HCINT := {ll.HCINT_FRMOR};
     ELSIF ll.HCINT_XFRC IN flags THEN
-      INCL(USBx_HCi.HCINT, ll.HCINT_ACK); (* Clear any pending ACK IT *)
+      USBx_HCi.HCINT := {ll.HCINT_ACK}; (* Clear any pending ACK IT *)
       IF hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].do_csplit := FALSE;
         EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_SPLITEN)
       END;
@@ -204,9 +205,9 @@ MODULE HALHCD;
         hhcd.hc[chnum].xfer_count := hhcd.hc[chnum].XferSize - ORD(USBx_HCi.HCTSIZ*ll.HCTSIZ_XFRSIZ_Msk)
       END;
       hhcd.hc[chnum].state := ll.HC_XFRC; hhcd.hc[chnum].ErrCnt := 0;
-      INCL(USBx_HCi.HCINT, ll.HCINT_XFRC);
+      USBx_HCi.HCINT := {ll.HCINT_XFRC};
       IF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_CTRL, Def.EP_TYPE_BULK} THEN ll.HC_Halt(hhcd.Instance, chnum);
-        INCL(USBx_HCi.HCINT, ll.HCINT_NAK)
+        USBx_HCi.HCINT := {ll.HCINT_NAK}
       ELSIF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_INTR, Def.EP_TYPE_ISOC} THEN
         INCL(USBx_HCi.HCCHAR, ll.HCCHAR_ODDFRM);
         hhcd.hc[chnum].urb_state := ll.URB_DONE;
@@ -218,11 +219,11 @@ MODULE HALHCD;
         END
       ELSE hhcd.hc[chnum].toggle_in := ~hhcd.hc[chnum].toggle_in
       END
-    ELSIF ll.HCINT_ACK IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_ACK);
+    ELSIF ll.HCINT_ACK IN flags THEN USBx_HCi.HCINT := {ll.HCINT_ACK};
       IF hhcd.hc[chnum].do_ssplit THEN hhcd.hc[chnum].do_csplit := TRUE;
         hhcd.hc[chnum].state := ll.HC_ACK; ll.HC_Halt(hhcd.Instance, chnum)
       END
-    ELSIF ll.HCINT_CHH IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_CHH);
+    ELSIF ll.HCINT_CHH IN flags THEN USBx_HCi.HCINT := {ll.HCINT_CHH};
       IF hhcd.hc[chnum].state = ll.HC_XFRC THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         hhcd.hc[chnum].urb_state := ll.URB_DONE
       ELSIF hhcd.hc[chnum].state = ll.HC_STALL THEN hhcd.hc[chnum].state := ll.HC_HALTED;
@@ -276,7 +277,7 @@ MODULE HALHCD;
       ELSIF hhcd.hc[chnum].state # ll.HC_HALTED THEN
         hhcd.HC_NotifyURBChangeCallback(hhcd, chnum, hhcd.hc[chnum].urb_state);
       END
-    ELSIF ll.HCINT_NYET IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_NYET);
+    ELSIF ll.HCINT_NYET IN flags THEN USBx_HCi.HCINT := {ll.HCINT_NYET};
       hhcd.hc[chnum].state := ll.HC_NYET;
       IF ~hhcd.hc[chnum].do_ssplit THEN hhcd.hc[chnum].ErrCnt := 0 END;
       ll.HC_Halt(hhcd.Instance, chnum)
@@ -293,7 +294,7 @@ MODULE HALHCD;
       IF hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].do_csplit := FALSE;
         EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_COMPLSPLT); INCL(USBx_HCi.HCINTMSK, ll.HCINTMSK_ACKM);
       END;
-      INCL(USBx_HCi.HCINT, ll.HCINT_NAK)
+      USBx_HCi.HCINT := {ll.HCINT_NAK};
     END
   END HC_IN_IRQHandler;
 
@@ -308,11 +309,9 @@ MODULE HALHCD;
     VAR USBx_HCi!: ll.OTGHostChannel; flags: SET; num_packets: INTEGER; purbs: BYTE;
   BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
-    Log.Debug("Channel "); Log.DebugInt(chnum, 1); Log.DebugString(" interrupt flags: "); Log.DebugSet(flags); Log.DebugLn;
-    Log.Debug("Interrupt mask: "); Log.DebugSet(USBx_HCi.HCINTMSK); Log.DebugLn;
-    IF ll.HCINT_AHBERR IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_AHBERR);
+    IF ll.HCINT_AHBERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_AHBERR};
       hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_ACK IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_ACK);
+    ELSIF ll.HCINT_ACK IN flags THEN USBx_HCi.HCINT := {ll.HCINT_ACK};
       IF hhcd.hc[chnum].do_ping THEN hhcd.hc[chnum].do_ping := FALSE;
         hhcd.hc[chnum].urb_state := ll.URB_NOTREADY; hhcd.hc[chnum].state := ll.HC_ACK;
         ll.HC_Halt(hhcd.Instance, chnum)
@@ -322,30 +321,30 @@ MODULE HALHCD;
         hhcd.hc[chnum].state := ll.HC_ACK; ll.HC_Halt(hhcd.Instance, chnum);
         hhcd.hc[chnum].ErrCnt := 0; (* reset error_count *)
       END
-    ELSIF ll.HCINT_FRMOR IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_FRMOR);
+    ELSIF ll.HCINT_FRMOR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_FRMOR};
       ll.HC_Halt(hhcd.Instance, chnum)
     ELSIF ll.HCINT_XFRC IN flags THEN hhcd.hc[chnum].ErrCnt := 0;
       (* transaction completed with NYET state, update do ping state *)
       IF ll.HCINT_NYET IN flags THEN hhcd.hc[chnum].do_ping := TRUE;
-        INCL(USBx_HCi.HCINT, ll.HCINT_NYET)
+        USBx_HCi.HCINT := {ll.HCINT_NYET}
       END;
       IF hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].do_csplit := FALSE;
         EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_COMPLSPLT)
       END;
-      INCL(USBx_HCi.HCINT, ll.HCINT_XFRC); hhcd.hc[chnum].state := ll.HC_XFRC;
+      USBx_HCi.HCINT := {ll.HCINT_XFRC}; hhcd.hc[chnum].state := ll.HC_XFRC;
       ll.HC_Halt(hhcd.Instance, chnum);
     ELSIF ll.HCINT_NYET IN flags THEN hhcd.hc[chnum].state := ll.HC_NYET;
       IF ~hhcd.hc[chnum].do_ssplit THEN hhcd.hc[chnum].do_ping := TRUE END;
       hhcd.hc[chnum].ErrCnt := 0; ll.HC_Halt(hhcd.Instance, chnum);
-      INCL(USBx_HCi.HCINT, ll.HCINT_NYET)
-    ELSIF ll.HCINT_STALL IN flags THEN INCL(USBx_HCi.HCINT, ll.HCINT_STALL);
+      USBx_HCi.HCINT := {ll.HCINT_NYET}
+    ELSIF ll.HCINT_STALL IN flags THEN USBx_HCi.HCINT := {ll.HCINT_STALL};
       hhcd.hc[chnum].state := ll.HC_STALL; ll.HC_Halt(hhcd.Instance, chnum);
     ELSIF ll.HCINT_NAK IN flags THEN hhcd.hc[chnum].ErrCnt := 0;
       hhcd.hc[chnum].state := ll.HC_NAK;
       IF ~hhcd.hc[chnum].do_ping & (hhcd.hc[chnum].speed = SPEED_HIGH) THEN
         hhcd.hc[chnum].do_ping := TRUE
       END;
-      ll.HC_Halt(hhcd.Instance, chnum); INCL(USBx_HCi.HCINT, ll.HCINT_NAK);
+      ll.HC_Halt(hhcd.Instance, chnum); USBx_HCi.HCINT := {ll.HCINT_NAK};
     ELSIF ll.HCINT_TXERR IN flags THEN
       IF ~hhcd.Init.dma_enable THEN hhcd.hc[chnum].state := ll.HC_XACTERR;
         ll.HC_Halt(hhcd.Instance, chnum)
@@ -358,10 +357,10 @@ MODULE HALHCD;
           USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
         END
       END;
-      INCL(USBx_HCi.HCINT, ll.HCINT_TXERR)
+      USBx_HCi.HCINT := {ll.HCINT_TXERR}
     ELSIF ll.HCINT_DTERR IN flags THEN hhcd.hc[chnum].state := ll.HC_DATATGLERR;
-      ll.HC_Halt(hhcd.Instance, chnum); INCL(USBx_HCi.HCINT, ll.HCINT_DTERR)
-    ELSIF ll.HCINT_CHH IN flags THEN  INCL(USBx_HCi.HCINT, ll.HCINT_CHH);
+      ll.HC_Halt(hhcd.Instance, chnum); USBx_HCi.HCINT := {ll.HCINT_DTERR}
+    ELSIF ll.HCINT_CHH IN flags THEN  USBx_HCi.HCINT := {ll.HCINT_CHH};
       purbs := hhcd.hc[chnum].urb_state;
       IF hhcd.hc[chnum].state = ll.HC_XFRC THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         hhcd.hc[chnum].urb_state := ll.URB_DONE;
@@ -395,7 +394,7 @@ MODULE HALHCD;
       IF hhcd.hc[chnum].urb_state # purbs THEN
         hhcd.HC_NotifyURBChangeCallback(hhcd, chnum, hhcd.hc[chnum].urb_state)
       END
-    END
+    END;
   END HC_OUT_IRQHandler;
 
   (**
@@ -441,7 +440,6 @@ MODULE HALHCD;
   BEGIN flags := ll.ReadInterrupts(hhcd.Instance);
     (* Ensure that we are in host mode *)
     IF (ll.GetMode(hhcd.Instance) = ll.USB_HOST_MODE) & (flags # {}) (* Avoid spurious interrupt *) THEN
-      IF flags - {ll.GINTSTS_SOF} # {} THEN Log.Debug("Core interrupt register: "); Log.DebugSet(flags); Log.DebugLn END;
       IF ll.GINTSTS_PXFR_INCOMPISOOUT IN flags THEN (* Incomplete periodic transfer, acknowledge the interrupt *)
         hhcd.Instance.GINTSTS := {ll.GINTSTS_PXFR_INCOMPISOOUT}
       END;
@@ -471,12 +469,10 @@ MODULE HALHCD;
       IF ll.GINTSTS_SOF IN flags THEN hhcd.SOFCallback(hhcd); hhcd.Instance.GINTSTS := {ll.GINTSTS_SOF} END;
       (* Handle Host channel Interrupt *)
       IF ll.GINTSTS_HCINT IN flags THEN interrupt := ll.HC_ReadInterrupt(hhcd.Instance);
-        Log.Debug("Host all channels interrupt: "); Log.DebugSet(interrupt); Log.DebugLn;
         ASSERT(hhcd.Init.Host_channels <= 12);
         FOR i := 0 TO hhcd.Init.Host_channels - 1 DO
           IF i MOD 10H IN interrupt THEN
             SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + i*ll.HOST_CHANNEL_SIZE, reg);
-            Log.Debug("Host channel "); Log.DebugInt(i, 1); Log.DebugString(" characteristics: "); Log.DebugSet(reg); Log.DebugLn;
             IF ll.HCCHAR_EPDIR IN reg THEN HC_IN_IRQHandler(hhcd, i) ELSE HC_OUT_IRQHandler(hhcd, i) END
           END
         END;
@@ -514,10 +510,12 @@ MODULE HALHCD;
       ll.DisableGlobalInt(hhcd.Instance);  (* Disable the Interrupts *)
       (* Init the Core (common init.) *)
       IF ll.CoreInit(hhcd.Instance, hhcd.Init) # ll.HAL_OK THEN
+        Log.Error("Core init failed");
         hhcd.State := STATE_ERROR; res := ll.HAL_ERROR
       ELSE
         (* Force Host Mode *)
         IF ll.SetCurrentMode(hhcd.Instance, ll.USB_HOST_MODE) # ll.HAL_OK THEN
+          Log.Error("Force host mode failed");
           hhcd.State := STATE_ERROR; res := ll.HAL_ERROR
         ELSE
           (* Init Host *)
@@ -574,6 +572,7 @@ MODULE HALHCD;
   HAL_StatusTypeDef status;
 *)
   BEGIN HCcharMps := mps;
+    Log.Debug("HCD.HC_Init channel: "); Log.DebugInt(ch_num, 1); Log.DebugLn;
 (*  __HAL_LOCK(hhcd);*)
     hhcd.hc[ch_num].do_ping := FALSE; hhcd.hc[ch_num].dev_addr := dev_address;
     hhcd.hc[ch_num].ch_num := ch_num; hhcd.hc[ch_num].ep_type := ep_type;
@@ -646,7 +645,7 @@ MODULE HALHCD;
     VAR res: BYTE;
   BEGIN
 (*  __HAL_LOCK(hhcd);*)
-    res := ll.StopHost(hhcd.Instance)
+    res := ll.StopHost(hhcd.Instance); hhcd.State := STATE_RESET
 (*  __HAL_UNLOCK(hhcd);*)
   END Stop;
 

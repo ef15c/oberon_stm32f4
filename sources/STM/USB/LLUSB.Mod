@@ -87,7 +87,7 @@ MODULE LLUSB;
     HAL_TIMEOUT* = 3;
 
     USB_TIMEOUT* = 0F000000H;
-    USB_CURRENT_MODE_MAX_DELAY_MS* = 200;
+    USB_CURRENT_MODE_MAX_DELAY_MS* = 500;
 
   (**
   * @brief  USB Mode definition
@@ -100,9 +100,9 @@ MODULE LLUSB;
   (** @defgroup USB_LL_HFIR_Defines USB Low Layer frame interval Defines
   * @{
   *)
-    HFIR_6_MHZ* = 6000;
-    HFIR_60_MHZ* = 60000;
-    HFIR_48_MHZ* = 48000;
+    HFIR_6_MHZ* = 6000 - 1;
+    HFIR_60_MHZ* = 60000 - 1;
+    HFIR_48_MHZ* = 48000 - 1;
 
     CLEAR_INTERRUPT_MASK* = {0..31};
 
@@ -143,6 +143,9 @@ MODULE LLUSB;
     GCCFG_SOFOUTEN_Msk* = {GCCFG_SOFOUTEN};
     GCCFG_NOVBUSSENS* = 21; (*!< VBUS sensing disable option*)
     GCCFG_NOVBUSSENS_Msk* = {GCCFG_NOVBUSSENS};
+
+  (********************  Bit definition for USB_OTG_GSNPSID register  ********************)
+    GSNPSID_CORE_REV_Msk* = {0..15}; (*!< Core revision *)
 
   (********************  Bit definition for USB_OTG_GUSBCFG register  ********************)
     GUSBCFG_TOCAL_Msk* = {0..2}; (*!< FS timeout calibration *)
@@ -314,8 +317,8 @@ MODULE LLUSB;
     GINTMSK_WUIM_Msk* = {GINTMSK_WUIM};
 
   (********************  Bit definition forUSB_OTG_HCFG register  ********************)
-
-    HCFG_FSLSPCS_Msk* = {0..1}; (*!< FS/LS PHY clock select  *)
+    HCFG_FSLSPCS_Pos* = 0;
+    HCFG_FSLSPCS_Msk* = {HCFG_FSLSPCS_Pos..1}; (*!< FS/LS PHY clock select  *)
   (** @defgroup USB_LL_HCFG_SPEED_Defines USB Low Layer HCFG Speed Defines
   * @{
   *)
@@ -368,7 +371,8 @@ MODULE LLUSB;
     HCCHAR_ISOC* = {18};
     HCCHAR_BULK* = {19};
     HCCHAR_INTR* = {18..19};
-    HCCHAR_MC_Msk* = {20..21}; (*!< Multi Count (MC) / Error Count (EC) *)
+    HCCHAR_MC_Pos* = 20;
+    HCCHAR_MC_Msk* = {HCCHAR_MC_Pos..21}; (*!< Multi Count (MC) / Error Count (EC) *)
     HCCHAR_DAD_Msk* = {22..28}; (*!< Device address *)
     HCCHAR_ODDFRM* = 29; (*!< Odd frame *)
     HCCHAR_ODDFRM_Msk* = {HCCHAR_ODDFRM};
@@ -484,7 +488,8 @@ MODULE LLUSB;
       Reserved30: ARRAY 2 OF INTEGER; (*!< Reserved                                     030h *)
       GCCFG*: SET;                 (*!< General Purpose IO Register                  038h *)
       CID*: INTEGER;      (*!< User ID Register                             03Ch *)
-      Reserved40: ARRAY 48 OF INTEGER; (*!< Reserved                                0x40-0xFF *)
+      GSNPSID*: SET;     (*!< HW Release version*)
+      Reserved40: ARRAY 47 OF INTEGER; (*!< Reserved                                0x44-0xFF *)
       HPTXFSIZ*: INTEGER; (*!< Host Periodic Tx FIFO Size Reg               100h *)
       DIEPTXF*: ARRAY 0FH OF INTEGER (*!< dev Periodic Transmit FIFO                        *)
     END;
@@ -678,7 +683,7 @@ MODULE LLUSB;
   PROCEDURE SetCurrentMode*(USBx: OTGCore; mode: BYTE): BYTE;
     VAR  res:BYTE; ms: INTEGER;
   BEGIN ms := 0; res := HAL_OK;
-    USBx.GUSBCFG := USBx.GUSBCFG - ({GUSBCFG_FHMOD} + {GUSBCFG_FDMOD});
+    USBx.GUSBCFG := USBx.GUSBCFG - {GUSBCFG_FHMOD, GUSBCFG_FDMOD};
     IF mode = USB_HOST_MODE THEN INCL(USBx.GUSBCFG, GUSBCFG_FHMOD);
       REPEAT Kernel.Delayms(10); INC(ms, 10)
       UNTIL (GetMode(USBx) = USB_HOST_MODE) OR (ms >= USB_CURRENT_MODE_MAX_DELAY_MS)
@@ -736,6 +741,25 @@ MODULE LLUSB;
   END FlushRxFifo;
 
   (**
+  * @brief  SetXFSIZ : Initializes the USB OTG GRXFSIZ, DIEPTXF0_HNPTXFSIZ and HPTXFSIZ registers
+  * @param  USBx  Selected device
+  *)
+  PROCEDURE SetXFSIZ*(USBx: OTGCore);
+  BEGIN
+    IF ORD(USBx) = HS_PERIPH_BASE THEN
+      (* set Rx FIFO size *)
+      USBx.GRXFSIZ := 200H;
+      USBx.DIEPTXF0_HNPTXFSIZ := LSL(100H, 16) + 200H;
+      USBx.HPTXFSIZ := LSL(0E0H, 16) + 300H;
+    ELSE
+      (* set Rx FIFO size *)
+      USBx.GRXFSIZ := 80H;
+      USBx.DIEPTXF0_HNPTXFSIZ := LSL(60H, 16) + 80H;
+      USBx.HPTXFSIZ := LSL(40H, 16) + 0E0H;
+    END;
+  END SetXFSIZ;
+
+  (**
   * @brief  USB_HostInit : Initializes the USB OTG controller registers
   *         for Host mode
   * @param  USBx  Selected device
@@ -771,22 +795,11 @@ MODULE LLUSB;
     END;
     USBx.GINTMSK := {}; (* Disable all interrupts. *)
     USBx.GINTSTS := CLEAR_INTERRUPT_MASK; (* Clear any pending interrupts *)
-
-    IF ORD(USBx) = HS_PERIPH_BASE THEN
-      (* set Rx FIFO size *)
-      USBx.GRXFSIZ := 200H;
-      USBx.DIEPTXF0_HNPTXFSIZ := LSL(100H, 16) + 200H;
-      USBx.HPTXFSIZ := LSL(0E0H, 16) + 300H;
-    ELSE
-      (* set Rx FIFO size *)
-      USBx.GRXFSIZ := 80H;
-      USBx.DIEPTXF0_HNPTXFSIZ := LSL(60H, 16) + 80H;
-      USBx.HPTXFSIZ := LSL(40H, 16) + 0E0H;
-    END;
-    IF cfg.dma_enable THEN INCL(USBx.GINTMSK, GINTMSK_RXFLVLM) END; (* Enable the common interrupts *)
+    (*SetXFSIZ*(USBx)*)
+    IF ~cfg.dma_enable THEN INCL(USBx.GINTMSK, GINTMSK_RXFLVLM) END; (* Enable the common interrupts *)
     (* Enable interrupts matching to the Host mode ONLY *)
-    USBx.GINTMSK :=  USBx.GINTMSK + ({GINTMSK_PRTIM} + {GINTMSK_HCIM} + {GINTMSK_SOFM} +
-      {GINTSTS_DISCINT} + {GINTMSK_PXFRM_IISOOXFRM} + {GINTMSK_WUIM})
+    USBx.GINTMSK :=  USBx.GINTMSK + {GINTMSK_PRTIM, GINTMSK_HCIM, GINTMSK_SOFM,
+      GINTSTS_DISCINT, GINTMSK_PXFRM_IISOOXFRM, GINTMSK_WUIM}
 
     RETURN ret
   END HostInit;
@@ -934,7 +947,7 @@ MODULE LLUSB;
       TOSET(LSL(epnum, 11))* HCCHAR_EPNUM_Msk +
       TOSET(LSL(ep_type, 18))*HCCHAR_EPTYP_Msk +
       TOSET(mps)*HCCHAR_MPSIZ_Msk +
-      {20} + HCcharEpDir + HCcharLowSpeed;
+      LSL(TOSET(1), HCCHAR_MC_Pos) + HCcharEpDir + HCcharLowSpeed;
     IF ep_type IN {Def.EP_TYPE_INTR, Def.EP_TYPE_ISOC} THEN INCL(USBx_HCi.HCCHAR, HCCHAR_ODDFRM) END
 
     RETURN ret
@@ -1057,7 +1070,6 @@ MODULE LLUSB;
       IF hc.ep_is_in THEN INCL(tmpreg, HCCHAR_EPDIR) ELSE EXCL(tmpreg, HCCHAR_EPDIR) END;
       INCL(tmpreg, HCCHAR_CHENA);
       USBx_HCi.HCCHAR := tmpreg;
-      Log.Debug("In HC_StartXfer, HCCHAR is "); Log.DebugSet(USBx_HCi.HCCHAR); Log.DebugLn;
       IF dma THEN (* dma mode *) cont := FALSE END
     END;
     IF cont THEN
@@ -1145,10 +1157,10 @@ MODULE LLUSB;
   * @retval HAL state
   *)
   PROCEDURE HC_Halt*(USBx: OTGCore; hc_num: BYTE);
-    VAR USBx_HCi!: OTGHostChannel; HcEpType: SET;
+    VAR USBx_HCi!: OTGHostChannel; HcEpType: SET; USBx_HOST!: OTGHostMode;
     PROCEDURE disableChannel(USBx: OTGCore; USBx_HCi: OTGHostChannel);
       VAR count: INTEGER;
-    BEGIN
+    BEGIN count := 0;
       IF USBx.HNPTXSTS*HNPTXSTS_NPTQXSAV_Msk = {} THEN
         EXCL(USBx_HCi.HCCHAR, HCCHAR_CHENA); INCL(USBx_HCi.HCCHAR, HCCHAR_CHENA);
         REPEAT INC(count)
@@ -1157,13 +1169,12 @@ MODULE LLUSB;
       END
     END disableChannel;
   BEGIN USBx_HCi := SYSTEM.VAL(OTGHostChannel, ORD(USBx) + HOST_CHANNEL_BASE + hc_num*HOST_CHANNEL_SIZE);
-    Log.Debug("Halt request for channel "); Log.DebugInt(hc_num, 1); Log.DebugLn;
     (* In buffer DMA, Channel disable must not be programmed for non-split periodic channels.
      At the end of the next uframe/frame (in the worst case), the core generates a channel halted
      and disables the channel automatically. *)
     HcEpType := USBx_HCi.HCCHAR*HCCHAR_EPTYP_Msk;
     IF  ~(GAHBCFG_DMAEN IN USBx.GAHBCFG) OR (HCSPLT_SPLITEN IN USBx_HCi.HCSPLT) OR
-      (HCCHAR_CHENA IN USBx_HCi.HCCHAR) & (HcEpType # HCCHAR_ISOC) & (HcEpType # HCCHAR_INTR) THEN 
+      (HCCHAR_CHENA IN USBx_HCi.HCCHAR) & (HcEpType # HCCHAR_ISOC) & (HcEpType # HCCHAR_INTR) THEN
       (* Check for space in the request queue to issue the halt. *)
       IF (HcEpType = HCCHAR_CTRL) OR (HcEpType = HCCHAR_BULK) THEN
         INCL(USBx_HCi.HCCHAR, HCCHAR_CHDIS);
@@ -1214,8 +1225,12 @@ MODULE LLUSB;
   * @retval HAL state
   *)
   PROCEDURE StopHost*(USBx: OTGCore): BYTE;
-    VAR ret: BYTE; i, count: INTEGER; USBx_HOST!: OTGHostMode; USBx_HCi!: OTGHostChannel;
-  BEGIN USBx_HOST := SYSTEM.VAL(OTGHostMode, ORD(USBx) + HOST_BASE); ret := HAL_OK; count := 0;
+    VAR ret: BYTE(* i, count: INTEGER; USBx_HOST!: OTGHostMode; USBx_HCi!: OTGHostChannel*);
+  BEGIN DisableGlobalInt(USBx);
+    Log.Debug("GetMode: "); Log.DebugInt(GetMode(USBx), 1); Log.DebugLn;
+    RETURN CoreReset(USBx)
+(*
+    USBx_HOST := SYSTEM.VAL(OTGHostMode, ORD(USBx) + HOST_BASE); ret := HAL_OK; count := 0;
     DisableGlobalInt(USBx);
     (* Flush USB FIFO *)
     IF (FlushTxFifo(USBx, ALL_FIFOS) # HAL_OK ) OR (FlushRxFifo(USBx) # HAL_OK) THEN ret := HAL_ERROR
@@ -1232,10 +1247,13 @@ MODULE LLUSB;
       (* Clear any pending Host interrupts *)
       USBx_HOST.HAINT := CLEAR_INTERRUPT_MASK;
       USBx.GINTSTS := CLEAR_INTERRUPT_MASK;
+      LED(0FH);
       EnableGlobalInt(USBx)
+      ;LED(0)
     END
 
     RETURN ret
+*)
   END StopHost;
 
 END LLUSB.

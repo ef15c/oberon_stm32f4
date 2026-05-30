@@ -213,6 +213,7 @@ MODULE USBH;
       ReqStatus := CtlReq.Get_DevDesc(phost, 8);
       IF ReqStatus = Def.OK THEN
         phost.Control.pipe_size := phost.device.DevDesc.bMaxPacketSize;
+        Log.Debug("pipe size: "); Log.DebugInt(phost.Control.pipe_size, 1); Log.DebugLn;
         phost.EnumState := Def.ENUM_GET_FULL_DEV_DESC;
         (* modify control channels configuration for MaxPacket size *)
         Pipes.Open(phost, phost.Control.pipe_in, 80H, phost.device.address,
