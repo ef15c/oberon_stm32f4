@@ -22,8 +22,6 @@ MODULE USBHHIDApp;
   PROCEDURE InitApplication;
   BEGIN
     Log.User("OTG FS HID Host");
-    Log.User("USBH lib started.");
-    Log.User("");
     Log.Flush
   END InitApplication;
 
@@ -65,15 +63,18 @@ MODULE USBHHIDApp;
     res := USBH.Init(hUSBHost, UserProcess, 0);
     IF res = Def.OK THEN res := USBH.RegisterClass(hUSBHost, HID.CLASS); (* Add Supported Class *)
       USBH.Start(hUSBHost); (* Start Host Process *)
+      Log.User("USBH lib started.");
       (* Run Application (Non blocking mode) *)
       processTask := Oberon.NewTask(Process, 10); Oberon.Install(processTask)
-    END
+    ELSE Log.Error("USBH lib failed to start");
+    END;
+    Log.Flush
   END Run;
 
   PROCEDURE Stop*;
-  BEGIN USBH.Stop(hUSBHost); USBH.DeInit(hUSBHost);
+  BEGIN USBH.DeInit(hUSBHost);
     Log.User("USBH lib stopped.");
-    Oberon.Remove(processTask);
+    IF processTask # NIL THEN Oberon.Remove(processTask); processTask := NIL END;
     Log.Flush
   END Stop;
 

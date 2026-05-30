@@ -404,11 +404,11 @@ MODULE HALHCD;
   *)
   PROCEDURE RXQLVL_IRQHandler(hhcd: Handle);
     VAR USBx_HCi!: ll.OTGHostChannel;
-      pktsts: SET; pktcnt, xferSizePktCnt, res: INTEGER; chnum: BYTE;
-  BEGIN
-    pktsts := hhcd.Instance.GRXSTSP*ll.GRXSTSP_PKTSTS_Msk;
-    pktcnt := LSR(ORD(hhcd.Instance.GRXSTSP*ll.GRXSTSP_BCNT_Msk), 4);
-    chnum := ORD(hhcd.Instance.GRXSTSP*ll.GRXSTSP_EPNUM_Msk);
+      GrxstspReg, pktsts: SET; pktcnt, xferSizePktCnt, res: INTEGER; chnum: BYTE;
+  BEGIN GrxstspReg := hhcd.Instance.GRXSTSP;
+    chnum := ORD(GrxstspReg*ll.GRXSTSP_EPNUM_Msk);
+    pktsts := GrxstspReg*ll.GRXSTSP_PKTSTS_Msk;
+    pktcnt := LSR(ORD(GrxstspReg*ll.GRXSTSP_BCNT_Msk), 4);
     USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     IF pktsts = ll.GRXSTS_PKTSTS_IN THEN
       (* Read the data into the host buffer. *)
