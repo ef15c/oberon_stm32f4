@@ -28,7 +28,6 @@ MODULE USBH;
   BEGIN  zeroDev := SYSTEM.VAL(Def.DevDescriptor,SYSTEM.ADR(Def.ZERO));
     zeroCfg := SYSTEM.VAL(Def.CfgDescriptor, SYSTEM.ADR(Def.ZERO));
     FOR i := 0 TO Def.MAX_PIPES_NBR - 1 DO phost.Pipes[i] := {} END; (* Clear Pipes flags*)
-    FOR i := 0 TO Conf.MAX_DATA_BUFFER - 1 DO phost.device.Data.buf[i] := 0 END;
 
     phost.gState := Def.IDLE;
     phost.EnumState := Def.IDLE;
@@ -46,7 +45,6 @@ MODULE USBH;
 
     (* Reset the device record *)
     FOR i := 0 TO Conf.MAX_SIZE_CONFIGURATION - 1 DO phost.device.CfgDesc_Raw[i] :=  0 END;
-    FOR i := 0 TO Conf.MAX_DATA_BUFFER - 1 DO phost.device.Data.buf[i] :=  0 END;
     phost.device.DevDesc := zeroDev^;
     phost.device.CfgDesc := zeroCfg^;
   END DeInitStateMachine;
@@ -73,9 +71,9 @@ MODULE USBH;
       phost.device.is_disconnected := FALSE;
       phost.device.is_ReEnumerated := FALSE;
       IF pUsrFunc # NIL THEN phost.pUser := pUsrFunc END; (* Assign User process *)
-      status := UH.Init(phost); (* Initialize low level driver *)
-      Log.Flush
-    END
+      status := UH.Init(phost) (* Initialize low level driver *)
+    END;
+    Log.Flush
 
     RETURN status
   END Init;
@@ -95,7 +93,7 @@ MODULE USBH;
     phost.device.is_ReEnumerated := FALSE;
     phost.device.RstCnt := 0;
     phost.device.EnumCnt := 0;
-    IF phost.pData # 0 THEN UH.Stop(phost) END;
+    IF phost.phcd # NIL THEN UH.Stop(phost) END;
     Log.Flush
   END DeInit;
 
@@ -157,7 +155,7 @@ MODULE USBH;
   BEGIN status := Def.OK;
     IF interface < phost.device.CfgDesc.bNumInterfaces THEN
       phost.device.current_interface := interface;
-      Log.UserString("Switching to Interface (#"); Log.UserInt(interface, 1); Log.User(" )");
+      Log.UserString("Switching to Interface (#"); Log.UserInt(interface, 1); Log.User(")");
       Log.UserString("Class    : "); Log.UserHexVLen(phost.device.CfgDesc.Itf_Desc[interface].bInterfaceClass, 2, FALSE); Log.User("h");
       Log.UserString("SubClass : "); Log.UserHexVLen(phost.device.CfgDesc.Itf_Desc[interface].bInterfaceSubClass, 2, FALSE); Log.User("h");
       Log.UserString("Protocol : "); Log.UserHexVLen(phost.device.CfgDesc.Itf_Desc[interface].bInterfaceProtocol, 2, FALSE); Log.User("h");
@@ -213,7 +211,6 @@ MODULE USBH;
       ReqStatus := CtlReq.Get_DevDesc(phost, 8);
       IF ReqStatus = Def.OK THEN
         phost.Control.pipe_size := phost.device.DevDesc.bMaxPacketSize;
-        Log.Debug("pipe size: "); Log.DebugInt(phost.Control.pipe_size, 1); Log.DebugLn;
         phost.EnumState := Def.ENUM_GET_FULL_DEV_DESC;
         (* modify control channels configuration for MaxPacket size *)
         Pipes.Open(phost, phost.Control.pipe_in, 80H, phost.device.address,
@@ -255,7 +252,7 @@ MODULE USBH;
       IF ReqStatus = Def.OK THEN
         Kernel.Delayms(2); phost.device.address := Def.DEVICE_ADDRESS;
         (* user callback for device address assigned *)
-        Log.UserString("Address (#"); Log.UserInt(phost.device.address, 1); Log.User(" assigned.");
+        Log.UserString("Address (#"); Log.UserInt(phost.device.address, 1); Log.User(") assigned.");
         phost.EnumState := Def.ENUM_GET_CFG_DESC;
         (* modify control channels to update device address *)
         Pipes.Open(phost, phost.Control.pipe_in, 80H, phost.device.address,

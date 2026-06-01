@@ -178,6 +178,8 @@ MODULE USBHDef;
     SELF_POWERED* = 6;
 
   TYPE
+    DataBuffer* = ARRAY Conf.MAX_DATA_BUFFER OF BYTE;
+
     SetupDesc* = RECORD
       bmRequestType*: BYTESET; bRequest*: BYTE;
       wValue*, wIndex*, wLength*: HALFWORD
@@ -254,13 +256,9 @@ MODULE USBHDef;
       Itf_Desc*: ARRAY Conf.MAX_NUM_INTERFACES OF InterfaceDescriptorDesc
     END;
 
-    DataBuffer* = POINTER TO DataBufferDesc;
-    DataBufferDesc* = RECORD buf*: ARRAY Conf.MAX_DATA_BUFFER OF BYTE END;
-
     (* Attached device structure *)
     DeviceDesc* = RECORD
       CfgDesc_Raw*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE;
-      Data*: DataBufferDesc;
       address*, speed*, EnumCnt*, RstCnt*: BYTE;
       is_connected*, is_disconnected*, is_ReEnumerated*, PortEnabled*: BOOLEAN;
       current_interface*: BYTE;
@@ -283,8 +281,10 @@ MODULE USBHDef;
       SOFProcess*: Callback;
       pData*: ClassHandle
     END;
-
     Class* = POINTER TO ClassDesc;
+
+    HCDHandle* = POINTER TO HCDHandleDesc;
+    HCDHandleDesc* = RECORD END;
 
     UserCallback* = PROCEDURE(pHandle: Handle; id: BYTE);
 
@@ -306,7 +306,7 @@ MODULE USBHDef;
 #endif /* defined (USBH_IN_NAK_PROCESS) && (USBH_IN_NAK_PROCESS == 1U) */*)
       Timeout*: INTEGER;
       id*: BYTE;
-      pData*: INTEGER; (*pointer to arbirary data*)
+      phcd*: HCDHandle; (*pointer to HCD handle*)
       pUser*: UserCallback;
       Stop*: PROCEDURE^5(phost: Handle);
       OpenPipe*: PROCEDURE(phost: Handle; pipe_num, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD);

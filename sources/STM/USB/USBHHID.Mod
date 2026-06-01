@@ -43,14 +43,29 @@ MODULE USBHHID;
   * @retval None
   *)
   PROCEDURE ParseHIDDesc(VAR desc: HCl.DescriptorDesc; buf: ARRAY OF BYTE);
-    VAR phead!: Def.DescHeader; phiddesc!: HCl.Descriptor; CfgDescLen, ptr: HALFWORD; done: BOOLEAN;
+    VAR phead!: Def.DescHeader; CfgDescLen, ptr, nptr: HALFWORD;
+      done: BOOLEAN;
   BEGIN phead := SYSTEM.VAL(Def.DescHeader, SYSTEM.ADR(buf));
+(*
+DEBUG: configuration descriptor: (59)
+  09  02  3B  00  02  01  00  A0  32 Configuration descriptor, length 59 bytes, 2 interfaces, config 1, string index 0, bus powered and remote wakeup, 100 mA
+  09  04  00  00  01  03  01  01  00 Interface descriptor, inteface 0, alt setting 0, 1 endpoint, class 3, subclass 1, protocol 1, string index 0
+  09  21  11  01  00  01  22  36  00 HID descriptor, release 1.11, country 0, 1 HID class descriptor to follow, report descriptor type 22h, desc length 54 bytes
+  07  05  81  03  08  00  0A                 Endpoint descriptor, endpoint address In 1, interrupt, max packet size 8 bytes, polling interval 10 frames
+  09  04  01  00  01  03  00  00  00 Interface descriptor, interface 1, alt setting 0, 1 endpoint, class 3, subclass 0, protocol 0, string index 0
+  09  21  11  01  00  01  22  34  00 HID descriptor, release 1.11, country 0, 1 HID class descriptor to follow, report descriptor type 22h, desc length 52 bytes
+  07  05  82  03  03  00  0A                 Endpoint descriptor, endpoint address in 2, interrupt, max packet size 3 bytes, polling interval 10 frames
+*)
+
     CfgDescLen := Def.LE16(buf, 2);
     IF CfgDescLen > Def.CONFIGURATION_DESC_SIZE THEN
-      ptr := Def.LEN_CFG_DESC; done := FALSE;
-      WHILE ~done & (ptr < CfgDescLen) DO phead := CtlReq.GetNextDesc(phead, ptr);
-        IF phead.bDescriptorType = Def.DESC_TYPE_HID THEN phiddesc := SYSTEM.VAL(HCl.Descriptor, phead);
-          desc := phiddesc^; done := TRUE
+      nptr := Def.LEN_CFG_DESC; done := FALSE;
+      WHILE ~done & (ptr < CfgDescLen) DO ptr := nptr; phead := CtlReq.GetNextDesc(phead, nptr);
+        IF phead.bDescriptorType = Def.DESC_TYPE_HID THEN
+          desc.bLength := buf[ptr]; desc.bDescriptorType := buf[ptr + 1];
+          desc.bcdHID := Def.LE16(buf, ptr + 2); desc.bCountryCode := buf[ptr + 4]; desc.bNumDescriptors := buf[ptr + 5];
+          desc.bReportDescriptorType := buf[ptr + 6]; desc.wItemLength := Def.LE16(buf, ptr + 7);
+          done := TRUE
         END
       END
     END
@@ -65,12 +80,12 @@ MODULE USBHHID;
   * @retval USBH Status
   *)
   PROCEDURE GetHIDReportDescriptor(phost: Def.Handle; length: HALFWORD): BYTE;
-    VAR status: BYTE;
+    VAR status: BYTE; buf: Def.DataBuffer;
   BEGIN
-    IF length > LEN(phost.device.Data.buf) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue");
+    IF length > LEN(buf) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue");
       status := Def.NOT_SUPPORTED
     ELSE status := CtlReq.GetDescriptor(phost, Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_STANDARD,
-                              Def.DESC_HID_REPORT, phost.device.Data.buf, length)
+                              Def.DESC_HID_REPORT, buf, length)
     END
     (* HID report descriptor is available in phost->device.Data.
     In case of USB Boot Mode devices for In report handling ,
@@ -148,9 +163,9 @@ MODULE USBHHID;
     VAR i: HALFWORD;
   BEGIN
     IF ~f.lock THEN f.lock := TRUE; i := 0;
-      WHILE (i < nbytes) & (f.head + 1 # f.tail) & ((f.head + 1 # f.size) OR (f.tail # 0)) DO
-        f.buf.buf[f.head] := buf[i]; INC(f.head);
-        IF f.head = f.size THEN f.head := 0 END;
+      WHILE (i < nbytes) & (f.head + 1 # f.tail) & ((f.head + 1 # LEN(f.buf)) OR (f.tail # 0)) DO
+        f.buf[f.head] := buf[i]; INC(f.head);
+        IF f.head = LEN(f.buf) THEN f.head := 0 END;
         INC(i)
       END
     END;
@@ -282,6 +297,7 @@ MODULE USBHHID;
       IF classReqStatus = Def.OK THEN hidh.ctl_state := HCl.REQ_IDLE;
         phost.pUser(phost, USBH.USER_CLASS_ACTIVE); (* all requests performed *)
         status := Def.OK;
+        Log.User("Class active")
       ELSIF classReqStatus = Def.NOT_SUPPORTED THEN
         Log.Error("Control error: HID: Device Set protocol request failed");
         status := Def.FAIL
@@ -320,7 +336,7 @@ MODULE USBHHID;
     ELSIF hidh.state = HCl.POLL THEN
       IF phost.GetURBState(phost, hidh.InPipe) = Def.URB_DONE THEN
         XferSize := phost.GetLastXferSize(phost, hidh.InPipe);
-        IF ~hidh.DataReady & (XferSize # 0) & (hidh.fifo.buf # NIL) THEN
+        IF ~hidh.DataReady & (XferSize # 0) THEN
           fcnt := FifoWrite(hidh.fifo, hidh.pData, hidh.length);
           hidh.DataReady := TRUE;
           IF hidh.EventCallback # NIL THEN hidh.EventCallback(phost) END;

@@ -48,7 +48,7 @@ MODULE USBHHIDClass; (*HID class process structures*)
   TYPE
     FIFODesc* = RECORD
       buf*: Def.DataBuffer;
-      head*, tail*, size*: HALFWORD;
+      head*, tail*: HALFWORD;
       lock*: BOOLEAN
     END;
 
@@ -86,9 +86,8 @@ MODULE USBHHIDClass; (*HID class process structures*)
   * @param  size: Fifo Size
   * @retval none
   *)
-  PROCEDURE FifoInit*(VAR f: FIFODesc; buf: Def.DataBuffer; size: HALFWORD);
-  BEGIN f.head := 0; f.tail := 0;  f.lock := FALSE;
-    f.size := size; f.buf := buf
+  PROCEDURE FifoInit*(VAR f: FIFODesc);
+  BEGIN f.head := 0; f.tail := 0;  f.lock := FALSE
   END FifoInit;
 
 END USBHHIDClass.

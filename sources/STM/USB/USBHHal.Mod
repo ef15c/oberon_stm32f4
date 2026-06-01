@@ -84,9 +84,7 @@ MODULE USBHHal;
   * @retval None
   *)
   PROCEDURE SOF_Callback(hhcd: HCD.Handle);
-    VAR phost!: Def.Handle;
-  BEGIN phost := SYSTEM.VAL(Def.Handle, hhcd.pData);
-    Core.IncTimer(phost)
+  BEGIN Core.IncTimer(hhcd.phost)
   END SOF_Callback;
 
   (**
@@ -95,9 +93,7 @@ MODULE USBHHal;
   * @retval None
   *)
   PROCEDURE Connect_Callback(hhcd: HCD.Handle);
-    VAR phost!: Def.Handle;
-  BEGIN phost := SYSTEM.VAL(Def.Handle, hhcd.pData);
-    Core.Connect(phost)
+  BEGIN Core.Connect(hhcd.phost)
   END Connect_Callback;
 
   (**
@@ -106,9 +102,7 @@ MODULE USBHHal;
   * @retval None
   *)
   PROCEDURE Disconnect_Callback(hhcd: HCD.Handle);
-    VAR phost!: Def.Handle;
-  BEGIN phost := SYSTEM.VAL(Def.Handle, hhcd.pData);
-    Core.Disconnect(phost)
+  BEGIN Core.Disconnect(hhcd.phost)
   END Disconnect_Callback;
 
   (**
@@ -117,9 +111,7 @@ MODULE USBHHal;
   * @retval None
   *)
   PROCEDURE PortEnabled_Callback(hhcd: HCD.Handle);
-    VAR phost!: Def.Handle;
-  BEGIN phost := SYSTEM.VAL(Def.Handle, hhcd.pData);
-    Core.PortEnabled(phost)
+  BEGIN Core.PortEnabled(hhcd.phost)
   END PortEnabled_Callback;
 
   (**
@@ -128,9 +120,7 @@ MODULE USBHHal;
   * @retval None
   *)
   PROCEDURE PortDisabled_Callback(hhcd: HCD.Handle);
-    VAR phost!: Def.Handle;
-  BEGIN phost := SYSTEM.VAL(Def.Handle, hhcd.pData);
-    Core.PortDisabled(phost)
+  BEGIN Core.PortDisabled(hhcd.phost)
   END PortDisabled_Callback;
 
   (**
@@ -159,7 +149,7 @@ MODULE USBHHal;
   *            @arg URB_STALL
   *)
   PROCEDURE GetURBState(phost: Def.Handle; pipe: BYTE): BYTE;
-    RETURN HCD.HC_GetURBState(SYSTEM.VAL(HCD.Handle, phost.pData), pipe)
+    RETURN HCD.HC_GetURBState(phost.phcd(HCD.Handle), pipe)
   END GetURBState;
 
   (**
@@ -197,7 +187,7 @@ MODULE USBHHal;
   * @retval USBH Status
   *)
   PROCEDURE ResetPort*(phost: Def.Handle);
-  BEGIN HCD.ResetPort(SYSTEM.VAL(HCD.Handle, phost.pData))
+  BEGIN HCD.ResetPort(phost.phcd(HCD.Handle))
   END ResetPort;
 
   (**
@@ -207,7 +197,7 @@ MODULE USBHHal;
   * @retval Packet Size
   *)
   PROCEDURE GetLastXferSize(phost:Def.Handle; pipe: BYTE): INTEGER;
-    RETURN HCD.HC_GetXferCount(SYSTEM.VAL(HCD.Handle, phost.pData), pipe)
+    RETURN HCD.HC_GetXferCount(phost.phcd(HCD.Handle), pipe)
   END GetLastXferSize;
 
   (**
@@ -223,7 +213,7 @@ MODULE USBHHal;
   *)
   PROCEDURE OpenPipe(phost: Def.Handle; pipe, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD);
     VAR res: BYTE;
-  BEGIN res := HCD.HC_Init(SYSTEM.VAL(HCD.Handle, phost.pData), pipe, epnum, dev_address, speed, ep_type, mps)
+  BEGIN res := HCD.HC_Init(phost.phcd(HCD.Handle), pipe, epnum, dev_address, speed, ep_type, mps)
   END OpenPipe;
 
   (**
@@ -235,7 +225,7 @@ MODULE USBHHal;
   *)
   PROCEDURE SetToggle(phost: Def.Handle; pipe: BYTE; toggle: BOOLEAN);
     VAR hcd!: HCD.Handle;
-  BEGIN hcd := SYSTEM.VAL(HCD.Handle, phost.pData);
+  BEGIN hcd := phost.phcd(HCD.Handle);
     IF hcd.hc[pipe].ep_is_in THEN hcd.hc[pipe].toggle_in := toggle
     ELSE hcd.hc[pipe].toggle_out := toggle;
     END
@@ -248,7 +238,7 @@ MODULE USBHHal;
   * @retval USBH Status
   *)
   PROCEDURE ClosePipe(phost: Def.Handle; pipe: BYTE);
-  BEGIN HCD.HC_Halt(SYSTEM.VAL(HCD.Handle, phost.pData), pipe)
+  BEGIN HCD.HC_Halt(phost.phcd(HCD.Handle), pipe)
   END ClosePipe;
 
   (**
@@ -281,7 +271,7 @@ MODULE USBHHal;
   PROCEDURE SubmitURB(phost: Def.Handle; pipe: BYTE; direction: BOOLEAN; ep_type, token: BYTE;
   	pbuff: INTEGER; length: HALFWORD; do_ping: BOOLEAN);
   BEGIN
-    HCD.HC_SubmitRequest(SYSTEM.VAL(HCD.Handle, phost.pData), pipe,
+    HCD.HC_SubmitRequest(phost.phcd(HCD.Handle), pipe,
       direction, ep_type, token, pbuff, length, do_ping)
   END SubmitURB;
 
@@ -294,7 +284,7 @@ MODULE USBHHal;
   * @retval USBH Status
   *)
   PROCEDURE Stop*(phost: Def.Handle);
-  BEGIN HCD.Stop(SYSTEM.VAL(HCD.Handle, phost.pData));
+  BEGIN HCD.Stop(phost.phcd(HCD.Handle));
   END Stop;
 
   (**
@@ -303,7 +293,7 @@ MODULE USBHHal;
   * @retval USBH Status
   *)
   PROCEDURE Start*(phost: Def.Handle);
-  BEGIN HCD.Start(SYSTEM.VAL(HCD.Handle, phost.pData))
+  BEGIN HCD.Start(phost.phcd(HCD.Handle))
   END Start;
 
   (**
@@ -323,8 +313,8 @@ MODULE USBHHal;
     hhcd.Init.speed := HCD.SPEED_HIGH;
     hhcd.Init.use_external_vbus := FALSE;
     (* Link The driver to the stack *)
-    hhcd.pData := ORD(phost);
-    phost.pData := ORD(hhcd);
+    hhcd.phost := phost;
+    phost.phcd := hhcd;
     (* Initialize LL Driver *)
     IF HCD.Init(hhcd) # ll.HAL_OK THEN res := Def.FAIL
     ELSE Core.SetTimer(phost, HCD.GetCurrentFrame(hhcd)); res := Def.OK;
@@ -349,7 +339,7 @@ MODULE USBHHal;
   *)
   PROCEDURE GetSpeed*(phost: Def.Handle): BYTE;
     VAR cs: BYTE;
-  BEGIN cs := HCD.GetCurrentSpeed(SYSTEM.VAL(HCD.Handle, phost.pData));
+  BEGIN cs := HCD.GetCurrentSpeed(phost.phcd(HCD.Handle));
     IF cs = 3 THEN cs := Def.SPEED_HIGH END
 
     RETURN cs

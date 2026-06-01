@@ -49,8 +49,8 @@ MODULE USBHHIDKeybd;
       keybd_report_data[x] := 0; hidh.pData[x] := 0
     END;
     IF hidh.length > LEN(keybd_report_data) THEN hidh.length := LEN(keybd_report_data) END;
-    IF HCl.QUEUE_SIZE * LEN(keybd_report_data) > LEN(phost.device.Data.buf) THEN res := Def.FAIL
-    ELSE  HCl.FifoInit(hidh.fifo, SYSTEM.VAL(Def.DataBuffer, SYSTEM.ADR(phost.device.Data)), HCl.QUEUE_SIZE * LEN(keybd_report_data));
+    IF HCl.QUEUE_SIZE * LEN(keybd_report_data) > LEN(hidh.fifo.buf) THEN res := Def.FAIL
+    ELSE  HCl.FifoInit(hidh.fifo);
       res := Def.OK
     END
 

@@ -30,14 +30,14 @@ MODULE HALHCD;
     Callback* = PROCEDURE^5(hhcd: Handle);
     InitCallback* = PROCEDURE(hhcd: Handle);
     URBChangeCallback* = PROCEDURE^5(hhcd: Handle; chnum, urb_state: BYTE);
-    HandleDesc* = RECORD
+    HandleDesc* = RECORD(Def.HCDHandleDesc)
       Instance*: ll.OTGCore;  (*!< Register base address    *)
       Init*: ll.CfgDesc;            (*!< HCD required parameters  *)
       hc*: ARRAY 16 OF ll.HCDesc;     (*!< Host channels parameters *)
 (*      Lock*,       (*!< HCD peripheral status    *)*)
       State*: BYTE; (*!< HCD communication state  *)
       ErrorCode*: INTEGER;  (*!< HCD Error code           *)
-      pData*: INTEGER;     (*!< Pointer Stack Handler    *)
+      phost*: Def.Handle;     (*!< Pointer Stack Handler    *)
       SOFCallback*, (*!< USB OTG HCD SOF callback                *)
       ConnectCallback*, (*!< USB OTG HCD Connect callback            *)
       DisconnectCallback*, (*!< USB OTG HCD Disconnect callback         *)
@@ -405,7 +405,8 @@ MODULE HALHCD;
   PROCEDURE RXQLVL_IRQHandler(hhcd: Handle);
     VAR USBx_HCi!: ll.OTGHostChannel;
       GrxstspReg, pktsts: SET; pktcnt, xferSizePktCnt, res: INTEGER; chnum: BYTE;
-  BEGIN GrxstspReg := hhcd.Instance.GRXSTSP;
+  BEGIN (*WARNING: GRXSTSP must be read only once, because reading it pops one item from input FIFO*)
+    GrxstspReg := hhcd.Instance.GRXSTSP;
     chnum := ORD(GrxstspReg*ll.GRXSTSP_EPNUM_Msk);
     pktsts := GrxstspReg*ll.GRXSTSP_PKTSTS_Msk;
     pktcnt := LSR(ORD(GrxstspReg*ll.GRXSTSP_BCNT_Msk), 4);
@@ -572,7 +573,6 @@ MODULE HALHCD;
   HAL_StatusTypeDef status;
 *)
   BEGIN HCcharMps := mps;
-    Log.Debug("HCD.HC_Init channel: "); Log.DebugInt(ch_num, 1); Log.DebugLn;
 (*  __HAL_LOCK(hhcd);*)
     hhcd.hc[ch_num].do_ping := FALSE; hhcd.hc[ch_num].dev_addr := dev_address;
     hhcd.hc[ch_num].ch_num := ch_num; hhcd.hc[ch_num].ep_type := ep_type;

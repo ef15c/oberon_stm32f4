@@ -527,15 +527,15 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE Get_DevDesc*(phost: Def.Handle; length: HALFWORD): BYTE;
-    VAR status: BYTE;
+    VAR status: BYTE; buf: Def.DataBuffer;
   BEGIN
-    IF length > LEN(phost.device.Data.buf) THEN
+    IF length > LEN(buf) THEN
       Log.Error("Control error: Get Device Descriptor failed, data buffer size issue");
       status := Def.NOT_SUPPORTED
     ELSE status := GetDescriptor(phost, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
-                             Def.DESC_DEVICE, phost.device.Data.buf, length);
+                             Def.DESC_DEVICE, buf, length);
       IF status = Def.OK THEN (* Commands successfully sent and Response Received *)
-        status := ParseDevDesc(phost, phost.device.Data.buf, length)
+        status := ParseDevDesc(phost, buf, length)
       END
     END
 
@@ -577,16 +577,15 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE Get_StringDesc*(phost: Def.Handle; string_index: BYTE; VAR buff: ARRAY OF CHAR; length: HALFWORD): BYTE;
-    VAR status: BYTE;
+    VAR status: BYTE; buf: Def.DataBuffer;
   BEGIN
-    IF length > LEN(phost.device.Data.buf) THEN
+    IF length > LEN(buf) THEN
       Log.Error("Control error: Get String Descriptor failed, data buffer size issue");
       status := Def.NOT_SUPPORTED
     ELSE status := GetDescriptor(phost, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
-                            Def.DESC_STRING + TOSET(string_index),
-                            phost.device.Data.buf, length);
+                            Def.DESC_STRING + TOSET(string_index), buf, length);
       IF status = Def.OK THEN (* Commands successfully sent and Response Received *)
-        ParseStringDesc(phost.device.Data.buf, buff, length);
+        ParseStringDesc(buf, buff, length);
       END
     END
 

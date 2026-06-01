@@ -39,6 +39,13 @@ MODULE USBLog;
     Texts.Write(W, "}"); INC(wrnum)
   END UserSet;
 
+  PROCEDURE UserBuf*(buf: ARRAY OF BYTE; len: INTEGER);
+    VAR i: INTEGER;
+  BEGIN Texts.Write(W, "("); Texts.WriteInt(W, len, 1); Texts.Write(W, ")");
+    FOR i := 0 TO len - 1 DO Texts.Write(W, " "); Texts.WriteHexVLen(W, buf[i], 2, FALSE) END;
+    INC(wrnum)
+  END UserBuf;
+
   PROCEDURE UserLn*;
   BEGIN Texts.WriteLn(W); INC(wrnum)
   END UserLn;
@@ -70,6 +77,10 @@ MODULE USBLog;
   PROCEDURE DebugSet*(s: SET);
   BEGIN UserSet(s)
   END DebugSet;
+
+  PROCEDURE DebugBuf*(buf: ARRAY OF BYTE; len: INTEGER);
+  BEGIN UserBuf(buf, len)
+  END DebugBuf;
 
   PROCEDURE DebugLn*;
   BEGIN UserLn

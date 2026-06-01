@@ -45,8 +45,8 @@ MODULE USBHHIDMouse;
       mouse_report_data[i] := 0; hidh.pData[i] := 0
     END;
     IF hidh.length > LEN(mouse_report_data) THEN hidh.length := LEN(mouse_report_data) END;
-    IF HCl.QUEUE_SIZE * LEN(mouse_report_data) > LEN(phost.device.Data.buf) THEN res := Def.FAIL
-    ELSE HCl.FifoInit(hidh.fifo, SYSTEM.VAL(Def.DataBuffer, SYSTEM.ADR(phost.device.Data)), HCl.QUEUE_SIZE * LEN(mouse_report_data));
+    IF HCl.QUEUE_SIZE * LEN(mouse_report_data) > LEN(hidh.fifo.buf) THEN res := Def.FAIL
+    ELSE HCl.FifoInit(hidh.fifo);
       res := Def.OK
     END
 
