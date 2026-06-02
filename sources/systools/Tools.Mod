@@ -43,6 +43,21 @@ MODULE Tools;   (*NW 22.2.2014*)
     END
   END Inspect;
 
+  PROCEDURE InspectBytes*;
+    VAR m, n, adr: INTEGER; data: BYTE;
+      S!: Texts.Scanner;
+  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+    IF S.class = Texts.Int THEN
+      adr := S.i DIV 20H * 20H; Texts.Scan(S);
+      IF S.class = Texts.Int THEN n := S.i ELSE n := 8 END ;
+      REPEAT DEC(n); Texts.WriteLn(W); Texts.WriteHex(W, adr); Texts.Write(W, 9X); m := 32;
+        REPEAT SYSTEM.GET(adr, data); INC(adr); Texts.WriteHexVLen(W, data, 2, FALSE); DEC(m)
+        UNTIL m = 0
+      UNTIL n = 0;
+      Texts.WriteLn(W); Texts.Append(T, W.buf)
+    END
+  END InspectBytes;
+
   PROCEDURE Sector*;
     VAR k, m, n, secno: INTEGER;
       S!: Texts.Scanner;

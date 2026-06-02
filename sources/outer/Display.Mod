@@ -257,6 +257,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WHPCR, LSL(356+1 + x0 + w-1, 16) + 356+1 + x0);
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WVPCR, LSL(27+1 + y0 + h-1, 16) + 27+1 + y0);
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CR, {BSP.COLKEN, BSP.LEn}); (*enable layer 2 with transparent color*)
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CFBLNR, h);
       SYSTEM.PUT(BSP.vbr, TRUE) (*reload shadow registers immediately*)
     END
   END MovePattern;
@@ -285,7 +286,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2DCCR, 0); (*Default color transparent black*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CACR, 255); (*constant alpha value 1*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2BFCR, LSL(6, 8) + 7); (*blending factors 1 and 2 Pixel Alpha x Constant Alpha*)
-    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CFBLNR, 15);
   END L2Init;
 
 BEGIN
@@ -306,7 +306,7 @@ BEGIN
      00 00 00 00 00 00 00 00 00 00 20 40 FF FF FF
      00 00 00 00 00 00 00 00 00 00 00 20 40 FF FF$);
 
-  star := SYSTEM.ADR($ 0F 00  0F 00
+  star := SYSTEM.ADR($ 0F 00 0F 00
      00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00
      00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00
      00 00 FF 00 00 00 00 FF 00 00 00 00 FF 00 00 00
@@ -323,7 +323,7 @@ BEGIN
      00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00
      00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00$);
 
-  hook := SYSTEM.ADR($ 0C 00  0C 00
+  hook := SYSTEM.ADR($ 0C 00 0C 00
      FF FF FF 00 00 00 00 00 FF FF FF FF
      FF FF FF 00 00 00 00 FF FF FF FF 00
      FF FF FF 00 00 00 FF FF FF FF 00 00
@@ -337,7 +337,7 @@ BEGIN
      FF FF 00 00 00 00 00 00 00 00 00 00
      FF 00 00 00 00 00 00 00 00 00 00 00$);
 
-  updownL2 := SYSTEM.ADR($ 08 04  0E 07
+  updownL2 := SYSTEM.ADR($ 08 04 0E 07
      00 00 00 FF FF 00 00 00
      00 00 FF FF FF FF 00 00
      00 FF FF FF FF FF FF 00
@@ -353,7 +353,7 @@ BEGIN
      00 00 FF FF FF FF 00 00
      00 00 00 FF FF 00 00 00$);
 
-  block := SYSTEM.ADR($ 08 00  08 00 
+  block := SYSTEM.ADR($ 08 00 08 00 
      FF FF FF FF FF FF FF FF
      FF FF FF FF FF FF FF FF
      FF FF 00 00 00 00 FF FF
@@ -363,7 +363,7 @@ BEGIN
      FF FF FF FF FF FF FF FF
      FF FF FF FF FF FF FF FF$);
 
-  cross := SYSTEM.ADR($ 0F 07  0F 07
+  cross := SYSTEM.ADR($ 0F 07 0F 07
      FF 00 00 00 00 00 00 00 00 00 00 00 00 00 FF
      00 FF 00 00 00 00 00 00 00 00 00 00 00 FF 00
      00 00 FF 00 00 00 00 00 00 00 00 00 FF 00 00
@@ -384,7 +384,7 @@ BEGIN
      FF 00 FF 00
      00 FF 00 FF$);
 
-  busy := SYSTEM.ADR($ 0A 05  10 08
+  busy := SYSTEM.ADR($ 0A 05 10 08
      01 01 01 01 01 01 01 01 01 01
      01 FF FF FF FF FF FF FF FF 01
      01 FF 01 01 01 01 01 01 FF 01
