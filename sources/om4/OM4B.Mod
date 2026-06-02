@@ -435,6 +435,7 @@ BEGIN
   enter("PACK", SProc, noType, 62);
   enter("UNPK", SProc, noType, 72);
   enter("LED", SProc, noType, 81);
+  enter("CLEAR", SProc, noType, 171);
   enter("SET", Typ, setType, 0);   (*types*)
   enter("BOOLEAN", Typ, boolType, 0);
   enter("BYTE", Typ, byteType, 0);

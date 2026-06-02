@@ -494,14 +494,18 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
          END
       ELSIF pno = 6 THEN CheckReal(x); CheckInt(y); CheckReadOnly(x); G.Pack(x, y)
       ELSIF pno = 7 THEN CheckReal(x); CheckInt(y); CheckReadOnly(x); G.Unpk(x, y)
-      ELSIF pno = 8 THEN
-        IF x.type.form <= B.Set THEN G.Led(x) ELSE S.Mark("bad type") END
+      ELSIF pno = 8 THEN IF x.type.form <= B.Set THEN G.Led(x) ELSE S.Mark("bad type") END
       ELSIF pno = 10 THEN CheckInt(x); G.Get(x, y)
       ELSIF pno = 11 THEN CheckInt(x); G.Put(x, y)
       ELSIF pno = 12 THEN CheckInt(x); CheckInt(y); CheckInt(z); G.Copy(x, y, z)
       ELSIF pno = 14 THEN G.LDREG(x, y)
       ELSIF pno = 15 THEN CheckConst(x); CheckInt(x); G.MBI(x.a) (*Memory barrier instructions*)
       ELSIF pno = 16 THEN CheckConst(x); CheckInt(x); G.Jump(x.a) (*Jump to absolute address*)
+      ELSIF pno = 17 THEN CheckReadOnly(x);
+        IF x.type.form IN {B.Record, B.Array, B.String} THEN
+          G.Clear(x) (*initialyze record or array to zero*)
+        ELSE S.Mark("bad type")
+        END
       END
     ELSE S.Mark("wrong nof parameters")
     END

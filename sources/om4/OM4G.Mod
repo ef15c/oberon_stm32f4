@@ -1001,14 +1001,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     pc0 := -1;
     IF y.type.size # 0 THEN
       loadAdr(x); loadAdr(y);
-      IF (x.type.form = B.Array) &  (x.type.len > 0) THEN
-        IF y.type.len >= 0 THEN 
+      IF (x.type.form = B.Array) & (x.type.len > 0) THEN
+        IF y.type.len >= 0 THEN
           IF x.type.size = y.type.size THEN A.encMOVImm32(mcode, RH, (y.type.size+3) DIV 4, A.Any)
           ELSE S.Mark("different length/size, not implemented")
           END
-        ELSE (*y  open array*) incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, y.a+4); DEC(RH); s := y.type.base.size;  (*element size*)
+        ELSE (*y open array*) incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, y.a+4); DEC(RH); s := y.type.base.size;  (*element size*)
           incR; A.encCMPImm(mcode ,RH-1, RH, 0); DEC(RH); pc0 := mcode.pc; A.Put1(mcode, A.BCT1 + A.EQ*A.C8); (*BEQ L0*)
           IF s = 1 THEN incR; A.encDPImm32(mcode, A.ADD, RH-1, RH-1, RH, 3, TRUE); DEC(RH); A.encShiftImm5(mcode, A.ASr, RH, RH, 2)
+          ELSIF s = 2 THEN incR; A.encDPImm32(mcode, A.ADD, RH-1, RH-1, RH, 1, TRUE); DEC(RH); A.encShiftImm5(mcode, A.ASr, RH, RH, 1)
           ELSIF s # 4 THEN ASSERT(s MOD 4 = 0); incR; A.encMOVImm32(mcode, RH, s DIV 4, A.Any); A.encMUL(mcode, RH-1, RH-1, RH); DEC(RH)
           END;
           IF check THEN
@@ -1028,9 +1029,37 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RH := 0
   END StoreStruct;
 
+  PROCEDURE Clear*(VAR x: Item); (* x := zero *)
+    VAR s, pc0, pc1: INTEGER;
+  BEGIN
+    pc0 := -1;
+    IF x.type.size # 0 THEN
+      loadAdr(x);
+      IF x.type.form = B.Array THEN
+        IF x.type.len >= 0 THEN A.encMOVImm32(mcode, RH, (x.type.size+3) DIV 4, A.Any)
+        ELSE (*x open array*) A.encMemImm32(mcode, A.LDR, RH, SP, RH+1, x.a+4); s := x.type.base.size;  (*element size*)
+          A.encCMPImm(mcode ,RH, RH+1, 0); pc0 := mcode.pc; A.Put1(mcode, A.BCT1 + A.EQ*A.C8); (*BEQ L0*)
+          IF s = 1 THEN A.encDPImm32(mcode, A.ADD, RH, RH, RH+1, 3, TRUE); A.encShiftImm5(mcode, A.ASr, RH, RH, 2)
+          ELSIF s = 2 THEN A.encDPImm32(mcode, A.ADD, RH, RH, RH+1, 1, TRUE); A.encShiftImm5(mcode, A.ASr, RH, RH, 1)
+          ELSIF s # 4 THEN ASSERT(s MOD 4 = 0); A.encMOVImm32(mcode, RH+1, s DIV 4, A.Any); A.encMUL(mcode, RH, RH, RH+1)
+          END
+        END
+      ELSIF x.type.form = B.Record THEN A.encMOVImm32(mcode, RH, x.type.size DIV 4, A.Any)
+      ELSE S.Mark("inadmissible assignment")
+      END;
+      A.encMOVImm32(mcode, RH+1, 0, A.Any);
+      (*L1*) pc1 := mcode.pc;
+      A.encMemImm8PUW(mcode, A.STRIT4, RH+1, x.r, FALSE, TRUE, TRUE, 4);
+      A.encDPImm32(mcode, A.SUB, RH, RH, RH+2, 1, TRUE);
+      A.encBackBranch(mcode, A.NE, pc1); (*BNE L1*)
+      (*L0:*) IF pc0 # -1 THEN A.fix8(mcode, pc0, mcode.pc - pc0 - 4) END
+    END;
+    RH := 0
+  END Clear;
+
   PROCEDURE CopyString*(VAR x, y: Item);  (* x := y *) 
-     VAR len, pc0: INTEGER;
-   BEGIN loadAdr(x); len := x.type.len;
+    VAR len, pc0: INTEGER;
+  BEGIN loadAdr(x); len := x.type.len;
     IF len >= 0 THEN
       IF len < y.b THEN S.Mark("string too long") END
     ELSIF check THEN incR; A.encMemImm32(mcode, A.LDR, RH-1, SP, RH, x.a+4); (*open array len, frame = 0*)
@@ -1042,8 +1071,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     A.encMemImm8PUW(mcode, A.STRIT4, RH, x.r, FALSE, TRUE, TRUE, 4);
     A.encShiftImm5(mcode, A.ASr, RH, RH, 24); A.encBackBranch(mcode, A.NE, pc0); (*BNE L0*)
     RH := 0
-   END CopyString;
-  
+  END CopyString;
+
   (* Code generation for parameters *)
   
   PROCEDURE OpenArrayParam*(VAR x: Item);
