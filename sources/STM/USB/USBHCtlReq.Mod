@@ -268,12 +268,20 @@ MODULE USBHCtlReq;
     VAR buf: Def.RawDescriptor): BYTE;
     VAR status: BYTE;
   BEGIN status := Def.OK;
-      ep_descriptor.bLength := Def.ReadByte(buf);
-      ep_descriptor.bDescriptorType := Def.ReadByte(buf);
-      ep_descriptor.bEndpointAddress := Def.ReadByte(buf);
-      ep_descriptor.bmAttributes := TOSET(Def.ReadByte(buf));
-      ep_descriptor.wMaxPacketSize := Def.ReadHalfword(buf);
-      ep_descriptor.bInterval := Def.ReadByte(buf);
+    ep_descriptor.bLength := Def.ReadByte(buf);
+    ep_descriptor.bDescriptorType := Def.ReadByte(buf);
+    ep_descriptor.bEndpointAddress := Def.ReadByte(buf);
+    ep_descriptor.bmAttributes := TOSET(Def.ReadByte(buf));
+    ep_descriptor.wMaxPacketSize := Def.ReadHalfword(buf);
+    ep_descriptor.bInterval := Def.ReadByte(buf);
+(*
+    Log.Debug("ep_descriptor.bLength: "); Log.DebugInt(ep_descriptor.bLength, 1); Log.DebugLn;
+    Log.Debug("ep_descriptor.bDescriptorType: "); Log.DebugInt(ep_descriptor.bDescriptorType, 1); Log.DebugLn;
+    Log.Debug("ep_descriptor.bEndpointAddress: "); Log.DebugInt(ep_descriptor.bEndpointAddress, 1); Log.DebugLn;
+    Log.Debug("ep_descriptor.bmAttributes: "); Log.DebugSet(ep_descriptor.bmAttributes); Log.DebugLn;
+    Log.Debug("ep_descriptor.wMaxPacketSize: "); Log.DebugInt(ep_descriptor.wMaxPacketSize, 1); Log.DebugLn;
+    Log.Debug("ep_descriptor.bInterval: "); Log.DebugInt(ep_descriptor.bInterval, 1); Log.DebugLn;
+*)
     (* Make sure that wMaxPacketSize is different from 0 *)
     IF (ep_descriptor.wMaxPacketSize = 0) OR
       (ep_descriptor.wMaxPacketSize > Def.MAX_EP_PACKET_SIZE) OR
@@ -320,7 +328,7 @@ MODULE USBHCtlReq;
     VAR buf: Def.RawDescriptor): BYTE;
     (*feed interface descriptor from buf[index..index+8]*)
     VAR status, ep_ix: BYTE;
-  BEGIN
+  BEGIN status := Def.OK;
     if_descriptor.bLength := Def.ReadByte(buf);
     (* Make sure that the interface descriptor's bLength is equal to USB_INTERFACE_DESC_SIZE *)
     if_descriptor.bLength := Def.INTERFACE_DESC_SIZE;
@@ -332,6 +340,17 @@ MODULE USBHCtlReq;
     if_descriptor.bInterfaceSubClass := Def.ReadByte(buf);
     if_descriptor.bInterfaceProtocol := Def.ReadByte(buf);
     if_descriptor.iInterface := Def.ReadByte(buf);
+(*
+    Log.Debug("if_descriptor.bLength: "); Log.DebugInt(if_descriptor.bLength, 1); Log.DebugLn;
+    Log.Debug("if_descriptor.bDescriptorType: "); Log.DebugInt(if_descriptor.bDescriptorType, 1); Log.DebugLn;
+    Log.Debug("if_descriptor..bInterfaceNumber: "); Log.DebugInt(if_descriptor.bInterfaceNumber, 1); Log.DebugLn;
+    Log.Debug("if_descriptor.bAlternateSetting: "); Log.DebugInt(if_descriptor.bAlternateSetting, 1); Log.DebugLn;
+    Log.Debug("if_descriptor.bNumEndpoints: "); Log.DebugInt(if_descriptor.bNumEndpoints, 1); Log.DebugLn;
+    Log.Debug("if_descriptor.bInterfaceClass: "); Log.DebugInt(if_descriptor.bInterfaceClass, 1); Log.DebugLn;
+    Log.Debug("if_descriptor.bInterfaceSubClass: "); Log.DebugInt(if_descriptor.bInterfaceSubClass, 1); Log.DebugLn;
+    Log.Debug("if_descriptor.bInterfaceProtocol: "); Log.DebugInt(if_descriptor.bInterfaceProtocol, 1); Log.DebugLn;
+    Log.Debug("if_descriptor.iInterface: "); Log.DebugInt(if_descriptor.iInterface, 1); Log.DebugLn;
+*)
     ep_ix := 0;
     WHILE (status = Def.OK) & (ep_ix < Conf.MAX_NUM_ENDPOINTS) &
       (ep_ix < if_descriptor.bNumEndpoints) & Def.HasMoreHeaders(buf) DO
@@ -417,14 +436,23 @@ MODULE USBHCtlReq;
     IF Def.HeaderSize(buf) # Def.CONFIGURATION_DESC_SIZE THEN
       Log.Error("buggy device: bad configuration length"); status := Def.NOT_SUPPORTED
     ELSE ParseConfig(phost.device.CfgDesc, buf);
+(*
+      Log.Debug("CfgDesc.bLength: "); Log.DebugInt(phost.device.CfgDesc.bLength, 1); Log.DebugLn;
+      Log.Debug("CfgDesc.bDescriptorType: "); Log.DebugInt(phost.device.CfgDesc.bDescriptorType, 1); Log.DebugLn;
+      Log.Debug("CfgDesc.wTotalLength: "); Log.DebugInt(phost.device.CfgDesc.wTotalLength, 1); Log.DebugLn;
+      Log.Debug("CfgDesc.bNumInterfaces: "); Log.DebugInt(phost.device.CfgDesc.bNumInterfaces, 1); Log.DebugLn;
+      Log.Debug("CfgDesc.bConfigurationValue: "); Log.DebugInt(phost.device.CfgDesc.bConfigurationValue, 1); Log.DebugLn;
+      Log.Debug("CfgDesc.iConfiguration: "); Log.DebugInt(phost.device.CfgDesc.iConfiguration, 1); Log.DebugLn;
+      Log.Debug("CfgDesc.bmAttributes: "); Log.DebugSet(phost.device.CfgDesc.bmAttributes); Log.DebugLn;
+      Log.Debug("CfgDesc.bMaxPower: "); Log.DebugInt(phost.device.CfgDesc.bMaxPower, 1); Log.DebugLn;
+*)
       IF buf.length > Def.CONFIGURATION_DESC_SIZE THEN
         WHILE (status = Def.OK) & (if_ix < Conf.MAX_NUM_INTERFACES) & Def.HasMoreHeaders(buf) DO
           Def.GoNextHeader(buf);
           IF Def.HeaderType(buf) = Def.DESC_TYPE_INTERFACE THEN
             status := ParseInterface(phost, phost.device.CfgDesc, phost.device.CfgDesc.Itf_Desc[if_ix], buf);
             INC(if_ix)
-          END;
-          Def.GoNextHeader(buf)
+          END
         END;
         (* Check if the required interface(s) data are parsed *)
         IF if_ix < Def.MIN(phost.device.CfgDesc.bNumInterfaces, Conf.MAX_NUM_INTERFACES) THEN status := Def.NOT_SUPPORTED END

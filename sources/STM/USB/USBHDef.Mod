@@ -346,7 +346,7 @@ MODULE USBHDef;
   END HasMoreHeaders;
 
   PROCEDURE GoNextHeader*(VAR buf: RawDescriptor);
-  BEGIN buf.headeridx := NextHeaderIdx(buf)
+  BEGIN buf.headeridx := NextHeaderIdx(buf); buf.index := buf.headeridx
   END GoNextHeader;
 
   PROCEDURE ReadByte*(VAR buf: RawDescriptor): BYTE;
@@ -366,5 +366,10 @@ MODULE USBHDef;
 
     RETURN res
   END ReadHalfword;
+
+  PROCEDURE GetIndex*(buf: RawDescriptor): HALFWORD;
+
+    RETURN buf.index
+  END GetIndex;
 
 END USBHDef.
