@@ -74,6 +74,7 @@ MODULE USBHHIDClass; (*HID class process structures*)
       timer*: INTEGER;
       DataReady*: BOOLEAN;
       HID_Desc*: DescriptorDesc;
+      ReportDesc*: Def.RawDescriptor;
       Init*: Def.Callback;
       EventCallback*: PROCEDURE(phost: Def.Handle)
     END;

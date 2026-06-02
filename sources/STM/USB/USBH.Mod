@@ -24,9 +24,8 @@ MODULE USBH;
   * @retval USBH Status
   *)
   PROCEDURE DeInitStateMachine(phost: Def.Handle);
-    VAR i: INTEGER; zeroDev!: Def.DevDescriptor; zeroCfg!: Def.CfgDescriptor;
-  BEGIN  zeroDev := SYSTEM.VAL(Def.DevDescriptor,SYSTEM.ADR(Def.ZERO));
-    zeroCfg := SYSTEM.VAL(Def.CfgDescriptor, SYSTEM.ADR(Def.ZERO));
+    VAR i: INTEGER;
+  BEGIN
     FOR i := 0 TO Def.MAX_PIPES_NBR - 1 DO phost.Pipes[i] := {} END; (* Clear Pipes flags*)
 
     phost.gState := Def.IDLE;
@@ -44,9 +43,9 @@ MODULE USBH;
     phost.device.EnumCnt := 0;
 
     (* Reset the device record *)
-    FOR i := 0 TO Conf.MAX_SIZE_CONFIGURATION - 1 DO phost.device.CfgDesc_Raw[i] :=  0 END;
-    phost.device.DevDesc := zeroDev^;
-    phost.device.CfgDesc := zeroCfg^;
+    FOR i := 0 TO Conf.MAX_SIZE_CONFIGURATION - 1 DO phost.device.CfgDesc_Raw.data[i] :=  0 END;
+    CLEAR(phost.device.DevDesc);
+    CLEAR(phost.device.CfgDesc);
   END DeInitStateMachine;
 
 

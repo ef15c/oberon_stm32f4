@@ -40,11 +40,10 @@ MODULE USBHHIDKeybd;
   *)
   PROCEDURE Init*(phost: Def.Handle): BYTE;
     VAR res: BYTE;
-      hidh!: HCl.Handle; zero!: Info;
+      hidh!: HCl.Handle;
       x: INTEGER;
   BEGIN hidh := phost.pActiveClass.pData(HCl.Handle);
-    zero := SYSTEM.VAL(Info, SYSTEM.ADR(Def.ZERO));
-    info := zero^;
+    CLEAR(info);
     FOR x := 0 TO LEN(keybd_report_data) - 1 DO
       keybd_report_data[x] := 0; hidh.pData[x] := 0
     END;

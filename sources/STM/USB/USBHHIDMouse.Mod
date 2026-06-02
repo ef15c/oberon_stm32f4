@@ -37,10 +37,8 @@ MODULE USBHHIDMouse;
   * @retval USBH Status
   *)
   PROCEDURE Init*(phost: Def.Handle): BYTE;
-    VAR i: INTEGER; hidh!: HCl.Handle; zero!: Info; res: BYTE;
-  BEGIN hidh := phost.pActiveClass.pData(HCl.Handle);
-    zero := SYSTEM.VAL(Info, Def.ZERO); info := zero^;
-
+    VAR i: INTEGER; hidh!: HCl.Handle; res: BYTE;
+  BEGIN hidh := phost.pActiveClass.pData(HCl.Handle); CLEAR(info);
     FOR i := 0 TO LEN(mouse_report_data) - 1 DO
       mouse_report_data[i] := 0; hidh.pData[i] := 0
     END;

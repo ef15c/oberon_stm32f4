@@ -7,11 +7,7 @@ MODULE USBHDef;
   *)
   IMPORT Conf := USBHConf;
 
-  CONST ZERO* =
-    $00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00$;
-
+  CONST
     DEV_RESET_TIMEOUT* = 1000;
 
     (* Following states are used for gState *)
@@ -195,13 +191,7 @@ MODULE USBHDef;
       errorcount*: BYTE
     END;
 
-    DescHeader* = POINTER TO DescHeaderDesc;
-    DescHeaderDesc* = RECORD
-      bLength*, bDescriptorType*: BYTE
-    END;
-
-    DevDescriptor* = POINTER TO DevDescriptorDesc;
-    DevDescriptorDesc* = RECORD
+    DevDescriptor* = RECORD
       bLength*,
       bDescriptorType*: BYTE;
       bcdUSB*: HALFWORD; (* USB Specification Number which device complies too *)
@@ -220,8 +210,7 @@ MODULE USBHDef;
       bNumConfigurations*: BYTE (* Number of Possible Configurations *)
     END;
 
-    EpDescriptor* = POINTER TO EpDescriptorDesc;
-    EpDescriptorDesc* = RECORD
+    EpDescriptor* = RECORD
       bLength*, bDescriptorType*,
       bEndpointAddress*: BYTE; (* indicates what endpoint this descriptor is describing *)
       bmAttributes*: BYTESET; (* specifies the transfer type. *)
@@ -229,8 +218,7 @@ MODULE USBHDef;
       bInterval*: BYTE (* is used to specify the polling interval of certain transfers. *)
     END;
 
-    ItfDescriptor* = POINTER TO ItfDescriptorDesc;
-    ItfDescriptorDesc* = RECORD
+    InterfaceDescriptor* = RECORD
       bLength*, bDescriptorType*, bInterfaceNumber*,
       bAlternateSetting*, (* Value used to select alternative setting *)
       bNumEndpoints*, (* Number of Endpoints used for this interface *)
@@ -238,14 +226,10 @@ MODULE USBHDef;
       bInterfaceSubClass*, (* Subclass Code (Assigned by USB Org) *)
       bInterfaceProtocol*, (* Protocol Code *)
       iInterface*: BYTE; (* Index of String Descriptor Describing this interface *)
-    END;
-    InterfaceDescriptor* = POINTER TO InterfaceDescriptorDesc;
-    InterfaceDescriptorDesc* = RECORD(ItfDescriptorDesc)
-      Ep_Desc*: ARRAY Conf.MAX_NUM_ENDPOINTS OF EpDescriptorDesc
+      Ep_Desc*: ARRAY Conf.MAX_NUM_ENDPOINTS OF EpDescriptor
     END;
 
-    CfgDescriptor* = POINTER TO CfgDescriptorDesc;
-    CfgDescriptorDesc* = RECORD
+    CfgDescriptor* = RECORD
       bLength*, bDescriptorType*: BYTE;
       wTotalLength*: HALFWORD; (* Total Length of Data Returned *)
       bNumInterfaces*, (* Number of Interfaces *)
@@ -253,17 +237,22 @@ MODULE USBHDef;
       iConfiguration*: BYTE; (* Index of String Descriptor Describing this configuration *)
       bmAttributes*: BYTESET; (* D7 Bus Powered , D6 Self Powered, D5 Remote Wakeup , D4..0 Reserved (0)*)
       bMaxPower*: BYTE; (* Maximum Power Consumption *)
-      Itf_Desc*: ARRAY Conf.MAX_NUM_INTERFACES OF InterfaceDescriptorDesc
+      Itf_Desc*: ARRAY Conf.MAX_NUM_INTERFACES OF InterfaceDescriptor
+    END;
+
+    RawDescriptor* = RECORD
+      data*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE;
+      length*, index, headeridx: HALFWORD
     END;
 
     (* Attached device structure *)
-    DeviceDesc* = RECORD
-      CfgDesc_Raw*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE;
+    Device* = RECORD
+      CfgDesc_Raw*: RawDescriptor;
       address*, speed*, EnumCnt*, RstCnt*: BYTE;
       is_connected*, is_disconnected*, is_ReEnumerated*, PortEnabled*: BOOLEAN;
       current_interface*: BYTE;
-      DevDesc*: DevDescriptorDesc;
-      CfgDesc*: CfgDescriptorDesc
+      DevDesc*: DevDescriptor;
+      CfgDesc*: CfgDescriptor
     END;
 
     Handle* = POINTER TO HandleDesc;
@@ -274,6 +263,7 @@ MODULE USBHDef;
     ClassHandleDesc* = RECORD END;
 
     (* USB Host Class structure *)
+    Class* = POINTER TO ClassDesc;
     ClassDesc* = RECORD
       Name*: ARRAY 8 OF CHAR;
       ClassCode*: BYTE;
@@ -281,7 +271,6 @@ MODULE USBHDef;
       SOFProcess*: Callback;
       pData*: ClassHandle
     END;
-    Class* = POINTER TO ClassDesc;
 
     HCDHandle* = POINTER TO HCDHandleDesc;
     HCDHandleDesc* = RECORD END;
@@ -294,7 +283,7 @@ MODULE USBHDef;
       EnumState*: BYTE; (** Enumeration state Machine *)
       RequestState*: BYTE;
       Control*: CtrlDesc;
-      device*: DeviceDesc;
+      device*: Device;
       pClass*: ARRAY Conf.MAX_NUM_SUPPORTED_CLASS OF Class;
       pActiveClass*: Class;
       ClassNumber*: INTEGER;
@@ -331,5 +320,51 @@ MODULE USBHDef;
 
     RETURN res
   END MIN;
+
+  PROCEDURE Reset*(VAR buf: RawDescriptor);
+  BEGIN buf.index := 0; buf.headeridx := 0
+  END Reset;
+
+  PROCEDURE NextHeaderIdx(buf: RawDescriptor): HALFWORD;
+
+    RETURN buf.headeridx + buf.data[buf.headeridx]
+  END NextHeaderIdx;
+
+  PROCEDURE HeaderType*(buf: RawDescriptor): BYTE;
+
+    RETURN buf.data[buf.headeridx + 1]
+  END HeaderType;
+
+  PROCEDURE HeaderSize*(buf: RawDescriptor): BYTE;
+
+    RETURN buf.data[buf.headeridx]
+  END HeaderSize;
+
+  PROCEDURE HasMoreHeaders*(buf: RawDescriptor): BOOLEAN;
+
+    RETURN (buf.index < LE16(buf.data, 2)) & (NextHeaderIdx(buf) < LE16(buf.data, 2))
+  END HasMoreHeaders;
+
+  PROCEDURE GoNextHeader*(VAR buf: RawDescriptor);
+  BEGIN buf.headeridx := NextHeaderIdx(buf)
+  END GoNextHeader;
+
+  PROCEDURE ReadByte*(VAR buf: RawDescriptor): BYTE;
+    VAR res: BYTE;
+  BEGIN
+    IF buf.index < NextHeaderIdx(buf) THEN res := buf.data[buf.index]; INC(buf.index)
+    ELSE res := 0 END
+
+    RETURN res
+  END ReadByte;
+
+  PROCEDURE ReadHalfword*(VAR buf: RawDescriptor): HALFWORD;
+    VAR res: HALFWORD;
+  BEGIN
+    IF buf.index < NextHeaderIdx(buf) - 1 THEN res := LE16(buf.data, buf.index); INC(buf.index, 2)
+    ELSE res := 0 END
+
+    RETURN res
+  END ReadHalfword;
 
 END USBHDef.

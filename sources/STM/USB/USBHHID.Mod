@@ -42,31 +42,26 @@ MODULE USBHHID;
   * @param  buf: Buffer where the source descriptor is available
   * @retval None
   *)
-  PROCEDURE ParseHIDDesc(VAR desc: HCl.DescriptorDesc; buf: ARRAY OF BYTE);
-    VAR phead!: Def.DescHeader; CfgDescLen, ptr, nptr: HALFWORD;
-      done: BOOLEAN;
-  BEGIN phead := SYSTEM.VAL(Def.DescHeader, SYSTEM.ADR(buf));
+  PROCEDURE ParseHIDDesc(VAR desc: HCl.DescriptorDesc; VAR buf: Def.RawDescriptor);
+    VAR done: BOOLEAN;
+  BEGIN Def.Reset(buf); done := FALSE;
 (*
 DEBUG: configuration descriptor: (59)
   09  02  3B  00  02  01  00  A0  32 Configuration descriptor, length 59 bytes, 2 interfaces, config 1, string index 0, bus powered and remote wakeup, 100 mA
   09  04  00  00  01  03  01  01  00 Interface descriptor, inteface 0, alt setting 0, 1 endpoint, class 3, subclass 1, protocol 1, string index 0
   09  21  11  01  00  01  22  36  00 HID descriptor, release 1.11, country 0, 1 HID class descriptor to follow, report descriptor type 22h, desc length 54 bytes
-  07  05  81  03  08  00  0A                 Endpoint descriptor, endpoint address In 1, interrupt, max packet size 8 bytes, polling interval 10 frames
+  07  05  81  03  08  00  0A         Endpoint descriptor, endpoint address In 1, interrupt, max packet size 8 bytes, polling interval 10 frames
   09  04  01  00  01  03  00  00  00 Interface descriptor, interface 1, alt setting 0, 1 endpoint, class 3, subclass 0, protocol 0, string index 0
   09  21  11  01  00  01  22  34  00 HID descriptor, release 1.11, country 0, 1 HID class descriptor to follow, report descriptor type 22h, desc length 52 bytes
-  07  05  82  03  03  00  0A                 Endpoint descriptor, endpoint address in 2, interrupt, max packet size 3 bytes, polling interval 10 frames
+  07  05  82  03  03  00  0A         Endpoint descriptor, endpoint address in 2, interrupt, max packet size 3 bytes, polling interval 10 frames
 *)
-
-    CfgDescLen := Def.LE16(buf, 2);
-    IF CfgDescLen > Def.CONFIGURATION_DESC_SIZE THEN
-      nptr := Def.LEN_CFG_DESC; done := FALSE;
-      WHILE ~done & (ptr < CfgDescLen) DO ptr := nptr; phead := CtlReq.GetNextDesc(phead, nptr);
-        IF phead.bDescriptorType = Def.DESC_TYPE_HID THEN
-          desc.bLength := buf[ptr]; desc.bDescriptorType := buf[ptr + 1];
-          desc.bcdHID := Def.LE16(buf, ptr + 2); desc.bCountryCode := buf[ptr + 4]; desc.bNumDescriptors := buf[ptr + 5];
-          desc.bReportDescriptorType := buf[ptr + 6]; desc.wItemLength := Def.LE16(buf, ptr + 7);
-          done := TRUE
-        END
+    WHILE ~done & Def.HasMoreHeaders(buf) DO Def.GoNextHeader(buf);
+      IF Def.HeaderType(buf) = Def.DESC_TYPE_HID THEN
+        desc.bLength := Def.ReadByte(buf); desc.bDescriptorType := Def.ReadByte(buf);
+        desc.bcdHID := Def.ReadHalfword(buf); desc.bCountryCode := Def.ReadByte(buf);
+        desc.bNumDescriptors := Def.ReadByte(buf); desc.bReportDescriptorType := Def.ReadByte(buf);
+        desc.wItemLength := Def.ReadHalfword(buf);
+        done := TRUE
       END
     END
   END ParseHIDDesc;
@@ -79,15 +74,15 @@ DEBUG: configuration descriptor: (59)
   * @param  Length : HID Report Descriptor Length
   * @retval USBH Status
   *)
-  PROCEDURE GetHIDReportDescriptor(phost: Def.Handle; length: HALFWORD): BYTE;
-    VAR status: BYTE; buf: Def.DataBuffer;
+  PROCEDURE GetHIDReportDescriptor(phost: Def.Handle; VAR buf: Def.RawDescriptor): BYTE;
+    VAR status: BYTE;
   BEGIN
-    IF length > LEN(buf) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue");
+    IF buf.length > LEN(buf.data) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue");
       status := Def.NOT_SUPPORTED
     ELSE status := CtlReq.GetDescriptor(phost, Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_STANDARD,
-                              Def.DESC_HID_REPORT, buf, length)
+                              Def.DESC_HID_REPORT, buf)
     END
-    (* HID report descriptor is available in phost->device.Data.
+    (* HID report descriptor is available in buf.
     In case of USB Boot Mode devices for In report handling ,
     HID report descriptor parsing is not required.
     In case, for supporting Non-Boot Protocol devices and output reports,
@@ -111,7 +106,7 @@ DEBUG: configuration descriptor: (59)
     phost.Control.setup.wValue := duration*100H + reportId;
     phost.Control.setup.wIndex := 0; phost.Control.setup.wLength := 0
 
-    RETURN CtlReq.CtlReq(phost, dummy, 0)
+    RETURN CtlReq.CtlReq(phost, dummy)
 
   END SetIdle;
 
@@ -129,7 +124,7 @@ DEBUG: configuration descriptor: (59)
     IF protocol # 0 THEN phost.Control.setup.wValue := 0 ELSE phost.Control.setup.wValue := 1 END;
     phost.Control.setup.wIndex := 0; phost.Control.setup.wLength := 0
 
-    RETURN CtlReq.CtlReq(phost, dummy, 0)
+    RETURN CtlReq.CtlReq(phost, dummy)
   END SetProtocol;
 
   (**
@@ -148,7 +143,7 @@ DEBUG: configuration descriptor: (59)
     phost.Control.setup.wValue := reportType*100H + reportId;
     phost.Control.setup.wIndex := 0; phost.Control.setup.wLength := reportLen
 
-    RETURN CtlReq.CtlReq(phost, reportBuff, reportLen)
+    RETURN CtlReq.CtlReq(phost, reportBuff)
   END GetReport;
 
   (**
@@ -282,8 +277,9 @@ DEBUG: configuration descriptor: (59)
       hidh.ctl_state := HCl.REQ_GET_REPORT_DESC;
     ELSIF hidh.ctl_state = HCl.REQ_GET_REPORT_DESC THEN
       (* Get Report Desc *)
-      classReqStatus := GetHIDReportDescriptor(phost, hidh.HID_Desc.wItemLength);
-      IF classReqStatus = Def.OK THEN (* The descriptor is available in phost.device.Data *)
+      hidh.ReportDesc.length := hidh.HID_Desc.wItemLength;
+      classReqStatus := GetHIDReportDescriptor(phost, hidh.ReportDesc);
+      IF classReqStatus = Def.OK THEN (* The descriptor is available in phost.pActiveClass.pData.ReportDesc *)
         hidh.ctl_state := HCl.REQ_SET_IDLE;
       ELSIF classReqStatus = Def.NOT_SUPPORTED THEN
         Log.Error("Control error: HID: Device Get Report Descriptor request failed");
