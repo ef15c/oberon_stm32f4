@@ -36,7 +36,7 @@ MODULE USBHHal;
   * @retval None
   *)
   PROCEDURE^5 OTG_HS_IRQHandler;
-  BEGIN HCD.IRQHandler(hhcd); LED({4})
+  BEGIN HCD.IRQHandler(hhcd)
   END OTG_HS_IRQHandler;
 
   PROCEDURE MspInit(hhcd: HCD.Handle);
@@ -318,7 +318,7 @@ MODULE USBHHal;
     (* Initialize LL Driver *)
     IF HCD.Init(hhcd) # ll.HAL_OK THEN res := Def.FAIL
     ELSE Core.SetTimer(phost, HCD.GetCurrentFrame(hhcd)); res := Def.OK;
-      Log.UserString("Core version: "); Log.UserHexVLen(ORD(hhcd.Instance.GSNPSID), 8, FALSE); Log.UserLn
+      Log.DebugString("Core version: "); Log.DebugHexVLen(ORD(hhcd.Instance.GSNPSID), 8, FALSE); Log.DebugLn
     END;
     (*Oberon specific callbacks*)
     phost.Stop := Stop;

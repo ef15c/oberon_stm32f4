@@ -63,7 +63,7 @@ MODULE USBHHIDApp;
     res := USBH.Init(hUSBHost, UserProcess, 0);
     IF res = Def.OK THEN res := USBH.RegisterClass(hUSBHost, HID.CLASS); (* Add Supported Class *)
       USBH.Start(hUSBHost); (* Start Host Process *)
-      Log.User("USBH lib started.");
+      Log.Debug("USBH lib started."); Log.DebugLn;
       (* Run Application (Non blocking mode) *)
       processTask := Oberon.NewTask(Process, 10); Oberon.Install(processTask)
     ELSE Log.Error("USBH lib failed to start");
@@ -72,14 +72,20 @@ MODULE USBHHIDApp;
   END Run;
 
   PROCEDURE Stop*;
-  BEGIN USBH.Stop(hUSBHost); USBH.DeInit(hUSBHost);
-    Log.User("USBH lib stopped.");
-    IF processTask # NIL THEN Oberon.Remove(processTask); processTask := NIL END;
-    Log.Flush
+  BEGIN 
+    IF hUSBHost.phcd # NIL THEN
+      USBH.Stop(hUSBHost); USBH.DeInit(hUSBHost);
+      Log.User("USBH lib application stopped.");
+      IF processTask # NIL THEN Oberon.Remove(processTask); processTask := NIL END;
+      Log.Flush
+    END
   END Stop;
 
-BEGIN (*Appli_state := APPLICATION_IDLE *)
-  NEW(hUSBHost)
+BEGIN (*Appli_state := APPLICATION_IDLE *) NEW(hUSBHost);
+(*
+  Log.SetDebugCbks(Log.DefaultDebug, Log.DefaultString, Log.DefaultInt, Log.DefaultHexVLen,
+    Log.DefaultSet, Log.DefaultBuf, Log.DefaultLn)
+*)
 END USBHHIDApp.
 
 OM4P.Compile USBLog.Mod/s USBHConf.Mod/s USBHDef.Mod/s USBHPipes.Mod/s USBHIoReq.Mod/s

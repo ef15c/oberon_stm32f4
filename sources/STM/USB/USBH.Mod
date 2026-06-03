@@ -58,7 +58,7 @@ MODULE USBH;
   PROCEDURE Init*(phost: Def.Handle; pUsrFunc: Def.UserCallback; id: BYTE): BYTE;
     VAR status: BYTE;
   BEGIN
-    IF phost = NIL THEN Log.Error("Invalid Host Handle"); status := Def.FAIL
+    IF phost = NIL THEN Log.Error("Invalid Host Handle"); Log.ErrorLn; status := Def.FAIL
     ELSE phost.id := id; (* Set DRiver ID *)
       phost.pActiveClass := NIL; (* Unlink class*)
       phost.ClassNumber := 0;
@@ -108,9 +108,9 @@ MODULE USBH;
     IF pclass # NIL THEN
       IF phost.ClassNumber < Conf.MAX_NUM_SUPPORTED_CLASS THEN
         phost.pClass[phost.ClassNumber] := pclass; INC(phost.ClassNumber) (* link the class to the USB Host handle *)
-      ELSE Log.Error("Max Class Number reached"); status := Def.FAIL
+      ELSE Log.Error("Max Class Number reached"); Log.ErrorLn; status := Def.FAIL
       END
-    ELSE Log.Error("Invalid Class handle"); status := Def.FAIL
+    ELSE Log.Error("Invalid Class handle"); Log.ErrorLn; status := Def.FAIL
     END;
     Log.Flush
 
@@ -153,11 +153,11 @@ MODULE USBH;
   BEGIN status := Def.OK;
     IF interface < phost.device.CfgDesc.bNumInterfaces THEN
       phost.device.current_interface := interface;
-      Log.UserString("Switching to Interface (#"); Log.UserInt(interface, 1); Log.User(")");
+      Log.Debug("Switching to Interface (#"); Log.DebugInt(interface, 1); Log.DebugString(")"); Log.DebugLn;
       Log.UserString("Class    : "); Log.UserHexVLen(phost.device.CfgDesc.Itf_Desc[interface].bInterfaceClass, 2, FALSE); Log.User("h");
       Log.UserString("SubClass : "); Log.UserHexVLen(phost.device.CfgDesc.Itf_Desc[interface].bInterfaceSubClass, 2, FALSE); Log.User("h");
       Log.UserString("Protocol : "); Log.UserHexVLen(phost.device.CfgDesc.Itf_Desc[interface].bInterfaceProtocol, 2, FALSE); Log.User("h");
-    ELSE Log.Error("Cannot Select This Interface.");
+    ELSE Log.Error("Cannot Select This Interface."); Log.ErrorLn;
       status := Def.FAIL
     END;
     Log.Flush
@@ -216,7 +216,7 @@ MODULE USBH;
         (* Open Control pipes *)
         Pipes.Open(phost, phost.Control.pipe_out, 0, phost.device.address,
           phost.device.speed, IoReq.EP_CONTROL, phost.Control.pipe_size);
-      ELSIF ReqStatus = Def.NOT_SUPPORTED THEN Log.Error("Control error: Get Device Descriptor request failed");
+      ELSIF ReqStatus = Def.NOT_SUPPORTED THEN Log.Error("Control error: Get Device Descriptor request failed"); Log.ErrorLn;
         INC(phost.device.EnumCnt);
         IF phost.device.EnumCnt > 3 THEN (* Buggy Device can't complete get device desc request *)
           Log.User("Control error, Device not Responding Please unplug the Device.");
@@ -234,7 +234,7 @@ MODULE USBH;
         Log.UserString("VID: "); Log.UserHexVLen(phost.device.DevDesc.idVendor, 4, FALSE); Log.User("h");
         phost.EnumState := Def.ENUM_SET_ADDR
       ELSIF ReqStatus = Def.NOT_SUPPORTED THEN
-        Log.Error("Control error: Get Full Device Descriptor request failed");
+        Log.Error("Control error: Get Full Device Descriptor request failed"); Log.ErrorLn;
         INC(phost.device.EnumCnt);
         IF phost.device.EnumCnt > 3 THEN (* Buggy Device can't complete get device desc request *)
           Log.User("Control error, Device not Responding Please unplug the Device.");
@@ -250,7 +250,7 @@ MODULE USBH;
       IF ReqStatus = Def.OK THEN
         Kernel.Delayms(2); phost.device.address := Def.DEVICE_ADDRESS;
         (* user callback for device address assigned *)
-        Log.UserString("Address (#"); Log.UserInt(phost.device.address, 1); Log.User(") assigned.");
+        Log.Debug("Address (#"); Log.DebugInt(phost.device.address, 1); Log.DebugString(") assigned."); Log.DebugLn;
         phost.EnumState := Def.ENUM_GET_CFG_DESC;
         (* modify control channels to update device address *)
         Pipes.Open(phost, phost.Control.pipe_in, 80H, phost.device.address,
@@ -259,7 +259,7 @@ MODULE USBH;
         Pipes.Open(phost, phost.Control.pipe_out, 0, phost.device.address,
           phost.device.speed, IoReq.EP_CONTROL, phost.Control.pipe_size)
       ELSIF ReqStatus = Def.NOT_SUPPORTED THEN
-        Log.Error("Control error: Device Set Address request failed");
+        Log.Error("Control error: Device Set Address request failed"); Log.ErrorLn;
         (* Buggy Device can't complete get device desc request *)
         Log.User("Control error, Device not Responding Please unplug the Device.");
         phost.gState := Def.HOST_ABORT_STATE; phost.EnumState := Def.IDLE;
@@ -269,7 +269,7 @@ MODULE USBH;
       ReqStatus := CtlReq.Get_CfgDesc(phost, Def.CONFIGURATION_DESC_SIZE);
       IF ReqStatus = Def.OK THEN phost.EnumState := Def.ENUM_GET_FULL_CFG_DESC
       ELSIF ReqStatus = Def.NOT_SUPPORTED THEN
-        Log.Error("Control error: Get Device configuration descriptor request failed");
+        Log.Error("Control error: Get Device configuration descriptor request failed"); Log.ErrorLn;
         INC(phost.device.EnumCnt);
         IF phost.device.EnumCnt > 3 THEN
           (* Buggy Device can't complete get device desc request *)
@@ -355,7 +355,7 @@ MODULE USBH;
         phost.device.address := Def.ADDRESS_DEFAULT; phost.Timeout := 0;
       END
     ELSIF phost.gState = Def.HOST_DEV_WAIT_FOR_ATTACHMENT THEN (* Wait for Port Enabled *)
-      IF phost.device.PortEnabled THEN Log.User("USB Device Reset Completed");
+      IF phost.device.PortEnabled THEN Log.Debug("USB Device Reset Completed"); Log.DebugLn;
         phost.device.RstCnt := 0; phost.gState := Def.HOST_DEV_ATTACHED
       ELSIF phost.Timeout > Def.DEV_RESET_TIMEOUT THEN INC(phost.device.RstCnt);
         IF phost.device.RstCnt > 3 THEN (* Buggy Device can't complete reset *)
@@ -387,9 +387,9 @@ MODULE USBH;
       status := HandleEnum(phost);
       IF status = Def.OK THEN
         (* The function shall return USBH_OK when full enumeration is complete *)
-        Log.User("Enumeration done."); phost.device.current_interface := 0;
+        Log.Debug("Enumeration done."); Log.DebugLn; phost.device.current_interface := 0;
         IF phost.device.DevDesc.bNumConfigurations = 1 THEN
-          Log.User("This device has only 1 configuration."); phost.gState := Def.HOST_SET_CONFIGURATION
+          Log.Debug("This device has only 1 configuration."); Log.DebugLn; phost.gState := Def.HOST_SET_CONFIGURATION
         ELSE phost.gState := Def.HOST_INPUT
         END
       END
@@ -403,12 +403,12 @@ MODULE USBH;
       (* set configuration *)
       IF CtlReq.SetCfg(phost, phost.device.CfgDesc.bConfigurationValue) = Def.OK THEN
         phost.gState := Def.HOST_SET_WAKEUP_FEATURE;
-        Log.User("Default configuration set.");
+        Log.Debug("Default configuration set."); Log.DebugLn;
       END
     ELSIF phost.gState = Def.HOST_SET_WAKEUP_FEATURE THEN
       IF Def.REMOTE_WAKEUP IN phost.device.CfgDesc.bmAttributes THEN
         status := CtlReq.SetFeature(phost, CtlReq.FEATURE_SELECTOR_REMOTEWAKEUP);
-        IF status = Def.OK THEN Log.User("Device remote wakeup enabled");
+        IF status = Def.OK THEN Log.Debug("Device remote wakeup enabled"); Log.DebugLn;
           phost.gState := Def.HOST_CHECK_CLASS;
         ELSIF status = Def.NOT_SUPPORTED THEN Log.User("Remote wakeup not supported by the device");
           phost.gState := Def.HOST_CHECK_CLASS;
@@ -427,7 +427,7 @@ MODULE USBH;
         IF phost.pActiveClass # NIL THEN
           IF phost.pActiveClass.Init(phost) = Def.OK THEN
             phost.gState := Def.HOST_CLASS_REQUEST;
-            Log.UserString(phost.pActiveClass.Name); Log.User(" class started.");
+            Log.Debug(phost.pActiveClass.Name); Log.DebugString(" class started."); Log.DebugLn;
             (* Inform user that a class has been activated *)
             phost.pUser(phost, Def.USER_CLASS_SELECTED)
           ELSE phost.gState := Def.HOST_ABORT_STATE;

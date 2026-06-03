@@ -77,7 +77,7 @@ DEBUG: configuration descriptor: (59)
   PROCEDURE GetHIDReportDescriptor(phost: Def.Handle; VAR buf: Def.RawDescriptor): BYTE;
     VAR status: BYTE;
   BEGIN
-    IF buf.length > LEN(buf.data) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue");
+    IF buf.length > LEN(buf.data) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue"); Log.ErrorLn;
       status := Def.NOT_SUPPORTED
     ELSE status := CtlReq.GetDescriptor(phost, Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_STANDARD,
                               Def.DESC_HID_REPORT, buf)
@@ -181,13 +181,13 @@ DEBUG: configuration descriptor: (59)
   BEGIN status := Def.OK;
     interface := USBH.FindInterface(phost, phost.pActiveClass.ClassCode, HCl.BOOT_CODE, 0FFH);
     IF interface = 0FFH THEN (* No Valid Interface *)
-      Log.DebugString("Cannot Find the interface for "); Log.DebugString(phost.pActiveClass.Name);
-      Log.Debug(" class.");
+      Log.Debug("Cannot Find the interface for "); Log.DebugString(phost.pActiveClass.Name);
+      Log.DebugString(" class."); Log.DebugLn;
       status := Def.FAIL
     END;
     IF status # Def.FAIL THEN status := USBH.SelectInterface(phost, interface); END;
     IF status # Def.FAIL THEN NEW(hidh); phost.pActiveClass.pData := hidh;
-      IF hidh = NIL THEN Log.Debug("Cannot allocate memory for HID Handle");
+      IF hidh = NIL THEN Log.Debug("Cannot allocate memory for HID Handle"); Log.DebugLn;
         status := Def.FAIL
       END
     END;
@@ -282,7 +282,7 @@ DEBUG: configuration descriptor: (59)
       IF classReqStatus = Def.OK THEN (* The descriptor is available in phost.pActiveClass.pData.ReportDesc *)
         hidh.ctl_state := HCl.REQ_SET_IDLE;
       ELSIF classReqStatus = Def.NOT_SUPPORTED THEN
-        Log.Error("Control error: HID: Device Get Report Descriptor request failed");
+        Log.Error("Control error: HID: Device Get Report Descriptor request failed"); Log.ErrorLn;
         status := Def.FAIL
       END
     ELSIF hidh.ctl_state = HCl.REQ_SET_IDLE THEN
@@ -293,9 +293,9 @@ DEBUG: configuration descriptor: (59)
       IF classReqStatus = Def.OK THEN hidh.ctl_state := HCl.REQ_IDLE;
         phost.pUser(phost, USBH.USER_CLASS_ACTIVE); (* all requests performed *)
         status := Def.OK;
-        Log.User("Class active")
+        Log.Debug("Class active"); Log.DebugLn
       ELSIF classReqStatus = Def.NOT_SUPPORTED THEN
-        Log.Error("Control error: HID: Device Set protocol request failed");
+        Log.Error("Control error: HID: Device Set protocol request failed"); Log.ErrorLn;
         status := Def.FAIL
       END
     END
@@ -315,7 +315,7 @@ DEBUG: configuration descriptor: (59)
     hidh := phost.pActiveClass.pData(HCl.Handle);
     IF hidh.state = HCl.INIT THEN status := hidh.Init(phost);
       IF status = Def.OK THEN hidh.state := HCl.IDLE
-      ELSE Log.Error("HID Class Init failed");
+      ELSE Log.Error("HID Class Init failed"); Log.ErrorLn;
         hidh.state := HCl.ERROR; status := Def.FAIL
       END
     ELSIF hidh.state = HCl.IDLE THEN status := GetReport(phost, 1, 0, hidh.pData, hidh.length);

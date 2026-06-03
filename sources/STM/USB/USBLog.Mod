@@ -6,24 +6,38 @@ MODULE USBLog;
   ******************************************************************************
   *)
 
-  IMPORT Texts, Oberon;
+  IMPORT Display, Texts, Oberon;
+
+  TYPE MsgCallback = PROCEDURE^5(msg: ARRAY OF CHAR);
+    IntCallback = PROCEDURE^5(val, len: INTEGER);
+    HexVLenCallback = PROCEDURE^5(x, n: INTEGER; lz: BOOLEAN);
+    SetCallback = PROCEDURE^5(s: SET);
+    BufCallback = PROCEDURE^5(buf: ARRAY OF BYTE; len: INTEGER);
+    LnCallback = PROCEDURE^5;
 
   VAR W: Texts.Writer; wrnum, rdnum: INTEGER;
+    UserCbk, ErrorCbk, DebugCbk,
+    UserStringCbk, ErrorStringCbk, DebugStringCbk: MsgCallback;
+    UserIntCbk, ErrorIntCbk, DebugIntCbk: IntCallback;
+    UserHexVLenCbk, ErrorHexVLenCbk, DebugHexVLenCbk: HexVLenCallback;
+    UserSetCbk, ErrorSetCbk, DebugSetCbk: SetCallback;
+    UserBufCbk, ErrorBufCbk, DebugBufCbk: BufCallback;
+    UserLnCbk, ErrorLnCbk, DebugLnCbk: LnCallback;
 
   (* DEBUG logging *)
-  PROCEDURE UserString*(msg: ARRAY OF CHAR);
+  PROCEDURE DefaultString*(msg: ARRAY OF CHAR);
   BEGIN Texts.WriteString(W, msg); INC(wrnum)
-  END UserString;
+  END DefaultString;
 
-  PROCEDURE UserInt*(val, len: INTEGER);
+  PROCEDURE DefaultInt*(val, len: INTEGER);
   BEGIN Texts.WriteInt(W, val, len);  INC(wrnum)
-  END UserInt;
+  END DefaultInt;
 
-  PROCEDURE UserHexVLen*(x, n: INTEGER; lz: BOOLEAN);
+  PROCEDURE DefaultHexVLen*(x, n: INTEGER; lz: BOOLEAN);
   BEGIN Texts.WriteHexVLen(W, x, n, lz);  INC(wrnum)
-  END UserHexVLen;
+  END DefaultHexVLen;
 
-  PROCEDURE UserSet*(s: SET);
+  PROCEDURE DefaultSet*(s: SET);
     VAR i, j: INTEGER; first: BOOLEAN;
   BEGIN first := TRUE; i := 0; Texts.Write(W, "{");
     WHILE i < 32 DO j := i+1;
@@ -37,58 +51,105 @@ MODULE USBLog;
       i := j
     END;
     Texts.Write(W, "}"); INC(wrnum)
-  END UserSet;
+  END DefaultSet;
 
-  PROCEDURE UserBuf*(buf: ARRAY OF BYTE; len: INTEGER);
+  PROCEDURE DefaultBuf*(buf: ARRAY OF BYTE; len: INTEGER);
     VAR i: INTEGER;
   BEGIN Texts.Write(W, "("); Texts.WriteInt(W, len, 1); Texts.Write(W, ")");
     FOR i := 0 TO len - 1 DO Texts.Write(W, " "); Texts.WriteHexVLen(W, buf[i], 2, FALSE) END;
     INC(wrnum)
-  END UserBuf;
+  END DefaultBuf;
 
-  PROCEDURE UserLn*;
+  PROCEDURE DefaultLn*;
   BEGIN Texts.WriteLn(W); INC(wrnum)
-  END UserLn;
+  END DefaultLn;
+
+  PROCEDURE DefaultUser*(msg: ARRAY OF CHAR);
+  BEGIN DefaultString(msg); DefaultLn
+  END DefaultUser;
+
+  PROCEDURE DefaultError*(msg: ARRAY OF CHAR);
+  BEGIN Texts.WriteString(W, "ERROR: "); DefaultString(msg)
+  END DefaultError;
+
+  PROCEDURE DefaultDebug*(msg: ARRAY OF CHAR);
+  BEGIN Texts.WriteString(W, "DEBUG: "); DefaultString(msg)
+  END DefaultDebug;
 
   PROCEDURE User*(msg: ARRAY OF CHAR);
-  BEGIN UserString(msg); UserLn
+  BEGIN IF UserCbk # NIL THEN W.col := Display.green; UserCbk(msg) END
   END User;
 
+  PROCEDURE UserString*(msg: ARRAY OF CHAR);
+  BEGIN IF UserStringCbk # NIL THEN W.col := Display.green; UserStringCbk(msg) END
+  END UserString;
+
+  PROCEDURE UserInt*(val, len: INTEGER);
+  BEGIN IF UserIntCbk # NIL THEN W.col := Display.green; UserIntCbk(val, len) END
+  END UserInt;
+
+  PROCEDURE UserHexVLen*(x, n: INTEGER; lz: BOOLEAN);
+  BEGIN IF UserHexVLenCbk # NIL THEN W.col := Display.green; UserHexVLenCbk(x, n, lz) END
+  END UserHexVLen;
+
   PROCEDURE Error*(msg: ARRAY OF CHAR);
-  BEGIN Texts.WriteString(W, "ERROR: "); User(msg)
+  BEGIN IF ErrorCbk # NIL THEN W.col := Display.red; ErrorCbk(msg) END
   END Error;
 
+  PROCEDURE ErrorLn*;
+  BEGIN IF ErrorLnCbk # NIL THEN ErrorLnCbk END
+  END ErrorLn;
+
   PROCEDURE Debug*(msg: ARRAY OF CHAR);
-  BEGIN Texts.WriteString(W, "DEBUG: "); Texts.WriteString(W, msg); INC(wrnum)
+  BEGIN IF DebugCbk # NIL THEN W.col := Display.white; DebugCbk(msg) END
   END Debug;
 
   PROCEDURE DebugString*(msg: ARRAY OF CHAR);
-  BEGIN UserString(msg)
+  BEGIN IF DebugStringCbk # NIL THEN W.col := Display.white; DebugStringCbk(msg) END
   END DebugString;
 
   PROCEDURE DebugInt*(val, len: INTEGER);
-  BEGIN UserInt(val, len)
+  BEGIN IF DebugIntCbk # NIL THEN W.col := Display.white; DebugIntCbk(val, len) END
   END DebugInt;
 
   PROCEDURE DebugHexVLen*(x, n: INTEGER; lz: BOOLEAN);
-  BEGIN UserHexVLen(x, n, lz)
+  BEGIN IF DebugHexVLenCbk # NIL THEN W.col := Display.white; DebugHexVLenCbk(x, n, lz) END
   END DebugHexVLen;
 
-  PROCEDURE DebugSet*(s: SET);
-  BEGIN UserSet(s)
-  END DebugSet;
-
-  PROCEDURE DebugBuf*(buf: ARRAY OF BYTE; len: INTEGER);
-  BEGIN UserBuf(buf, len)
-  END DebugBuf;
-
   PROCEDURE DebugLn*;
-  BEGIN UserLn
+  BEGIN IF DebugLnCbk # NIL THEN DebugLnCbk END
   END DebugLn;
 
   PROCEDURE Flush*;
   BEGIN IF wrnum # rdnum THEN Texts.Append(Oberon.Log, W.buf); INC(rdnum) END
   END Flush;
 
-BEGIN Texts.OpenWriter(W)
+  PROCEDURE SetUserCbks*(prompt, string: MsgCallback; int: IntCallback; hex: HexVLenCallback; 
+   set: SetCallback; buf: BufCallback; ln: LnCallback);
+  BEGIN UserCbk := prompt; UserStringCbk := string; UserIntCbk := int; UserHexVLenCbk := hex;
+    UserSetCbk := set; UserBufCbk := buf; UserLnCbk := ln
+  END SetUserCbks;
+
+  PROCEDURE SetErrorCbks*(prompt, string: MsgCallback; int: IntCallback; hex: HexVLenCallback; 
+   set: SetCallback; buf: BufCallback; ln: LnCallback);
+  BEGIN ErrorCbk := prompt; ErrorStringCbk := string; ErrorIntCbk := int; ErrorHexVLenCbk := hex;
+    ErrorSetCbk := set; ErrorBufCbk := buf; ErrorLnCbk := ln
+  END SetErrorCbks;
+
+  PROCEDURE SetDebugCbks*(prompt, string: MsgCallback; int: IntCallback; hex: HexVLenCallback; 
+   set: SetCallback; buf: BufCallback; ln: LnCallback);
+  BEGIN DebugCbk := prompt; DebugStringCbk := string; DebugIntCbk := int; DebugHexVLenCbk := hex;
+    DebugSetCbk := set; DebugBufCbk := buf; DebugLnCbk := ln
+  END SetDebugCbks;
+
+  PROCEDURE SetDefaultCbks*;
+  BEGIN
+    SetUserCbks(DefaultUser, DefaultString, DefaultInt, DefaultHexVLen, DefaultSet, DefaultBuf, DefaultLn);
+    SetErrorCbks(DefaultError, DefaultString, DefaultInt, DefaultHexVLen, DefaultSet, DefaultBuf, DefaultLn);
+    SetDebugCbks(NIL, NIL, NIL, NIL, NIL, NIL, NIL);
+  END SetDefaultCbks;
+
+BEGIN Texts.OpenWriter(W); SetDefaultCbks
 END USBLog.
+
+OM4Tool.DecSym USBLog.sm4
