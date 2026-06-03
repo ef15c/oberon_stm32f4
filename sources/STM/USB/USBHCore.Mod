@@ -75,7 +75,7 @@ MODULE USBHCore;
     phost.device.is_disconnected := TRUE;
     phost.device.is_connected := FALSE;
     phost.device.PortEnabled := FALSE;
-    phost.Stop(phost); (* Stop Host *)
+(*    phost.Stop(phost); (* Stop Host *)*)
     (* Free Control Pipes *)
     Pipes.Free(phost, phost.Control.pipe_in);
     Pipes.Free(phost, phost.Control.pipe_out);

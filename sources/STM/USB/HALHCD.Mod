@@ -6,7 +6,7 @@ MODULE HALHCD;
   * @brief   HCD HAL module.
   ******************************************************************************
   *)
-  IMPORT SYSTEM, Log := USBLog, ll := LLUSB, Def := USBHDef;
+  IMPORT SYSTEM, ll := LLUSB, Def := USBHDef;
 
   CONST
   (** @defgroup HCD_Exported_Types_Group1 HCD State Structure definition
@@ -511,12 +511,10 @@ MODULE HALHCD;
       ll.DisableGlobalInt(hhcd.Instance);  (* Disable the Interrupts *)
       (* Init the Core (common init.) *)
       IF ll.CoreInit(hhcd.Instance, hhcd.Init) # ll.HAL_OK THEN
-        Log.Error("Core init failed");
         hhcd.State := STATE_ERROR; res := ll.HAL_ERROR
       ELSE
         (* Force Host Mode *)
         IF ll.SetCurrentMode(hhcd.Instance, ll.USB_HOST_MODE) # ll.HAL_OK THEN
-          Log.Error("Force host mode failed");
           hhcd.State := STATE_ERROR; res := ll.HAL_ERROR
         ELSE
           (* Init Host *)

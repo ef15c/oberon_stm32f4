@@ -24,9 +24,8 @@ MODULE USBH;
   * @retval USBH Status
   *)
   PROCEDURE DeInitStateMachine(phost: Def.Handle);
-    VAR i: INTEGER;
   BEGIN
-    FOR i := 0 TO Def.MAX_PIPES_NBR - 1 DO phost.Pipes[i] := {} END; (* Clear Pipes flags*)
+    CLEAR(phost.Pipes); (* Clear Pipes flags*)
 
     phost.gState := Def.IDLE;
     phost.EnumState := Def.IDLE;
@@ -43,7 +42,7 @@ MODULE USBH;
     phost.device.EnumCnt := 0;
 
     (* Reset the device record *)
-    FOR i := 0 TO Conf.MAX_SIZE_CONFIGURATION - 1 DO phost.device.CfgDesc_Raw.data[i] :=  0 END;
+    CLEAR(phost.device.CfgDesc_Raw.data);
     CLEAR(phost.device.DevDesc);
     CLEAR(phost.device.CfgDesc);
   END DeInitStateMachine;
@@ -286,7 +285,7 @@ MODULE USBH;
       ReqStatus := CtlReq.Get_CfgDesc(phost, phost.device.CfgDesc.wTotalLength);
       IF ReqStatus = Def.OK THEN phost.EnumState := Def.ENUM_GET_MFC_STRING_DESC
       ELSIF ReqStatus = Def.NOT_SUPPORTED THEN
-        Log.Error("Control error: Get Device configuration descriptor request failed");
+        Log.Error("Control error: Get Device full configuration descriptor request failed");
         INC(phost.device.EnumCnt);
         IF phost.device.EnumCnt > 3 THEN (* Buggy Device can't complete get device desc request *)
           Log.User("Control error, Device not Responding Please unplug the Device.");

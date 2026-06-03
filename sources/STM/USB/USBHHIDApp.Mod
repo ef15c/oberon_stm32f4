@@ -72,7 +72,7 @@ MODULE USBHHIDApp;
   END Run;
 
   PROCEDURE Stop*;
-  BEGIN USBH.DeInit(hUSBHost);
+  BEGIN USBH.Stop(hUSBHost); USBH.DeInit(hUSBHost);
     Log.User("USBH lib stopped.");
     IF processTask # NIL THEN Oberon.Remove(processTask); processTask := NIL END;
     Log.Flush
