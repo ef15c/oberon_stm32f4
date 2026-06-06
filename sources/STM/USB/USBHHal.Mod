@@ -16,7 +16,7 @@ MODULE USBHHal;
   ******************************************************************************
   *)
 
-  IMPORT SYSTEM, BSP, Kernel, Log := USBLog, Def := USBHDef, Core := USBHCore, ll := LLUSB, HCD := HALHCD;
+  IMPORT SYSTEM, BSP, Kernel, Log := USBLog, Def := USBHDef, Core := USBHCore, ll := LLUSB, DI := DeferInt, HCD := HALHCD;
 
   CONST
     (*TODO: relocate in BSP Module*)
@@ -345,15 +345,26 @@ MODULE USBHHal;
     RETURN cs
   END GetSpeed;
 
+  PROCEDURE ProcessDeferredIRQWork*;
+    VAR msg!: DI.Msg;
+  BEGIN msg := HCD.extractMsg();
+    WHILE msg # NIL DO
+      CASE msg OF
+        HCD.ConnectMsg: Connect_Callback(msg.hhcd)
+      | HCD.DisconnectMsg: Disconnect_Callback(msg.hhcd)
+      | HCD.PortEnabledMsg: PortEnabled_Callback(msg.hhcd)
+      | HCD.PortDisabledMsg: PortDisabled_Callback(msg.hhcd)
+      | HCD.URBChangeMsg: HC_NotifyURBChange_Callback(msg.hhcd, msg.chnum, msg.urb_state)
+      | DI.Msg: ASSERT(FALSE) (*type must be handled in above list*)
+      END;
+      msg := HCD.extractMsg()
+    END
+  END ProcessDeferredIRQWork;
+
 BEGIN NEW(hhcd);
   hhcd.MspInitCallback := MspInit;
   hhcd.MspDeInitCallback := MspDeInit;
-  hhcd.SOFCallback := SOF_Callback;
-  hhcd.ConnectCallback := Connect_Callback;
-  hhcd.DisconnectCallback := Disconnect_Callback;
-  hhcd.PortEnabledCallback :=  PortEnabled_Callback;
-  hhcd.PortDisabledCallback := PortDisabled_Callback;
-  hhcd.HC_NotifyURBChangeCallback := HC_NotifyURBChange_Callback;
+  hhcd.SOFCallback := SOF_Callback
 END USBHHal.
 
 OM4Tool.DecSym USBHHal.sm4

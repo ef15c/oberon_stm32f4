@@ -88,20 +88,20 @@ BEGIN (*Appli_state := APPLICATION_IDLE *) NEW(hUSBHost);
 *)
 END USBHHIDApp.
 
-OM4P.Compile USBLog.Mod/s USBHConf.Mod/s USBHDef.Mod/s USBHPipes.Mod/s USBHIoReq.Mod/s
+OM4P.Compile USBLog.Mod/s DeferInt.Mod/s USBHConf.Mod/s USBHDef.Mod/s USBHPipes.Mod/s USBHIoReq.Mod/s
  USBHCtlReq.Mod/s LLUSB.Mod/s USBHCore.Mod/s HALHCD.Mod/s USBHHal.Mod/s USBH.Mod/s
  USBHHIDClass.Mod/s USBHHIDMouse.Mod/s USBHHIDKeybd.Mod/s USBHHID.Mod/s USBHHIDApp.Mod/s ~
 
-Net.SendFiles CS LLUSB.Mod USBHConf.Mod USBHDef.Mod USBHPipes.Mod USBLog.Mod USBHCore.Mod
+Net.SendFiles CS DeferInt.Mod LLUSB.Mod USBHConf.Mod USBHDef.Mod USBHPipes.Mod USBLog.Mod USBHCore.Mod
  HALHCD.Mod USBHHal.Mod USBH.Mod USBHIoReq.Mod USBHCtlReq.Mod USBHHIDClass.Mod
  USBHHIDMouse.Mod USBHHIDKeybd.Mod USBHHID.Mod USBHHIDApp.Mod ~
 
 System.DeleteFiles LLUSB.sm4 USBH.sm4 USBHConf.sm4 USBHCore.sm4 USBHCtlReq.sm4 USBHDef.sm4
  USBHHID.sm4 USBHHIDApp.sm4 USBHHIDClass.sm4 USBHHIDKeybd.sm4 USBHHIDMouse.sm4
- USBHHal.sm4 USBHIoReq.sm4 USBHPipes.sm4 USBLog.sm4 HALHCD.sm4~
+ USBHHal.sm4 USBHIoReq.sm4 USBHPipes.sm4 USBLog.sm4 HALHCD.sm4 DeferInt.sm4~
 
 System.Free USBHHIDApp USBHHID USBHHIDKeybd USBHHIDMouse USBHHIDClass USBH USBHHal HALHCD
- USBHCore LLUSB USBHCtlReq USBHIoReq USBHPipes USBHDef USBHConf USBLog~
+ USBHCore LLUSB USBHCtlReq USBHIoReq USBHPipes USBHDef USBHConf USBLog DeferInt~
 
 USBHHIDApp.Run
 USBHHIDApp.Stop
