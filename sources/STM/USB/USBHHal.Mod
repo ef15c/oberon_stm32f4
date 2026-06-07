@@ -16,7 +16,7 @@ MODULE USBHHal;
   ******************************************************************************
   *)
 
-  IMPORT SYSTEM, BSP, Kernel, Log := USBLog, Def := USBHDef, Core := USBHCore, ll := LLUSB, DI := DeferInt, HCD := HALHCD;
+  IMPORT SYSTEM, BSP, Kernel, Log := USBLog, Def := USBHDef, Core := USBHCore, ll := LLUSB, Q := Queue, HCD := HALHCD;
 
   CONST
     (*TODO: relocate in BSP Module*)
@@ -303,7 +303,12 @@ MODULE USBHHal;
   *)
   PROCEDURE Init*(phost: Def.Handle): BYTE;
     VAR res: BYTE;
-  BEGIN (* Set LL Driver parameters *)
+  BEGIN NEW(hhcd); HCD.InitPools(hhcd);
+    hhcd.MspInitCallback := MspInit;
+    hhcd.MspDeInitCallback := MspDeInit;
+    hhcd.SOFCallback := SOF_Callback;
+
+    (* Set LL Driver parameters *)
     hhcd.Instance := SYSTEM.VAL(ll.OTGCore, ll.HS_PERIPH_BASE);
     hhcd.Init.Host_channels := 11;
     hhcd.Init.dma_enable := FALSE;
@@ -345,26 +350,27 @@ MODULE USBHHal;
     RETURN cs
   END GetSpeed;
 
-  PROCEDURE ProcessDeferredIRQWork*;
-    VAR msg!: DI.Msg;
-  BEGIN msg := HCD.extractMsg();
-    WHILE msg # NIL DO
+  
+  (**
+  * @brief  Do the work offloaded by IRQs in the process loop.
+  *)
+ PROCEDURE ProcessDeferredIRQWork*(phost: Def.Handle);
+    VAR msg!: Q.Msg; hhcd!: HCD.Handle;
+  BEGIN hhcd := phost.phcd(HCD.Handle);
+    msg := HCD.TakeMsg(hhcd);
+    WHILE msg # NIL DO (*Process the massage*)
       CASE msg OF
-        HCD.ConnectMsg: Connect_Callback(msg.hhcd)
-      | HCD.DisconnectMsg: Disconnect_Callback(msg.hhcd)
-      | HCD.PortEnabledMsg: PortEnabled_Callback(msg.hhcd)
-      | HCD.PortDisabledMsg: PortDisabled_Callback(msg.hhcd)
-      | HCD.URBChangeMsg: HC_NotifyURBChange_Callback(msg.hhcd, msg.chnum, msg.urb_state)
-      | DI.Msg: ASSERT(FALSE) (*type must be handled in above list*)
-      END;
-      msg := HCD.extractMsg()
+        HCD.ConnectMsg: Connect_Callback(hhcd)
+      | HCD.DisconnectMsg: Disconnect_Callback(hhcd)
+      | HCD.PortEnabledMsg: PortEnabled_Callback(hhcd)
+      | HCD.PortDisabledMsg: PortDisabled_Callback(hhcd)
+      | HCD.URBChangeMsg: HC_NotifyURBChange_Callback(hhcd, msg.chnum, msg.urb_state)
+      | Q.Msg: ASSERT(FALSE) (*type must be handled in above list*)
+      END; HCD.GiveMsg(hhcd, msg);
+      msg := HCD.TakeMsg(hhcd)
     END
   END ProcessDeferredIRQWork;
 
-BEGIN NEW(hhcd);
-  hhcd.MspInitCallback := MspInit;
-  hhcd.MspDeInitCallback := MspDeInit;
-  hhcd.SOFCallback := SOF_Callback
 END USBHHal.
 
 OM4Tool.DecSym USBHHal.sm4

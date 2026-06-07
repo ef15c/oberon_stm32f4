@@ -343,7 +343,7 @@ MODULE USBH;
   *)
   PROCEDURE Process*(phost: Def.Handle);
     VAR status, idx: BYTE;
-  BEGIN UH.ProcessDeferredIRQWork; (*do the deferred job triggered by interrupts*)
+  BEGIN UH.ProcessDeferredIRQWork(phost); (*do the deferred job triggered by interrupts*)
     status := Def.FAIL;
     (* check for Host pending port disconnect event *)
     IF phost.device.is_disconnected THEN phost.gState := Def.HOST_DEV_DISCONNECTED END;
