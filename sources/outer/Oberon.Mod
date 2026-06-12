@@ -2,8 +2,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   CS 20/12/2023*)
   IMPORT SYSTEM, BSP, PS2, Kernel, Files, Modules, Input, Display, Viewers, Fonts, Texts;
 
-  CONST (*message ids*)
-    consume* = 0; track* = 1; defocus* = 0; neutralize* = 1; mark* = 2;
+  CONST
+    consume* = 0; track* = 1; defocus* = 0; neutralize* = 1; mark* = 2; (*message ids*)
     off = 0; idle = 1; active = 2;   (*task states*)
     BasicCycle = 20;
     ESC = 1BX; SETSTAR = 1AX;
