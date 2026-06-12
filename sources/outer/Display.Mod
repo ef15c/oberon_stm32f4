@@ -119,27 +119,27 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       IF x = 0 THEN (*pattern and frame buffer are aligned*)
         FOR j := 0 TO last DO pixAdr := a0 + 4*j;
           SYSTEM.GET(patadr, ps); INC(patadr, 4); SYSTEM.GET(pixAdr, pix);
-          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / SYSTEM.VAL(SET, ps)*col4)
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (SYSTEM.VAL(SET, ps)*col4))
           ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)*col4) END
         END
       ELSE(*pattern must be right shifted by x pixels. Because of little endianness of
                  STMF429 processor, words have to be left shifted by x*NofBPP*)
         SYSTEM.GET(patadr, ps); INC(patadr, 4); SYSTEM.GET(a0, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0, pix / SYSTEM.VAL(SET, LSL(ps, x*NofBPP))*col4)
+        IF mode = invert THEN SYSTEM.PUT(a0, pix / (SYSTEM.VAL(SET, LSL(ps, x*NofBPP))*col4))
         ELSE SYSTEM.PUT(a0, pix + SYSTEM.VAL(SET, LSL(ps, x*NofBPP))*col4) END;
         (*process frame buffer words except the last one*)
         j := 1;
         WHILE j < middle DO pixAdr := a0 + 4*j;
           SYSTEM.GET(patadr, psn); INC(patadr, 4); SYSTEM.GET(pixAdr, pix);
           ps := LSR(ps, (NofPixperWord - x)*NofBPP) + LSL(psn, x*NofBPP);
-          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / SYSTEM.VAL(SET, ps)*col4)
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (SYSTEM.VAL(SET, ps)*col4))
           ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)*col4) END;
           ps := psn; INC(j)
         END;
         IF j <= last THEN pixAdr := a0 + 4*j; SYSTEM.GET(pixAdr, pix);
           (*process last word*)
           ps := LSR(ps, (NofPixperWord - x)*NofBPP);
-          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / SYSTEM.VAL(SET, ps)*col4)
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (SYSTEM.VAL(SET, ps)*col4))
           ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)*col4) END
         END
       END;
@@ -205,19 +205,20 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END CopyBlock;
 
   PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
-  (* pattern width = 4, fixed; pattern starts at patadr+4, for mode = invert only *)
-    VAR al, ar, a0, a1, i: INTEGER;
+  (* pattern starts at patadr+4, for mode = invert only *)
+    VAR al, ar, a0, a1, i, pitch: INTEGER;
       pta0, pta1: INTEGER;  (*pattern addresses*)
-      ph: BYTE;
+      pw, ph: BYTE;
       left, right, mid, pix, pixl, pixr, ptw: SET;
-  BEGIN al := Base + (Height-1-y)*Span; SYSTEM.GET(patadr+1, ph);
-    pta0 := patadr+4; pta1 := ph*4 + pta0;
+  BEGIN al := Base + (Height-1-y)*Span; SYSTEM.GET(patadr+2, ph); SYSTEM.GET(patadr, pw);
+    pitch := pw*NofBPP DIV 8; ASSERT(pitch MOD 4 = 0);
+    pta0 := patadr+4; pta1 := pta0 + ph*pitch; (*end of pattern raster*)
     ar := ((x+w-1) DIV NofPixperWord)*4 + al; al := (x DIV NofPixperWord)*4 + al;
     IF ar = al THEN
       mid := {x MOD NofPixperWord*NofBPP .. (x+w-1) MOD NofPixperWord*NofBPP+NofBPP-1};
       a1 := al;
       FOR i := 1 TO h DO
-        SYSTEM.GET(a1, pix); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a1, (pix - mid) + (pix/ptw * mid)); INC(pta0, 4);
+        SYSTEM.GET(a1, pix); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a1, (pix - mid) + (pix/ptw * mid)); INC(pta0, pitch);
         IF pta0 = pta1 THEN pta0 := patadr+4 END;
         DEC(a1, Span);
       END
@@ -228,7 +229,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         SYSTEM.GET(a0, pixl); SYSTEM.GET(pta0, ptw); SYSTEM.PUT(a0, (pixl - left) + (pixl/ptw * left));
         FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.GET(a1, pix); SYSTEM.PUT(a1, pix/ptw) END ;
         SYSTEM.GET(ar, pixr); SYSTEM.PUT(ar, (pixr - right) + (pixr/ptw * right));
-        INC(pta0, 4); DEC(ar, Span);
+        INC(pta0, pitch); DEC(ar, Span);
         IF pta0 = pta1 THEN pta0 := patadr+4 END;
         DEC(a0, Span)
       END
