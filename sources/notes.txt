@@ -53,17 +53,59 @@ La pile est utilisée uniquement pendant l'exécution d'une commande ou d'une tâch
 Dans l'implémentation RISC-5, sa taille est de 32ko.
 
 2/ STM32F429
+L'adresse de base du système est stockée dans le premier registre de backup (RTC_BKPxR)
+à l'adresse 40002850H.
+
+Deux cas sont possibles:
+
+a/ Le système est hébergé en SDRAM (RTC_BKP0R = D0201000H)
 
 adresse     taille   description
 -------     -------  -----------
-
-1000 0000H ( 10000H) Pile logée dans la CCM
-
-D080 0000H           Limite de la mémoire
+D080 0000H           Limite de la mémoire SDRAM
 D050 0000H (300000H) Début du tas
 D020 1020H (2FEFE0H) Espace de chargement des modules avec desc. types, variable, code, ...
 D020 1004H (    1CH) Variables système (MemLim (0CH) , StackOrg (18H)=fin de la pile , ...)
 D020 1000H (      4) Instruction de saut vers le point d'entrée du système
+D000 0000H (201000H) Mémoire écran, copie post mortem de la pile, ...
+
+2000 0600H ( 2FA00H) Pile principale utilisées par les traitements d'exceptions et d'interruptions
+2000 0200H (   400H) Tampon SD Card
+2000 01ACH (    54H) SD Card handle
+2000 0000H (   1A8H) Oberon system vector table
+
+1000 0000H ( 10000H) Pile logée dans la CCM
+
+0800 4000H (1FC000H) Non utilisé
+0800 01ACH (  3E54H) Bootloader
+0800 0008H (   1A4H) Vecteurs d'interruption en mémoire Flash. Il ne sont pasd utilisés
+0800 0004H (      4) Adresse de démarrage du Bootloader (+1 pour mode Thumb)
+0800 0000H (      4) Adresse de la fin de la pile MSP
+
+b/ Le système est hébergé en Flash/SRAM (RTC_BKP0R = 08004000H)
+
+adresse     taille   description
+-------     -------  -----------
+D080 0000H           Limite de la mémoire SDRAM
+D050 0000H (300000H) Début du tas
+D020 1000H (2FF000H) Espace de chargement des modules avec desc. types, variable, code, ...
+D000 0000H (201000H) Mémoire écran, copie post mortem de la pile, ...
+
+2002 FF00H (   100H) Pile principale utilisées par les traitements d'exceptions et d'interruptions
+2000 0600H ( 2F900H) Variables statiques des modules résidant en mémoire Flash
+2000 0200H (   400H) Tampon SD Card
+2000 01ACH (    54H) SD Card handle
+2000 0000H (   1A8H) Oberon system vector table
+
+1000 0000H ( 10000H) Pile process logée dans la CCM
+
+0800 4002H (1FBFE0H) Espace des modules résidant en mmoire Flash
+0800 4004H (    1CH) Variables système (structure SDCard (04H), MemLim (0CH) , StackOrg (18H)=adresse de la fin de la pile PSP, ...)
+0800 4000H (      4) Instruction de saut vers le point d'entrée du système
+0800 01ACH (  3E54H) Bootloader
+0800 0008H (   1A4H) Vecteurs d'interruption en mémoire Flash. Il ne sont pasd utilisés
+0800 0004H (      4) Adresse de démarrage du Bootloader (+1 pour mode Thumb)
+0800 0000H (      4) Adresse de la fin de la pile MSP
 
 Il n'y aura pas de table des modules, je vais reprendre l'idée développée dans Extended Oberon.
 
@@ -75,7 +117,7 @@ L'instruction SVC sera utilisée pour exécuter des services matériels, valeur de 
 N° de service   Nom         R0                                                  R1                                      R2 et suivants
 -------------   -------     --------------------------------------------------  ------------------------------------    ------------------------
             0   NEW         Adresse du pointeur vers la zone à allouer          Taille de la zone à allouer
-            1   LED         <7:0> : un bit par LED à allumer (1) ou éteindre 0
+            1   LED         <6:0> : un bit par LED à allumer (1) ou éteindre 0
             2   DivL        en entrée : mot de poids faible du dividende        mot de poids fort du dividende          R2: poids faible diviseur, R3 poids fort
                             en sortie : mot de poids faible du reste            mot de poids fort du reste              R2: poids faible quotient, R3 poids fort
 
