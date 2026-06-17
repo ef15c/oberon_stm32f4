@@ -32,11 +32,11 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       clockPin*, nofBitsToBeRead, parity: BYTE;
       parityEnabled, haveWheel: BOOLEAN;
       clock_In*, data_In*, clock_Out*, data_Out*, activityLED, mouseLED*, keyboardLED*: INTEGER;
-      dataIn, dataOut, tickLastReport, mouseReportSize, badEdge: INTEGER;
+      dataIn, dataOut, tickLastReport, mouseReportSize, badEdge*: INTEGER;
       dest: CircularBuffer; buf: CircularBufferDesc
     END;
 
-  VAR mkb*: MKB; mkbBlock: MKDataBlock; keyboard*: Device;
+  VAR mkb*: MKB; mkbBlock: MKDataBlock; keyboard*, mouse*: Device;
     KBLeds: SET;
 
   PROCEDURE PutByteInFIFOBuffer(VAR dev: DeviceDesc);
@@ -221,7 +221,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
         END
       END;
       dev.tickLastReport := Kernel.Time(); dev.buf.tail := 0;
-      dev.connectedDevice := MOUSE;
+      dev.connectedDevice := MOUSE; mouse := SYSTEM.VAL(Device, SYSTEM.ADR(dev));
       SendByteAsync(dev, 0F4H); (*Enable data reporting*)
       res := WaitForAnswer(dev, 35);
     ELSE dev.connectedDevice := NO_DEVICE (*No known device connected*)

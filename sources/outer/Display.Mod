@@ -39,7 +39,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   PROCEDURE Dot*(col, x, y, mode: INTEGER);
     VAR a, pp: INTEGER; u, s: SET;
   BEGIN a := Base + x DIV NofPixperWord*4 + (Height-1-y)*Span; pp := x MOD NofPixperWord*NofBPP;
-    pattern := SYSTEM.VAL(SET, 0+col + 256*(col + 256*(col + 256*col)));
+    pattern := TOSET(0+col + 256*(col + 256*(col + 256*col)));
     s := {pp .. pp+NofBPP-1}; SYSTEM.GET(a, u);
     IF mode = paint THEN SYSTEM.PUT(a, u + s*pattern)
     ELSIF mode = invert THEN SYSTEM.PUT(a, u / (s*pattern))
@@ -53,7 +53,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   BEGIN al := Base + (Height-1-y)*Span;
     ar := (x+w-1) DIV NofPixperWord*4 + al; al := x DIV NofPixperWord*4 + al;
     ppl := x MOD NofPixperWord*NofBPP; ppr := (x+w-1) MOD NofPixperWord*NofBPP;
-    pattern := SYSTEM.VAL(SET, 0+col + 256*(col + 256*(col + 256*col)));
+    pattern := TOSET(0+col + 256*(col + 256*(col + 256*col)));
     IF ar = al THEN
       mid := {ppl .. ppr+NofBPP-1};
       a1 := al;
@@ -70,7 +70,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       a0 := al;
       IF  mode = replace THEN ASSERT((ar - a0 - 4) DIV 4 < 10000H);
         REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
-        SYSTEM.PUT(STREAM7_BASE + BSP.SxCR, LSL(SYSTEM.VAL(SET, 1), BSP.CHSEL) +
+        SYSTEM.PUT(STREAM7_BASE + BSP.SxCR, LSL(TOSET(1), BSP.CHSEL) +
           LSL(BSP.INCR4, BSP.PBURST) + LSL({1}, BSP.MSIZE) + LSL({1}, BSP.PSIZE) + BSP.MINCm +
           BSP.MEMORY_TO_MEMORY);
         SYSTEM.PUT(STREAM7_BASE + BSP.SxFCR, BSP.DMDISm + BSP.FULL_FIFO);
@@ -108,9 +108,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END ReplConst;
 
   PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
-    VAR a0, i, j, pixAdr: INTEGER; pix, col4: SET;
-      w, h: BYTE; ps, psn, last, middle: INTEGER;
-  BEGIN col4 := SYSTEM.VAL(SET, col + 256*(col + 256*(col + 256*col)));
+    VAR a0, i, j, pixAdr: INTEGER; ps, psn, pix, col4: SET;
+      w, h: BYTE; last, middle: INTEGER;
+  BEGIN col4 := TOSET(col + 256*(col + 256*(col + 256*col)));
     SYSTEM.GET(patadr, i); w := i MOD 100H; h := i DIV 10000H MOD 100H; INC(patadr, 4);
     a0 := Base + x DIV NofPixperWord*4 + (Height-1-y)*Span; x := x MOD NofPixperWord;
     last :=  (w+x+3) DIV 4 - 1; middle := (w+3) DIV 4;
@@ -119,28 +119,28 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       IF x = 0 THEN (*pattern and frame buffer are aligned*)
         FOR j := 0 TO last DO pixAdr := a0 + 4*j;
           SYSTEM.GET(patadr, ps); INC(patadr, 4); SYSTEM.GET(pixAdr, pix);
-          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (SYSTEM.VAL(SET, ps)*col4))
-          ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)*col4) END
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (ps*col4))
+          ELSE SYSTEM.PUT(pixAdr, pix*(ps/{0..31}) + ps*col4) END
         END
       ELSE(*pattern must be right shifted by x pixels. Because of little endianness of
                  STMF429 processor, words have to be left shifted by x*NofBPP*)
         SYSTEM.GET(patadr, ps); INC(patadr, 4); SYSTEM.GET(a0, pix);
-        IF mode = invert THEN SYSTEM.PUT(a0, pix / (SYSTEM.VAL(SET, LSL(ps, x*NofBPP))*col4))
-        ELSE SYSTEM.PUT(a0, pix + SYSTEM.VAL(SET, LSL(ps, x*NofBPP))*col4) END;
+        IF mode = invert THEN SYSTEM.PUT(a0, pix / (LSL(ps, x*NofBPP)*col4))
+        ELSE SYSTEM.PUT(a0, pix*(LSL(ps, x*NofBPP)/{0..31}) + LSL(ps, x*NofBPP)*col4) END;
         (*process frame buffer words except the last one*)
         j := 1;
         WHILE j < middle DO pixAdr := a0 + 4*j;
           SYSTEM.GET(patadr, psn); INC(patadr, 4); SYSTEM.GET(pixAdr, pix);
           ps := LSR(ps, (NofPixperWord - x)*NofBPP) + LSL(psn, x*NofBPP);
-          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (SYSTEM.VAL(SET, ps)*col4))
-          ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)*col4) END;
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (ps*col4))
+          ELSE SYSTEM.PUT(pixAdr, pix*(ps/{0..31}) + ps*col4) END;
           ps := psn; INC(j)
         END;
         IF j <= last THEN pixAdr := a0 + 4*j; SYSTEM.GET(pixAdr, pix);
           (*process last word*)
           ps := LSR(ps, (NofPixperWord - x)*NofBPP);
-          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (SYSTEM.VAL(SET, ps)*col4))
-          ELSE SYSTEM.PUT(pixAdr, pix + SYSTEM.VAL(SET, ps)*col4) END
+          IF mode = invert THEN SYSTEM.PUT(pixAdr, pix / (ps*col4))
+          ELSE SYSTEM.PUT(pixAdr, pix*(ps/{0..31}) + ps*col4) END
         END
       END;
       DEC(a0, Span)

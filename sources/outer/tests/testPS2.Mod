@@ -1,15 +1,15 @@
 MODULE testPS2;
   IMPORT SYSTEM, PS2, Texts, Oberon;
 
-  VAR leds: BYTE; keyboard: PS2.Device;
+  VAR leds: BYTE; keyboard, mouse: PS2.Device;
 
     W: Texts.Writer;
 
-(*
   PROCEDURE show*(dev: PS2.DeviceDesc);
     VAR lb: BYTE;
       idx: INTEGER;
   BEGIN
+(*
     IF dev.dest # NIL THEN
       Texts.WriteString(W, "head "); Texts.WriteInt(W, dev.dest.head, 1);
       Texts.WriteString(W, ", tail "); Texts.WriteInt(W, dev.dest.tail, 1);
@@ -24,6 +24,7 @@ MODULE testPS2;
     Texts.WriteString(W, ", statusOut "); Texts.WriteHexVLen(W, dev.statusOut, 1, FALSE);
     Texts.WriteString(W, ", nofBitsToBeRead "); Texts.WriteInt(W, dev.nofBitsToBeRead, 1);
     Texts.WriteLn(W);
+*)
     SYSTEM.GET(dev.clock_Out, idx); Texts.WriteString(W, "clock out "); Texts.WriteInt(W, idx, 1);
     SYSTEM.GET(dev.data_Out, idx); Texts.WriteString(W, ", data out "); Texts.WriteInt(W, idx, 1);
     SYSTEM.GET(dev.clock_In, idx); Texts.WriteString(W, ", clock in "); Texts.WriteInt(W, idx, 1);
@@ -35,14 +36,12 @@ MODULE testPS2;
   END show;
 
   PROCEDURE showKB*;
-    (*VAR dev!: PS2.DeviceDesc;*)
   BEGIN show(keyboard^)
   END showKB;
 
   PROCEDURE showMouse*;
-  BEGIN show(Oberon.ps2[1])
+  BEGIN show(mouse^)
   END showMouse;
-*)
 
   PROCEDURE nextKBLeds*;
     VAR rc: BYTE;
@@ -80,10 +79,10 @@ MODULE testPS2;
   END CapsLockLedOff;
 
 BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "Test PS/2 driver CS 21.03.24"); Texts.WriteLn(W);
-  Texts.Append(Oberon.Log, W.buf); keyboard := PS2.keyboard
+  Texts.Append(Oberon.Log, W.buf); keyboard := PS2.keyboard; mouse := PS2.mouse
 END testPS2.
 
-OM4P.Compile testPS2.Mod~
+OM4P.Compile testPS2.Mod/s~
 System.Free testPS2~
 OM4Tool.DecObj testPS2.m4c
 

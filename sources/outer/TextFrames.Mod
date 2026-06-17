@@ -5,7 +5,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   CONST replace* = 0; insert* = 1; delete* = 2; unmark* = 3; (*message id*)
     BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX; LEFTARROW = 81X; RIGHTARROW = 8DX; UPARROW = 8FX; DOWNARROW = 90X;
     HOME = 9DX; ENDK = 19X;
-    FrameColor = Display.midgrey;
+    MenuBackgroundColor = Display.midgrey;
 
   TYPE Line = POINTER TO LineDesc;
     LineDesc = RECORD
@@ -110,7 +110,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     WHILE (nextCh # CR) & (R.fnt # NIL) DO
       Fonts.GetPat(R.fnt, nextCh, dx, x, y, w, h, patadr);
       IF (X + x + w <= NX-1) & (h # 0) THEN
-        Display.CopyPattern(R.col, patadr, X + x, Y + y + R.voff, Display.invert)
+        Display.CopyPattern(R.col, patadr, X + x, Y + y + R.voff, Display.paint)
       END;
       X := X + dx; INC(len); Texts.Read(R, nextCh)
     END;
@@ -160,6 +160,16 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   BEGIN  F.trailer.next := F.trailer
   END Suspend;
 
+  PROCEDURE ShowChangeMark(F: Frame; T: Texts.Text);
+    VAR Fn!: Display.Frame;
+  BEGIN Fn := F.next;
+    IF Fn # NIL THEN 
+      CASE Fn OF Frame:
+        IF (T = NIL) OR (Fn.text = T) THEN SetChangeMarkInMenu(F, Fn.text.changed) END
+      END
+    END
+  END ShowChangeMark;
+
   PROCEDURE Extend(F: Frame; newY: INTEGER);
     VAR R!: Texts.Reader; L!, l!: Line;
     org: INTEGER; curY, botY: INTEGER;
@@ -180,6 +190,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
       DisplayLine(F, l, R, F.X + F.left, curY, 0);
       L.next := l; L := l; DEC(curY, lsp)
     END;
+    ShowChangeMark(F, NIL);
     L.next := F.trailer;
     F.markH := F.org * F.H DIV (F.text.len + 1)
   END Extend;
@@ -198,16 +209,6 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
     END;
     F.markH := F.org * F.H DIV (F.text.len + 1); Mark(F, TRUE)
   END Reduce;
-
-  PROCEDURE ShowChangeMark(F: Frame; T: Texts.Text);
-    VAR Fn!: Display.Frame;
-  BEGIN Fn := F.next;
-    IF Fn # NIL THEN 
-      CASE Fn OF Frame:
-        IF (T = NIL) OR (Fn.text = T) THEN SetChangeMarkInMenu(F, Fn.text.changed) END
-      END
-    END
-  END ShowChangeMark;
 
   PROCEDURE Show*(F: Frame; pos: INTEGER);
     VAR R!: Texts.Reader; L!, L0!: Line;
@@ -885,10 +886,13 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   (*creation*)
 
   PROCEDURE Menu (name, commands: ARRAY OF CHAR): Texts.Text;
-    VAR T!: Texts.Text;
-  BEGIN NEW(T); T.notify := NotifyDisplay;  Texts.Open(T, "");
+    VAR T!: Texts.Text; oldcol: INTEGER;
+  BEGIN NEW(T); T.notify := NotifyDisplay;  Texts.Open(T, ""); oldcol := W.col;
+    W.col := ORD(TOSET(MenuBackgroundColor)/{0..7});
     Texts.WriteString(W, name); Texts.WriteString(W, " | ");  Texts.WriteString(W, commands);
-    Texts.Append(T, W.buf); RETURN T
+    Texts.Append(T, W.buf); W.col := oldcol
+
+    RETURN T
   END Menu;
 
   PROCEDURE Text*(name: ARRAY OF CHAR): Texts.Text;
@@ -899,7 +903,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
   PROCEDURE NewMenu*(name, commands: ARRAY OF CHAR): Frame;
     VAR F!: Frame; T!: Texts.Text;
   BEGIN NEW(F); T := Menu(name, commands);
-    Open(F, Handle, T, 0, FrameColor, left DIV 4, 0, 0, 0, lsp); RETURN F
+    Open(F, Handle, T, 0, MenuBackgroundColor, left DIV 4, 0, 0, 0, lsp); RETURN F
   END NewMenu;
 
   PROCEDURE NewText*(text: Texts.Text; pos: INTEGER): Frame;
