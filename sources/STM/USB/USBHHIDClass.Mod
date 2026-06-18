@@ -55,11 +55,11 @@ MODULE USBHHIDClass; (*HID class process structures*)
     Descriptor* = POINTER TO DescriptorDesc;
     DescriptorDesc* = RECORD
       bLength*, bDescriptorType*: BYTE;
-      bcdHID*: HALFWORD;               (* indicates what endpoint this descriptor is describing *)
-      bCountryCode*,        (* specifies the transfer type. *)
-      bNumDescriptors*,     (* specifies the transfer type. *)
-      bReportDescriptorType*: BYTE;    (* Maximum Packet Size this endpoint is capable of sending or receiving *)
-      wItemLength*: HALFWORD;          (* is used to specify the polling interval of certain transfers. *)
+      bcdHID*: HALFWORD;               (* HID class specification release *)
+      bCountryCode*,        (* country code of the localized hardware *)
+      bNumDescriptors*,     (* number of class descriptors (always at least one i.e. Report descriptor *)
+      bReportDescriptorType*: BYTE;    (* type of the report class descriptor *)
+      wItemLength*: HALFWORD;          (* total size of the report descriptors *)
     END;
 
   (* Structure for HID process *)
@@ -90,6 +90,51 @@ MODULE USBHHIDClass; (*HID class process structures*)
   PROCEDURE FifoInit*(VAR f: FIFODesc);
   BEGIN f.head := 0; f.tail := 0;  f.lock := FALSE
   END FifoInit;
+
+  (**
+  * @brief  USBH_HID_FifoRead
+  *         Read from FIFO.
+  * @param  f: Fifo address
+  * @param  buf: read buffer
+  * @param  nbytes: number of item to read
+  * @retval number of read items
+  *)
+  PROCEDURE FifoRead*(VAR f: FIFODesc; VAR buf: ARRAY OF BYTE; nbytes: HALFWORD): HALFWORD;
+    VAR i: HALFWORD;
+  BEGIN
+    IF ~f.lock THEN f.lock := TRUE; i := 0;
+      WHILE (i < nbytes) & (f.tail # f.head) DO buf[i] := f.buf[f.tail];
+        INC(f.tail); IF f.tail = LEN(f.buf) THEN f.tail := 0 END;
+        INC(i)
+      END
+    END;
+    f.lock := FALSE
+
+    RETURN i
+  END FifoRead;
+
+  (**
+  * @brief  USBH_HID_FifoWrite
+  *         Write To FIFO.
+  * @param  f: Fifo address
+  * @param  buf: read buffer
+  * @param  nbytes: number of item to write
+  * @retval number of written items
+  *)
+  PROCEDURE FifoWrite*(VAR f: FIFODesc; buf: ARRAY OF BYTE; nbytes: HALFWORD): HALFWORD;
+    VAR i: HALFWORD;
+  BEGIN
+    IF ~f.lock THEN f.lock := TRUE; i := 0;
+      WHILE (i < nbytes) & (f.head + 1 # f.tail) & ((f.head + 1 # LEN(f.buf)) OR (f.tail # 0)) DO
+        f.buf[f.head] := buf[i]; INC(f.head);
+        IF f.head = LEN(f.buf) THEN f.head := 0 END;
+        INC(i)
+      END
+    END;
+    f.lock := FALSE
+
+    RETURN i
+  END FifoWrite;
 
 END USBHHIDClass.
 

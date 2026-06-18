@@ -33,6 +33,11 @@ MODULE USBHHID;
   IMPORT SYSTEM, Conf := USBHConf, Def := USBHDef, IoReq := USBHIoReq, Pipes := USBHPipes, HCl := USBHHIDClass,
     Keybd := USBHHIDKeybd, Mouse := USBHHIDMouse, CtlReq := USBHCtlReq, USBH, Log := USBLog;
 
+  CONST
+    MOUSE* = 1;
+    KEYBOARD* = 2;
+    UNKNOWN* = 0FFH;
+
   VAR CLASS*: Def.Class;
 
   (**
@@ -92,6 +97,26 @@ DEBUG: configuration descriptor: (59)
   END  GetHIDReportDescriptor;
 
   (**
+  * @brief  USBH_HID_GetDeviceType
+  *         Return Device function.
+  * @param  phost: Host handle
+  * @retval HID function: HID_MOUSE / HID_KEYBOARD
+  *)
+  PROCEDURE GetDeviceType*(phost: Def.Handle): BYTE;
+    VAR type, InterfaceProtocol: BYTE;
+  BEGIN type := UNKNOWN;
+    IF phost.gState = Def.HOST_CLASS THEN
+      InterfaceProtocol := phost.device.CfgDesc.Itf_Desc[phost.device.current_interface].bInterfaceProtocol;
+      IF InterfaceProtocol = HCl.KEYBRD_BOOT_CODE THEN type := KEYBOARD
+      ELSIF InterfaceProtocol = HCl.MOUSE_BOOT_CODE THEN type := MOUSE
+      END
+    END
+
+    RETURN type
+  END GetDeviceType;
+
+
+  (**
   * @brief  USBH_Set_Idle
   *         Set Idle State.
   * @param  phost: Host handle
@@ -147,29 +172,6 @@ DEBUG: configuration descriptor: (59)
   END GetReport;
 
   (**
-  * @brief  USBH_HID_FifoWrite
-  *         Write To FIFO.
-  * @param  f: Fifo address
-  * @param  buf: read buffer
-  * @param  nbytes: number of item to write
-  * @retval number of written items
-  *)
-  PROCEDURE FifoWrite*(VAR f: HCl.FIFODesc; buf: ARRAY OF BYTE; nbytes: HALFWORD): HALFWORD;
-    VAR i: HALFWORD;
-  BEGIN
-    IF ~f.lock THEN f.lock := TRUE; i := 0;
-      WHILE (i < nbytes) & (f.head + 1 # f.tail) & ((f.head + 1 # LEN(f.buf)) OR (f.tail # 0)) DO
-        f.buf[f.head] := buf[i]; INC(f.head);
-        IF f.head = LEN(f.buf) THEN f.head := 0 END;
-        INC(i)
-      END
-    END;
-    f.lock := FALSE
-
-    RETURN i
-  END FifoWrite;
-
-  (**
   * @brief  USBH_HID_InterfaceInit
   *         The function init the HID class.
   * @param  phost: Host handle
@@ -186,7 +188,7 @@ DEBUG: configuration descriptor: (59)
       status := Def.FAIL
     END;
     IF status # Def.FAIL THEN status := USBH.SelectInterface(phost, interface); END;
-    IF status # Def.FAIL THEN NEW(hidh); phost.pActiveClass.pData := hidh;
+    IF status # Def.FAIL THEN NEW(hidh); phost.pActiveClass.pclsh := hidh;
       IF hidh = NIL THEN Log.Debug("Cannot allocate memory for HID Handle"); Log.DebugLn;
         status := Def.FAIL
       END
@@ -247,14 +249,14 @@ DEBUG: configuration descriptor: (59)
   *)
   PROCEDURE InterfaceDeInit(phost: Def.Handle): BYTE;
     VAR hidh!: HCl.Handle; res: BYTE;
-  BEGIN hidh := phost.pActiveClass.pData(HCl.Handle);
+  BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle);
     IF hidh.InPipe # 0 THEN Pipes.Close(phost, hidh.InPipe); Pipes.Free(phost, hidh.InPipe);
       hidh.InPipe := 0 (* Reset the pipe as Free *)
     END;
     IF hidh.OutPipe # 0 THEN Pipes.Close(phost, hidh.OutPipe); Pipes.Free(phost, hidh.OutPipe);
       hidh.OutPipe := 0; (* Reset the pipe as Free *)
     END;
-    IF phost.pActiveClass.pData # NIL THEN phost.pActiveClass.pData := NIL END;
+    IF phost.pActiveClass.pclsh # NIL THEN phost.pActiveClass.pclsh := NIL END;
     res := Def.OK;
 
     RETURN res
@@ -270,7 +272,7 @@ DEBUG: configuration descriptor: (59)
   PROCEDURE ClassRequest(phost: Def.Handle): BYTE;
     VAR status, classReqStatus: BYTE; hidh!: HCl.Handle;
   BEGIN status := Def.BUSY; classReqStatus := Def.BUSY;
-    hidh := phost.pActiveClass.pData(HCl.Handle);
+    hidh := phost.pActiveClass.pclsh(HCl.Handle);
     (* Switch HID state machine *)
     IF hidh.ctl_state IN {HCl.REQ_INIT, HCl.REQ_GET_HID_DESC} THEN
       ParseHIDDesc(hidh.HID_Desc, phost.device.CfgDesc_Raw);
@@ -312,7 +314,7 @@ DEBUG: configuration descriptor: (59)
   PROCEDURE Process(phost: Def.Handle): BYTE;
     VAR status: BYTE; hidh!: HCl.Handle; XferSize, fcnt: INTEGER;
   BEGIN status := Def.OK;
-    hidh := phost.pActiveClass.pData(HCl.Handle);
+    hidh := phost.pActiveClass.pclsh(HCl.Handle);
     IF hidh.state = HCl.INIT THEN status := hidh.Init(phost);
       IF status = Def.OK THEN hidh.state := HCl.IDLE
       ELSE Log.Error("HID Class Init failed"); Log.ErrorLn;
@@ -333,7 +335,7 @@ DEBUG: configuration descriptor: (59)
       IF phost.GetURBState(phost, hidh.InPipe) = Def.URB_DONE THEN
         XferSize := phost.GetLastXferSize(phost, hidh.InPipe);
         IF ~hidh.DataReady & (XferSize # 0) THEN
-          fcnt := FifoWrite(hidh.fifo, hidh.pData, hidh.length);
+          fcnt := HCl.FifoWrite(hidh.fifo, hidh.pData, hidh.length);
           hidh.DataReady := TRUE;
           IF hidh.EventCallback # NIL THEN hidh.EventCallback(phost) END;
         END
@@ -354,7 +356,7 @@ DEBUG: configuration descriptor: (59)
   *)
   PROCEDURE SOFProcess(phost: Def.Handle): BYTE;
     VAR status: BYTE; hidh!: HCl.Handle;
-  BEGIN hidh := phost.pActiveClass.pData(HCl.Handle);
+  BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle);
     IF (hidh.state = HCl.POLL) & (phost.Timer - hidh.timer >= hidh.poll) THEN hidh.state := HCl.GET_DATA END;
     status := Def.OK
 

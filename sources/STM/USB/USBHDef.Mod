@@ -269,7 +269,7 @@ MODULE USBHDef;
       ClassCode*: BYTE;
       Init*, DeInit*, Requests*, BgndProcess*: PROCEDURE(phost: Handle): BYTE;
       SOFProcess*: Callback;
-      pData*: ClassHandle
+      pclsh*: ClassHandle
     END;
 
     HCDHandle* = POINTER TO HCDHandleDesc;

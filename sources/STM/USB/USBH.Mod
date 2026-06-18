@@ -196,6 +196,31 @@ MODULE USBH;
   END Stop;
 
   (**
+  * @brief  HCD_IsPortEnabled
+  *         Is Port Enabled
+  * @param  phost: Host Handle
+  * @retval None
+  *)
+  PROCEDURE IsPortEnabled*(phost: Def.Handle): BOOLEAN;
+
+    RETURN phost.device.PortEnabled
+  END IsPortEnabled;
+
+  (**
+  * @brief  HCD_ReEnumerate
+  *         Perform a new Enumeration phase.
+  * @param  phost: Host Handle
+  * @retval USBH Status
+  *)
+  PROCEDURE ReEnumerate*(phost: Def.Handle);
+  BEGIN
+    IF IsPortEnabled(phost) THEN phost.device.is_ReEnumerated := TRUE;
+      Stop(phost); (* Stop Host *)
+      phost.device.is_disconnected := TRUE
+    END
+  END ReEnumerate;
+
+  (**
   * @brief  USBH_HandleEnum
   *         This function includes the complete enumeration process
   * @param  phost: Host Handle
