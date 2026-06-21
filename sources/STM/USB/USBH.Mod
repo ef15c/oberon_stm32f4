@@ -187,7 +187,7 @@ MODULE USBH;
   BEGIN
     (* DeActivate VBUS on the port *)
     UH.DriverVBUS(phost, FALSE);
-    (* Stop and cleanup the low level driver  *)
+    (* Stop and cleanup the low level driver *)
     UH.Stop(phost);
     (* Free Control Pipes *)
     Pipes.Free(phost, phost.Control.pipe_in);
@@ -215,8 +215,7 @@ MODULE USBH;
   PROCEDURE ReEnumerate*(phost: Def.Handle);
   BEGIN
     IF IsPortEnabled(phost) THEN phost.device.is_ReEnumerated := TRUE;
-      Stop(phost); (* Stop Host *)
-      phost.device.is_disconnected := TRUE
+      Stop(phost); phost.device.is_disconnected := TRUE
     END
   END ReEnumerate;
 

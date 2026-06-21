@@ -1225,10 +1225,32 @@ MODULE LLUSB;
   * @retval HAL state
   *)
   PROCEDURE StopHost*(USBx: OTGCore): BYTE;
-    VAR ret: BYTE;
-  BEGIN DisableGlobalInt(USBx);
-    RETURN CoreReset(USBx)
+    VAR ret: BYTE; count, i: INTEGER; USBx_HOST!: OTGHostMode; USBx_HCi!: OTGHostChannel;
+  BEGIN (*DisableGlobalInt(USBx);
+    RETURN CoreReset(USBx)*)
+    ret := HAL_OK; count := 0; USBx_HOST := SYSTEM.VAL(OTGHostMode, ORD(USBx) + HOST_BASE);
+    DisableGlobalInt(USBx);
+    (* Flush USB FIFO *)
+    IF (FlushTxFifo(USBx, 10H(* all Tx FIFOs *)) # HAL_OK) OR
+      (FlushRxFifo(USBx) # HAL_OK) THEN ret := HAL_ERROR
+    ELSE
+      (* Flush out any leftover queued requests. *)
+      FOR i := 0 TO 15 DO
+        USBx_HCi := SYSTEM.VAL(OTGHostChannel, ORD(USBx) + HOST_CHANNEL_BASE + i*HOST_CHANNEL_SIZE);
+        USBx_HCi.HCCHAR := USBx_HCi.HCCHAR + {HCCHAR_CHDIS} - {HCCHAR_CHENA, HCCHAR_EPDIR}
+      END;
+      (* Halt all channels to put them into a known state. *)
+      FOR i := 0 TO 15 DO
+        USBx_HCi := SYSTEM.VAL(OTGHostChannel, ORD(USBx) + HOST_CHANNEL_BASE + i*HOST_CHANNEL_SIZE);
+        USBx_HCi.HCCHAR := USBx_HCi.HCCHAR + {HCCHAR_CHDIS, HCCHAR_CHENA} - {HCCHAR_EPDIR};
+        REPEAT INC(count) UNTIL (count > 1000) OR ~(HCCHAR_CHENA IN USBx_HCi.HCCHAR)
+      END;
+      (* Clear any pending Host interrupts *)
+      USBx_HOST.HAINT := CLEAR_INTERRUPT_MASK; USBx.GINTSTS := CLEAR_INTERRUPT_MASK;
+    END;
+    EnableGlobalInt(USBx);
 
+    RETURN ret
   END StopHost;
 
 END LLUSB.

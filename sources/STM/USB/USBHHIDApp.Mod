@@ -16,10 +16,8 @@ MODULE USBHHIDApp;
     APPLICATION_RUNNING = 4;
 
     HID_DEMO_WAIT =  1;
-    HID_DEMO_START = 2;
     HID_DEMO_MOUSE = 3;
     HID_DEMO_KEYBOARD = 4;
-    HID_DEMO_REENUMERATE = 5;
 
     HID_MOUSE_WAIT = 1;
     HID_MOUSE_START = 2;
@@ -57,13 +55,9 @@ MODULE USBHHIDApp;
     END
   END UserProcess;
 
-  PROCEDURE M1*; (*Simulate joystick selection on first line of menu*)
-  BEGIN hid_demo.select := {7}
-  END M1;
-
-  PROCEDURE M2*; (*Simulate joystick selection on second line of menu*)
-  BEGIN hid_demo.select := {7} + TOSET(1)
-  END M2;
+  PROCEDURE WriteMenu(t: ARRAY OF CHAR);
+  BEGIN Texts.WriteString(MW, " USBHHIDApp."); Texts.WriteString(MW, t)
+  END WriteMenu;
 
   (**
   * @brief  Manages the menu on the screen.
@@ -73,8 +67,7 @@ MODULE USBHHIDApp;
   *)
   PROCEDURE SelectItem(l1, l2: ARRAY OF CHAR);
   BEGIN Texts.Delete(menutxt, end, menutxt.len, buf);
-    Texts.WriteString(MW, " USBHHIDApp.M"); Texts.WriteString(MW, l1);
-    Texts.WriteString(MW, " USBHHIDApp.M"); Texts.WriteString(MW, l2);
+    WriteMenu(l1); WriteMenu(l2);
     Texts.Append(menutxt, MW.buf)
   END SelectItem;
 
@@ -96,7 +89,7 @@ MODULE USBHHIDApp;
   PROCEDURE MouseMenuProcess;
   BEGIN
     IF hid_demo.mouse_state = Def.IDLE THEN hid_demo.mouse_state := HID_MOUSE_START;
-      SelectItem("1 - Start Mouse/Re-Init", "2 - Return");
+      SelectItem("StartMouse", "Return");
       hid_demo.select := {}; prev_select := {};
     ELSIF hid_demo.mouse_state = HID_MOUSE_WAIT THEN
       IF hid_demo.select # prev_select THEN
@@ -107,7 +100,7 @@ MODULE USBHHIDApp;
           IF ORD(hid_demo.select) = 0 THEN
             hid_demo.mouse_state := HID_MOUSE_START
           ELSIF ORD(hid_demo.select) = 1 THEN (* Return *)
-            hid_demo.state := HID_DEMO_REENUMERATE;
+            hid_demo.state := HID_DEMO_WAIT;
             hid_demo.select := {}
           END
         END
@@ -160,7 +153,7 @@ MODULE USBHHIDApp;
   BEGIN
     IF hid_demo.keyboard_state = Def.IDLE THEN
       hid_demo.keyboard_state := HID_KEYBOARD_START;
-      SelectItem("1 - Start Keyboard/Clear", "2 - Return");   
+      SelectItem("StartKeyboard", "Return");   
       hid_demo.select := {}; prev_select := {}
     ELSIF hid_demo.keyboard_state = HID_KEYBOARD_WAIT THEN
       IF hid_demo.select # prev_select THEN
@@ -171,7 +164,7 @@ MODULE USBHHIDApp;
           IF ORD(hid_demo.select) = 0 THEN 
             hid_demo.keyboard_state := HID_KEYBOARD_START
           ELSIF ORD(hid_demo.select) = 1 THEN (* Return *)
-            hid_demo.state := HID_DEMO_REENUMERATE;
+            hid_demo.state := HID_DEMO_WAIT;
             hid_demo.select := {}
          END
         END
@@ -205,33 +198,9 @@ MODULE USBHHIDApp;
   *)
   PROCEDURE MenuProcess;
   BEGIN
-    IF hid_demo.state = Def.IDLE THEN SelectItem("1 - Start HID", "2 - Re Enumerate");
+    IF hid_demo.state = Def.IDLE THEN SelectItem("StartHID", "ReEnumerate");
       hid_demo.state := HID_DEMO_WAIT;
       hid_demo.select := {}
-    ELSIF hid_demo.state = HID_DEMO_WAIT THEN
-      IF hid_demo.select # prev_select THEN
-        prev_select := hid_demo.select;
-        (* Handle select item *)
-        IF 7 IN hid_demo.select THEN
-          EXCL(hid_demo.select, 7);
-          IF ORD(hid_demo.select) = 0 THEN hid_demo.state := HID_DEMO_START
-          ELSIF ORD(hid_demo.select) = 1 THEN hid_demo.state := HID_DEMO_REENUMERATE
-          END
-        END
-      END
-    ELSIF hid_demo.state = HID_DEMO_START THEN
-      IF Appli_state = APPLICATION_READY THEN
-        IF HID.GetDeviceType(hUSBHost) = HID.KEYBOARD THEN
-          hid_demo.keyboard_state := Def.IDLE; hid_demo.state := HID_DEMO_KEYBOARD
-        ELSIF HID.GetDeviceType(hUSBHost) = HID.MOUSE THEN
-          hid_demo.mouse_state := Def.IDLE; hid_demo.state := HID_DEMO_MOUSE
-        END
-      ELSE Log.Error("No supported HID device!"); Log.ErrorLn; Log.ErrorLn;
-        hid_demo.state := HID_DEMO_WAIT
-      END
-    ELSIF hid_demo.state = HID_DEMO_REENUMERATE THEN
-      (* Force HID Device to re-enumerate *)
-      USBH.ReEnumerate(hUSBHost); hid_demo.state := HID_DEMO_WAIT
     ELSIF hid_demo.state = HID_DEMO_MOUSE THEN
       IF Appli_state = APPLICATION_READY THEN
         MouseMenuProcess; MouseDemo(hUSBHost)
@@ -246,6 +215,30 @@ MODULE USBHHIDApp;
       hid_demo.state := Def.IDLE; hid_demo.select := {}
     END
   END MenuProcess;
+
+  PROCEDURE StartHID*;
+  BEGIN
+    IF hid_demo.state = HID_DEMO_WAIT THEN
+      IF Appli_state = APPLICATION_READY THEN
+        IF HID.GetDeviceType(hUSBHost) = HID.KEYBOARD THEN
+          hid_demo.keyboard_state := Def.IDLE; hid_demo.state := HID_DEMO_KEYBOARD
+        ELSIF HID.GetDeviceType(hUSBHost) = HID.MOUSE THEN
+          hid_demo.mouse_state := Def.IDLE; hid_demo.state := HID_DEMO_MOUSE
+        END
+      ELSE Log.Error("No supported HID device!"); Log.ErrorLn; Log.ErrorLn;
+      END
+    END
+  END StartHID;
+
+  PROCEDURE ReEnumerate*;
+  BEGIN
+    IF hid_demo.state = HID_DEMO_WAIT THEN USBH.ReEnumerate(hUSBHost) (* Force HID Device to re-enumerate *)
+    END
+  END ReEnumerate;
+
+  PROCEDURE Return*;
+  BEGIN hid_demo.state := Def.IDLE;
+  END Return;
 
   (* USB Host Background task *)
   PROCEDURE Process;
@@ -268,7 +261,7 @@ MODULE USBHHIDApp;
   PROCEDURE InitApplication;
     VAR V!: Viewers.Viewer; X, Y: INTEGER; M!: TextFrames.Frame;
   BEGIN Oberon.AllocateUserViewer(Oberon.Par.vwr.X, X, Y);
-    M := TextFrames.NewMenu("OTG FS HID Host", "System.Close System.Clear USBHHIDApp.Stop");
+    M := TextFrames.NewMenu("OTG FS HID Host", "System.Close System.Clear USBHHIDApp.Run USBHHIDApp.Stop");
     content := TextFrames.Text("");
     V := MenuViewers.New(M, TextFrames.NewText(content, 0), TextFrames.menuH, X, Y);
     menutxt := M.text; end := menutxt.len;
@@ -276,12 +269,9 @@ MODULE USBHHIDApp;
     Log.Flush
   END InitApplication;
 
-  PROCEDURE Open*;
+  PROCEDURE Run*;
     VAR res: BYTE;
   BEGIN
-    (* Init HID Application *)
-    InitApplication;
-  
     (* Init Host Library *)
     res := USBH.Init(hUSBHost, UserProcess, 0);
     IF res = Def.OK THEN res := USBH.RegisterClass(hUSBHost, HID.CLASS); (* Add Supported Class *)
@@ -292,17 +282,22 @@ MODULE USBHHIDApp;
     ELSE Log.Error("USBH lib failed to start");
     END;
     Log.Flush
-  END Open;
+  END Run;
 
   PROCEDURE Stop*;
   BEGIN 
     IF hUSBHost.phcd # NIL THEN
       USBH.Stop(hUSBHost); USBH.DeInit(hUSBHost);
-      Log.User("USBH lib application stopped.");
+      Log.User("USBH lib stopped.");
       IF processTask # NIL THEN Oberon.Remove(processTask); processTask := NIL END;
       Log.Flush
     END
   END Stop;
+
+  PROCEDURE Open*;
+  BEGIN (* Init HID Application *)
+    InitApplication; Run  
+  END Open;
 
 BEGIN NEW(hUSBHost);
   NEW(buf); Texts.OpenBuf(buf); Texts.OpenWriter(MW); MW.col := Display.green;
@@ -326,8 +321,8 @@ System.DeleteFiles USBHHIDParser.sm4 LLUSB.sm4 USBH.sm4 USBHConf.sm4 USBHCore.sm
  USBHHID.sm4 USBHHIDApp.sm4 USBHHIDClass.sm4 USBHHIDKeybd.sm4 USBHHIDMouse.sm4
  USBHHal.sm4 USBHIoReq.sm4 USBHPipes.sm4 USBLog.sm4 HALHCD.sm4 Queue.sm4~
 
-System.Free USBHHIDParser USBHHIDApp USBHHID USBHHIDKeybd USBHHIDMouse USBHHIDClass USBH USBHHal HALHCD
- USBHCore LLUSB USBHCtlReq USBHIoReq USBHPipes USBHDef USBHConf USBLog Queue~
+System.Free USBHHIDApp USBHHID USBHHIDKeybd USBHHIDMouse USBHHIDClass USBH USBHHal HALHCD
+ USBHCore LLUSB USBHCtlReq USBHIoReq USBHPipes USBHDef USBHConf USBLog USBHHIDParser Queue~
 
 USBHHIDApp.Open
 USBHHIDApp.Stop

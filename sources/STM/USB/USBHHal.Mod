@@ -178,7 +178,8 @@ MODULE USBHHal;
       SYSTEM.PUT(POWERSW_PORT + BSP.BSRR, {POWERSW_VBUS})
     ELSE (* ENABLE the Power Switch by driving the Enable LOW *)
       SYSTEM.PUT(POWERSW_PORT + BSP.BSRR, LSL({POWERSW_VBUS}, 16))
-    END
+    END;
+    Kernel.Delayms(1000)
   END DriverVBUS;
 
   (**
