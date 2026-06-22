@@ -137,7 +137,7 @@ MODULE HALHCD;
   * @retval HAL status
   *)
   PROCEDURE HC_SubmitRequest*(hhcd: Handle; ch_num: BYTE; direction: BOOLEAN;
-    ep_type, token: BYTE; pbuff: INTEGER; length: HALFWORD; do_ping: BOOLEAN);
+    ep_type, token: BYTE; buff: Def.BufferDesc; length: HALFWORD; do_ping: BOOLEAN);
   BEGIN hhcd.hc[ch_num].ep_is_in := direction; hhcd.hc[ch_num].ep_type := ep_type;
     IF token = 0 THEN hhcd.hc[ch_num].data_pid := ll.HC_PID_SETUP;
       hhcd.hc[ch_num].do_ping := do_ping
@@ -178,7 +178,7 @@ MODULE HALHCD;
       END
     ELSIF ep_type = Def.EP_TYPE_ISOC THEN hhcd.hc[ch_num].data_pid := ll.HC_PID_DATA0
     END;
-    hhcd.hc[ch_num].xfer_buff := pbuff; hhcd.hc[ch_num].xfer_len := length;
+    hhcd.hc[ch_num].xfer_buff := SYSTEM.ADR(buff); hhcd.hc[ch_num].xfer_len := length;
     hhcd.hc[ch_num].urb_state := Def.IDLE; hhcd.hc[ch_num].xfer_count := 0;
     hhcd.hc[ch_num].ch_num := ch_num; hhcd.hc[ch_num].state := Def.IDLE;
 

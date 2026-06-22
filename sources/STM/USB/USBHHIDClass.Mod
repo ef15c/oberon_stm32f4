@@ -1,5 +1,5 @@
 MODULE USBHHIDClass; (*HID class process structures*)
-  IMPORT Def := USBHDef;
+  IMPORT Def := USBHDef, Log := USBLog;
 
  CONST
     (* HID Class Codes *)
@@ -62,12 +62,15 @@ MODULE USBHHIDClass; (*HID class process structures*)
       wItemLength*: HALFWORD;          (* total size of the report descriptors *)
     END;
 
+    ReportData* = POINTER TO ReportDataDesc;
+    ReportDataDesc = RECORD(Def.BufferDesc) buf*: ARRAY REPORT_SIZE OF BYTE END;
+
   (* Structure for HID process *)
     Handle* = POINTER TO HandleDesc;
     HandleDesc* = RECORD(Def.ClassHandleDesc)
       OutPipe*, InPipe*, state*, OutEp*, InEp*, ctl_state*: BYTE;
       fifo*: FIFODesc;
-      pData*: ARRAY REPORT_SIZE OF BYTE;
+      Data*: ReportData;
       length*: HALFWORD;
       ep_addr*: BYTE;
       poll*: HALFWORD;
@@ -124,6 +127,7 @@ MODULE USBHHIDClass; (*HID class process structures*)
   PROCEDURE FifoWrite*(VAR f: FIFODesc; buf: ARRAY OF BYTE; nbytes: HALFWORD): HALFWORD;
     VAR i: HALFWORD;
   BEGIN
+    Log.Debug("FIFO write "); Log.DebugInt(nbytes, 1); Log.DebugString(" bytes"); Log.DebugLn;
     IF ~f.lock THEN f.lock := TRUE; i := 0;
       WHILE (i < nbytes) & (f.head + 1 # f.tail) & ((f.head + 1 # LEN(f.buf)) OR (f.tail # 0)) DO
         f.buf[f.head] := buf[i]; INC(f.head);

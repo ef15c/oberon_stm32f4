@@ -176,7 +176,10 @@ MODULE USBHDef;
   TYPE
     DataBuffer* = ARRAY Conf.MAX_DATA_BUFFER OF BYTE;
 
-    SetupDesc* = RECORD
+    Buffer* = POINTER TO BufferDesc;
+    BufferDesc* = RECORD END;
+
+    SetupDesc* = RECORD(BufferDesc)
       bmRequestType*: BYTESET; bRequest*: BYTE;
       wValue*, wIndex*, wLength*: HALFWORD
     END;
@@ -184,7 +187,7 @@ MODULE USBHDef;
     (* Control request structure *)
     CtrlDesc* = RECORD
       pipe_in*, pipe_out*, pipe_size*: BYTE;
-      buff*: INTEGER; (*pointer to BYTE buffer*)
+      buff*: Buffer;
       length*, timer*: INTEGER;
       setup*: SetupDesc;
       state*: BYTE;
@@ -240,14 +243,17 @@ MODULE USBHDef;
       Itf_Desc*: ARRAY Conf.MAX_NUM_INTERFACES OF InterfaceDescriptor
     END;
 
+    RawDescriptorData* = POINTER TO RawDescriptorDataDesc;
+    RawDescriptorDataDesc* = RECORD(BufferDesc) buf*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE END;
+
     RawDescriptor* = RECORD
-      data*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE;
+      data*: RawDescriptorData; (*ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE;*)
       length*, index, headeridx: HALFWORD
     END;
 
     (* Attached device structure *)
     Device* = RECORD
-      CfgDesc_Raw*: RawDescriptor;
+      RawDesc*: RawDescriptor;
       address*, speed*, EnumCnt*, RstCnt*: BYTE;
       is_connected*, is_disconnected*, is_ReEnumerated*, PortEnabled*: BOOLEAN;
       current_interface*: BYTE;
@@ -302,7 +308,7 @@ MODULE USBHDef;
       SetToggle*: PROCEDURE(phost: Handle; pipe: BYTE; toggle: BOOLEAN);
       ClosePipe*: PROCEDURE(phost: Handle; pipe_num: BYTE);
       SubmitURB*: PROCEDURE(phost: Handle; pipe: BYTE; direction: BOOLEAN; ep_type, token: BYTE;
-        pbuff: INTEGER; length: HALFWORD; do_ping: BOOLEAN);
+        buff: BufferDesc; length: HALFWORD; do_ping: BOOLEAN);
       GetURBState*:  PROCEDURE(phost: Handle; pipe: BYTE): BYTE;
       GetLastXferSize*: PROCEDURE(phost: Handle; pipe: BYTE): INTEGER
     END;
@@ -327,22 +333,22 @@ MODULE USBHDef;
 
   PROCEDURE NextHeaderIdx(buf: RawDescriptor): HALFWORD;
 
-    RETURN buf.headeridx + buf.data[buf.headeridx]
+    RETURN buf.headeridx + buf.data.buf[buf.headeridx]
   END NextHeaderIdx;
 
   PROCEDURE HeaderType*(buf: RawDescriptor): BYTE;
 
-    RETURN buf.data[buf.headeridx + 1]
+    RETURN buf.data.buf[buf.headeridx + 1]
   END HeaderType;
 
   PROCEDURE HeaderSize*(buf: RawDescriptor): BYTE;
 
-    RETURN buf.data[buf.headeridx]
+    RETURN buf.data.buf[buf.headeridx]
   END HeaderSize;
 
   PROCEDURE HasMoreHeaders*(buf: RawDescriptor): BOOLEAN;
 
-    RETURN (buf.index < LE16(buf.data, 2)) & (NextHeaderIdx(buf) < LE16(buf.data, 2))
+    RETURN (buf.index < LE16(buf.data.buf, 2)) & (NextHeaderIdx(buf) < LE16(buf.data.buf, 2))
   END HasMoreHeaders;
 
   PROCEDURE GoNextHeader*(VAR buf: RawDescriptor);
@@ -352,7 +358,7 @@ MODULE USBHDef;
   PROCEDURE ReadByte*(VAR buf: RawDescriptor): BYTE;
     VAR res: BYTE;
   BEGIN
-    IF buf.index < NextHeaderIdx(buf) THEN res := buf.data[buf.index]; INC(buf.index)
+    IF buf.index < NextHeaderIdx(buf) THEN res := buf.data.buf[buf.index]; INC(buf.index)
     ELSE res := 0 END
 
     RETURN res
@@ -361,7 +367,7 @@ MODULE USBHDef;
   PROCEDURE ReadHalfword*(VAR buf: RawDescriptor): HALFWORD;
     VAR res: HALFWORD;
   BEGIN
-    IF buf.index < NextHeaderIdx(buf) - 1 THEN res := LE16(buf.data, buf.index); INC(buf.index, 2)
+    IF buf.index < NextHeaderIdx(buf) - 1 THEN res := LE16(buf.data.buf, buf.index); INC(buf.index, 2)
     ELSE res := 0 END
 
     RETURN res
@@ -371,5 +377,12 @@ MODULE USBHDef;
 
     RETURN buf.index
   END GetIndex;
+
+  PROCEDURE NewHandle*(): Handle;
+    VAR h!: Handle;
+  BEGIN NEW(h); NEW(h.device.RawDesc.data)
+
+    RETURN h
+  END NewHandle;
 
 END USBHDef.

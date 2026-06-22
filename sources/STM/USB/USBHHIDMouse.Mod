@@ -38,10 +38,12 @@ MODULE USBHHIDMouse;
   *)
   PROCEDURE Init*(phost: Def.Handle): BYTE;
     VAR i: INTEGER; hidh!: HCl.Handle; res: BYTE;
-  BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle); CLEAR(info^);
+  BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle); CLEAR(info^); CLEAR(mouse_report_data); CLEAR(hidh.Data.buf);
+(*
     FOR i := 0 TO LEN(mouse_report_data) - 1 DO
-      mouse_report_data[i] := 0; hidh.pData[i] := 0
+      mouse_report_data[i] := 0; hidh.Data.buf[i] := 0
     END;
+*)
     IF hidh.length > LEN(mouse_report_data) THEN hidh.length := LEN(mouse_report_data) END;
     IF HCl.QUEUE_SIZE * LEN(mouse_report_data) > LEN(hidh.fifo.buf) THEN res := Def.FAIL
     ELSE HCl.FifoInit(hidh.fifo);

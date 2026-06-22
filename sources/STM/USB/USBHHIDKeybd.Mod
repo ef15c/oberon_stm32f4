@@ -18,7 +18,7 @@ MODULE USBHHIDKeybd;
   ******************************************************************************
   *)
 
-  IMPORT SYSTEM, Def := USBHDef, HCl := USBHHIDClass, P := USBHHIDParser;
+  IMPORT SYSTEM, Def := USBHDef, HCl := USBHHIDClass, P := USBHHIDParser, Log := USBLog;
 
   CONST KEYBD_REPORT_SIZE* = 8;
 
@@ -47,10 +47,13 @@ MODULE USBHHIDKeybd;
       hidh!: HCl.Handle;
       x: INTEGER;
   BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle);
-    CLEAR(info^);
+    Log.Debug("Keyboard inititalization"); Log.DebugLn;
+    CLEAR(info^); CLEAR(keybd_report_data); CLEAR(hidh.Data.buf);
+(*
     FOR x := 0 TO LEN(keybd_report_data) - 1 DO
-      keybd_report_data[x] := 0; hidh.pData[x] := 0
+      keybd_report_data[x] := 0; hidh.Data.buf[x] := 0
     END;
+*)
     IF hidh.length > LEN(keybd_report_data) THEN hidh.length := LEN(keybd_report_data) END;
     IF HCl.QUEUE_SIZE * LEN(keybd_report_data) > LEN(hidh.fifo.buf) THEN res := Def.FAIL
     ELSE  HCl.FifoInit(hidh.fifo);

@@ -30,7 +30,7 @@ MODULE USBHHID;
   *
   ******************************************************************************
   *)
-  IMPORT SYSTEM, Conf := USBHConf, Def := USBHDef, IoReq := USBHIoReq, Pipes := USBHPipes, HCl := USBHHIDClass,
+  IMPORT SYSTEM, BSP, Conf := USBHConf, Def := USBHDef, IoReq := USBHIoReq, Pipes := USBHPipes, HCl := USBHHIDClass,
     Keybd := USBHHIDKeybd, Mouse := USBHHIDMouse, CtlReq := USBHCtlReq, USBH, Log := USBLog;
 
   CONST
@@ -82,7 +82,7 @@ DEBUG: configuration descriptor: (59)
   PROCEDURE GetHIDReportDescriptor(phost: Def.Handle; VAR buf: Def.RawDescriptor): BYTE;
     VAR status: BYTE;
   BEGIN
-    IF buf.length > LEN(buf.data) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue"); Log.ErrorLn;
+    IF buf.length > LEN(buf.data.buf) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue"); Log.ErrorLn;
       status := Def.NOT_SUPPORTED
     ELSE status := CtlReq.GetDescriptor(phost, Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_STANDARD,
                               Def.DESC_HID_REPORT, buf)
@@ -125,13 +125,12 @@ DEBUG: configuration descriptor: (59)
   * @retval USBH Status
   *)
   PROCEDURE SetIdle*(phost: Def.Handle; duration, reportId: BYTE): BYTE;
-    VAR dummy: ARRAY 0 OF BYTE;
   BEGIN phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
     phost.Control.setup.bRequest := HCl.SET_IDLE;
     phost.Control.setup.wValue := duration*100H + reportId;
     phost.Control.setup.wIndex := 0; phost.Control.setup.wLength := 0
 
-    RETURN CtlReq.CtlReq(phost, dummy)
+    RETURN CtlReq.CtlReq(phost, NIL)
 
   END SetIdle;
 
@@ -143,13 +142,12 @@ DEBUG: configuration descriptor: (59)
   * @retval USBH Status
   *)
   PROCEDURE SetProtocol*(phost: Def.Handle; protocol: BYTE): BYTE;
-    VAR dummy: ARRAY 0 OF BYTE;
   BEGIN phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
     phost.Control.setup.bRequest := HCl.SET_PROTOCOL;
     IF protocol # 0 THEN phost.Control.setup.wValue := 0 ELSE phost.Control.setup.wValue := 1 END;
     phost.Control.setup.wIndex := 0; phost.Control.setup.wLength := 0
 
-    RETURN CtlReq.CtlReq(phost, dummy)
+    RETURN CtlReq.CtlReq(phost, NIL)
   END SetProtocol;
 
   (**
@@ -162,7 +160,7 @@ DEBUG: configuration descriptor: (59)
   * @param  reportLen   : Length of data report to be send
   * @retval USBH Status
   *)
-  PROCEDURE GetReport(phost: Def.Handle; reportType, reportId: BYTE; VAR reportBuff: ARRAY OF BYTE; reportLen: BYTE): BYTE;
+  PROCEDURE GetReport(phost: Def.Handle; reportType, reportId: BYTE; reportBuff: Def.Buffer; reportLen: BYTE): BYTE;
   BEGIN phost.Control.setup.bmRequestType := Def.D2H + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
     phost.Control.setup.bRequest := HCl.GET_REPORT;
     phost.Control.setup.wValue := reportType*100H + reportId;
@@ -188,7 +186,7 @@ DEBUG: configuration descriptor: (59)
       status := Def.FAIL
     END;
     IF status # Def.FAIL THEN status := USBH.SelectInterface(phost, interface); END;
-    IF status # Def.FAIL THEN NEW(hidh); phost.pActiveClass.pclsh := hidh;
+    IF status # Def.FAIL THEN NEW(hidh); NEW(hidh.Data); phost.pActiveClass.pclsh := hidh;
       IF hidh = NIL THEN Log.Debug("Cannot allocate memory for HID Handle"); Log.DebugLn;
         status := Def.FAIL
       END
@@ -275,7 +273,7 @@ DEBUG: configuration descriptor: (59)
     hidh := phost.pActiveClass.pclsh(HCl.Handle);
     (* Switch HID state machine *)
     IF hidh.ctl_state IN {HCl.REQ_INIT, HCl.REQ_GET_HID_DESC} THEN
-      ParseHIDDesc(hidh.HID_Desc, phost.device.CfgDesc_Raw);
+      ParseHIDDesc(hidh.HID_Desc, phost.device.RawDesc);
       hidh.ctl_state := HCl.REQ_GET_REPORT_DESC;
     ELSIF hidh.ctl_state = HCl.REQ_GET_REPORT_DESC THEN
       (* Get Report Desc *)
@@ -320,7 +318,8 @@ DEBUG: configuration descriptor: (59)
       ELSE Log.Error("HID Class Init failed"); Log.ErrorLn;
         hidh.state := HCl.ERROR; status := Def.FAIL
       END
-    ELSIF hidh.state = HCl.IDLE THEN status := GetReport(phost, 1, 0, hidh.pData, hidh.length);
+    ELSIF hidh.state = HCl.IDLE THEN status := GetReport(phost, 1, 0, hidh.Data, hidh.length);
+      Log.Debug("GetReportStatus: "); Log.DebugInt(status, 1); Log.DebugLn;
       IF status = Def.OK THEN hidh.state := HCl.SYNC
       ELSIF status = Def.BUSY THEN hidh.state := HCl.IDLE; status := Def.OK
       ELSIF status = Def.NOT_SUPPORTED THEN hidh.state := HCl.SYNC; status := Def.OK
@@ -329,13 +328,13 @@ DEBUG: configuration descriptor: (59)
     ELSIF hidh.state = HCl.SYNC THEN
       (* Sync with start of Even Frame *)
       IF ODD(phost.Timer) THEN hidh.state := HCl.GET_DATA END
-    ELSIF hidh.state = HCl.GET_DATA THEN IoReq.InterruptReceiveData(phost, SYSTEM.ADR(hidh.pData), hidh.length, hidh.InPipe);
-      hidh.state := HCl.POLL; hidh.timer := phost.Timer; hidh.DataReady := TRUE;
+    ELSIF hidh.state = HCl.GET_DATA THEN IoReq.InterruptReceiveData(phost, hidh.Data^, hidh.length, hidh.InPipe);
+      hidh.state := HCl.POLL; hidh.timer := phost.Timer; hidh.DataReady := FALSE;
     ELSIF hidh.state = HCl.POLL THEN
       IF phost.GetURBState(phost, hidh.InPipe) = Def.URB_DONE THEN
         XferSize := phost.GetLastXferSize(phost, hidh.InPipe);
         IF ~hidh.DataReady & (XferSize # 0) THEN
-          fcnt := HCl.FifoWrite(hidh.fifo, hidh.pData, hidh.length);
+          fcnt := HCl.FifoWrite(hidh.fifo, hidh.Data.buf, hidh.length);
           hidh.DataReady := TRUE;
           IF hidh.EventCallback # NIL THEN hidh.EventCallback(phost) END;
         END
@@ -343,7 +342,7 @@ DEBUG: configuration descriptor: (59)
         (* Issue Clear Feature on interrupt IN endpoint *)
         IF CtlReq.ClrFeature(phost, hidh.ep_addr) = Def.OK THEN hidh.state := HCl.GET_DATA END (* Change state to issue next IN token *)
       END
-    END
+    END; BSP.ledsOnOff({3}, {4})
 
     RETURN status
   END Process;
@@ -358,7 +357,7 @@ DEBUG: configuration descriptor: (59)
     VAR status: BYTE; hidh!: HCl.Handle;
   BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle);
     IF (hidh.state = HCl.POLL) & (phost.Timer - hidh.timer >= hidh.poll) THEN hidh.state := HCl.GET_DATA END;
-    status := Def.OK
+    status := Def.OK; BSP.ledsOnOff({4}, {3})
 
     RETURN status
   END SOFProcess;

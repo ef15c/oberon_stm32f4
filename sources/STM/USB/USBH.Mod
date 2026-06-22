@@ -42,7 +42,7 @@ MODULE USBH;
     phost.device.EnumCnt := 0;
 
     (* Reset the device record *)
-    CLEAR(phost.device.CfgDesc_Raw.data);
+    CLEAR(phost.device.RawDesc.data^);
     CLEAR(phost.device.DevDesc);
     CLEAR(phost.device.CfgDesc);
   END DeInitStateMachine;
@@ -466,6 +466,7 @@ MODULE USBH;
       (* process class standard control requests state machine *)
       IF phost.pActiveClass # NIL THEN status := phost.pActiveClass.Requests(phost);
         IF status = Def.OK THEN phost.gState := Def.HOST_CLASS;
+          Log.Debug("Class request successful"); Log.DebugLn;
         ELSIF status = Def.FAIL THEN phost.gState := Def.HOST_ABORT_STATE;
           Log.Error("Device not responding Please Unplug.")
         END

@@ -101,20 +101,28 @@ MODULE USBLog;
   END ErrorLn;
 
   PROCEDURE Debug*(msg: ARRAY OF CHAR);
-  BEGIN IF DebugCbk # NIL THEN W.col := Display.white; DebugCbk(msg) END
+  BEGIN IF DebugCbk # NIL THEN W.col := Display.yellow; DebugCbk(msg) END
   END Debug;
 
   PROCEDURE DebugString*(msg: ARRAY OF CHAR);
-  BEGIN IF DebugStringCbk # NIL THEN W.col := Display.white; DebugStringCbk(msg) END
+  BEGIN IF DebugStringCbk # NIL THEN W.col := Display.yellow; DebugStringCbk(msg) END
   END DebugString;
 
   PROCEDURE DebugInt*(val, len: INTEGER);
-  BEGIN IF DebugIntCbk # NIL THEN W.col := Display.white; DebugIntCbk(val, len) END
+  BEGIN IF DebugIntCbk # NIL THEN W.col := Display.yellow; DebugIntCbk(val, len) END
   END DebugInt;
 
   PROCEDURE DebugHexVLen*(x, n: INTEGER; lz: BOOLEAN);
-  BEGIN IF DebugHexVLenCbk # NIL THEN W.col := Display.white; DebugHexVLenCbk(x, n, lz) END
+  BEGIN IF DebugHexVLenCbk # NIL THEN W.col := Display.yellow; DebugHexVLenCbk(x, n, lz) END
   END DebugHexVLen;
+
+  PROCEDURE DebugSet*(s: SET);
+  BEGIN IF DebugSetCbk # NIL THEN DebugSetCbk(s) END
+  END DebugSet;
+
+  PROCEDURE DebugBuf*(buf: ARRAY OF BYTE; len: INTEGER);
+  BEGIN IF DebugBufCbk # NIL THEN DebugBufCbk(buf, len) END
+  END DebugBuf;
 
   PROCEDURE DebugLn*;
   BEGIN IF DebugLnCbk # NIL THEN DebugLnCbk END

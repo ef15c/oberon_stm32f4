@@ -299,19 +299,19 @@ MODULE USBHHIDApp;
     InitApplication; Run  
   END Open;
 
-BEGIN NEW(hUSBHost);
+BEGIN hUSBHost := Def.NewHandle();
   NEW(buf); Texts.OpenBuf(buf); Texts.OpenWriter(MW); MW.col := Display.green;
   Texts.OpenWriter(CW); CW.col := Display.white;
 
-(*
+(**)
   Log.SetDebugCbks(Log.DefaultDebug, Log.DefaultString, Log.DefaultInt, Log.DefaultHexVLen,
     Log.DefaultSet, Log.DefaultBuf, Log.DefaultLn)
-*)
+(**)
 END USBHHIDApp.
 
 OM4P.Compile USBHHIDParser.Mod/s USBLog.Mod/s Queue.Mod/s USBHConf.Mod/s USBHDef.Mod/s USBHPipes.Mod/s USBHIoReq.Mod/s
- USBHCtlReq.Mod/s LLUSB.Mod/s USBHCore.Mod/s HALHCD.Mod/s USBHHal.Mod/s USBH.Mod/s
- USBHHIDClass.Mod/s USBHHIDMouse.Mod/s USBHHIDKeybd.Mod/s USBHHID.Mod/s USBHHIDApp.Mod/s ~
+ USBHCtlReq.Mod/s LLUSB.Mod/s USBHCore.Mod/s HALHCD.Mod/s USBHHal.Mod/s USBH.Mod/s~
+OM4P.Compile USBHHIDClass.Mod/s USBHHIDMouse.Mod/s USBHHIDKeybd.Mod/s USBHHID.Mod/s USBHHIDApp.Mod/s ~
 
 Net.SendFiles CS Queue.Mod LLUSB.Mod USBHConf.Mod USBHDef.Mod USBHPipes.Mod USBLog.Mod USBHCore.Mod
  HALHCD.Mod USBHHal.Mod USBH.Mod USBHIoReq.Mod USBHCtlReq.Mod USBHHIDClass.Mod

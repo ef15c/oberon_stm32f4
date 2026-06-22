@@ -30,11 +30,11 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE HandleControl(phost: Def.Handle): BYTE;
-    VAR status, URB_Status: BYTE; direction: SET;
+    VAR status, URB_Status: BYTE; direction: SET; dummy: Def.BufferDesc;
   BEGIN status := Def.BUSY; URB_Status := Def.IDLE;
     IF phost.Control.state = Def.CTRL_SETUP THEN
       (* send a SETUP packet *)
-      IoReq.CtlSendSetup(phost, SYSTEM.ADR(phost.Control.setup), phost.Control.pipe_out);
+      IoReq.CtlSendSetup(phost, phost.Control.setup, phost.Control.pipe_out);
       phost.Control.state := Def.CTRL_SETUP_WAIT
     ELSIF phost.Control.state = Def.CTRL_SETUP_WAIT THEN
       URB_Status := phost.GetURBState(phost, phost.Control.pipe_out);
@@ -60,7 +60,7 @@ MODULE USBHCtlReq;
       phost->NakTimer = phost->Timer;
 #endif /* defined (USBH_IN_NAK_PROCESS) && (USBH_IN_NAK_PROCESS == 1U) */
 *)
-      IoReq.CtlReceiveData(phost, phost.Control.buff, phost.Control.length, phost.Control.pipe_in);
+      IoReq.CtlReceiveData(phost, phost.Control.buff^, phost.Control.length, phost.Control.pipe_in);
       phost.Control.state := Def.CTRL_DATA_IN_WAIT;
     ELSIF phost.Control.state = Def.CTRL_DATA_IN_WAIT THEN
       URB_Status := phost.GetURBState(phost, phost.Control.pipe_in);
@@ -86,7 +86,7 @@ MODULE USBHCtlReq;
       ELSIF URB_Status = Def.URB_ERROR THEN phost.Control.state := Def.CTRL_ERROR; (* Device error *)
       END
     ELSIF phost.Control.state = Def.CTRL_DATA_OUT THEN
-      IoReq.CtlSendData(phost, phost.Control.buff, phost.Control.length, phost.Control.pipe_out, TRUE);
+      IoReq.CtlSendData(phost, phost.Control.buff^, phost.Control.length, phost.Control.pipe_out, TRUE);
       phost.Control.timer := phost.Timer;
       phost.Control.state := Def.CTRL_DATA_OUT_WAIT;
     ELSIF phost.Control.state = Def.CTRL_DATA_OUT_WAIT THEN
@@ -100,7 +100,7 @@ MODULE USBHCtlReq;
         phost.Control.state := Def.CTRL_ERROR; status := Def.FAIL
       END
     ELSIF phost.Control.state = Def.CTRL_STATUS_IN THEN
-      IoReq.CtlReceiveData(phost, 0, 0, phost.Control.pipe_in); (* Send 0 bytes out packet *)
+      IoReq.CtlReceiveData(phost, dummy, 0, phost.Control.pipe_in); (* Send 0 bytes out packet *)
 (*
 #if defined (USBH_IN_NAK_PROCESS) && (USBH_IN_NAK_PROCESS == 1U)
       phost->NakTimer = phost->Timer;
@@ -129,7 +129,7 @@ MODULE USBHCtlReq;
       ELSIF URB_Status = Def.URB_ERROR THEN phost.Control.state := Def.CTRL_ERROR
       ELSIF URB_Status = Def.URB_STALL THEN status := Def.NOT_SUPPORTED (* Control transfers completed, Exit the State Machine *)
       END
-    ELSIF phost.Control.state = Def.CTRL_STATUS_OUT THEN IoReq.CtlSendData(phost, 0, 0, phost.Control.pipe_out, TRUE);
+    ELSIF phost.Control.state = Def.CTRL_STATUS_OUT THEN IoReq.CtlSendData(phost, dummy, 0, phost.Control.pipe_out, TRUE);
       phost.Control.timer := phost.Timer; phost.Control.state := Def.CTRL_STATUS_OUT_WAIT
     ELSIF phost.Control.state = Def.CTRL_STATUS_OUT_WAIT THEN
       URB_Status := phost.GetURBState(phost, phost.Control.pipe_out);
@@ -172,12 +172,12 @@ MODULE USBHCtlReq;
   * @param  length: length of the response
   * @retval USBH Status
   *)
-  PROCEDURE CtlReq*(phost: Def.Handle; VAR buff: ARRAY OF BYTE): BYTE;
+  PROCEDURE CtlReq*(phost: Def.Handle; buff: Def.Buffer): BYTE;
     VAR status: BYTE;
   BEGIN status := Def.BUSY;
     IF phost.RequestState = Def.CMD_SEND THEN
       (* Start a SETUP transfer *)
-      phost.Control.buff := SYSTEM.ADR(buff);
+      phost.Control.buff := buff;
       phost.Control.length := phost.Control.setup.wLength;
       phost.Control.state := Def.CTRL_SETUP;
       phost.RequestState := Def.CMD_WAIT;
@@ -203,7 +203,6 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE ClrFeature*(phost: Def.Handle; ep_num: BYTE): BYTE;
-    VAR dummy: ARRAY 0 OF BYTE;
   BEGIN
     IF phost.RequestState = Def.CMD_SEND THEN
       phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_ENDPOINT + Def.REQ_TYPE_STANDARD;
@@ -213,7 +212,7 @@ MODULE USBHCtlReq;
       phost.Control.setup.wLength := 0
     END
 
-    RETURN CtlReq(phost, dummy)
+    RETURN CtlReq(phost, NIL)
   END ClrFeature;
 
   (**
@@ -247,6 +246,7 @@ MODULE USBHCtlReq;
     IF (status = Def.OK) & (buf.length > 8) THEN
       (* For 1st time after device connection, Host may issue only 8 bytes for
           Device Descriptor Length  *)
+      Log.Debug("Parse full descriptor:"); Log.DebugBuf(buf.data.buf, buf.length); Log.DebugLn;
       dev_desc.idVendor := Def.ReadHalfword(buf); dev_desc.idProduct := Def.ReadHalfword(buf);
       dev_desc.bcdDevice := Def.ReadHalfword(buf); dev_desc.iManufacturer := Def.ReadByte(buf);
       dev_desc.iProduct := Def.ReadByte(buf); dev_desc.iSerialNumber := Def.ReadByte(buf);
@@ -274,14 +274,6 @@ MODULE USBHCtlReq;
     ep_descriptor.bmAttributes := TOSET(Def.ReadByte(buf));
     ep_descriptor.wMaxPacketSize := Def.ReadHalfword(buf);
     ep_descriptor.bInterval := Def.ReadByte(buf);
-(*
-    Log.Debug("ep_descriptor.bLength: "); Log.DebugInt(ep_descriptor.bLength, 1); Log.DebugLn;
-    Log.Debug("ep_descriptor.bDescriptorType: "); Log.DebugInt(ep_descriptor.bDescriptorType, 1); Log.DebugLn;
-    Log.Debug("ep_descriptor.bEndpointAddress: "); Log.DebugInt(ep_descriptor.bEndpointAddress, 1); Log.DebugLn;
-    Log.Debug("ep_descriptor.bmAttributes: "); Log.DebugSet(ep_descriptor.bmAttributes); Log.DebugLn;
-    Log.Debug("ep_descriptor.wMaxPacketSize: "); Log.DebugInt(ep_descriptor.wMaxPacketSize, 1); Log.DebugLn;
-    Log.Debug("ep_descriptor.bInterval: "); Log.DebugInt(ep_descriptor.bInterval, 1); Log.DebugLn;
-*)
     (* Make sure that wMaxPacketSize is different from 0 *)
     IF (ep_descriptor.wMaxPacketSize = 0) OR
       (ep_descriptor.wMaxPacketSize > Def.MAX_EP_PACKET_SIZE) OR
@@ -340,17 +332,6 @@ MODULE USBHCtlReq;
     if_descriptor.bInterfaceSubClass := Def.ReadByte(buf);
     if_descriptor.bInterfaceProtocol := Def.ReadByte(buf);
     if_descriptor.iInterface := Def.ReadByte(buf);
-(*
-    Log.Debug("if_descriptor.bLength: "); Log.DebugInt(if_descriptor.bLength, 1); Log.DebugLn;
-    Log.Debug("if_descriptor.bDescriptorType: "); Log.DebugInt(if_descriptor.bDescriptorType, 1); Log.DebugLn;
-    Log.Debug("if_descriptor..bInterfaceNumber: "); Log.DebugInt(if_descriptor.bInterfaceNumber, 1); Log.DebugLn;
-    Log.Debug("if_descriptor.bAlternateSetting: "); Log.DebugInt(if_descriptor.bAlternateSetting, 1); Log.DebugLn;
-    Log.Debug("if_descriptor.bNumEndpoints: "); Log.DebugInt(if_descriptor.bNumEndpoints, 1); Log.DebugLn;
-    Log.Debug("if_descriptor.bInterfaceClass: "); Log.DebugInt(if_descriptor.bInterfaceClass, 1); Log.DebugLn;
-    Log.Debug("if_descriptor.bInterfaceSubClass: "); Log.DebugInt(if_descriptor.bInterfaceSubClass, 1); Log.DebugLn;
-    Log.Debug("if_descriptor.bInterfaceProtocol: "); Log.DebugInt(if_descriptor.bInterfaceProtocol, 1); Log.DebugLn;
-    Log.Debug("if_descriptor.iInterface: "); Log.DebugInt(if_descriptor.iInterface, 1); Log.DebugLn;
-*)
     ep_ix := 0;
     WHILE (status = Def.OK) & (ep_ix < Conf.MAX_NUM_ENDPOINTS) &
       (ep_ix < if_descriptor.bNumEndpoints) & Def.HasMoreHeaders(buf) DO
@@ -413,7 +394,7 @@ MODULE USBHCtlReq;
       idd := 0;
       FOR idx := 2 TO strlength BY 2 DO
         (* Copy Only the string and ignore the UNICODE ID, hence add the src *)
-        pdest[idd] :=  CHR(psrc.data[idx]);
+        pdest[idd] :=  CHR(psrc.data.buf[idx]);
         INC(idd);
       END;
       pdest[idd] := 0X; (* mark end of string *)
@@ -436,16 +417,6 @@ MODULE USBHCtlReq;
     IF Def.HeaderSize(buf) # Def.CONFIGURATION_DESC_SIZE THEN
       Log.Error("buggy device: bad configuration length"); Log.ErrorLn; status := Def.NOT_SUPPORTED
     ELSE ParseConfig(phost.device.CfgDesc, buf);
-(*
-      Log.Debug("CfgDesc.bLength: "); Log.DebugInt(phost.device.CfgDesc.bLength, 1); Log.DebugLn;
-      Log.Debug("CfgDesc.bDescriptorType: "); Log.DebugInt(phost.device.CfgDesc.bDescriptorType, 1); Log.DebugLn;
-      Log.Debug("CfgDesc.wTotalLength: "); Log.DebugInt(phost.device.CfgDesc.wTotalLength, 1); Log.DebugLn;
-      Log.Debug("CfgDesc.bNumInterfaces: "); Log.DebugInt(phost.device.CfgDesc.bNumInterfaces, 1); Log.DebugLn;
-      Log.Debug("CfgDesc.bConfigurationValue: "); Log.DebugInt(phost.device.CfgDesc.bConfigurationValue, 1); Log.DebugLn;
-      Log.Debug("CfgDesc.iConfiguration: "); Log.DebugInt(phost.device.CfgDesc.iConfiguration, 1); Log.DebugLn;
-      Log.Debug("CfgDesc.bmAttributes: "); Log.DebugSet(phost.device.CfgDesc.bmAttributes); Log.DebugLn;
-      Log.Debug("CfgDesc.bMaxPower: "); Log.DebugInt(phost.device.CfgDesc.bMaxPower, 1); Log.DebugLn;
-*)
       IF buf.length > Def.CONFIGURATION_DESC_SIZE THEN
         WHILE (status = Def.OK) & (if_ix < Conf.MAX_NUM_INTERFACES) & Def.HasMoreHeaders(buf) DO
           Def.GoNextHeader(buf);
@@ -496,7 +467,6 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE SetAddress*(phost: Def.Handle; DeviceAddress: BYTE): BYTE;
-    VAR dummy: ARRAY 0 OF BYTE;
   BEGIN
     IF phost.RequestState = Def.CMD_SEND THEN
       phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_DEVICE +
@@ -506,7 +476,7 @@ MODULE USBHCtlReq;
       phost.Control.setup.wIndex := 0;
       phost.Control.setup.wLength := 0
     END
-    RETURN CtlReq(phost, dummy)
+    RETURN CtlReq(phost, NIL)
   END SetAddress;
 
   (**
@@ -517,7 +487,6 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE SetCfg*(phost: Def.Handle;  cfg_idx: HALFWORD): BYTE;
-    VAR dummy: ARRAY 0 OF BYTE;
   BEGIN
     IF phost.RequestState = Def.CMD_SEND THEN
       phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD;
@@ -527,7 +496,7 @@ MODULE USBHCtlReq;
       phost.Control.setup.wLength := 0
     END
 
-    RETURN CtlReq(phost, dummy)
+    RETURN CtlReq(phost, NIL)
   END SetCfg;
 
   (**
@@ -538,7 +507,6 @@ MODULE USBHCtlReq;
   * @retval Status
   *)
   PROCEDURE SetFeature*(phost: Def.Handle; wValue: HALFWORD): BYTE;
-    VAR dummy: ARRAY 0 OF BYTE;
   BEGIN
     IF phost.RequestState = Def.CMD_SEND THEN
       phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD;
@@ -548,7 +516,7 @@ MODULE USBHCtlReq;
       phost.Control.setup.wLength := 0
     END
 
-    RETURN CtlReq(phost, dummy)
+    RETURN CtlReq(phost, NIL)
   END SetFeature;
 
   (**
@@ -560,15 +528,16 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE Get_DevDesc*(phost: Def.Handle; length: HALFWORD): BYTE;
-    VAR status: BYTE; buf: Def.RawDescriptor;
+    VAR status: BYTE;
   BEGIN
-    IF length > LEN(buf.data) THEN
+    IF length > LEN(phost.device.RawDesc.data.buf) THEN
       Log.Error("Control error: Get Device Descriptor failed, data buffer size issue"); Log.ErrorLn;
       status := Def.NOT_SUPPORTED
-    ELSE buf.length := length; status := GetDescriptor(phost, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
-                             Def.DESC_DEVICE, buf);
+    ELSE phost.device.RawDesc.length := length;
+      status := GetDescriptor(phost, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
+                      Def.DESC_DEVICE, phost.device.RawDesc);
       IF status = Def.OK THEN (* Commands successfully sent and Response Received *)
-        status := ParseDevDesc(phost, phost.device.DevDesc, buf)
+        status := ParseDevDesc(phost, phost.device.DevDesc, phost.device.RawDesc)
       END
     END
 
@@ -587,14 +556,14 @@ MODULE USBHCtlReq;
   PROCEDURE Get_CfgDesc*(phost: Def.Handle; length: HALFWORD): BYTE;
     VAR status: BYTE;
   BEGIN
-    IF length > LEN(phost.device.CfgDesc_Raw.data) THEN
+    IF length > LEN(phost.device.RawDesc.data.buf) THEN
       Log.Error("Control error: Get configuration Descriptor failed, data buffer size issue"); Log.ErrorLn;
       status := Def.NOT_SUPPORTED;
-    ELSE phost.device.CfgDesc_Raw.length := length;
+    ELSE phost.device.RawDesc.length := length;
       status := GetDescriptor(phost, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
-                      Def.DESC_CONFIGURATION, phost.device.CfgDesc_Raw);
+                      Def.DESC_CONFIGURATION, phost.device.RawDesc);
       IF status = Def.OK THEN (* Commands successfully sent and Response Received  *)
-        status := ParseCfgDesc(phost, phost.device.CfgDesc_Raw)
+        status := ParseCfgDesc(phost, phost.device.RawDesc)
       END
     END
 
@@ -611,16 +580,16 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE Get_StringDesc*(phost: Def.Handle; string_index: BYTE; VAR buff: ARRAY OF CHAR; length: HALFWORD): BYTE;
-    VAR status: BYTE; buf: Def.RawDescriptor;
+    VAR status: BYTE;
   BEGIN
-    IF length > LEN(buf.data) THEN
+    IF length > LEN(phost.device.RawDesc.data.buf) THEN
       Log.Error("Control error: Get String Descriptor failed, data buffer size issue"); Log.ErrorLn;
       status := Def.NOT_SUPPORTED
-    ELSE buf.length := length;
+    ELSE phost.device.RawDesc.length := length;
       status := GetDescriptor(phost, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
-                            Def.DESC_STRING + TOSET(string_index), buf);
+                            Def.DESC_STRING + TOSET(string_index), phost.device.RawDesc);
       IF status = Def.OK THEN (* Commands successfully sent and Response Received *)
-        ParseStringDesc(buf, buff);
+        ParseStringDesc(phost.device.RawDesc, buff);
       END
     END
 
