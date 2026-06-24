@@ -6,7 +6,7 @@ MODULE LLUSB;
   * @brief   HCD HAL module.
   ******************************************************************************
   *)
-  IMPORT SYSTEM, Kernel, Log := USBLog, Def := USBHDef;
+  IMPORT SYSTEM, Kernel, Def := USBHDef;
 
   CONST
   (*!< USB registers base address *)

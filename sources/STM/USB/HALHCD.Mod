@@ -40,7 +40,8 @@ MODULE HALHCD;
       SOFCallback*: Callback; (*!< USB OTG HCD SOF callback                *)
       MspInitCallback*, (*!< USB OTG HCD Msp Init callback           *)
       MspDeInitCallback*: InitCallback; (*!< USB OTG HCD Msp DeInit callback         *)
-      ConnectMP, DisconnectMP, PortEnabledMP, PortDisabledMP, URBChangeMP: Q.Msg; (*the pools of available IRQ messages*)
+      ConnectMP, DisconnectMP, PortEnabledMP, PortDisabledMP,
+      URBChangeMP, DebugMP: Q.Msg; (*the pools of available IRQ messages*)
       MsgPendQ: Q.Msg (*the deferred work message queue*)
     END;
 
@@ -63,6 +64,11 @@ MODULE HALHCD;
     (*!< USB OTG HCD Host Channel Notify URB Change message *)
     URBChangeMsg* = POINTER TO URBChangeMsgDesc;
     URBChangeMsgDesc = RECORD(Q.MsgDesc) chnum*, urb_state*: BYTE END;
+
+    (*!< USB OTG HCD IRQ debug message *)
+    DebugMsg* = POINTER TO DebugMsgDesc;
+    DebugMsgDesc* = RECORD(Q.MsgDesc)
+      chnum*: BYTE; is_in*: BOOLEAN; hcint*, hprt*, gintsts*, grxstsp*: SET END;
 
     PROCEDURE newConnectMsg(): Q.Msg;
       VAR item!: ConnectMsg;
@@ -98,6 +104,13 @@ MODULE HALHCD;
 
       RETURN item
     END newURBChangeMsg;
+
+    PROCEDURE newDebugMsg(): Q.Msg;
+      VAR item!: DebugMsg;
+    BEGIN NEW(item)
+
+      RETURN item
+    END newDebugMsg;
 
   (** @defgroup HCD_Exported_Functions_Group2 Input and Output operation functions
   *  @brief   HCD IO operation functions
@@ -181,7 +194,6 @@ MODULE HALHCD;
     hhcd.hc[ch_num].xfer_buff := SYSTEM.ADR(buff); hhcd.hc[ch_num].xfer_len := length;
     hhcd.hc[ch_num].urb_state := Def.IDLE; hhcd.hc[ch_num].xfer_count := 0;
     hhcd.hc[ch_num].ch_num := ch_num; hhcd.hc[ch_num].state := Def.IDLE;
-
     ll.HC_StartXfer(hhcd.Instance, hhcd.hc[ch_num], hhcd.Init.dma_enable)
   END HC_SubmitRequest;
 
@@ -190,12 +202,13 @@ MODULE HALHCD;
   * @param  hhcd HCD handle
   * @retval None
   *)
-  PROCEDURE Port_IRQHandler(hhcd: Handle);
+  PROCEDURE Port_IRQHandler(hhcd: Handle; dbm: DebugMsg);
   VAR res: BYTE; hprt0, hprt0_dup, fslspcs: SET; USBx_HOST!: ll.OTGHostMode;
     msg!: Q.Msg;
   BEGIN USBx_HOST := SYSTEM.VAL(ll.OTGHostMode, ORD(hhcd.Instance) + ll.HOST_BASE);
     (* Handle Host Port Interrupts *)
     SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, hprt0);
+    IF dbm # NIL THEN dbm.hprt := hprt0 END;
     hprt0_dup := hprt0 - {ll.HPRT_PENA, ll.HPRT_PCDET, ll.HPRT_PENCHNG, ll.HPRT_POCCHNG};
     (* Check whether Port Connect detected *)
     IF ll.HPRT_PCDET IN hprt0 THEN
@@ -233,11 +246,12 @@ MODULE HALHCD;
   *         This parameter can be a value from 1 to 15
   * @retval none
   *)
-  PROCEDURE HC_IN_IRQHandler(hhcd: Handle; chnum: BYTE);
+  PROCEDURE HC_IN_IRQHandler(hhcd: Handle; chnum: BYTE; dbm: DebugMsg);
     VAR USBx_HCi!: ll.OTGHostChannel; flags: SET;
       msg!: Q.Msg;
   BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
+    IF dbm # NIL THEN dbm.hcint := flags; dbm.chnum := chnum; dbm.is_in := TRUE END;
     IF ll.HCINT_AHBERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_AHBERR};
       hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
     ELSIF ll.HCINT_BBERR IN flags THEN USBx_HCi.HCINT := {ll. HCINT_BBERR};
@@ -368,11 +382,12 @@ MODULE HALHCD;
   *         This parameter can be a value from 1 to 15
   * @retval none
   *)
-  PROCEDURE HC_OUT_IRQHandler(hhcd: Handle; chnum: BYTE);
+  PROCEDURE HC_OUT_IRQHandler(hhcd: Handle; chnum: BYTE; dbm: DebugMsg);
     VAR USBx_HCi!: ll.OTGHostChannel; flags: SET; num_packets: INTEGER; purbs: BYTE;
       msg!: Q.Msg;
   BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
+    IF dbm # NIL THEN dbm.hcint := flags; dbm.chnum := chnum END;
     IF ll.HCINT_AHBERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_AHBERR};
       hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
     ELSIF ll.HCINT_ACK IN flags THEN USBx_HCi.HCINT := {ll.HCINT_ACK};
@@ -474,25 +489,26 @@ MODULE HALHCD;
   * @param  hhcd HCD handle
   * @retval none
   *)
-  PROCEDURE RXQLVL_IRQHandler(hhcd: Handle);
+  PROCEDURE RXQLVL_IRQHandler(hhcd: Handle; dbm: DebugMsg);
     VAR USBx_HCi!: ll.OTGHostChannel;
-      GrxstspReg, pktsts: SET; pktcnt, xferSizePktCnt, res: INTEGER; chnum: BYTE;
+      GrxstspReg, pktsts: SET; bytecnt, xferSizePktCnt, res: INTEGER; chnum: BYTE;
   BEGIN (*WARNING: GRXSTSP must be read only once, because reading it pops one item from input FIFO*)
     GrxstspReg := hhcd.Instance.GRXSTSP;
+    IF dbm # NIL THEN dbm.grxstsp := GrxstspReg END;
     chnum := ORD(GrxstspReg*ll.GRXSTSP_EPNUM_Msk);
     pktsts := GrxstspReg*ll.GRXSTSP_PKTSTS_Msk;
-    pktcnt := LSR(ORD(GrxstspReg*ll.GRXSTSP_BCNT_Msk), 4);
+    bytecnt := LSR(ORD(GrxstspReg*ll.GRXSTSP_BCNT_Msk), 4);
     USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     IF pktsts = ll.GRXSTS_PKTSTS_IN THEN
       (* Read the data into the host buffer. *)
-      IF (pktcnt > 0) & (hhcd.hc[chnum].xfer_buff # 0) THEN
-        IF hhcd.hc[chnum].xfer_count + pktcnt <= hhcd.hc[chnum].xfer_len THEN
-          res := ll.ReadPacket(hhcd.Instance, hhcd.hc[chnum].xfer_buff, pktcnt);
+      IF (bytecnt > 0) & (hhcd.hc[chnum].xfer_buff # 0) THEN
+        IF hhcd.hc[chnum].xfer_count + bytecnt <= hhcd.hc[chnum].xfer_len THEN
+          res := ll.ReadPacket(hhcd.Instance, hhcd.hc[chnum].xfer_buff, bytecnt);
           (* manage multiple Xfer *)
-          INC(hhcd.hc[chnum].xfer_buff, pktcnt); INC(hhcd.hc[chnum].xfer_count, pktcnt);
+          INC(hhcd.hc[chnum].xfer_buff, bytecnt); INC(hhcd.hc[chnum].xfer_count, bytecnt);
           (* get transfer size packet count *)
           xferSizePktCnt := LSR(ORD(USBx_HCi.HCTSIZ*ll.HCTSIZ_PKTCNT_Msk), 19);
-          IF (hhcd.hc[chnum].max_packet = pktcnt) & (xferSizePktCnt > 0) THEN
+          IF (hhcd.hc[chnum].max_packet = bytecnt) & (xferSizePktCnt > 0) THEN
             (* re-activate the channel when more packets are expected *)
             USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA};
             hhcd.hc[chnum].toggle_in := ~hhcd.hc[chnum].toggle_in;
@@ -510,8 +526,15 @@ MODULE HALHCD;
   *)
   PROCEDURE IRQHandler*(hhcd: Handle);
     VAR i: INTEGER; interrupt, flags, reg: SET; res: BYTE;
-      msg!: Q.Msg;
-  BEGIN flags := ll.ReadInterrupts(hhcd.Instance);
+      msg!: Q.Msg; dbm!: DebugMsg;
+  BEGIN flags := ll.ReadInterrupts(hhcd.Instance); dbm := NIL;
+(*
+    IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(hhcd.DebugMP);
+      IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^); dbm.chnum := 0FFH;
+        dbm.gintsts := flags
+      END
+    END;
+*)
     (* Ensure that we are in host mode *)
     IF (ll.GetMode(hhcd.Instance) = ll.USB_HOST_MODE) & (flags # {}) (* Avoid spurious interrupt *) THEN
       IF ll.GINTSTS_PXFR_INCOMPISOOUT IN flags THEN (* Incomplete periodic transfer, acknowledge the interrupt *)
@@ -539,7 +562,7 @@ MODULE HALHCD;
           IF msg # NIL THEN Q.Post(hhcd.MsgPendQ, msg) END
         END
       END;
-      IF ll.GINTSTS_HPRTINT IN flags THEN Port_IRQHandler(hhcd) END; (* Handle Host Port Interrupts *)
+      IF ll.GINTSTS_HPRTINT IN flags THEN Port_IRQHandler(hhcd, dbm) END; (* Handle Host Port Interrupts *)
       (* Handle Host SOF Interrupt *)
       IF ll.GINTSTS_SOF IN flags THEN hhcd.SOFCallback(hhcd); hhcd.Instance.GINTSTS := {ll.GINTSTS_SOF} END;
       (* Handle Host channel Interrupt *)
@@ -548,16 +571,17 @@ MODULE HALHCD;
         FOR i := 0 TO hhcd.Init.Host_channels - 1 DO
           IF i MOD 10H IN interrupt THEN
             SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + i*ll.HOST_CHANNEL_SIZE, reg);
-            IF ll.HCCHAR_EPDIR IN reg THEN HC_IN_IRQHandler(hhcd, i) ELSE HC_OUT_IRQHandler(hhcd, i) END
+            IF ll.HCCHAR_EPDIR IN reg THEN HC_IN_IRQHandler(hhcd, i, dbm) ELSE HC_OUT_IRQHandler(hhcd, i, dbm) END
           END
         END;
         hhcd.Instance.GINTSTS := {ll.GINTSTS_HCINT};
       END;
       (* Handle Rx Queue Level Interrupts *)
       IF ll.GINTSTS_RXFLVL IN flags THEN EXCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL);
-        RXQLVL_IRQHandler(hhcd); INCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL)
+        RXQLVL_IRQHandler(hhcd, dbm); INCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL)
       END
-    END
+    END;
+    IF dbm # NIL THEN Q.Post(hhcd.MsgPendQ, dbm) END
   END IRQHandler;
 
   (**
@@ -793,11 +817,15 @@ MODULE HALHCD;
     hhcd.PortEnabledMP := Q.CreatePool(1, newPortEnabledMsg);
     hhcd.PortDisabledMP := Q.CreatePool(1, newPortDisabledMsg);
     hhcd.URBChangeMP := Q.CreatePool(3, newURBChangeMsg);
+    hhcd.DebugMP := Q.CreatePool(100, newDebugMsg);
   END InitPools;
 
   PROCEDURE TakeMsg*(hhcd: Handle): Q.Msg;
     VAR msg!: Q.Msg;
-  BEGIN ASSERT(~Q.exhausted); msg := NIL;
+  BEGIN msg := NIL;
+    IF Q.IsExhausted() THEN Log.Error("Interrupt queue too small"); Log.ErrorLn;
+      Log.Flush; ASSERT(FALSE)
+    END;
     IF hhcd.MsgPendQ # NIL THEN
       ll.DisableGlobalInt(hhcd.Instance); msg := Q.Get(hhcd.MsgPendQ); ll.EnableGlobalInt(hhcd.Instance)
     END
@@ -813,6 +841,7 @@ MODULE HALHCD;
       | PortEnabledMsg: Q.PostFirst(hhcd.PortEnabledMP, msg)
       | PortDisabledMsg: Q.PostFirst(hhcd.PortDisabledMP, msg)
       | URBChangeMsg: Q.PostFirst(hhcd.URBChangeMP, msg)
+      | DebugMsg: Q.PostFirst(hhcd.DebugMP, msg)
       | Q.Msg: ASSERT(FALSE) (*type must be handled in above list*)
       END;
     ll.EnableGlobalInt(hhcd.Instance)
@@ -821,3 +850,4 @@ MODULE HALHCD;
 END HALHCD.
 
 OM4Tool.DecSym HALHCD.sm4
+OM4Tool.DecObj HALHCD.m4c

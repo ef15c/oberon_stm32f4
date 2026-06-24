@@ -3,6 +3,9 @@ Piège thumb : l'ordre en mémoire des octets de l'instruction est bizarre :
      32-bit Thumb instruction, hw1            32-bit Thumb instruction, hw2
 Byte at Address A+1   Byte at Address A   Byte at Address A+3  Byte at Address A+2
 
+Exemples :  0x60f2ec0c => 0CECF260 => EC0C60F2
+            0x6212ec0c => 0CEC1262 => EC0C6212
+
 Piège Carry :
 "In A32/T32 code, C is set in one of the following ways:
 

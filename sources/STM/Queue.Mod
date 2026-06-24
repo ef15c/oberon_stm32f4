@@ -6,11 +6,11 @@ MODULE Queue;
     Msg* = POINTER TO MsgDesc;
     MsgDesc* = RECORD next: Msg END;
 
-  VAR exhausted*: BOOLEAN;
+  VAR exhausted: BOOLEAN;
 
   PROCEDURE CreatePool*(size: INTEGER; new: PROCEDURE(): Msg): Msg;
     VAR i: INTEGER; head!, item!: Msg;
-  BEGIN item := NIL;
+  BEGIN head := NIL;
     FOR i := 1 TO size DO item := new(); item.next := head; head := item END
 
     RETURN head
@@ -37,6 +37,13 @@ MODULE Queue;
       t.next := item
     END
   END Post;
+
+  PROCEDURE IsExhausted*(): BOOLEAN;
+    VAR res: BOOLEAN;
+  BEGIN res := exhausted; exhausted := FALSE
+
+    RETURN res
+  END IsExhausted;
 
 END Queue.
 

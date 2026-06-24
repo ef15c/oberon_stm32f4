@@ -186,7 +186,7 @@ DEBUG: configuration descriptor: (59)
       status := Def.FAIL
     END;
     IF status # Def.FAIL THEN status := USBH.SelectInterface(phost, interface); END;
-    IF status # Def.FAIL THEN NEW(hidh); NEW(hidh.Data); phost.pActiveClass.pclsh := hidh;
+    IF status # Def.FAIL THEN NEW(hidh); NEW(hidh.Data); NEW(hidh.ReportDesc.data); phost.pActiveClass.pclsh := hidh;
       IF hidh = NIL THEN Log.Debug("Cannot allocate memory for HID Handle"); Log.DebugLn;
         status := Def.FAIL
       END
@@ -319,7 +319,6 @@ DEBUG: configuration descriptor: (59)
         hidh.state := HCl.ERROR; status := Def.FAIL
       END
     ELSIF hidh.state = HCl.IDLE THEN status := GetReport(phost, 1, 0, hidh.Data, hidh.length);
-      Log.Debug("GetReportStatus: "); Log.DebugInt(status, 1); Log.DebugLn;
       IF status = Def.OK THEN hidh.state := HCl.SYNC
       ELSIF status = Def.BUSY THEN hidh.state := HCl.IDLE; status := Def.OK
       ELSIF status = Def.NOT_SUPPORTED THEN hidh.state := HCl.SYNC; status := Def.OK

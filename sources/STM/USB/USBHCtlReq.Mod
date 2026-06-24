@@ -30,7 +30,7 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE HandleControl(phost: Def.Handle): BYTE;
-    VAR status, URB_Status: BYTE; direction: SET; dummy: Def.BufferDesc;
+    VAR status, URB_Status: BYTE; dummy: Def.BufferDesc;
   BEGIN status := Def.BUSY; URB_Status := Def.IDLE;
     IF phost.Control.state = Def.CTRL_SETUP THEN
       (* send a SETUP packet *)
@@ -39,14 +39,13 @@ MODULE USBHCtlReq;
     ELSIF phost.Control.state = Def.CTRL_SETUP_WAIT THEN
       URB_Status := phost.GetURBState(phost, phost.Control.pipe_out);
       IF URB_Status = Def.URB_DONE THEN (* case SETUP packet sent successfully *)
-        direction := phost.Control.setup.bmRequestType*Def.REQ_DIR_MASK;
         (* check if there is a data stage *)
         IF phost.Control.setup.wLength # 0 THEN
-          IF direction = Def.D2H THEN phost.Control.state := Def.CTRL_DATA_IN (* Data Direction is IN *)
+          IF 7 IN phost.Control.setup.bmRequestType THEN phost.Control.state := Def.CTRL_DATA_IN; (* Data Direction is IN *)
           ELSE phost.Control.state := Def.CTRL_DATA_OUT (* Data Direction is OUT *)
           END
         ELSE (* No DATA stage *)
-          IF direction = Def.D2H THEN phost.Control.state := Def.CTRL_STATUS_OUT (* Data Direction is IN *)
+          IF 7 IN phost.Control.setup.bmRequestType THEN phost.Control.state := Def.CTRL_STATUS_OUT (* Data Direction is IN *)
           ELSE phost.Control.state := Def.CTRL_STATUS_IN (* Data Direction is OUT *)
           END
         END
@@ -246,7 +245,6 @@ MODULE USBHCtlReq;
     IF (status = Def.OK) & (buf.length > 8) THEN
       (* For 1st time after device connection, Host may issue only 8 bytes for
           Device Descriptor Length  *)
-      Log.Debug("Parse full descriptor:"); Log.DebugBuf(buf.data.buf, buf.length); Log.DebugLn;
       dev_desc.idVendor := Def.ReadHalfword(buf); dev_desc.idProduct := Def.ReadHalfword(buf);
       dev_desc.bcdDevice := Def.ReadHalfword(buf); dev_desc.iManufacturer := Def.ReadByte(buf);
       dev_desc.iProduct := Def.ReadByte(buf); dev_desc.iSerialNumber := Def.ReadByte(buf);

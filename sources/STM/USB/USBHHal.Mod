@@ -228,7 +228,7 @@ MODULE USBHHal;
     VAR hcd!: HCD.Handle;
   BEGIN hcd := phost.phcd(HCD.Handle);
     IF hcd.hc[pipe].ep_is_in THEN hcd.hc[pipe].toggle_in := toggle
-    ELSE hcd.hc[pipe].toggle_out := toggle;
+    ELSE hcd.hc[pipe].toggle_out := toggle
     END
   END SetToggle;
 
@@ -351,7 +351,19 @@ MODULE USBHHal;
     RETURN cs
   END GetSpeed;
 
-  
+  PROCEDURE IRQLog(msg: HCD.DebugMsg);
+  BEGIN Log.Debug("IRQ ");
+    IF msg.chnum # 0FFH THEN
+      Log.DebugString("chn: "); Log.DebugInt(msg.chnum, 1);
+      IF msg.is_in THEN Log.DebugString(" IN") ELSE Log.DebugString(" OUT") END;
+      Log.DebugString(", hcint: ");  Log.DebugSet(msg.hcint)
+    END;
+    Log.DebugString(", hprt: ");  Log.DebugSet(msg.hprt);
+    Log.DebugString(", gintsts: ");  Log.DebugSet(msg.gintsts);
+    Log.DebugString(", grxstsp: ");  Log.DebugSet(msg.grxstsp);
+    Log.DebugLn
+  END IRQLog;
+
   (**
   * @brief  Do the work offloaded by IRQs in the process loop.
   *)
@@ -359,13 +371,14 @@ MODULE USBHHal;
     VAR msg!: Q.Msg; hhcd!: HCD.Handle;
   BEGIN hhcd := phost.phcd(HCD.Handle);
     msg := HCD.TakeMsg(hhcd);
-    WHILE msg # NIL DO (*Process the massage*)
+    WHILE msg # NIL DO (*Process the message*)
       CASE msg OF
         HCD.ConnectMsg: Connect_Callback(hhcd)
       | HCD.DisconnectMsg: Disconnect_Callback(hhcd)
       | HCD.PortEnabledMsg: PortEnabled_Callback(hhcd)
       | HCD.PortDisabledMsg: PortDisabled_Callback(hhcd)
       | HCD.URBChangeMsg: HC_NotifyURBChange_Callback(hhcd, msg.chnum, msg.urb_state)
+      | HCD.DebugMsg: IRQLog(msg)
       | Q.Msg: ASSERT(FALSE) (*type must be handled in above list*)
       END; HCD.GiveMsg(hhcd, msg);
       msg := HCD.TakeMsg(hhcd)

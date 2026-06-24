@@ -467,15 +467,15 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     SYSTEM.GET(CFSR, cfsr);
     IF NOCP IN cfsr THEN (*Trap*)
       SYSTEM.GET(f.returnAddress, inst);
-      w := inst DIV 10000H MOD 10H;
+      w := inst DIV 10000H MOD 10H
     ELSIF INVSTATE IN cfsr THEN w := 5 (*probably illegal procedure call*)
-    ELSIF DIVBYZERO IN cfsr THEN w := 6 (*division by zero*);
-      INC(f.returnAddress, 4) (*return to next instruction*)
+    ELSIF DIVBYZERO IN cfsr THEN w := 6 (*division by zero*)
     END;
     IF Kernel.SVCReturnAddress # 0 THEN TrappedAdr := Kernel.SVCReturnAddress
     ELSIF w = 5 THEN TrappedAdr := f.lr
     ELSE TrappedAdr := f.returnAddress
     END;
+    INC(f.returnAddress, 4); (*return to next instruction*)
     (*Trigger abort by requesting a PendSV interrupt*)
     IF cfsr - {NOCP, INVSTATE, DIVBYZERO} # {} THEN (*other fault*)
       BSP.led(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
@@ -502,6 +502,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     IF DACCVIOL IN cfsr THEN SYSTEM.GET(MMFAR, stack.far); TrappedAdr := f.returnAddress
     ELSIF IACCVIOL IN cfsr THEN TrappedAdr := f.lr
     END;
+    INC(f.returnAddress, 4); (*return to next instruction*)
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
     SYSTEM.PUT(CFSR, cfsr*MMFSR_Mask); (*reset MMFSR flags*) Kernel.setSPHWM
