@@ -82,7 +82,7 @@ DEBUG: configuration descriptor: (59)
   PROCEDURE GetHIDReportDescriptor(phost: Def.Handle; VAR buf: Def.RawDescriptor): BYTE;
     VAR status: BYTE;
   BEGIN
-    IF buf.length > LEN(buf.data.buf) THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue"); Log.ErrorLn;
+    IF buf.length > buf.size THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue"); Log.ErrorLn;
       status := Def.NOT_SUPPORTED
     ELSE status := CtlReq.GetDescriptor(phost, Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_STANDARD,
                               Def.DESC_HID_REPORT, buf)
@@ -125,12 +125,14 @@ DEBUG: configuration descriptor: (59)
   * @retval USBH Status
   *)
   PROCEDURE SetIdle*(phost: Def.Handle; duration, reportId: BYTE): BYTE;
-  BEGIN phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
+    VAR dummy: Def.Buffer;
+  BEGIN dummy.size := 0;
+    phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
     phost.Control.setup.bRequest := HCl.SET_IDLE;
     phost.Control.setup.wValue := duration*100H + reportId;
     phost.Control.setup.wIndex := 0; phost.Control.setup.wLength := 0
 
-    RETURN CtlReq.CtlReq(phost, NIL)
+    RETURN CtlReq.CtlReq(phost, dummy)
 
   END SetIdle;
 
@@ -142,12 +144,14 @@ DEBUG: configuration descriptor: (59)
   * @retval USBH Status
   *)
   PROCEDURE SetProtocol*(phost: Def.Handle; protocol: BYTE): BYTE;
-  BEGIN phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
+    VAR dummy: Def.Buffer;
+  BEGIN dummy.size := 0;
+    phost.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
     phost.Control.setup.bRequest := HCl.SET_PROTOCOL;
     IF protocol # 0 THEN phost.Control.setup.wValue := 0 ELSE phost.Control.setup.wValue := 1 END;
     phost.Control.setup.wIndex := 0; phost.Control.setup.wLength := 0
 
-    RETURN CtlReq.CtlReq(phost, NIL)
+    RETURN CtlReq.CtlReq(phost, dummy)
   END SetProtocol;
 
   (**
@@ -160,7 +164,7 @@ DEBUG: configuration descriptor: (59)
   * @param  reportLen   : Length of data report to be send
   * @retval USBH Status
   *)
-  PROCEDURE GetReport(phost: Def.Handle; reportType, reportId: BYTE; reportBuff: Def.Buffer; reportLen: BYTE): BYTE;
+  PROCEDURE GetReport(phost: Def.Handle; reportType, reportId: BYTE; VAR reportBuff: Def.Buffer; reportLen: BYTE): BYTE;
   BEGIN phost.Control.setup.bmRequestType := Def.D2H + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
     phost.Control.setup.bRequest := HCl.GET_REPORT;
     phost.Control.setup.wValue := reportType*100H + reportId;
@@ -186,7 +190,7 @@ DEBUG: configuration descriptor: (59)
       status := Def.FAIL
     END;
     IF status # Def.FAIL THEN status := USBH.SelectInterface(phost, interface); END;
-    IF status # Def.FAIL THEN NEW(hidh); NEW(hidh.Data); NEW(hidh.ReportDesc.data); phost.pActiveClass.pclsh := hidh;
+    IF status # Def.FAIL THEN hidh := HCl.New(); phost.pActiveClass.pclsh := hidh;
       IF hidh = NIL THEN Log.Debug("Cannot allocate memory for HID Handle"); Log.DebugLn;
         status := Def.FAIL
       END
@@ -327,7 +331,7 @@ DEBUG: configuration descriptor: (59)
     ELSIF hidh.state = HCl.SYNC THEN
       (* Sync with start of Even Frame *)
       IF ODD(phost.Timer) THEN hidh.state := HCl.GET_DATA END
-    ELSIF hidh.state = HCl.GET_DATA THEN IoReq.InterruptReceiveData(phost, hidh.Data^, hidh.length, hidh.InPipe);
+    ELSIF hidh.state = HCl.GET_DATA THEN IoReq.InterruptReceiveData(phost, hidh.Data, hidh.length, hidh.InPipe);
       hidh.state := HCl.POLL; hidh.timer := phost.Timer; hidh.DataReady := FALSE;
     ELSIF hidh.state = HCl.POLL THEN
       IF phost.GetURBState(phost, hidh.InPipe) = Def.URB_DONE THEN

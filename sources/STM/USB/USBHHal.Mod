@@ -270,7 +270,7 @@ MODULE USBHHal;
   * @retval USBH Status
   *)
   PROCEDURE SubmitURB(phost: Def.Handle; pipe: BYTE; direction: BOOLEAN; ep_type, token: BYTE;
-    buff: Def.BufferDesc; length: HALFWORD; do_ping: BOOLEAN);
+    buff: Def.Buffer; length: HALFWORD; do_ping: BOOLEAN);
   BEGIN
     HCD.HC_SubmitRequest(phost.phcd(HCD.Handle), pipe,
       direction, ep_type, token, buff, length, do_ping)

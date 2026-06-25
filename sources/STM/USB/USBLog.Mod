@@ -96,6 +96,18 @@ MODULE USBLog;
   BEGIN IF ErrorCbk # NIL THEN W.col := Display.red; ErrorCbk(msg) END
   END Error;
 
+  PROCEDURE ErrorString*(msg: ARRAY OF CHAR);
+  BEGIN IF ErrorStringCbk # NIL THEN W.col := Display.red; ErrorStringCbk(msg) END
+  END ErrorString;
+
+  PROCEDURE ErrorInt*(val, len: INTEGER);
+  BEGIN IF ErrorIntCbk # NIL THEN W.col := Display.red; ErrorIntCbk(val, len) END
+  END ErrorInt;
+
+  PROCEDURE ErrorHexVLen*(x, n: INTEGER; lz: BOOLEAN);
+  BEGIN IF ErrorHexVLenCbk # NIL THEN W.col := Display.red; ErrorHexVLenCbk(x, n, lz) END
+  END ErrorHexVLen;
+
   PROCEDURE ErrorLn*;
   BEGIN IF ErrorLnCbk # NIL THEN ErrorLnCbk END
   END ErrorLn;

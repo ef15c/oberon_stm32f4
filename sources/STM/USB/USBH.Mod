@@ -42,7 +42,7 @@ MODULE USBH;
     phost.device.EnumCnt := 0;
 
     (* Reset the device record *)
-    CLEAR(phost.device.RawDesc.data^);
+    CLEAR(phost.device.RawDesc.buf);
     CLEAR(phost.device.DevDesc);
     CLEAR(phost.device.CfgDesc);
   END DeInitStateMachine;

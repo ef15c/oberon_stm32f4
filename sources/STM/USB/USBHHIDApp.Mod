@@ -278,7 +278,7 @@ MODULE USBHHIDApp;
       USBH.Start(hUSBHost); (* Start Host Process *)
       Log.Debug("USBH lib started."); Log.DebugLn;
       (* Run Application (Non blocking mode) *)
-      processTask := Oberon.NewTask(Process, 10); Oberon.Install(processTask)
+      IF processTask = NIL THEN processTask := Oberon.NewTask(Process, 10); Oberon.Install(processTask) END
     ELSE Log.Error("USBH lib failed to start");
     END;
     Log.Flush
@@ -299,21 +299,21 @@ MODULE USBHHIDApp;
     InitApplication; Run  
   END Open;
 
-BEGIN hUSBHost := Def.NewHandle();
-  NEW(buf); Texts.OpenBuf(buf); Texts.OpenWriter(MW); MW.col := Display.green;
-  Texts.OpenWriter(CW); CW.col := Display.white;
-
+BEGIN
 (**)
   Log.SetDebugCbks(Log.DefaultDebug, Log.DefaultString, Log.DefaultInt, Log.DefaultHexVLen,
-    Log.DefaultSet, Log.DefaultBuf, Log.DefaultLn)
+  Log.DefaultSet, Log.DefaultBuf, Log.DefaultLn);
 (**)
+  hUSBHost := Def.New();
+  NEW(buf); Texts.OpenBuf(buf); Texts.OpenWriter(MW); MW.col := Display.green;
+  Texts.OpenWriter(CW); CW.col := Display.white
 END USBHHIDApp.
 
 OM4P.Compile USBHHIDParser.Mod/s USBLog.Mod/s Queue.Mod/s USBHConf.Mod/s USBHDef.Mod/s USBHPipes.Mod/s USBHIoReq.Mod/s
  USBHCtlReq.Mod/s LLUSB.Mod/s USBHCore.Mod/s HALHCD.Mod/s USBHHal.Mod/s USBH.Mod/s~
 OM4P.Compile USBHHIDClass.Mod/s USBHHIDMouse.Mod/s USBHHIDKeybd.Mod/s USBHHID.Mod/s USBHHIDApp.Mod/s ~
 
-Net.SendFiles CS Queue.Mod LLUSB.Mod USBHConf.Mod USBHDef.Mod USBHPipes.Mod USBLog.Mod USBHCore.Mod
+Net.SendFiles CS USBHHIDParser.Mod Queue.Mod LLUSB.Mod USBHConf.Mod USBHDef.Mod USBHPipes.Mod USBLog.Mod USBHCore.Mod
  HALHCD.Mod USBHHal.Mod USBH.Mod USBHIoReq.Mod USBHCtlReq.Mod USBHHIDClass.Mod
  USBHHIDMouse.Mod USBHHIDKeybd.Mod USBHHID.Mod USBHHIDApp.Mod ~
 
@@ -321,8 +321,8 @@ System.DeleteFiles USBHHIDParser.sm4 LLUSB.sm4 USBH.sm4 USBHConf.sm4 USBHCore.sm
  USBHHID.sm4 USBHHIDApp.sm4 USBHHIDClass.sm4 USBHHIDKeybd.sm4 USBHHIDMouse.sm4
  USBHHal.sm4 USBHIoReq.sm4 USBHPipes.sm4 USBLog.sm4 HALHCD.sm4 Queue.sm4~
 
-System.Free USBHHIDApp USBHHID USBHHIDKeybd USBHHIDMouse USBHHIDClass USBH USBHHal HALHCD
- USBHCore LLUSB USBHCtlReq USBHIoReq USBHPipes USBHDef USBHConf USBLog USBHHIDParser Queue~
+System.Free USBHHIDApp USBHHID USBHHIDKeybd USBHHIDMouse USBHHIDClass USBH USBHHal USBHCtlReq HALHCD
+ USBHCore LLUSB USBHIoReq USBHPipes USBHDef USBHConf USBLog USBHHIDParser Queue~
 
 USBHHIDApp.Open
 USBHHIDApp.Stop

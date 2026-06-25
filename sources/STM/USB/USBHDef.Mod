@@ -5,7 +5,7 @@ MODULE USBHDef;
   * @brief   USB host library common definitions
   ******************************************************************************
   *)
-  IMPORT Conf := USBHConf;
+  IMPORT SYSTEM, Conf := USBHConf, Log := USBLog;
 
   CONST
     DEV_RESET_TIMEOUT* = 1000;
@@ -176,20 +176,18 @@ MODULE USBHDef;
   TYPE
     DataBuffer* = ARRAY Conf.MAX_DATA_BUFFER OF BYTE;
 
-    Buffer* = POINTER TO BufferDesc;
-    BufferDesc* = RECORD END;
+    Buffer* = RECORD size*: INTEGER END;
 
-    SetupDesc* = RECORD(BufferDesc)
+    Setup* = RECORD(Buffer)
       bmRequestType*: BYTESET; bRequest*: BYTE;
       wValue*, wIndex*, wLength*: HALFWORD
     END;
 
     (* Control request structure *)
-    CtrlDesc* = RECORD
+    Ctrl* = RECORD
       pipe_in*, pipe_out*, pipe_size*: BYTE;
-      buff*: Buffer;
       length*, timer*: INTEGER;
-      setup*: SetupDesc;
+      setup*: Setup;
       state*: BYTE;
       errorcount*: BYTE
     END;
@@ -243,11 +241,9 @@ MODULE USBHDef;
       Itf_Desc*: ARRAY Conf.MAX_NUM_INTERFACES OF InterfaceDescriptor
     END;
 
-    RawDescriptorData* = POINTER TO RawDescriptorDataDesc;
-    RawDescriptorDataDesc* = RECORD(BufferDesc) buf*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE END;
+    RawDescriptorData* = RECORD(Buffer) buf*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE END;
 
-    RawDescriptor* = RECORD
-      data*: RawDescriptorData; (*ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE;*)
+    RawDescriptor* = RECORD(RawDescriptorData)
       length*, index, headeridx: HALFWORD
     END;
 
@@ -288,7 +284,7 @@ MODULE USBHDef;
       gState*: BYTE; (*  Host State Machine Value *)
       EnumState*: BYTE; (** Enumeration state Machine *)
       RequestState*: BYTE;
-      Control*: CtrlDesc;
+      Control*: Ctrl;
       device*: Device;
       pClass*: ARRAY Conf.MAX_NUM_SUPPORTED_CLASS OF Class;
       pActiveClass*: Class;
@@ -308,7 +304,7 @@ MODULE USBHDef;
       SetToggle*: PROCEDURE(phost: Handle; pipe: BYTE; toggle: BOOLEAN);
       ClosePipe*: PROCEDURE(phost: Handle; pipe_num: BYTE);
       SubmitURB*: PROCEDURE(phost: Handle; pipe: BYTE; direction: BOOLEAN; ep_type, token: BYTE;
-        buff: BufferDesc; length: HALFWORD; do_ping: BOOLEAN);
+        buff: Buffer; length: HALFWORD; do_ping: BOOLEAN);
       GetURBState*:  PROCEDURE(phost: Handle; pipe: BYTE): BYTE;
       GetLastXferSize*: PROCEDURE(phost: Handle; pipe: BYTE): INTEGER
     END;
@@ -327,47 +323,47 @@ MODULE USBHDef;
     RETURN res
   END MIN;
 
-  PROCEDURE Reset*(VAR buf: RawDescriptor);
-  BEGIN buf.index := 0; buf.headeridx := 0
+  PROCEDURE Reset*(VAR rd: RawDescriptor);
+  BEGIN rd.index := 0; rd.headeridx := 0
   END Reset;
 
-  PROCEDURE NextHeaderIdx(buf: RawDescriptor): HALFWORD;
+  PROCEDURE NextHeaderIdx(rd: RawDescriptor): HALFWORD;
 
-    RETURN buf.headeridx + buf.data.buf[buf.headeridx]
+    RETURN rd.headeridx + rd.buf[rd.headeridx]
   END NextHeaderIdx;
 
-  PROCEDURE HeaderType*(buf: RawDescriptor): BYTE;
+  PROCEDURE HeaderType*(rd: RawDescriptor): BYTE;
 
-    RETURN buf.data.buf[buf.headeridx + 1]
+    RETURN rd.buf[rd.headeridx + 1]
   END HeaderType;
 
-  PROCEDURE HeaderSize*(buf: RawDescriptor): BYTE;
+  PROCEDURE HeaderSize*(rd: RawDescriptor): BYTE;
 
-    RETURN buf.data.buf[buf.headeridx]
+    RETURN rd.buf[rd.headeridx]
   END HeaderSize;
 
-  PROCEDURE HasMoreHeaders*(buf: RawDescriptor): BOOLEAN;
+  PROCEDURE HasMoreHeaders*(rd: RawDescriptor): BOOLEAN;
 
-    RETURN (buf.index < LE16(buf.data.buf, 2)) & (NextHeaderIdx(buf) < LE16(buf.data.buf, 2))
+    RETURN (rd.index < LE16(rd.buf, 2)) & (NextHeaderIdx(rd) < LE16(rd.buf, 2))
   END HasMoreHeaders;
 
   PROCEDURE GoNextHeader*(VAR buf: RawDescriptor);
   BEGIN buf.headeridx := NextHeaderIdx(buf); buf.index := buf.headeridx
   END GoNextHeader;
 
-  PROCEDURE ReadByte*(VAR buf: RawDescriptor): BYTE;
+  PROCEDURE ReadByte*(VAR rd: RawDescriptor): BYTE;
     VAR res: BYTE;
   BEGIN
-    IF buf.index < NextHeaderIdx(buf) THEN res := buf.data.buf[buf.index]; INC(buf.index)
+    IF rd.index < NextHeaderIdx(rd) THEN res := rd.buf[rd.index]; INC(rd.index)
     ELSE res := 0 END
 
     RETURN res
   END ReadByte;
 
-  PROCEDURE ReadHalfword*(VAR buf: RawDescriptor): HALFWORD;
+  PROCEDURE ReadHalfword*(VAR rd: RawDescriptor): HALFWORD;
     VAR res: HALFWORD;
   BEGIN
-    IF buf.index < NextHeaderIdx(buf) - 1 THEN res := LE16(buf.data.buf, buf.index); INC(buf.index, 2)
+    IF rd.index < NextHeaderIdx(rd) - 1 THEN res := LE16(rd.buf, rd.index); INC(rd.index, 2)
     ELSE res := 0 END
 
     RETURN res
@@ -378,11 +374,14 @@ MODULE USBHDef;
     RETURN buf.index
   END GetIndex;
 
-  PROCEDURE NewHandle*(): Handle;
+  PROCEDURE New*(): Handle;
     VAR h!: Handle;
-  BEGIN NEW(h); NEW(h.device.RawDesc.data)
+  BEGIN NEW(h);
+    h.Control.setup.size := SYSTEM.SIZE(Setup) - SYSTEM.SIZE(Buffer);
+    Log.Debug("setup size: "); Log.DebugInt(h.Control.setup.size, 1); Log.DebugLn;
+    h.device.RawDesc.size := SYSTEM.SIZE(RawDescriptorData) - SYSTEM.SIZE(Buffer);
 
     RETURN h
-  END NewHandle;
+  END New;
 
 END USBHDef.

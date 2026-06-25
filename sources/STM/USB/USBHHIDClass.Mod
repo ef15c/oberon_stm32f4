@@ -62,8 +62,7 @@ MODULE USBHHIDClass; (*HID class process structures*)
       wItemLength*: HALFWORD;          (* total size of the report descriptors *)
     END;
 
-    ReportData* = POINTER TO ReportDataDesc;
-    ReportDataDesc = RECORD(Def.BufferDesc) buf*: ARRAY REPORT_SIZE OF BYTE END;
+    ReportData = RECORD(Def.Buffer) buf*: ARRAY REPORT_SIZE OF BYTE END;
 
   (* Structure for HID process *)
     Handle* = POINTER TO HandleDesc;
@@ -139,6 +138,15 @@ MODULE USBHHIDClass; (*HID class process structures*)
 
     RETURN i
   END FifoWrite;
+
+  PROCEDURE New*(): Handle;
+    VAR h!: Handle;
+  BEGIN NEW(h);
+    h.Data.size := SYSTEM.SIZE(ReportData) - SYSTEM.SIZE(Def.Buffer);
+    h.ReportDesc.size := SYSTEM.SIZE(Def.RawDescriptorData) - SYSTEM.SIZE(Def.Buffer)
+
+    RETURN h
+  END New;
 
 END USBHHIDClass.
 
