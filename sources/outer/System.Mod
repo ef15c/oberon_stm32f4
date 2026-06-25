@@ -481,7 +481,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       BSP.led(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(CFSR, cfsr*UFSR_Mask); (*reset UFSR flags*) Kernel.setSPHWM
+    SYSTEM.PUT(CFSR, cfsr*UFSR_Mask); (*reset UFSR flags*) Kernel.setSPHWM;
+    SYSTEM.MBI(2)
   END Trap;
 
   PROCEDURE* BusFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
@@ -493,7 +494,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(CFSR, cfsr*BFSR_Mask); (*reset BFSR flags*) Kernel.setSPHWM
+    SYSTEM.PUT(CFSR, cfsr*BFSR_Mask); (*reset BFSR flags*) Kernel.setSPHWM;
+    SYSTEM.MBI(2)
   END BusFaultHandler;
 
   PROCEDURE* MemManageFaultHandler(VAR f: Kernel.ExceptionFrameDesc);
@@ -505,7 +507,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     INC(f.returnAddress, 4); (*return to next instruction*)
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(CFSR, cfsr*MMFSR_Mask); (*reset MMFSR flags*) Kernel.setSPHWM
+    SYSTEM.PUT(CFSR, cfsr*MMFSR_Mask); (*reset MMFSR flags*) Kernel.setSPHWM;
+    SYSTEM.MBI(2)
   END MemManageFaultHandler;
 
   (*Handle abort key press*)
@@ -514,7 +517,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   BEGIN cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(PR, {BSP.B1Pin}); (* Clear pending IRQ*) Kernel.setSPHWM
+    SYSTEM.PUT(PR, {BSP.B1Pin}); (* Clear pending IRQ*) Kernel.setSPHWM;
+    SYSTEM.MBI(2)
   END AbortHandler;
 
   PROCEDURE Reset;

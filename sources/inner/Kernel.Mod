@@ -30,7 +30,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     list0*, list1*, list2*, list3*: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
     sectorMap: ARRAY mapsize DIV 32 OF SET;
 
-    
 (* ---------- New: heap allocation ----------*)
 
   PROCEDURE GetBlock(VAR p: INTEGER; len: INTEGER);
@@ -279,7 +278,10 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END Install;
 
   PROCEDURE setSPHWM*;
-  BEGIN IF SYSTEM.REG(13) < SPHWM THEN SPHWM := SYSTEM.REG(13) END
+  BEGIN
+    IF (SYSTEM.REG(13) >= stackOrg) & (SYSTEM.REG(13) < SPHWM) THEN
+      SPHWM := SYSTEM.REG(13)
+    END
   END setSPHWM;
 
   PROCEDURE^4 Trap(VAR f: ExceptionFrameDesc);
@@ -292,20 +294,23 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN INC(tick); setSPHWM
   END IncTick;
 
+  PROCEDURE defaultHandler; (*infinite loop*)
+  BEGIN REPEAT BSP.led(127); BSP.Delayus(100000); BSP.led(0); BSP.Delayus(100000) UNTIL FALSE
+  END defaultHandler;
+
   PROCEDURE* SVCallHandler(VAR f: ExceptionFrameDesc);
     VAR param: BYTE;
   BEGIN SVCReturnAddress := f.returnAddress - 2;
     SYSTEM.GET(SVCReturnAddress, param);
-    IF param = 0 THEN (*Allocate dynamic memory*) New(f.r0, f.r1)
+    IF param = 0 THEN (*Allocate dynamic memory*)
+      IF SYSTEM.ADR(f) < stackOrg THEN (*called from user space*) New(f.r0, f.r1)
+      ELSE defaultHandler (*panic*)
+      END
     ELSIF param = 1 THEN BSP.led(f.r0)
     ELSIF param = 2 THEN LongDiv.DivL(SYSTEM.VAL(LongDiv.DivParam, f))
     END; setSPHWM;
     SVCReturnAddress := 0
   END SVCallHandler;
-
-  PROCEDURE defaultHandler; (*infinite loop*)
-  BEGIN REPEAT BSP.led(127); BSP.Delayus(100000); BSP.led(0); BSP.Delayus(100000) UNTIL FALSE
-  END defaultHandler;
 
   PROCEDURE DisableAbortHandler*;
     VAR irqNum: INTEGER;
