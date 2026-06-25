@@ -278,7 +278,7 @@ MODULE USBHHIDApp;
       USBH.Start(hUSBHost); (* Start Host Process *)
       Log.Debug("USBH lib started."); Log.DebugLn;
       (* Run Application (Non blocking mode) *)
-      IF processTask = NIL THEN processTask := Oberon.NewTask(Process, 10); Oberon.Install(processTask) END
+      IF processTask = NIL THEN processTask := Oberon.NewTask(Process, 5); Oberon.Install(processTask) END
     ELSE Log.Error("USBH lib failed to start");
     END;
     Log.Flush
@@ -300,10 +300,10 @@ MODULE USBHHIDApp;
   END Open;
 
 BEGIN
-(**)
+(*
   Log.SetDebugCbks(Log.DefaultDebug, Log.DefaultString, Log.DefaultInt, Log.DefaultHexVLen,
   Log.DefaultSet, Log.DefaultBuf, Log.DefaultLn);
-(**)
+*)
   hUSBHost := Def.New();
   NEW(buf); Texts.OpenBuf(buf); Texts.OpenWriter(MW); MW.col := Display.green;
   Texts.OpenWriter(CW); CW.col := Display.white

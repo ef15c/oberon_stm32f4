@@ -323,16 +323,16 @@ DEBUG: configuration descriptor: (59)
         hidh.state := HCl.ERROR; status := Def.FAIL
       END
     ELSIF hidh.state = HCl.IDLE THEN status := GetReport(phost, 1, 0, hidh.Data, hidh.length);
-      IF status = Def.OK THEN hidh.state := HCl.SYNC
+      IF status = Def.OK THEN hidh.state := HCl.SYNC; Log.Debug("GetReport successful"); Log.DebugLn
       ELSIF status = Def.BUSY THEN hidh.state := HCl.IDLE; status := Def.OK
       ELSIF status = Def.NOT_SUPPORTED THEN hidh.state := HCl.SYNC; status := Def.OK
       ELSE hidh.state := HCl.ERROR; status := Def.FAIL
       END
     ELSIF hidh.state = HCl.SYNC THEN
       (* Sync with start of Even Frame *)
-      IF ODD(phost.Timer) THEN hidh.state := HCl.GET_DATA END
+      IF ODD(phost.Timer) THEN hidh.state := HCl.GET_DATA; Log.Debug("in odd frame"); Log.DebugLn END
     ELSIF hidh.state = HCl.GET_DATA THEN IoReq.InterruptReceiveData(phost, hidh.Data, hidh.length, hidh.InPipe);
-      hidh.state := HCl.POLL; hidh.timer := phost.Timer; hidh.DataReady := FALSE;
+      hidh.state := HCl.POLL; hidh.timer := phost.Timer; hidh.DataReady := FALSE
     ELSIF hidh.state = HCl.POLL THEN
       IF phost.GetURBState(phost, hidh.InPipe) = Def.URB_DONE THEN
         XferSize := phost.GetLastXferSize(phost, hidh.InPipe);
@@ -345,7 +345,7 @@ DEBUG: configuration descriptor: (59)
         (* Issue Clear Feature on interrupt IN endpoint *)
         IF CtlReq.ClrFeature(phost, hidh.ep_addr) = Def.OK THEN hidh.state := HCl.GET_DATA END (* Change state to issue next IN token *)
       END
-    END; BSP.ledsOnOff({3}, {4})
+    END
 
     RETURN status
   END Process;
@@ -359,8 +359,10 @@ DEBUG: configuration descriptor: (59)
   PROCEDURE SOFProcess(phost: Def.Handle): BYTE;
     VAR status: BYTE; hidh!: HCl.Handle;
   BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle);
-    IF (hidh.state = HCl.POLL) & (phost.Timer - hidh.timer >= hidh.poll) THEN hidh.state := HCl.GET_DATA END;
-    status := Def.OK; BSP.ledsOnOff({4}, {3})
+    IF (hidh.state = HCl.POLL) & (phost.Timer - hidh.timer >= hidh.poll) THEN
+      hidh.state := HCl.GET_DATA
+    END;
+    status := Def.OK
 
     RETURN status
   END SOFProcess;
