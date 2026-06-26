@@ -112,9 +112,9 @@ MODULE USBHHIDApp;
   END MouseMenuProcess;
 
   PROCEDURE WriteButtonState(m_pinfo: M.Info; i: INTEGER);
-  BEGIN Texts.WriteString(CW, "Button "); Texts.WriteInt(CW, i + 1, 1);
-    IF m_pinfo.buttons[i] THEN Texts.WriteString(CW, " is pressed")
-    ELSE Texts.WriteString(CW, " is released")
+  BEGIN Texts.WriteString(CW, ", Button "); Texts.WriteInt(CW, i + 1, 1);
+    IF m_pinfo.buttons[i] THEN Texts.WriteString(CW, "pressed")
+    ELSE Texts.WriteString(CW, " released")
     END
   END WriteButtonState;
 
@@ -127,9 +127,10 @@ MODULE USBHHIDApp;
     VAR m_pinfo!: M.Info;
   BEGIN m_pinfo := M.GetInfo(phost);
     IF m_pinfo # NIL THEN (* Handle Mouse data position *)
-      Texts.WriteString(CW, "X="); Texts.WriteInt(CW, m_pinfo.x, 1); Texts.WriteLn(CW);
-      Texts.WriteString(CW, "Y="); Texts.WriteInt(CW, m_pinfo.y, 1); Texts.WriteLn(CW);
+      Texts.WriteString(CW, "X="); Texts.WriteInt(CW, m_pinfo.x, 1);
+      Texts.WriteString(CW, ", Y="); Texts.WriteInt(CW, m_pinfo.y, 1);
       WriteButtonState(m_pinfo, 0); WriteButtonState(m_pinfo, 1); WriteButtonState(m_pinfo, 2);
+      Texts.WriteLn(CW);
       Texts.Append(content, CW.buf)
     END
   END MouseDemo;

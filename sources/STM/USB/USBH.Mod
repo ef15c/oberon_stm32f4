@@ -42,7 +42,8 @@ MODULE USBH;
     phost.device.EnumCnt := 0;
 
     (* Reset the device record *)
-    CLEAR(phost.device.RawDesc.buf);
+    CLEAR(phost.device.CfgRaw.buf);
+    CLEAR(phost.device.tmprd.buf);
     CLEAR(phost.device.DevDesc);
     CLEAR(phost.device.CfgDesc);
   END DeInitStateMachine;
@@ -291,7 +292,8 @@ MODULE USBH;
     ELSIF phost.EnumState = Def.ENUM_GET_CFG_DESC THEN
       (* get standard configuration descriptor *)
       ReqStatus := CtlReq.Get_CfgDesc(phost, Def.CONFIGURATION_DESC_SIZE);
-      IF ReqStatus = Def.OK THEN phost.EnumState := Def.ENUM_GET_FULL_CFG_DESC
+      IF ReqStatus = Def.OK THEN phost.EnumState := Def.ENUM_GET_FULL_CFG_DESC;
+        Log.Debug("wTotalLength: "); Log.DebugInt(phost.device.CfgDesc.wTotalLength, 1); Log.DebugLn
       ELSIF ReqStatus = Def.NOT_SUPPORTED THEN
         Log.Error("Control error: Get Device configuration descriptor request failed"); Log.ErrorLn;
         INC(phost.device.EnumCnt);

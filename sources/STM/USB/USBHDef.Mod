@@ -249,7 +249,7 @@ MODULE USBHDef;
 
     (* Attached device structure *)
     Device* = RECORD
-      RawDesc*: RawDescriptor;
+      CfgRaw*, tmprd*: RawDescriptor;
       address*, speed*, EnumCnt*, RstCnt*: BYTE;
       is_connected*, is_disconnected*, is_ReEnumerated*, PortEnabled*: BOOLEAN;
       current_interface*: BYTE;
@@ -379,7 +379,8 @@ MODULE USBHDef;
   BEGIN NEW(h);
     h.Control.setup.size := SYSTEM.SIZE(Setup) - SYSTEM.SIZE(Buffer);
     Log.Debug("setup size: "); Log.DebugInt(h.Control.setup.size, 1); Log.DebugLn;
-    h.device.RawDesc.size := SYSTEM.SIZE(RawDescriptorData) - SYSTEM.SIZE(Buffer);
+    h.device.CfgRaw.size := SYSTEM.SIZE(RawDescriptorData) - SYSTEM.SIZE(Buffer);
+    h.device.tmprd.size := SYSTEM.SIZE(RawDescriptorData) - SYSTEM.SIZE(Buffer);
 
     RETURN h
   END New;
