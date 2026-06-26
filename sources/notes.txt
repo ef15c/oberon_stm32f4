@@ -106,7 +106,7 @@ D000 0000H (201000H) Mémoire écran, copie post mortem de la pile, ...
 0800 4004H (    1CH) Variables système (structure SDCard (04H), MemLim (0CH) , StackOrg (18H)=adresse de la fin de la pile PSP, ...)
 0800 4000H (      4) Instruction de saut vers le point d'entrée du système
 0800 01ACH (  3E54H) Bootloader
-0800 0008H (   1A4H) Vecteurs d'interruption en mémoire Flash. Il ne sont pasd utilisés
+0800 0008H (   1A4H) Vecteurs d'interruption en mémoire Flash. Il ne sont pas utilisés
 0800 0004H (      4) Adresse de démarrage du Bootloader (+1 pour mode Thumb)
 0800 0000H (      4) Adresse de la fin de la pile MSP
 
