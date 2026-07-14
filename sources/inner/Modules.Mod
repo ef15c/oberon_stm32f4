@@ -156,7 +156,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
       disp, adr, inst, pno, vno, dest, offset, trpbase, noftrps: INTEGER;
       name1, impname: ModuleName;
       F!: Files.File; R!: Files.Rider;
-      import!: ARRAY 16 OF Module;
+      import!: ARRAY 10H OF Module;
   BEGIN mod := root; error(0, name); nofimps := 0; shrinkable := FALSE;
     WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
     IF mod = NIL THEN (*load*)
@@ -205,7 +205,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
         Files.ReadInt(R, n);
         WHILE n > 0 DO Files.ReadInt(R, w); SYSTEM.PUT(p, w); INC(p, 4); DEC(n, 4) END ;  (*type descriptors*)
         IF version = 2 THEN Files.ReadInt(R, n); (*strings are stored before variables*)
-         WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END;
+          WHILE n > 0 DO Files.Read(R, ch); SYSTEM.PUT(p, ch); INC(p); DEC(n) END;
           mod.data := p (*variables*)
         ELSE mod.data := mod.const
         END;
