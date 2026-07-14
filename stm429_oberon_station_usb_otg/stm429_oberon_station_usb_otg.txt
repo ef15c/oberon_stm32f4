@@ -1,6 +1,6 @@
-Configuration	stm429_oberon_station_usb_host
+Configuration	stm429_oberon_station_usb_otg
 STM32CubeMX 	6.17.0
-Date	06/02/2026
+Date	07/04/2026
 MCU	STM32F429ZITx
 
 
@@ -81,8 +81,9 @@ SYS	Serial Wire	SYS_JTMS-SWDIO	PA13
 SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
 USART1	Asynchronous	USART1_RX	PA10
 USART1	Asynchronous	USART1_TX	PA9
-USB_OTG_HS	Host_Only	USB_OTG_HS_DM	PB14
-USB_OTG_HS	Host_Only	USB_OTG_HS_DP	PB15
+USB_OTG_HS	OTG/Dual_Role_Device	USB_OTG_HS_DM	PB14
+USB_OTG_HS	OTG/Dual_Role_Device	USB_OTG_HS_DP	PB15
+USB_OTG_HS	OTG/Dual_Role_Device	USB_OTG_HS_ID	PB12
 USB_OTG_HS	Activate-VBUS	USB_OTG_HS_VBUS	PB13
 
 
@@ -120,6 +121,7 @@ Pin Nb	PINs	FUNCTIONs	LABELs
 42	PA6	LTDC_G2	G2
 43	PA7	GPIO_Output	LED4
 44	PC4	GPIO_Output	DRIVE_VBUS
+45	PC5	GPIO_Input	OTG_HS_OC
 46	PB0	LTDC_R3	R3
 47	PB1	LTDC_R6	R6
 48	PB2/BOOT1	GPIO_Input	BOOT1
@@ -141,6 +143,7 @@ Pin Nb	PINs	FUNCTIONs	LABELs
 68	PE15	FMC_D12	D12
 69	PB10	LTDC_G4	G4
 70	PB11	LTDC_G5	G5
+73	PB12	USB_OTG_HS_ID	
 74	PB13	USB_OTG_HS_VBUS	
 75	PB14	USB_OTG_HS_DM	
 76	PB15	USB_OTG_HS_DP	
@@ -271,8 +274,9 @@ SYS	Serial Wire	SYS_JTMS-SWDIO	PA13
 SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
 USART1	Asynchronous	USART1_RX	PA10
 USART1	Asynchronous	USART1_TX	PA9
-USB_OTG_HS	Host_Only	USB_OTG_HS_DM	PB14
-USB_OTG_HS	Host_Only	USB_OTG_HS_DP	PB15
+USB_OTG_HS	OTG/Dual_Role_Device	USB_OTG_HS_DM	PB14
+USB_OTG_HS	OTG/Dual_Role_Device	USB_OTG_HS_DP	PB15
+USB_OTG_HS	OTG/Dual_Role_Device	USB_OTG_HS_ID	PB12
 USB_OTG_HS	Activate-VBUS	USB_OTG_HS_VBUS	PB13
 
 
@@ -310,6 +314,7 @@ Pin Nb	PINs	FUNCTIONs	LABELs
 42	PA6	LTDC_G2	G2
 43	PA7	GPIO_Output	LED4
 44	PC4	GPIO_Output	DRIVE_VBUS
+45	PC5	GPIO_Input	OTG_HS_OC
 46	PB0	LTDC_R3	R3
 47	PB1	LTDC_R6	R6
 48	PB2/BOOT1	GPIO_Input	BOOT1
@@ -331,6 +336,7 @@ Pin Nb	PINs	FUNCTIONs	LABELs
 68	PE15	FMC_D12	D12
 69	PB10	LTDC_G4	G4
 70	PB11	LTDC_G5	G5
+73	PB12	USB_OTG_HS_ID	
 74	PB13	USB_OTG_HS_VBUS	
 75	PB14	USB_OTG_HS_DM	
 76	PB15	USB_OTG_HS_DP	
@@ -391,8 +397,8 @@ Pin Nb	PINs	FUNCTIONs	LABELs
 SOFTWARE PROJECT
 
 Project Settings : 
-Project Name : stm429_oberon_station_usb_host
-Project Folder : /home/nounours/projects/ProjectOberon/2020/stm429_oberon_station_usb_host
+Project Name : stm429_oberon_station_usb_otg
+Project Folder : /home/nounours/projects/ProjectOberon/2020/stm429_oberon_station_usb_otg
 Toolchain / IDE : STM32CubeIDE
 Firmware Package Name and Version : STM32Cube FW_F4 V1.28.3
 
