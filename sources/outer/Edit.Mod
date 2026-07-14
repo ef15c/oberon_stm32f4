@@ -175,7 +175,7 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
     VAR Text!: TextFrames.Frame;
       T!: Texts.Text; S!: Texts.Scanner;
       V!: Viewers.Viewer;
-      beg, end, time: INTEGER;
+      beg, end, time, pos: INTEGER;
   BEGIN
     V := Oberon.FocusViewer;
     IF (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
@@ -184,13 +184,14 @@ MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
       IF time >= 0 THEN
         Texts.OpenScanner(S, T, beg);
         REPEAT Texts.Scan(S) UNTIL (S.class >= Texts.Int); (*skip names*)
-        IF S.class = Texts.Int THEN
+        IF S.class = Texts.Int THEN pos := S.i;
+          IF pos > Text.text.len THEN pos := Text.text.len END;
           TextFrames.RemoveSelection(Text);
           TextFrames.RemoveCaret(Text);
           Oberon.RemoveMarks(Text.X, Text.Y, Text.W, Text.H);
-          TextFrames.Show(Text, Max(0, S.i - 200));
+          TextFrames.Show(Text, Max(0, pos - 200));
           Oberon.PassFocus(V);
-          TextFrames.SetCaret(Text, S.i)
+          TextFrames.SetCaret(Text, pos)
         END
       END
     END
