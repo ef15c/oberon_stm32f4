@@ -9,7 +9,7 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     Import and Export. This module contains the list of standard identifiers, with which
     the symbol table (universe), and that of the pseudo-module SYSTEM are initialized. *)
 
-  CONST versionkey* = 2; maxTypTab = 64;
+  CONST versionkey* = 2; maxTypTab = 128;
     (* class values*) Head* = 0;
       Const* = 1; Var* = 2; Par* = 3; Fld* = 4; Typ* = 5;
       SProc* = 6; SFunc* = 7; Mod* = 8;
@@ -232,7 +232,8 @@ MODULE OM4B;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07
     IF modid1 = "SYSTEM" THEN
       thismod := ThisModule(modid, modid1, TRUE, 0); DEC(nofmod);
       thismod.lev := 0; thismod.dsc := system; thismod.rdo := TRUE
-    ELSE MakeFileName(fname, modid1, ".sm4"); F := Files.Old(fname);
+    ELSE IF nofmod >= 10H THEN S.Mark("too many imports") END;
+      MakeFileName(fname, modid1, ".sm4"); F := Files.Old(fname);
       IF F # NIL THEN
         Files.Set(R, F, 0); Files.ReadInt(R, key); Files.ReadInt(R, key); Files.ReadString(R, modname);
         thismod := ThisModule(modid, modid1, TRUE, key); thismod.rdo := TRUE;

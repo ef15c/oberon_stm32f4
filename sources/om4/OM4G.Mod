@@ -183,7 +183,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
 
   PROCEDURE GetStaticVarAddress(VAR chain: INTEGER; x: Item; a: BYTE);
     VAR progbaseIndic: INTEGER;
-  BEGIN ASSERT(x.type # NIL); ASSERT((x.r <= 0) & (a < 13)); progbaseIndic := 0;
+  BEGIN ASSERT(x.type # NIL); ASSERT((x.r <= 0) & (a < 13));
+    progbaseIndic := 0;
     A.CheckOverflow(mcode, a);
     (*If x.r = 0, x.a contains the offset of the variable computed at compile time,
       else if x.r < 0, x.a contains the variable or procedure number*)
