@@ -15,7 +15,7 @@ MODULE USBHIoReq;
   *
   ******************************************************************************
   *)
-  IMPORT Def := USBHDef;
+  IMPORT Def := USBDef, HDef := USBHDef;
 
   CONST
     PID_SETUP* = 0;
@@ -36,9 +36,9 @@ MODULE USBHIoReq;
   * @param  pipe_num: Pipe Number
   * @retval USBH Status
   *)
-  PROCEDURE CtlSendSetup*(phost: Def.Handle; buff: Def.Setup; pipe_num: BYTE);
+  PROCEDURE CtlSendSetup*(host: HDef.Handle; buff: HDef.Setup; pipe_num: BYTE);
   BEGIN
-    phost.SubmitURB(phost, (* Driver handle    *)
+    host.SubmitURB(host, (* Driver handle    *)
       pipe_num, (* Pipe index       *)
       FALSE, (* Direction : OUT  *)
       EP_CONTROL, (* EP type          *)
@@ -57,9 +57,9 @@ MODULE USBHIoReq;
   * @param  pipe_num: Pipe Number
   * @retval USBH Status
   *)
-  PROCEDURE CtlSendData*(phost: Def.Handle; buff: Def.Buffer; length: HALFWORD; pipe_num: BYTE; do_ping: BOOLEAN);
-  BEGIN IF phost.device.speed # Def.SPEED_HIGH THEN do_ping := FALSE END;
-    phost.SubmitURB(phost, (* Driver handle    *)
+  PROCEDURE CtlSendData*(host: HDef.Handle; buff: Def.Buffer; length: HALFWORD; pipe_num: BYTE; do_ping: BOOLEAN);
+  BEGIN IF host.device.speed # Def.SPEED_HIGH THEN do_ping := FALSE END;
+    host.SubmitURB(host, (* Driver handle    *)
                           pipe_num, (* Pipe index       *)
                           FALSE, (* Direction : OUT  *)
                           EP_CONTROL, (* EP type          *)
@@ -78,9 +78,9 @@ MODULE USBHIoReq;
   * @param  pipe_num: Pipe Number
   * @retval USBH Status.
   *)
-  PROCEDURE CtlReceiveData*(phost: Def.Handle; VAR buff: Def.Buffer; length: HALFWORD; pipe_num: BYTE);
+  PROCEDURE CtlReceiveData*(host: HDef.Handle; VAR buff: Def.Buffer; length: HALFWORD; pipe_num: BYTE);
   BEGIN
-    phost.SubmitURB(phost, (* Driver handle    *)
+    host.SubmitURB(host, (* Driver handle    *)
       pipe_num, (* Pipe index       *)
       TRUE, (* Direction : IN   *)
       EP_CONTROL, (* EP type          *)
@@ -99,9 +99,9 @@ MODULE USBHIoReq;
   * @param  pipe_num: Pipe Number
   * @retval USBH Status.
   *)
-  PROCEDURE InterruptReceiveData*(phost: Def.Handle; VAR buff: Def.Buffer; length, pipe_num: BYTE);
+  PROCEDURE InterruptReceiveData*(host: HDef.Handle; VAR buff: Def.Buffer; length, pipe_num: BYTE);
   BEGIN
-    phost.SubmitURB(phost, (* Driver handle    *)
+    host.SubmitURB(host, (* Driver handle    *)
                           pipe_num, (* Pipe index       *)
                           TRUE, (* Direction : IN   *)
                           EP_INTERRUPT, (* EP type          *)

@@ -16,7 +16,7 @@ MODULE USBHCore;
   *
   ******************************************************************************
   *)
-  IMPORT Conf := USBHConf, Def := USBHDef, Pipes := USBHPipes;
+  IMPORT Conf := USBHConf, HDef := USBHDef, Pipes := USBHPipes;
 
   (**
   * @brief  USBH_LL_SetTimer
@@ -24,8 +24,8 @@ MODULE USBHCore;
   * @param  phost: Host Handle
   * @retval None
   *)
-  PROCEDURE SetTimer*(phost: Def.Handle; time: INTEGER);
-  BEGIN phost.Timer := time
+  PROCEDURE SetTimer*(host: HDef.Handle; time: INTEGER);
+  BEGIN host.Timer := time
   END SetTimer;
 
   (**
@@ -34,11 +34,11 @@ MODULE USBHCore;
   * @param  phost: Host Handle
   * @retval None
   *)
-  PROCEDURE HandleSof(phost: Def.Handle);
+  PROCEDURE HandleSof(host: HDef.Handle);
     VAR res: BYTE;
   BEGIN
-    IF (phost.gState = Def.HOST_CLASS) & (phost.pActiveClass # NIL) THEN
-     res := phost.pActiveClass.SOFProcess(phost)
+    IF (host.gState = HDef.HOST_CLASS) & (host.ActiveClass # NIL) THEN
+     res := host.ActiveClass.SOFProcess(host)
     END
   END HandleSof;
 
@@ -48,8 +48,8 @@ MODULE USBHCore;
   * @param  phost: Host Handle
   * @retval None
   *)
-  PROCEDURE IncTimer*(phost: Def.Handle);
-  BEGIN INC(phost.Timer); HandleSof(phost)
+  PROCEDURE IncTimer*(host: HDef.Handle);
+  BEGIN INC(host.Timer); HandleSof(host)
   END IncTimer;
 
   (**
@@ -58,10 +58,10 @@ MODULE USBHCore;
   * @param  phost: Host Handle
   * @retval USBH_Status
   *)
-  PROCEDURE Connect*(phost: Def.Handle);
-  BEGIN phost.device.is_connected := TRUE;
-    phost.device.is_disconnected := FALSE;
-    phost.device.is_ReEnumerated := FALSE;
+  PROCEDURE Connect*(host: HDef.Handle);
+  BEGIN host.device.is_connected := TRUE;
+    host.device.is_disconnected := FALSE;
+    host.device.is_ReEnumerated := FALSE;
   END Connect;
 
   (**
@@ -70,15 +70,15 @@ MODULE USBHCore;
   * @param  phost: Host Handle
   * @retval USBH_Status
   *)
-  PROCEDURE Disconnect*(phost: Def.Handle);
+  PROCEDURE Disconnect*(host: HDef.Handle);
   BEGIN (* update device connection states *)
-    phost.device.is_disconnected := TRUE;
-    phost.device.is_connected := FALSE;
-    phost.device.PortEnabled := FALSE;
-(*    phost.Stop(phost); (* Stop Host *)*)
+    host.device.is_disconnected := TRUE;
+    host.device.is_connected := FALSE;
+    host.device.PortEnabled := FALSE;
+(*    host.Stop(host); (* Stop Host *)*)
     (* Free Control Pipes *)
-    Pipes.Free(phost, phost.Control.pipe_in);
-    Pipes.Free(phost, phost.Control.pipe_out);
+    Pipes.Free(host, host.Control.pipe_in);
+    Pipes.Free(host, host.Control.pipe_out);
   END Disconnect;
 
   (**
@@ -87,8 +87,8 @@ MODULE USBHCore;
   * @param  phost: Host Handle
   * @retval None
   *)
-  PROCEDURE PortEnabled*(phost: Def.Handle);
-  BEGIN phost.device.PortEnabled := TRUE
+  PROCEDURE PortEnabled*(host: HDef.Handle);
+  BEGIN host.device.PortEnabled := TRUE
   END PortEnabled;
 
   (**
@@ -97,9 +97,9 @@ MODULE USBHCore;
   * @param  phost: Host Handle
   * @retval None
   *)
-  PROCEDURE PortDisabled*(phost: Def.Handle);
-  BEGIN phost.device.PortEnabled := FALSE;
-    phost.device.is_disconnected := TRUE;
+  PROCEDURE PortDisabled*(host: HDef.Handle);
+  BEGIN host.device.PortEnabled := FALSE;
+    host.device.is_disconnected := TRUE;
   END PortDisabled;
 
 END USBHCore.

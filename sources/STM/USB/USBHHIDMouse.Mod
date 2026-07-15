@@ -16,7 +16,7 @@ MODULE USBHHIDMouse;
   ******************************************************************************
   *)
 
-  IMPORT SYSTEM, Def := USBHDef, HCl := USBHHIDClass, P := USBHHIDParser;
+  IMPORT SYSTEM, Def := USBDef, HDef := USBHDef, HCl := USBHHIDClass, P := USBHHIDParser;
 
   CONST MOUSE_REPORT_SIZE* = 8;
 
@@ -36,9 +36,9 @@ MODULE USBHHIDMouse;
   * @param  phost: Host handle
   * @retval USBH Status
   *)
-  PROCEDURE Init*(phost: Def.Handle): BYTE;
+  PROCEDURE Init*(host: Def.Handle): BYTE;
     VAR i: INTEGER; hidh!: HCl.Handle; res: BYTE;
-  BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle); CLEAR(info^); CLEAR(mouse_report_data); CLEAR(hidh.Data.buf);
+  BEGIN hidh := host(HDef.Handle).ActiveClass.clsh(HCl.Handle); CLEAR(info^); CLEAR(mouse_report_data); CLEAR(hidh.Data.buf);
 (*
     FOR i := 0 TO LEN(mouse_report_data) - 1 DO
       mouse_report_data[i] := 0; hidh.Data.buf[i] := 0
@@ -59,9 +59,9 @@ MODULE USBHHIDMouse;
   * @param  phost: Host handle
   * @retval USBH Status
   *)
-  PROCEDURE MouseDecode(phost: Def.Handle): BYTE;
+  PROCEDURE MouseDecode(host: HDef.Handle): BYTE;
     VAR HID_Handle!: HCl.Handle; res: BYTE;
-  BEGIN HID_Handle := phost.pActiveClass.pclsh(HCl.Handle); res :=  Def.FAIL;
+  BEGIN HID_Handle := host.ActiveClass.clsh(HCl.Handle); res :=  Def.FAIL;
     IF (HID_Handle.length # 0) &
       (HCl.FifoRead(HID_Handle.fifo, mouse_report_data, HID_Handle.length) = HID_Handle.length) THEN
       (*Decode report *)
@@ -79,13 +79,13 @@ MODULE USBHHIDMouse;
   (**
   * @brief  USBH_HID_GetMouseInfo
   *         The function return mouse information.
-  * @param  phost: Host handle
+  * @param id: the USB core id
   * @retval mouse information
   *)
-  PROCEDURE GetInfo*(phost: Def.Handle): Info;
+  PROCEDURE GetInfo*(id: BYTE): Info;
     VAR res!: Info;
   BEGIN res := NIL;
-    IF MouseDecode(phost) = Def.OK THEN res := info END
+    IF MouseDecode(Def.usbCores[id](HDef.Handle)) = Def.OK THEN res := info END
 
     RETURN res
   END GetInfo;
@@ -97,3 +97,5 @@ BEGIN NEW(info);
   prop_b2.offset := 0; prop_b2.size := 1; prop_b2.shift := 1; prop_b2.logical_max := 1; prop_b2.resolution := 1;
   prop_b3.offset := 0; prop_b3.size := 1; prop_b3.shift := 2; prop_b3.logical_max := 1; prop_b3.resolution := 1
 END USBHHIDMouse.
+
+OM4Tool.DecSym USBHHIDMouse.sm4

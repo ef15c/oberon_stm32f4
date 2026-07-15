@@ -7,7 +7,7 @@ MODULE USBHHIDApp;
   *)
 
   IMPORT Display, Texts, Viewers, MenuViewers, Oberon, TextFrames,
-    Def := USBHDef, USBH, Log := USBLog, HID := USBHHID, M := USBHHIDMouse, K := USBHHIDKeybd;
+    Def := USBDef, USB, USBH, Log := USBLog, HID := USBHHID, M := USBHHIDMouse, K := USBHHIDKeybd;
 
   CONST
     APPLICATION_DISCONNECT = 1;
@@ -33,7 +33,7 @@ MODULE USBHHIDApp;
     END;
 
   (* Private variables ---------------------------------------------------------*)
-  VAR hUSBHost: Def.Handle; Appli_state: BYTE;
+  VAR Appli_state: BYTE;
     menutxt, content: Texts.Text; end: INTEGER; buf: Texts.Buffer; MW, CW: Texts.Writer;
     hid_demo: DemoStateMachine; prev_select: BYTESET;
     processTask: Oberon.Task;
@@ -44,14 +44,17 @@ MODULE USBHHIDApp;
   * @param  id: Host Library user message ID
   * @retval None
   *)
-  PROCEDURE UserProcess(phost: Def.Handle; id: BYTE);
+  PROCEDURE UserProcess(usbid, reason: BYTE);
   BEGIN
-    IF id = Def.USER_DISCONNECTION THEN
+    Log.Debug("UserProcessId: "); Log.DebugInt(reason, 1); Log.DebugLn; Log.Flush;
+    IF reason = Def.USER_DISCONNECTION THEN
       Appli_state := APPLICATION_DISCONNECT
-    ELSIF id = Def.USER_CLASS_ACTIVE THEN
+    ELSIF reason = Def.USER_CLASS_ACTIVE THEN
       Appli_state := APPLICATION_READY
-    ELSIF id =  Def.USER_CONNECTION THEN
+    ELSIF reason =  Def.USER_CONNECTION THEN
       Appli_state := APPLICATION_START
+    ELSIF reason =  Def.USER_USB_RESET THEN
+      Appli_state := APPLICATION_DISCONNECT
     END
   END UserProcess;
 
@@ -123,9 +126,9 @@ MODULE USBHHIDApp;
   * @param  phost: Host handle
   * @retval None
   *)
-  PROCEDURE MouseDemo(phost: Def.Handle);
+  PROCEDURE MouseDemo;
     VAR m_pinfo!: M.Info;
-  BEGIN m_pinfo := M.GetInfo(phost);
+  BEGIN m_pinfo := M.GetInfo(0);
     IF m_pinfo # NIL THEN (* Handle Mouse data position *)
       Texts.WriteString(CW, "X="); Texts.WriteInt(CW, m_pinfo.x, 1);
       Texts.WriteString(CW, ", Y="); Texts.WriteInt(CW, m_pinfo.y, 1);
@@ -181,9 +184,9 @@ MODULE USBHHIDApp;
   * @param  phost: Host handle
   * @retval None
   *)
-  PROCEDURE KeybdDemo(phost: Def.Handle);
+  PROCEDURE KeybdDemo;
     VAR k_pinfo!: K.Info; c: CHAR;
-  BEGIN k_pinfo := K.GetInfo(phost);
+  BEGIN k_pinfo := K.GetInfo(0);
     IF k_pinfo # NIL THEN c := K.GetChar(k_pinfo);
       IF c # 0X THEN 
         IF (c = 0AX) OR (c = 0DX) THEN Texts.WriteLn(CW) ELSE Texts.Write(CW, c) END;
@@ -204,11 +207,11 @@ MODULE USBHHIDApp;
       hid_demo.select := {}
     ELSIF hid_demo.state = HID_DEMO_MOUSE THEN
       IF Appli_state = APPLICATION_READY THEN
-        MouseMenuProcess; MouseDemo(hUSBHost)
+        MouseMenuProcess; MouseDemo
       END
     ELSIF hid_demo.state = HID_DEMO_KEYBOARD THEN
       IF Appli_state = APPLICATION_READY THEN
-        KeyboardMenuProcess; KeybdDemo(hUSBHost)
+        KeyboardMenuProcess; KeybdDemo
       END
     END;
     IF Appli_state = APPLICATION_DISCONNECT THEN
@@ -221,9 +224,9 @@ MODULE USBHHIDApp;
   BEGIN
     IF hid_demo.state = HID_DEMO_WAIT THEN
       IF Appli_state = APPLICATION_READY THEN
-        IF HID.GetDeviceType(hUSBHost) = HID.KEYBOARD THEN
+        IF HID.GetDeviceType(0) = HID.KEYBOARD THEN
           hid_demo.keyboard_state := Def.IDLE; hid_demo.state := HID_DEMO_KEYBOARD
-        ELSIF HID.GetDeviceType(hUSBHost) = HID.MOUSE THEN
+        ELSIF HID.GetDeviceType(0) = HID.MOUSE THEN
           hid_demo.mouse_state := Def.IDLE; hid_demo.state := HID_DEMO_MOUSE
         END
       ELSE Log.Error("No supported HID device!"); Log.ErrorLn; Log.ErrorLn;
@@ -233,7 +236,7 @@ MODULE USBHHIDApp;
 
   PROCEDURE ReEnumerate*;
   BEGIN
-    IF hid_demo.state = HID_DEMO_WAIT THEN USBH.ReEnumerate(hUSBHost) (* Force HID Device to re-enumerate *)
+    IF Appli_state = APPLICATION_READY THEN USBH.ReEnumerate(0) (* Force HID Device to re-enumerate *)
     END
   END ReEnumerate;
 
@@ -243,8 +246,7 @@ MODULE USBHHIDApp;
 
   (* USB Host Background task *)
   PROCEDURE Process;
-  BEGIN USBH.Process(hUSBHost); 
-    MenuProcess; (* HID Menu Process *)
+  BEGIN MenuProcess; (* HID Menu Process *)
   END Process;
 
   (**
@@ -273,26 +275,23 @@ MODULE USBHHIDApp;
   PROCEDURE Run*;
     VAR res: BYTE;
   BEGIN
-    (* Init Host Library *)
-    res := USBH.Init(hUSBHost, UserProcess, 0);
-    IF res = Def.OK THEN res := USBH.RegisterClass(hUSBHost, HID.CLASS); (* Add Supported Class *)
-      USBH.Start(hUSBHost); (* Start Host Process *)
+    (* Init USB Library *)
+    IF Def.usbCores[0] = NIL THEN USB.Init(UserProcess, 0) END;
+    IF (Def.usbCores[0] # NIL) & USB.IsHost(0) THEN
       Log.Debug("USBH lib started."); Log.DebugLn;
       (* Run Application (Non blocking mode) *)
-      IF processTask = NIL THEN processTask := Oberon.NewTask(Process, 5); Oberon.Install(processTask) END
+      IF processTask = NIL THEN processTask := Oberon.NewTask(Process, 10); Oberon.Install(processTask) END
     ELSE Log.Error("USBH lib failed to start");
     END;
     Log.Flush
   END Run;
 
   PROCEDURE Stop*;
-  BEGIN 
-    IF hUSBHost.phcd # NIL THEN
-      USBH.Stop(hUSBHost); USBH.DeInit(hUSBHost);
-      Log.User("USBH lib stopped.");
-      IF processTask # NIL THEN Oberon.Remove(processTask); processTask := NIL END;
-      Log.Flush
-    END
+  BEGIN
+    IF processTask # NIL THEN Oberon.Remove(processTask); processTask := NIL END;
+    USB.DeInit(0);
+    Log.Debug("USB controller stopped."); Log.DebugLn;
+    Log.Flush;
   END Stop;
 
   PROCEDURE Open*;
@@ -305,25 +304,12 @@ BEGIN
   Log.SetDebugCbks(Log.DefaultDebug, Log.DefaultString, Log.DefaultInt, Log.DefaultHexVLen,
   Log.DefaultSet, Log.DefaultBuf, Log.DefaultLn);
 *)
-  hUSBHost := Def.New();
   NEW(buf); Texts.OpenBuf(buf); Texts.OpenWriter(MW); MW.col := Display.green;
   Texts.OpenWriter(CW); CW.col := Display.white
 END USBHHIDApp.
 
-OM4P.Compile USBHHIDParser.Mod/s USBLog.Mod/s Queue.Mod/s USBHConf.Mod/s USBHDef.Mod/s USBHPipes.Mod/s USBHIoReq.Mod/s
- USBHCtlReq.Mod/s LLUSB.Mod/s USBHCore.Mod/s HALHCD.Mod/s USBHHal.Mod/s USBH.Mod/s~
-OM4P.Compile USBHHIDClass.Mod/s USBHHIDMouse.Mod/s USBHHIDKeybd.Mod/s USBHHID.Mod/s USBHHIDApp.Mod/s ~
-
-Net.SendFiles CS USBHHIDParser.Mod Queue.Mod LLUSB.Mod USBHConf.Mod USBHDef.Mod USBHPipes.Mod USBLog.Mod USBHCore.Mod
- HALHCD.Mod USBHHal.Mod USBH.Mod USBHIoReq.Mod USBHCtlReq.Mod USBHHIDClass.Mod
- USBHHIDMouse.Mod USBHHIDKeybd.Mod USBHHID.Mod USBHHIDApp.Mod ~
-
-System.DeleteFiles USBHHIDParser.sm4 LLUSB.sm4 USBH.sm4 USBHConf.sm4 USBHCore.sm4 USBHCtlReq.sm4 USBHDef.sm4
- USBHHID.sm4 USBHHIDApp.sm4 USBHHIDClass.sm4 USBHHIDKeybd.sm4 USBHHIDMouse.sm4
- USBHHal.sm4 USBHIoReq.sm4 USBHPipes.sm4 USBLog.sm4 HALHCD.sm4 Queue.sm4~
-
-System.Free USBHHIDApp USBHHID USBHHIDKeybd USBHHIDMouse USBHHIDClass USBH USBHHal USBHCtlReq HALHCD
- USBHCore LLUSB USBHIoReq USBHPipes USBHDef USBHConf USBLog USBHHIDParser Queue~
+OM4P.Compile USBHHIDApp.Mod/s ~
+System.Free USBHHIDApp~
 
 USBHHIDApp.Open
 USBHHIDApp.Stop

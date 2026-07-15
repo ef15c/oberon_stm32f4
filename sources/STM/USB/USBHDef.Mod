@@ -5,7 +5,7 @@ MODULE USBHDef;
   * @brief   USB host library common definitions
   ******************************************************************************
   *)
-  IMPORT SYSTEM, Conf := USBHConf, Log := USBLog;
+  IMPORT SYSTEM, Conf := USBHConf, Def := USBDef, UC := HALUC, Log := USBLog;
 
   CONST
     DEV_RESET_TIMEOUT* = 1000;
@@ -61,30 +61,10 @@ MODULE USBHDef;
     URB_STALL* = 5;
     URB_NAK_WAIT* = 6;
 
-    USER_SELECT_CONFIGURATION* = 1;
-    USER_CLASS_ACTIVE* = 2;
-    USER_CLASS_SELECTED* = 3;
-    USER_CONNECTION* = 4;
-    USER_DISCONNECTION* = 5;
-    USER_UNRECOVERED_ERROR* = 6;
-
   (* Following USB Host status *)
-    OK* = 0;
-    BUSY* = 1;
-    FAIL* = 2;
     NOT_SUPPORTED* = 3;
     UNRECOVERED_ERROR* = 4;
     ERROR_SPEED_UNKNOWN* = 5;
-
-    SPEED_HIGH* = 0;
-    SPEED_FULL* = 1;
-    SPEED_LOW* = 2;
-
-    EP_TYPE_CTRL* = 0;
-    EP_TYPE_ISOC* = 1;
-    EP_TYPE_BULK* = 2;
-    EP_TYPE_INTR* = 3;
-    EP_TYPE_MSK* = {0..1};
 
     MAX_PIPES_NBR* = 16;
 
@@ -103,23 +83,6 @@ MODULE USBHDef;
     LEN_EP_DESC* = 7;
     LEN_OTG_DESC* = 3;
     LEN_SETUP_PKT* = 8;
-
-  (* bmRequestType :D7 Data Phase Transfer Direction  *)
-    REQ_DIR_MASK* = {7};
-    D2H* = {7};
-    H2D* = {};
-
-  (* bmRequestType D6..5 Type *)
-    REQ_TYPE_STANDARD* = {};
-    REQ_TYPE_CLASS* = {5};
-    REQ_TYPE_VENDOR* = {6};
-    REQ_TYPE_RESERVED* = {5..6};
-
-  (* bmRequestType D4..0 Recipient *)
-    REQ_RECIPIENT_DEVICE* = TOSET(0);
-    REQ_RECIPIENT_INTERFACE* = TOSET(1);
-    REQ_RECIPIENT_ENDPOINT* = TOSET(2);
-    REQ_RECIPIENT_OTHER* = TOSET(3);
 
   (* Table 9-4. Standard Request Codes  *)
   (* bRequest , Value *)
@@ -176,9 +139,7 @@ MODULE USBHDef;
   TYPE
     DataBuffer* = ARRAY Conf.MAX_DATA_BUFFER OF BYTE;
 
-    Buffer* = RECORD size*: INTEGER END;
-
-    Setup* = RECORD(Buffer)
+    Setup* = RECORD(Def.Buffer)
       bmRequestType*: BYTESET; bRequest*: BYTE;
       wValue*, wIndex*, wLength*: HALFWORD
     END;
@@ -241,7 +202,7 @@ MODULE USBHDef;
       Itf_Desc*: ARRAY Conf.MAX_NUM_INTERFACES OF InterfaceDescriptor
     END;
 
-    RawDescriptorData* = RECORD(Buffer) buf*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE END;
+    RawDescriptorData* = RECORD(Def.Buffer) buf*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE END;
 
     RawDescriptor* = RECORD(RawDescriptorData)
       length*, index, headeridx: HALFWORD
@@ -259,69 +220,45 @@ MODULE USBHDef;
 
     Handle* = POINTER TO HandleDesc;
 
-    Callback* = PROCEDURE^5(phost: Handle): BYTE;
-
     ClassHandle* = POINTER TO ClassHandleDesc;
     ClassHandleDesc* = RECORD END;
 
     (* USB Host Class structure *)
     Class* = POINTER TO ClassDesc;
-    ClassDesc* = RECORD
+    ClassDesc* = RECORD(Def.ClassDesc)
       Name*: ARRAY 8 OF CHAR;
       ClassCode*: BYTE;
-      Init*, DeInit*, Requests*, BgndProcess*: PROCEDURE(phost: Handle): BYTE;
-      SOFProcess*: Callback;
-      pclsh*: ClassHandle
+      Init*, DeInit*, Requests*, BgndProcess*: PROCEDURE(host: Def.Handle): BYTE;
+      SOFProcess*: Def.Callback;
+      clsh*: ClassHandle
     END;
 
-    HCDHandle* = POINTER TO HCDHandleDesc;
-    HCDHandleDesc* = RECORD END;
-
-    UserCallback* = PROCEDURE(pHandle: Handle; id: BYTE);
-
     (* USB Host handle structure *)
-    HandleDesc* = RECORD
+    HandleDesc* = RECORD(UC.HandleDesc)
       gState*: BYTE; (*  Host State Machine Value *)
       EnumState*: BYTE; (** Enumeration state Machine *)
       RequestState*: BYTE;
       Control*: Ctrl;
       device*: Device;
-      pClass*: ARRAY Conf.MAX_NUM_SUPPORTED_CLASS OF Class;
-      pActiveClass*: Class;
+      Class*: ARRAY Conf.MAX_NUM_SUPPORTED_CLASS OF Class;
+      ActiveClass*: Class;
       ClassNumber*: INTEGER;
       Pipes*: ARRAY MAX_PIPES_NBR OF SET;
-      Timer*: INTEGER; (*seems to act as a frame counter*)
+(*      Timer*: INTEGER; (*seems to act as a frame counter*)*)
 (*#if defined (USBH_IN_NAK_PROCESS) && (USBH_IN_NAK_PROCESS == 1U)
   uint32_t              NakTimer;
   uint32_t              NakTimeout;
 #endif /* defined (USBH_IN_NAK_PROCESS) && (USBH_IN_NAK_PROCESS == 1U) */*)
       Timeout*: INTEGER;
-      id*: BYTE;
-      phcd*: HCDHandle; (*pointer to HCD handle*)
-      pUser*: UserCallback;
       Stop*: PROCEDURE^5(phost: Handle);
       OpenPipe*: PROCEDURE(phost: Handle; pipe_num, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD);
       SetToggle*: PROCEDURE(phost: Handle; pipe: BYTE; toggle: BOOLEAN);
       ClosePipe*: PROCEDURE(phost: Handle; pipe_num: BYTE);
       SubmitURB*: PROCEDURE(phost: Handle; pipe: BYTE; direction: BOOLEAN; ep_type, token: BYTE;
-        buff: Buffer; length: HALFWORD; do_ping: BOOLEAN);
+        buff: Def.Buffer; length: HALFWORD; do_ping: BOOLEAN);
       GetURBState*:  PROCEDURE(phost: Handle; pipe: BYTE): BYTE;
       GetLastXferSize*: PROCEDURE(phost: Handle; pipe: BYTE): INTEGER
     END;
-
-  PROCEDURE LE16*(buf: ARRAY OF BYTE; ofs: INTEGER): HALFWORD;
-    VAR res: HALFWORD;
-  BEGIN res :=  buf[ofs] + buf[ofs + 1]*100H
-
-    RETURN res
-  END LE16;
-
-  PROCEDURE MIN*(a, b: INTEGER): INTEGER;
-    VAR res: INTEGER;
-  BEGIN IF a < b THEN res := a ELSE res := b END
-
-    RETURN res
-  END MIN;
 
   PROCEDURE Reset*(VAR rd: RawDescriptor);
   BEGIN rd.index := 0; rd.headeridx := 0
@@ -344,7 +281,7 @@ MODULE USBHDef;
 
   PROCEDURE HasMoreHeaders*(rd: RawDescriptor): BOOLEAN;
 
-    RETURN (rd.index < LE16(rd.buf, 2)) & (NextHeaderIdx(rd) < LE16(rd.buf, 2))
+    RETURN (rd.index < Def.LE16(rd.buf, 2)) & (NextHeaderIdx(rd) < Def.LE16(rd.buf, 2))
   END HasMoreHeaders;
 
   PROCEDURE GoNextHeader*(VAR buf: RawDescriptor);
@@ -363,7 +300,7 @@ MODULE USBHDef;
   PROCEDURE ReadHalfword*(VAR rd: RawDescriptor): HALFWORD;
     VAR res: HALFWORD;
   BEGIN
-    IF rd.index < NextHeaderIdx(rd) - 1 THEN res := LE16(rd.buf, rd.index); INC(rd.index, 2)
+    IF rd.index < NextHeaderIdx(rd) - 1 THEN res := Def.LE16(rd.buf, rd.index); INC(rd.index, 2)
     ELSE res := 0 END
 
     RETURN res
@@ -374,15 +311,6 @@ MODULE USBHDef;
     RETURN buf.index
   END GetIndex;
 
-  PROCEDURE New*(): Handle;
-    VAR h!: Handle;
-  BEGIN NEW(h);
-    h.Control.setup.size := SYSTEM.SIZE(Setup) - SYSTEM.SIZE(Buffer);
-    Log.Debug("setup size: "); Log.DebugInt(h.Control.setup.size, 1); Log.DebugLn;
-    h.device.CfgRaw.size := SYSTEM.SIZE(RawDescriptorData) - SYSTEM.SIZE(Buffer);
-    h.device.tmprd.size := SYSTEM.SIZE(RawDescriptorData) - SYSTEM.SIZE(Buffer);
-
-    RETURN h
-  END New;
-
 END USBHDef.
+
+OM4Tool.DecSym USBHDef.sm4

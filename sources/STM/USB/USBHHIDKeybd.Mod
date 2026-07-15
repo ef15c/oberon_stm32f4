@@ -18,7 +18,7 @@ MODULE USBHHIDKeybd;
   ******************************************************************************
   *)
 
-  IMPORT SYSTEM, Def := USBHDef, HCl := USBHHIDClass, P := USBHHIDParser, Log := USBLog;
+  IMPORT SYSTEM, Def := USBDef, HDef := USBHDef, HCl := USBHHIDClass, P := USBHHIDParser, Log := USBLog;
 
   CONST KEYBD_REPORT_SIZE* = 8;
 
@@ -42,11 +42,11 @@ MODULE USBHHIDKeybd;
   * @param  phost: Host handle
   * @retval USBH Status
   *)
-  PROCEDURE Init*(phost: Def.Handle): BYTE;
+  PROCEDURE Init*(host: Def.Handle): BYTE;
     VAR res: BYTE;
       hidh!: HCl.Handle;
       x: INTEGER;
-  BEGIN hidh := phost.pActiveClass.pclsh(HCl.Handle);
+  BEGIN hidh := host(HDef.Handle).ActiveClass.clsh(HCl.Handle);
     Log.Debug("Keyboard inititalization"); Log.DebugLn;
     CLEAR(info^); CLEAR(keybd_report_data); CLEAR(hidh.Data.buf);
 (*
@@ -69,9 +69,9 @@ MODULE USBHHIDKeybd;
   * @param  phost: Host handle
   * @retval USBH Status
   *)
-  PROCEDURE KeybdDecode(phost: Def.Handle): BYTE;
+  PROCEDURE KeybdDecode(host: HDef.Handle): BYTE;
     VAR HID_Handle!: HCl.Handle; res: BYTE; x: INTEGER;
-  BEGIN HID_Handle := phost.pActiveClass.pclsh(HCl.Handle); res := Def.FAIL;
+  BEGIN HID_Handle := host.ActiveClass.clsh(HCl.Handle); res := Def.FAIL;
     IF (HID_Handle.length # 0) &
       (HCl.FifoRead(HID_Handle.fifo, keybd_report_data, HID_Handle.length) =  HID_Handle.length) THEN
       (*Fill report *)
@@ -93,13 +93,13 @@ MODULE USBHHIDKeybd;
   (**
   * @brief  USBH_HID_GetKeybdInfo
   *         The function return keyboard information.
-  * @param  phost: Host handle
+  * @param  id: the USB core id
   * @retval keyboard information
   *)
-  PROCEDURE GetInfo*(phost: Def.Handle): Info;
+  PROCEDURE GetInfo*(id: BYTE): Info;
     VAR res!: Info;
   BEGIN res := NIL;
-    IF KeybdDecode(phost) = Def.OK THEN res := info END
+    IF KeybdDecode(Def.usbCores[id](HDef.Handle)) = Def.OK THEN res := info END
 
     RETURN res
   END GetInfo;

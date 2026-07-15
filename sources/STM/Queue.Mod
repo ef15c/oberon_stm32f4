@@ -2,9 +2,11 @@ MODULE Queue;
   (* Christan Schoffit 06.06.26
       This module implements a message queue that is used in the USB stack
       to defer the heavy work outside the IRQ context*)
+  IMPORT Kernel;
+
   TYPE
     Msg* = POINTER TO MsgDesc;
-    MsgDesc* = RECORD next: Msg END;
+    MsgDesc* = RECORD time*: INTEGER; next: Msg END;
 
   VAR exhausted: BOOLEAN;
 
@@ -31,10 +33,13 @@ MODULE Queue;
 
   PROCEDURE Post*(VAR queue: Msg; item: Msg);
     VAR t!: Msg;
-  BEGIN item.next := NIL;
-    IF queue = NIL THEN queue := item
-    ELSE t := queue; WHILE t.next # NIL DO t := t.next END;
-      t.next := item
+  BEGIN
+    IF item # NIL THEN
+      item.time := Kernel.Time(); item.next := NIL;
+      IF queue = NIL THEN queue := item
+      ELSE t := queue; WHILE t.next # NIL DO t := t.next END;
+        t.next := item
+      END
     END
   END Post;
 

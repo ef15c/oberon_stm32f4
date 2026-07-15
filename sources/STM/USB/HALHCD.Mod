@@ -1,47 +1,31 @@
 MODULE HALHCD;
-  (** ported to Oberon from:
+  (** The microcontroller specific part of the Host controller driver, ported to Oberon from:
   ******************************************************************************
   * @file    stm32f4xx_hal_hcd.h
   * @author  MCD Application Team
   * @brief   HCD HAL module.
   ******************************************************************************
   *)
-  IMPORT SYSTEM, ll := LLUSB, Def := USBHDef, Q := Queue, Log := USBLog;
+  IMPORT SYSTEM, BSP, ll := LLUSB, Def := USBDef, Q := Queue, UC := HALUC, HDef := USBHDef, Log := USBLog;
 
   CONST
-  (** @defgroup HCD_Exported_Types_Group1 HCD State Structure definition
-  * @{
-  *)
-    STATE_RESET* = 0;
     STATE_READY* = 1;
     STATE_ERROR* = 2;
     STATE_BUSY* = 3;
-    STATE_TIMEOUT* = 4;
-
-  (** @defgroup HCD_Speed HCD Speed
-  * @{
-  *)
-    SPEED_HIGH* = ll.USBH_HS_SPEED;
-    SPEED_FULL* = ll.USBH_FSLS_SPEED;
-    SPEED_LOW* = ll.USBH_FSLS_SPEED;
+    STATE_RESET* = 4;
+    STATE_STARTED* = 5;
 
   TYPE
     Handle* = POINTER TO HandleDesc;
-    Callback* = PROCEDURE^5(hhcd: Handle);
+    Callback* = PROCEDURE^5(cdd: Handle);
     InitCallback* = PROCEDURE(hhcd: Handle);
-    HandleDesc* = RECORD(Def.HCDHandleDesc)
-      Instance*: ll.OTGCore;  (*!< Register base address    *)
-      Init*: ll.CfgDesc;            (*!< HCD required parameters  *)
+    HandleDesc* = RECORD(HDef.HandleDesc)
       hc*: ARRAY 16 OF ll.HCDesc;     (*!< Host channels parameters *)
-(*      Lock*,       (*!< HCD peripheral status    *)*)
-      State*: BYTE; (*!< HCD communication state  *)
+      State*: BYTE; (*!< HCD communication state *)
       ErrorCode*: INTEGER;  (*!< HCD Error code           *)
-      phost*: Def.Handle;     (*!< Pointer Stack Handler    *)
       SOFCallback*: Callback; (*!< USB OTG HCD SOF callback                *)
-      MspInitCallback*, (*!< USB OTG HCD Msp Init callback           *)
-      MspDeInitCallback*: InitCallback; (*!< USB OTG HCD Msp DeInit callback         *)
       ConnectMP, DisconnectMP, PortEnabledMP, PortDisabledMP,
-      URBChangeMP, DebugMP: Q.Msg; (*the pools of available IRQ messages*)
+      URBChangeMP, DebugMP*: Q.Msg; (*the pools of available IRQ messages*)
       MsgPendQ: Q.Msg (*the deferred work message queue*)
     END;
 
@@ -65,10 +49,11 @@ MODULE HALHCD;
     URBChangeMsg* = POINTER TO URBChangeMsgDesc;
     URBChangeMsgDesc = RECORD(Q.MsgDesc) chnum*, urb_state*: BYTE END;
 
-    (*!< USB OTG HCD IRQ debug message *)
+    (*!< USB debug message *)
     DebugMsg* = POINTER TO DebugMsgDesc;
     DebugMsgDesc* = RECORD(Q.MsgDesc)
-      chnum*: BYTE; is_in*: BOOLEAN; hcint*, hprt*, gintsts*, grxstsp*: SET END;
+      chnum*: BYTE; is_in*: BOOLEAN; gintsts*, grxstsp*, hcint*, hprt*: SET
+    END;
 
     PROCEDURE newConnectMsg(): Q.Msg;
       VAR item!: ConnectMsg;
@@ -105,7 +90,7 @@ MODULE HALHCD;
       RETURN item
     END newURBChangeMsg;
 
-    PROCEDURE newDebugMsg(): Q.Msg;
+    PROCEDURE newDebugMsg(): Q.Msg; (*create a debug message object*)
       VAR item!: DebugMsg;
     BEGIN NEW(item)
 
@@ -233,7 +218,7 @@ MODULE HALHCD;
           ELSE fslspcs := ll.HCFG_48_MHZ
           END;
           res := ll.InitFSLSPClkSel(hhcd.Instance, fslspcs)
-        ELSIF hhcd.Init.speed = SPEED_FULL THEN USBx_HOST.HFIR := ll.HFIR_60_MHZ
+        ELSIF hhcd.Init.speed = Def.SPEED_FULL THEN USBx_HOST.HFIR := ll.HFIR_60_MHZ
         END;
         ll.SetXFSIZ(hhcd.Instance); (*workaround channel hang with CHDIS and CHENA set*)
         msg := Q.Get(hhcd.PortEnabledMP); IF msg # NIL THEN Q.Post(hhcd.MsgPendQ, msg) END
@@ -426,7 +411,7 @@ MODULE HALHCD;
       hhcd.hc[chnum].state := ll.HC_STALL; ll.HC_Halt(hhcd.Instance, chnum);
     ELSIF ll.HCINT_NAK IN flags THEN hhcd.hc[chnum].ErrCnt := 0;
       hhcd.hc[chnum].state := ll.HC_NAK;
-      IF ~hhcd.hc[chnum].do_ping & (hhcd.hc[chnum].speed = SPEED_HIGH) THEN
+      IF ~hhcd.hc[chnum].do_ping & (hhcd.hc[chnum].speed = Def.SPEED_HIGH) THEN
         hhcd.hc[chnum].do_ping := TRUE
       END;
       ll.HC_Halt(hhcd.Instance, chnum); USBx_HCi.HCINT := {ll.HCINT_NAK};
@@ -530,64 +515,67 @@ MODULE HALHCD;
   * @param  hhcd HCD handle
   * @retval None
   *)
-  PROCEDURE IRQHandler*(hhcd: Handle);
+  PROCEDURE IRQHandler*(hhcd: UC.Handle);
     VAR i: INTEGER; interrupt, flags, reg: SET; res: BYTE;
       msg!: Q.Msg; dbm!: DebugMsg;
-  BEGIN flags := ll.ReadInterrupts(hhcd.Instance); dbm := NIL;
+  BEGIN BSP.ledsOnOff({4}, {});
+    CASE hhcd OF
+      Handle:
+        flags := ll.ReadInterrupts(hhcd.Instance); dbm := NIL;
 (*
-    IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(hhcd.DebugMP);
-      IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^); dbm.chnum := 0FFH;
-        dbm.gintsts := flags
-      END
-    END;
-*)
-    (* Ensure that we are in host mode *)
-    IF (ll.GetMode(hhcd.Instance) = ll.USB_HOST_MODE) & (flags # {}) (* Avoid spurious interrupt *) THEN
-      IF ll.GINTSTS_PXFR_INCOMPISOOUT IN flags THEN (* Incomplete periodic transfer, acknowledge the interrupt *)
-        hhcd.Instance.GINTSTS := {ll.GINTSTS_PXFR_INCOMPISOOUT}
-      END;
-      IF ll.GINTSTS_IISOIXFR IN flags THEN (* Incomplete isochronous IN transfer acknowledge the interrupt *)
-        hhcd.Instance.GINTSTS := {ll.GINTSTS_IISOIXFR}
-      END;
-      IF ll.GINTSTS_PTXFE IN flags THEN (* Periodic TxFIFO empty, acknowledge the interrupt *)
-        hhcd.Instance.GINTSTS := {ll.GINTSTS_PTXFE}
-      END;
-      IF ll.GINTSTS_MMIS IN flags THEN (* Mode mismatch, acknowledge the interrupt *)
-        hhcd.Instance.GINTSTS := {ll.GINTSTS_MMIS}
-      END;
-      (* Handle Host Disconnect Interrupts *)
-      IF ll.GINTSTS_DISCINT IN flags THEN
-        hhcd.Instance.GINTSTS := {ll.GINTSTS_DISCINT};
-        SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, reg);
-        IF ~(ll.HPRT_PCSTS IN reg) THEN
-          res := ll.FlushTxFifo(hhcd.Instance, 10H); res := ll.FlushRxFifo(hhcd.Instance); (* Flush USB Fifo *)
-          IF hhcd.Init.phy_itface = ll.EMBEDDED_PHY THEN
-            res := ll.InitFSLSPClkSel(hhcd.Instance, ll.HCFG_48_MHZ) (* Restore FS Clock *)
-          END;
-          msg := Q.Get(hhcd.DisconnectMP); (* Handle Host Port Disconnect Interrupt *)
-          IF msg # NIL THEN Q.Post(hhcd.MsgPendQ, msg) END
-        END
-      END;
-      IF ll.GINTSTS_HPRTINT IN flags THEN Port_IRQHandler(hhcd, dbm) END; (* Handle Host Port Interrupts *)
-      (* Handle Host SOF Interrupt *)
-      IF ll.GINTSTS_SOF IN flags THEN hhcd.SOFCallback(hhcd); hhcd.Instance.GINTSTS := {ll.GINTSTS_SOF} END;
-      (* Handle Host channel Interrupt *)
-      IF ll.GINTSTS_HCINT IN flags THEN interrupt := ll.HC_ReadInterrupt(hhcd.Instance);
-        ASSERT(hhcd.Init.Host_channels <= 12);
-        FOR i := 0 TO hhcd.Init.Host_channels - 1 DO
-          IF i MOD 10H IN interrupt THEN
-            SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + i*ll.HOST_CHANNEL_SIZE, reg);
-            IF ll.HCCHAR_EPDIR IN reg THEN HC_IN_IRQHandler(hhcd, i, dbm) ELSE HC_OUT_IRQHandler(hhcd, i, dbm) END
+        IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(hhcd.DebugMP);
+          IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^); dbm.chnum := 0FFH;
+            dbm.gintsts := flags
           END
         END;
-        hhcd.Instance.GINTSTS := {ll.GINTSTS_HCINT};
-      END;
-      (* Handle Rx Queue Level Interrupts *)
-      IF ll.GINTSTS_RXFLVL IN flags THEN EXCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL);
-        RXQLVL_IRQHandler(hhcd, dbm); INCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL)
-      END
+*)
+        (* Ensure that we are in host mode *)
+        IF ll.IsHost(hhcd.Instance) & (flags # {}) (* Avoid spurious interrupt *) THEN
+          IF ll.GINTSTS_PXFR_INCOMPISOOUT IN flags THEN (* Incomplete periodic transfer, acknowledge the interrupt *)
+            hhcd.Instance.GINTSTS := {ll.GINTSTS_PXFR_INCOMPISOOUT}
+          END;
+          IF ll.GINTSTS_IISOIXFR IN flags THEN (* Incomplete isochronous IN transfer acknowledge the interrupt *)
+            hhcd.Instance.GINTSTS := {ll.GINTSTS_IISOIXFR}
+          END;
+          IF ll.GINTSTS_PTXFE IN flags THEN (* Periodic TxFIFO empty, acknowledge the interrupt *)
+            hhcd.Instance.GINTSTS := {ll.GINTSTS_PTXFE}
+          END;
+          (* Handle Host Disconnect Interrupts *)
+          IF ll.GINTSTS_DISCINT IN flags THEN
+            hhcd.Instance.GINTSTS := {ll.GINTSTS_DISCINT};
+            SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, reg);
+            IF ~(ll.HPRT_PCSTS IN reg) THEN
+              res := ll.FlushTxFifo(hhcd.Instance, 10H); res := ll.FlushRxFifo(hhcd.Instance); (* Flush USB Fifo *)
+              IF hhcd.Init.phy_itface = ll.EMBEDDED_PHY THEN
+                res := ll.InitFSLSPClkSel(hhcd.Instance, ll.HCFG_48_MHZ) (* Restore FS Clock *)
+              END;
+              msg := Q.Get(hhcd.DisconnectMP); (* Handle Host Port Disconnect Interrupt *)
+              IF msg # NIL THEN Q.Post(hhcd.MsgPendQ, msg) END
+            END
+          END;
+          IF ll.GINTSTS_HPRTINT IN flags THEN Port_IRQHandler(hhcd, dbm) END; (* Handle Host Port Interrupts *)
+          (* Handle Host SOF Interrupt *)
+          IF ll.GINTSTS_SOF IN flags THEN hhcd.SOFCallback(hhcd); hhcd.Instance.GINTSTS := {ll.GINTSTS_SOF} END;
+          (* Handle Host channel Interrupt *)
+          IF ll.GINTSTS_HCINT IN flags THEN interrupt := ll.HC_ReadInterrupt(hhcd.Instance);
+            ASSERT(hhcd.Init.Host_channels <= 12);
+            FOR i := 0 TO hhcd.Init.Host_channels - 1 DO
+              IF i MOD 10H IN interrupt THEN
+                SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + i*ll.HOST_CHANNEL_SIZE, reg);
+                IF ll.HCCHAR_EPDIR IN reg THEN HC_IN_IRQHandler(hhcd, i, dbm) ELSE HC_OUT_IRQHandler(hhcd, i, dbm) END
+              END
+            END;
+            hhcd.Instance.GINTSTS := {ll.GINTSTS_HCINT};
+          END;
+          (* Handle Rx Queue Level Interrupts *)
+          IF ll.GINTSTS_RXFLVL IN flags THEN EXCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL);
+            RXQLVL_IRQHandler(hhcd, dbm); INCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL)
+          END
+        END;
+        IF dbm # NIL THEN Q.Post(hhcd.MsgPendQ, dbm) END
+    | UC.Handle: ASSERT(FALSE)
     END;
-    IF dbm # NIL THEN Q.Post(hhcd.MsgPendQ, dbm) END
+    BSP.ledsOnOff({}, {4});
   END IRQHandler;
 
   (**
@@ -601,32 +589,11 @@ MODULE HALHCD;
     (* Check the HCD handle allocation *)
     IF hhcd = NIL THEN res := ll.HAL_ERROR
     ELSE
-      (* Check the parameters *)
-      ASSERT((ORD(hhcd.Instance) = ll.HS_PERIPH_BASE) OR (ORD(hhcd.Instance) = ll.FS_PERIPH_BASE));
-      IF hhcd.State = STATE_RESET THEN
-        (* Allocate lock resource and initialize it *)
-(*        hhcd.Lock := ll.HAL_UNLOCKED;*)
-        (* Init the low level hardware : GPIO, CLOCK, NVIC... *)
-        hhcd.MspInitCallback(hhcd)
-      END;
       hhcd.State := STATE_BUSY;
-      (* Disable DMA mode for FS instance *)
-      IF ORD(hhcd.Instance) = ll.FS_PERIPH_BASE THEN hhcd.Init.dma_enable := FALSE END;
-      ll.DisableGlobalInt(hhcd.Instance);  (* Disable the Interrupts *)
-      (* Init the Core (common init.) *)
-      IF ll.CoreInit(hhcd.Instance, hhcd.Init) # ll.HAL_OK THEN
+      (* Init Host *) ASSERT(hhcd.ControllerIRQHandler # NIL);
+      IF ll.HostInit(hhcd.Instance, hhcd.Init) # ll.HAL_OK THEN
         hhcd.State := STATE_ERROR; res := ll.HAL_ERROR
-      ELSE
-        (* Force Host Mode *)
-        IF ll.SetCurrentMode(hhcd.Instance, ll.USB_HOST_MODE) # ll.HAL_OK THEN
-          hhcd.State := STATE_ERROR; res := ll.HAL_ERROR
-        ELSE
-          (* Init Host *)
-          IF ll.HostInit(hhcd.Instance, hhcd.Init) # ll.HAL_OK THEN
-            hhcd.State := STATE_ERROR; res := ll.HAL_ERROR;
-          ELSE hhcd.State := STATE_READY; res := ll.HAL_OK
-          END
-        END
+      ELSE hhcd.State := STATE_READY; res := ll.HAL_OK
       END
     END
 
@@ -708,6 +675,15 @@ MODULE HALHCD;
   END HC_Halt;
 
   (**
+  * @brief  DeInitialize the host driver.
+  * @param  hhcd HCD handle
+  * @retval HAL status
+  *)
+  PROCEDURE DeInit*(hhcd: Handle);
+  BEGIN hhcd.State := STATE_RESET
+  END DeInit;
+
+  (**
   * @brief  Return the current Host frame number.
   * @param  hhcd HCD handle
   * @retval Current Host frame number
@@ -733,8 +709,8 @@ MODULE HALHCD;
   PROCEDURE Start*(hhcd: Handle);
   BEGIN
 (*  __HAL_LOCK(hhcd);*)
+    hhcd.State := STATE_STARTED;
     ll.DriveVbus(hhcd.Instance, TRUE); (* Enable port power *)
-    ll.EnableGlobalInt(hhcd.Instance)
 (*  __HAL_UNLOCK(hhcd);*)
   END Start;
 
@@ -746,9 +722,7 @@ MODULE HALHCD;
   PROCEDURE Stop*(hhcd: Handle);
     VAR res: BYTE;
   BEGIN
-(*  __HAL_LOCK(hhcd);*)
     res := ll.StopHost(hhcd.Instance); hhcd.State := STATE_RESET
-(*  __HAL_UNLOCK(hhcd);*)
   END Stop;
 
   (**
@@ -816,42 +790,53 @@ MODULE HALHCD;
   * @brief  Initialize the pool of messages for each type of deferred work.
   * @param  hhcd HCD handle
   *)
-  PROCEDURE InitPools*(hhcd: Handle);
+  PROCEDURE InitPools*(hcdh: Handle);
   BEGIN
-    hhcd.ConnectMP := Q.CreatePool(1, newConnectMsg);
-    hhcd.DisconnectMP := Q.CreatePool(1, newDisconnectMsg);
-    hhcd.PortEnabledMP := Q.CreatePool(1, newPortEnabledMsg);
-    hhcd.PortDisabledMP := Q.CreatePool(1, newPortDisabledMsg);
-    hhcd.URBChangeMP := Q.CreatePool(3, newURBChangeMsg);
-    hhcd.DebugMP := Q.CreatePool(100, newDebugMsg);
+    hcdh.ConnectMP := Q.CreatePool(1, newConnectMsg);
+    hcdh.DisconnectMP := Q.CreatePool(1, newDisconnectMsg);
+    hcdh.PortEnabledMP := Q.CreatePool(1, newPortEnabledMsg);
+    hcdh.PortDisabledMP := Q.CreatePool(1, newPortDisabledMsg);
+    hcdh.URBChangeMP := Q.CreatePool(3, newURBChangeMsg);
+    hcdh.DebugMP := Q.CreatePool(100, newDebugMsg)
   END InitPools;
 
-  PROCEDURE TakeMsg*(hhcd: Handle): Q.Msg;
+  PROCEDURE TakeMsg*(hcdh: Handle): Q.Msg;
     VAR msg!: Q.Msg;
   BEGIN msg := NIL;
     IF Q.IsExhausted() THEN Log.Error("Interrupt queue too small"); Log.ErrorLn;
       Log.Flush; ASSERT(FALSE)
     END;
-    IF hhcd.MsgPendQ # NIL THEN
-      ll.DisableGlobalInt(hhcd.Instance); msg := Q.Get(hhcd.MsgPendQ); ll.EnableGlobalInt(hhcd.Instance)
+    IF hcdh.MsgPendQ # NIL THEN
+      ll.DisableGlobalInt(hcdh.Instance); msg := Q.Get(hcdh.MsgPendQ); ll.EnableGlobalInt(hcdh.Instance)
     END
 
     RETURN msg
   END TakeMsg;
 
-  PROCEDURE GiveMsg*(hhcd: Handle; msg: Q.Msg);
-  BEGIN ll.DisableGlobalInt(hhcd.Instance);
-      CASE msg OF
-        ConnectMsg: Q.PostFirst(hhcd.ConnectMP, msg) (*return item to pool*)
-      | DisconnectMsg: Q.PostFirst(hhcd.DisconnectMP, msg)
-      | PortEnabledMsg: Q.PostFirst(hhcd.PortEnabledMP, msg)
-      | PortDisabledMsg: Q.PostFirst(hhcd.PortDisabledMP, msg)
-      | URBChangeMsg: Q.PostFirst(hhcd.URBChangeMP, msg)
-      | DebugMsg: Q.PostFirst(hhcd.DebugMP, msg)
-      | Q.Msg: ASSERT(FALSE) (*type must be handled in above list*)
-      END;
-    ll.EnableGlobalInt(hhcd.Instance)
+  PROCEDURE GiveMsg*(hcdh: Handle; msg: Q.Msg);
+  BEGIN ll.DisableGlobalInt(hcdh.Instance);
+    CASE msg OF
+      ConnectMsg: Q.PostFirst(hcdh.ConnectMP, msg) (*return item to pool*)
+    | DisconnectMsg: Q.PostFirst(hcdh.DisconnectMP, msg)
+    | PortEnabledMsg: Q.PostFirst(hcdh.PortEnabledMP, msg)
+    | PortDisabledMsg: Q.PostFirst(hcdh.PortDisabledMP, msg)
+    | URBChangeMsg: Q.PostFirst(hcdh.URBChangeMP, msg)
+    | DebugMsg: Q.PostFirst(hcdh.DebugMP, msg)
+    | Q.Msg: UC.GiveMsg(hcdh, msg) (*see if HALCD can handle the message*)
+    END;
+    ll.EnableGlobalInt(hcdh.Instance)
   END GiveMsg;
+
+  PROCEDURE New*(): Handle;
+    VAR h!: Handle;
+  BEGIN NEW(h);
+    h.Control.setup.size := SYSTEM.SIZE(HDef.Setup) - SYSTEM.SIZE(Def.Buffer);
+    Log.Debug("setup size: "); Log.DebugInt(h.Control.setup.size, 1); Log.DebugLn;
+    h.device.CfgRaw.size := SYSTEM.SIZE(HDef.RawDescriptorData) - SYSTEM.SIZE(Def.Buffer);
+    h.device.tmprd.size := SYSTEM.SIZE(HDef.RawDescriptorData) - SYSTEM.SIZE(Def.Buffer);
+
+    RETURN h
+  END New;
 
 END HALHCD.
 

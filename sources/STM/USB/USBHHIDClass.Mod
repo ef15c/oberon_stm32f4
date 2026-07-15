@@ -1,5 +1,5 @@
 MODULE USBHHIDClass; (*HID class process structures*)
-  IMPORT Def := USBHDef, Log := USBLog;
+  IMPORT SYSTEM, Def := USBDef, HDef := USBHDef, Log := USBLog;
 
  CONST
     (* HID Class Codes *)
@@ -47,7 +47,7 @@ MODULE USBHHIDClass; (*HID class process structures*)
 
   TYPE
     FIFODesc* = RECORD
-      buf*: Def.DataBuffer;
+      buf*: HDef.DataBuffer;
       head*, tail*: HALFWORD;
       lock*: BOOLEAN
     END;
@@ -66,7 +66,7 @@ MODULE USBHHIDClass; (*HID class process structures*)
 
   (* Structure for HID process *)
     Handle* = POINTER TO HandleDesc;
-    HandleDesc* = RECORD(Def.ClassHandleDesc)
+    HandleDesc* = RECORD(HDef.ClassHandleDesc)
       OutPipe*, InPipe*, state*, OutEp*, InEp*, ctl_state*: BYTE;
       fifo*: FIFODesc;
       Data*: ReportData;
@@ -76,9 +76,9 @@ MODULE USBHHIDClass; (*HID class process structures*)
       timer*: INTEGER;
       DataReady*: BOOLEAN;
       HID_Desc*: DescriptorDesc;
-      ReportDesc*: Def.RawDescriptor;
+      ReportDesc*: HDef.RawDescriptor;
       Init*: Def.Callback;
-      EventCallback*: PROCEDURE(phost: Def.Handle)
+      EventCallback*: PROCEDURE(host: Def.Handle)
     END;
 
   (**
@@ -143,7 +143,7 @@ MODULE USBHHIDClass; (*HID class process structures*)
     VAR h!: Handle;
   BEGIN NEW(h);
     h.Data.size := SYSTEM.SIZE(ReportData) - SYSTEM.SIZE(Def.Buffer);
-    h.ReportDesc.size := SYSTEM.SIZE(Def.RawDescriptorData) - SYSTEM.SIZE(Def.Buffer)
+    h.ReportDesc.size := SYSTEM.SIZE(HDef.RawDescriptorData) - SYSTEM.SIZE(Def.Buffer)
 
     RETURN h
   END New;

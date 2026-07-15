@@ -6,7 +6,7 @@ MODULE LLUSB;
   * @brief   HCD HAL module.
   ******************************************************************************
   *)
-  IMPORT SYSTEM, Kernel, Def := USBHDef;
+  IMPORT SYSTEM, Kernel, Def := USBDef;
 
   CONST
   (*!< USB registers base address *)
@@ -641,7 +641,6 @@ MODULE LLUSB;
     IF cfg.phy_itface = ULPI_PHY THEN EXCL(USBx.GCCFG, GCCFG_PWRDWN);
       USBx.GUSBCFG := USBx.GUSBCFG - ({GUSBCFG_TSDPS} + {GUSBCFG_ULPIFSLS} + {GUSBCFG_PHYSEL}); (* Init The ULPI Interface *)
       USBx.GUSBCFG := USBx.GUSBCFG - ({GUSBCFG_ULPIEVBUSD} + {GUSBCFG_ULPIEVBUSI}); (* Select vbus source *)
-
       IF cfg.use_external_vbus THEN INCL(USBx.GUSBCFG, GUSBCFG_ULPIEVBUSD) END;
       ret := CoreReset(USBx) (* Reset after a PHY select *)
     ELSE (* FS interface (embedded Phy) *)
@@ -654,7 +653,14 @@ MODULE LLUSB;
       IF cfg.dma_enable THEN USBx.GAHBCFG := USBx.GAHBCFG - GAHBCFG_HBSTLEN_Msk + GAHBCFG_HBSTLEN_2;
         INCL(USBx.GAHBCFG, GAHBCFG_DMAEN)
       END
-    END
+    END;
+    Kernel.Delayms(100);
+    USBx.GINTSTS := CLEAR_INTERRUPT_MASK; (* Clear any pending interrupts *)
+    USBx.GINTMSK :=  {GINTMSK_MMISM, GINTMSK_CIDSCHGM
+(*todo: implement host negociation and session request
+, GINTMSK_OTGINT
+*)
+};
 
     RETURN ret
   END CoreInit;
@@ -664,12 +670,12 @@ MODULE LLUSB;
   * @param  USBx  Selected device
   * @retval return core mode : Host or Device
   *          This parameter can be one of these values:
-  *           1 : Host
-  *           0 : Device
+  *           TRUE : Host
+  *           FALSE : Device
   *)
-  PROCEDURE GetMode*(USBx: OTGCore): INTEGER;
-    RETURN ORD(USBx.GINTSTS*GINTSTS_CMOD_Msk)
-  END GetMode;
+  PROCEDURE IsHost*(USBx: OTGCore): BOOLEAN;
+    RETURN SYSTEM.VAL(BOOLEAN, USBx.GINTSTS*GINTSTS_CMOD_Msk)
+  END IsHost;
 
   (**
   * @brief  USB_SetCurrentMode Set functional mode
@@ -686,10 +692,10 @@ MODULE LLUSB;
     USBx.GUSBCFG := USBx.GUSBCFG - {GUSBCFG_FHMOD, GUSBCFG_FDMOD};
     IF mode = USB_HOST_MODE THEN INCL(USBx.GUSBCFG, GUSBCFG_FHMOD);
       REPEAT Kernel.Delayms(10); INC(ms, 10)
-      UNTIL (GetMode(USBx) = USB_HOST_MODE) OR (ms >= USB_CURRENT_MODE_MAX_DELAY_MS)
+      UNTIL IsHost(USBx) OR (ms >= USB_CURRENT_MODE_MAX_DELAY_MS)
     ELSIF mode = USB_DEVICE_MODE THEN INCL(USBx.GUSBCFG, GUSBCFG_FDMOD);
       REPEAT Kernel.Delayms(10); INC(ms, 10)
-      UNTIL (GetMode(USBx) = USB_DEVICE_MODE) OR (ms >= USB_CURRENT_MODE_MAX_DELAY_MS)
+      UNTIL ~IsHost(USBx) OR (ms >= USB_CURRENT_MODE_MAX_DELAY_MS)
     ELSE res := HAL_ERROR
     END;
     IF ms >= USB_CURRENT_MODE_MAX_DELAY_MS THEN res := HAL_ERROR END
@@ -793,7 +799,6 @@ MODULE LLUSB;
       USBx_HCi.HCINT := CLEAR_INTERRUPT_MASK;
       USBx_HCi.HCINTMSK := {}
     END;
-    USBx.GINTMSK := {}; (* Disable all interrupts. *)
     USBx.GINTSTS := CLEAR_INTERRUPT_MASK; (* Clear any pending interrupts *)
     (*SetXFSIZ*(USBx)*)
     IF ~cfg.dma_enable THEN INCL(USBx.GINTMSK, GINTMSK_RXFLVLM) END; (* Enable the common interrupts *)

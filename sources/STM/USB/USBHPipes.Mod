@@ -1,5 +1,5 @@
 MODULE USBHPipes;
-  IMPORT Def := USBHDef;
+  IMPORT HDef := USBHDef;
   (** ported to Oberon from:
   * @author  MCD Application Team
   * @brief   This file implements functions for opening and closing Pipes
@@ -26,11 +26,11 @@ MODULE USBHPipes;
   *         Get a free Pipe number for allocation to a device endpoint
   * @retval idx: Free Pipe number
   *)
-  PROCEDURE GetFreePipe(phost: Def.Handle): HALFWORD;
+  PROCEDURE GetFreePipe(host: HDef.Handle): HALFWORD;
     VAR idx: BYTE; res: HALFWORD;
   BEGIN res := 0FFFFH; idx := 0;
-    WHILE (res = 0FFFFH) & (idx < Def.MAX_PIPES_NBR) DO
-      IF ~(15 IN phost.Pipes[idx]) THEN res :=  idx END;
+    WHILE (res = 0FFFFH) & (idx < HDef.MAX_PIPES_NBR) DO
+      IF ~(15 IN host.Pipes[idx]) THEN res :=  idx END;
       INC(idx)
     END
 
@@ -52,8 +52,8 @@ MODULE USBHPipes;
   * @param  mps: max pkt size
   * @retval USBH Status
   *)
-  PROCEDURE Open*(phost: Def.Handle; pipe_num, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD);
-  BEGIN phost.OpenPipe(phost, pipe_num, epnum, dev_address, speed, ep_type, mps)
+  PROCEDURE Open*(host: HDef.Handle; pipe_num, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD);
+  BEGIN host.OpenPipe(host, pipe_num, epnum, dev_address, speed, ep_type, mps)
   END Open;
 
   (**
@@ -63,8 +63,8 @@ MODULE USBHPipes;
   * @param  pipe_num: Pipe Number
   * @retval USBH Status
   *)
-  PROCEDURE Close*(phost: Def.Handle; pipe_num: BYTE);
-  BEGIN phost.ClosePipe(phost, pipe_num)
+  PROCEDURE Close*(host: HDef.Handle; pipe_num: BYTE);
+  BEGIN host.ClosePipe(host, pipe_num)
   END Close;
 
   (**
@@ -74,10 +74,10 @@ MODULE USBHPipes;
   * @param  ep_addr: End point for which the Pipe to be allocated
   * @retval Pipe number
   *)
-  PROCEDURE Alloc*(phost: Def.Handle; ep_addr: BYTE): BYTE;
+  PROCEDURE Alloc*(host: HDef.Handle; ep_addr: BYTE): BYTE;
     VAR pipe: HALFWORD; res: BYTE;
-  BEGIN   pipe :=  GetFreePipe(phost);
-    IF pipe # 0FFFFH THEN phost.Pipes[pipe MOD 10H] := {15} + TOSET(ep_addr) END;
+  BEGIN   pipe :=  GetFreePipe(host);
+    IF pipe # 0FFFFH THEN host.Pipes[pipe MOD 10H] := {15} + TOSET(ep_addr) END;
     res := pipe
 
     RETURN res
@@ -90,8 +90,8 @@ MODULE USBHPipes;
   * @param  idx: Pipe number to be freed
   * @retval USBH Status
   *)
-  PROCEDURE Free*(phost: Def.Handle; idx: BYTE);
-  BEGIN IF idx < Def.MAX_PIPES_NBR THEN EXCL(phost.Pipes[idx], 31) END
+  PROCEDURE Free*(host: HDef.Handle; idx: BYTE);
+  BEGIN IF idx < HDef.MAX_PIPES_NBR THEN EXCL(host.Pipes[idx], 31) END
   END Free;
 
 END USBHPipes.
