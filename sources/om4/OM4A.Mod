@@ -274,6 +274,10 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
     (*|1111/0011/01000/ Rn /0im3/ Rd /im20/wtm1|
       SBFX<c> <Rd>,<Rn>,#<lsb>,#<witdh>*)
 
+    WFI* = 0BF30H;
+    (*|1011/1111/0011/0000|
+      WFI<c>*)
+
     BRSIG*   = 1EH; (*Pseudo branch op signature*)
     BRCSIG*  = 1FH; (*Pseudo conditional branch op signature*)
     

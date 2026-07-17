@@ -354,7 +354,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
   PROCEDURE Loop*;
     VAR V!: Viewers.Viewer; M!: InputMsg; N: ControlMsg;
-       prevX, prevY, X, Y, Z, t: INTEGER; keys: SET; ch: CHAR;
+      prevX, prevY, X, Y, Z, t: INTEGER; keys: SET; ch: CHAR;
   BEGIN
     REPEAT
       Input.Mouse(keys, X, Y, Z);

@@ -1058,6 +1058,10 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     RH := 0
   END Clear;
 
+  PROCEDURE Wfi*;
+  BEGIN  A.Put1(mcode, A.WFI)
+  END Wfi;
+
   PROCEDURE CopyString*(VAR x, y: Item);  (* x := y *) 
     VAR len, pc0: INTEGER;
   BEGIN loadAdr(x); len := x.type.len;

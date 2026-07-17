@@ -468,18 +468,20 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   PROCEDURE StandProc(pno: INTEGER);
     VAR nap, npar: INTEGER; (*nof actual/formal parameters*)
       x!, y!, z!: G.Item;
-  BEGIN Check(S.lparen, "no (");
-    npar := pno MOD 10; pno := pno DIV 10;
-    IF pno IN {0..3, 5..7} THEN lvalue(x) ELSE expression(x) END; nap := 1;
-    IF sym = S.comma THEN
-      S.Get(sym); IF pno = 14 (*LDREG*) THEN 
-        CheckConst(x); CheckInt(x); IF x.a < 16 THEN G.SetRH(x.a) END 
+  BEGIN npar := pno MOD 10; pno := pno DIV 10; nap := 0;
+    IF npar # 0 THEN
+      Check(S.lparen, "no (");
+      IF pno IN {0..3, 5..7} THEN lvalue(x) ELSE expression(x) END; nap := 1;
+      IF sym = S.comma THEN S.Get(sym);
+        IF pno = 14 (*LDREG*) THEN 
+          CheckConst(x); CheckInt(x); IF x.a < 16 THEN G.SetRH(x.a) END 
+        END;
+        IF pno IN {7, 10} THEN lvalue(y) ELSE expression(y) END; nap := 2; z.type := B.noType;
+        WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
+      ELSE y.type := B.noType
       END;
-      IF pno IN {7, 10} THEN lvalue(y) ELSE expression(y) END; nap := 2; z.type := B.noType;
-      WHILE sym = S.comma DO S.Get(sym); expression(z); INC(nap) END
-    ELSE y.type := B.noType
-    END ;
-    Check(S.rparen, "no )");
+      Check(S.rparen, "no )")
+    END;
     IF (npar = nap) OR (pno IN {0, 1}) THEN 
       IF pno IN {0, 1} THEN (*INC, DEC*)
         CheckInt(x); CheckReadOnly(x);
@@ -506,6 +508,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
           G.Clear(x) (*initialyze record or array to zero*)
         ELSE S.Mark("bad type")
         END
+      ELSIF pno = 18 THEN G.Wfi
       END
     ELSE S.Mark("wrong nof parameters")
     END

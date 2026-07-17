@@ -1332,6 +1332,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           ELSIF b2 = 0 THEN
             (*0000 0000 No Operation hint NOP on page A7-306*)
             WriteOp(W, op, "NOP", FALSE, FALSE)
+          ELSIF b2 = 30H THEN
+            (*0011 0000 Wait for Interrupt hint WFI on page A7-505*)
+            WriteOp(W, op, "WFI", FALSE, FALSE)
           ELSE Texts.WriteString(W, "TODO: Other If-Then, and hints on page A5-135")
           END
         ELSIF op*T16MSK45 = PushMultRegsT1 THEN
