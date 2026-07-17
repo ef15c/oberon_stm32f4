@@ -2,11 +2,6 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
   IMPORT SYSTEM, Kernel, BSP, Log := USBLog, Def := USBDef, ll := LLUSB, Q := Queue, UC := HALUC;
 
   CONST
-    (*TODO: relocate in BSP Module*)
-    OTGHSEN* = 29;
-    othsEn* = BSP.PeriphBBAlias + (BSP.RCC_BASE + BSP.AHB1ENR - BSP.PeriphBase + OTGHSEN DIV 8)*32 + OTGHSEN MOD 8*4;
-    OTGHS_IRQNum* = 16+77;
-
     (*private constants*)
     POWERSW_PORT = BSP.GPIOC;
     POWERSW_VBUS = 4;
@@ -40,17 +35,17 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
       {} (*push pull*), {} (*no pull up nor pul down*), {},
       LSL(TOSET(12), 12 MOD 8*4) + LSL(TOSET(12), 14 MOD 8*4) + LSL(TOSET(12), 15 MOD 8*4) (* PB12, PB14 and PB15 ad alternate function OTG HS *)
     );
-    SYSTEM.PUT(othsEn, TRUE); SYSTEM.GET(othsEn, en) (*delay*); (* Enable USB HS Clocks *)
+    SYSTEM.PUT(BSP.othsEn, TRUE); SYSTEM.GET(BSP.othsEn, en) (*delay*); (* Enable USB HS Clocks *)
     (* Configure Power Switch Vbus Pin *)
     SYSTEM.PUT(POWERSW_PORT + BSP.BSRR, {POWERSW_VBUS});
     BSP.configureGPIO(POWERSW_PORT, {POWERSW_VBUS}, LSL(BSP.MASK2, POWERSW_VBUS*2), {}, {},
       LSL(BSP.OUTPUT_MODE, POWERSW_VBUS*2), {}, {}, {}, {}, {});
     Kernel.Delayms(200); (* Delay is need for stabilising the Vbus Low *)
-    SYSTEM.PUT(BSP.NVIC_IPR + OTGHS_IRQNum - 16, CHR(LSL(11, 4))); (* Set USBHS Interrupt priority lower than SysTick *)
+    SYSTEM.PUT(BSP.NVIC_IPR + BSP.OTGHS_IRQNum - 16, CHR(LSL(11, 4))); (* Set USBHS Interrupt priority lower than SysTick *)
     (* Enable OTGHS Interrupt *)
-    SYSTEM.GET(BSP.VecTabBase + OTGHS_IRQNum*4, OldHandler);
-    Kernel.Install(SYSTEM.ADR(OTG_HS_IRQHandler), BSP.VecTabBase + OTGHS_IRQNum*4);
-    irqNum := OTGHS_IRQNum - 16;
+    SYSTEM.GET(BSP.VecTabBase + BSP.OTGHS_IRQNum*4, OldHandler);
+    Kernel.Install(SYSTEM.ADR(OTG_HS_IRQHandler), BSP.VecTabBase + BSP.OTGHS_IRQNum*4);
+    irqNum := BSP.OTGHS_IRQNum - 16;
     SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, {irqNum MOD 32})
   END MspInit;
 
@@ -59,8 +54,8 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
   * @retval None
   *)
   PROCEDURE MspDeInit;
-  BEGIN SYSTEM.PUT(othsEn, FALSE); (* Disable USB HS Clocks *)
-    Kernel.Install(SYSTEM.ADR(OldHandler), BSP.VecTabBase + OTGHS_IRQNum*4);
+  BEGIN SYSTEM.PUT(BSP.othsEn, FALSE); (* Disable USB HS Clocks *)
+    Kernel.Install(SYSTEM.ADR(OldHandler), BSP.VecTabBase + BSP.OTGHS_IRQNum*4);
   END MspDeInit;
 
   (**

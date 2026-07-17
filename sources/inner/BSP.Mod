@@ -72,7 +72,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     (*IRQ numbers*)
     EXTI0_IRQNum* = 16+6; EXTI1_IRQNum* = 16+7; EXTI2_IRQNum* = 16+8; EXTI3_IRQNum* = 16+9; EXTI4_IRQNum* = 16+10;
     EXTI9_5_IRQNum* = 16+23; EXTI15_10_IRQNum* = 16+40; SDIO_IRQNum* = 16+49; DMA2_Stream3_IRQNum* = 16+59;
-    DMA3_Stream6_IRQNum* = 16+69;
+    DMA3_Stream6_IRQNum* = 16+69; OTGHS_IRQNum* = 16+77;
 
     (*FMC for SDRAM*)
     FMC_R_BASE* = 0A0000000H; FMC_Bank5_6_R_Base* = FMC_R_BASE + 140H;
@@ -237,8 +237,10 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       RTCPREm* = {16..20}; PPRE2m* = {PPRE2..PPRE2+2}; PPRE1m* = {PPRE1..PPRE1+2}; HPREm* = {HPRE..HPRE+3}; SWSm* = {2..3}; SWm* = {0..1};
       HCLK_DIV1* = {}; HCLK_DIV2* = {2}; HCLK_DIV4* = {2, 0}; HCLK_DIV8* = {2, 1};HCLK_DIV16* = {2, 1, 0}; 
 
-    AHB1ENR* = 30H; CRCEN* = 12; GPIOAEN* = 0; GPIOBEN* = 1; GPIOCEN* = 2; GPIODEN* = 3; GPIOEEN* = 4; GPIOFEN* = 5;
-      GPIOGEN* = 6; GPIOHEN* = 7; GPIOIEN* = 8; GPIOJEN* = 9; GPIOKEN* = 10; DMA1EN* = 21; DMA2EN* = 22;
+    AHB1ENR* = 30H; 
+      GPIOAEN* = 0; GPIOBEN* = 1; GPIOCEN* = 2; GPIODEN* = 3; GPIOEEN* = 4; GPIOFEN* = 5;
+      GPIOGEN* = 6; GPIOHEN* = 7; GPIOIEN* = 8; GPIOJEN* = 9; GPIOKEN* = 10;
+      CRCEN* = 12; DMA1EN* = 21; DMA2EN* = 22; OTGHSEN* = 29;
     crcEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + CRCEN DIV 8)*32 + CRCEN MOD 8*4;
     gpioaEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOAEN DIV 8)*32 + GPIOAEN MOD 8*4;
     gpiobEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + GPIOBEN DIV 8)*32 + GPIOBEN MOD 8*4;
@@ -259,6 +261,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     APB1ENR* = 40H; SPI3EN* = 15; PWREN* = 28; (*APB1 peripheral clock enable register*)
     pwrEn* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + PWREN DIV 8)*32 + PWREN MOD 8*4;
     spi3En* = PeriphBBAlias + (RCC_BASE + APB1ENR - PeriphBase + SPI3EN DIV 8)*32 + SPI3EN MOD 8*4;
+    othsEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + OTGHSEN DIV 8)*32 + OTGHSEN MOD 8*4;
 
     APB2ENR* = 44H; USART1EN* = 4; APB2ENR_SDIOEN* = 11; APB2ENR_LTDCEN* = 26; SYSCFGEN* = 14;
     usart1En* = PeriphBBAlias + (RCC_BASE + APB2ENR - PeriphBase + USART1EN DIV 8)*32 + USART1EN MOD 8*4;
