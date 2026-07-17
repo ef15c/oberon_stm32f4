@@ -355,6 +355,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   PROCEDURE Loop*;
     VAR V!: Viewers.Viewer; M!: InputMsg; N: ControlMsg;
       prevX, prevY, X, Y, Z, t: INTEGER; keys: SET; ch: CHAR;
+      t0!: Task;
   BEGIN
     REPEAT
       Input.Mouse(keys, X, Y, Z);
@@ -368,7 +369,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
         END
       ELSIF keys # {} THEN
         M.id := track; M.X := X; M.Y := Y; M.keys := keys;
-        BSP.ledsOnOff({6}, {}); prevX := -1; (*force mouse redrawing after command execution*)
+        BSP.ledsOnOff({6}, {});
+        prevX := -1; (*force mouse redrawing after command execution*)
         REPEAT V := Viewers.This(M.X, M.Y); V.handle(V, M); Input.Mouse(M.keys, M.X, M.Y, M.Z)
         UNTIL M.keys = {};
         DEC(ActCnt)
@@ -379,13 +381,17 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
           BSP.ledsOnOff({6}, {});
           M.Y := Y; M.keys := keys; V := Viewers.This(X, Y); V.handle(V, M); prevX := X; prevY := Y; prevZ := Z
         END;
-        CurTask := CurTask.next; t := Kernel.Time();
-        IF t >= CurTask.nextTime THEN
-          BSP.ledsOnOff({6}, {});
-          CurTask.nextTime := t + CurTask.period; CurTask.state := active; CurTask.handle; CurTask.state := idle
-        END
-      END;
-      BSP.ledsOnOff({}, {6})
+        t0 := CurTask;
+        REPEAT
+          t := Kernel.Time();
+          IF t >= CurTask.nextTime THEN
+            CurTask.nextTime := t + CurTask.period; CurTask.state := active; CurTask.handle; CurTask.state := idle
+          END;
+          CurTask := CurTask.next
+        UNTIL CurTask = t0;
+(*        BSP.ledsOnOff({}, {6}); SYSTEM.WFI (*SLEEP*); BSP.ledsOnOff({6}, {})*)
+        BSP.ledsOnOff({}, {6})
+      END
     UNTIL FALSE
   END Loop;
 
