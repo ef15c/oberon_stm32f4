@@ -852,8 +852,9 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013 / 11.2.2017
         IF Z < 0 THEN (*mouse wheel scroll down*)
           Show(F, PosUpLine(F.text, pos, -Z))
         ELSE (*Z > 0*) (*mouse wheel scroll up*) L := F.trailer.next;
-          WHILE (Z > 0) & (L # F.trailer) DO
-            INC(pos, L.len); IF pos > F.text.len THEN pos := F.text.len END; DEC(Z)
+          WHILE (Z > 0) & (L # F.trailer) & (pos + L.len < F.text.len) DO
+            INC(pos, L.len);
+            DEC(Z); L := L.next
           END;
           Show(F, pos)
         END
