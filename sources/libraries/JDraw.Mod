@@ -69,14 +69,10 @@ MODULE JDraw; (*Raw drawing primitives*)
     END
   END Handler;
 
-  PROCEDURE New*(): Frame;
-    VAR F!: Frame;
-  BEGIN NEW(F); F.handle := Handler; RETURN F
-  END New;
-
   PROCEDURE Start*(F: Frame; t: ARRAY OF CHAR);
     VAR V!: Viewers.Viewer; X, Y: INTEGER;
-  BEGIN Oberon.AllocateUserViewer(Oberon.Par.vwr.X, X, Y);
+  BEGIN F.handle := Handler;
+    Oberon.AllocateUserViewer(Oberon.Par.vwr.X, X, Y);
     V := MenuViewers.New(TextFrames.NewMenu(t, Menu), F, TextFrames.menuH, X, Y)
   END Start;
 
