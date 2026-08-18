@@ -1,13 +1,14 @@
 MODULE JDraw; (*Raw drawing primitives*)
-  IMPORT Display, Viewers, Texts, Oberon, MenuViewers, TextFrames;
+  IMPORT Display, Input, Viewers, Texts, Oberon, MenuViewers, TextFrames;
 
   CONST Menu = "System.Close";
 
   TYPE
     Frame* = POINTER TO FrameDesc;
+    Callback = PROCEDURE(F: Frame);
     FrameDesc* = RECORD(Display.FrameDesc)
       col, bcol: BYTE; x0, y0: INTEGER;
-      SetupProc, DrawProc, FormDraw, PressedProc: PROCEDURE
+      SetupProc, DrawProc, FormDraw, PressedProc: Callback
     END;
 
   PROCEDURE ROUND(x: REAL): INTEGER;
@@ -38,24 +39,26 @@ MODULE JDraw; (*Raw drawing primitives*)
   PROCEDURE Redraw*(F: Frame);
   BEGIN Display.ReplConst(Display.black, F.X, F.Y, F.W, F.H, Display.replace);
     IF F.DrawProc # NIL THEN
-      F.DrawProc;
-      IF F.FormDraw # NIL THEN F.FormDraw END
+      F.DrawProc(F);
+      IF F.FormDraw # NIL THEN F.FormDraw(F) END
     END
   END Redraw;
 
   PROCEDURE Point*(F: Frame; x0, y0: REAL);
     VAR x, y: INTEGER;
   BEGIN x := ROUND(x0) + F.x0; y := ROUND(y0) + F.y0;
-    IF (x >= 0) & (x < F.W) & (y >= 0) & (y < F.H) THEN Display.Dot(F.col, x, y, Display.paint) END
+    IF (x >= 0) & (x < F.W) & (y >= 0) & (y < F.H) THEN Display.Dot(F.col, F.X + x, F.Y + y, Display.paint) END
   END Point;
 
   PROCEDURE Handler(F: Display.Frame; VAR M: Display.FrameMsg);
-    VAR F0!: Display.Frame;
+    VAR F0!: Display.Frame; keys: SET; X, Y, Z: INTEGER;
   BEGIN
     IF M IS Oberon.InputMsg THEN
       IF M(Oberon.InputMsg).id = Oberon.track THEN
         Oberon.DrawMouseArrow(M(Oberon.InputMsg).X, M(Oberon.InputMsg).Y);
-        IF M(Oberon.InputMsg).keys # {} THEN F(Frame).PressedProc END
+        keys := M(Oberon.InputMsg).keys;
+        IF keys # {} THEN REPEAT Input.Mouse(keys, X, Y, Z) UNTIL keys = {};
+        F(Frame).PressedProc(F(Frame)) END
       END
     ELSIF M IS MenuViewers.ModifyMsg THEN
       F.Y := M(MenuViewers.ModifyMsg).Y; F.H := M(MenuViewers.ModifyMsg).H; Redraw(F(Frame))
@@ -77,15 +80,15 @@ MODULE JDraw; (*Raw drawing primitives*)
     V := MenuViewers.New(TextFrames.NewMenu(t, Menu), F, TextFrames.menuH, X, Y)
   END Start;
 
-  PROCEDURE SetSetupProc*(F: Frame; p: PROCEDURE);
+  PROCEDURE SetSetupProc*(F: Frame; p: Callback);
   BEGIN F.SetupProc := p
   END SetSetupProc;
 
-  PROCEDURE SetDrawProc*(F: Frame; p: PROCEDURE);
+  PROCEDURE SetDrawProc*(F: Frame; p: Callback);
   BEGIN F.DrawProc := p
   END SetDrawProc;
 
-  PROCEDURE SetPressedProc*(F: Frame; p: PROCEDURE);
+  PROCEDURE SetPressedProc*(F: Frame; p: Callback);
   BEGIN F.PressedProc := p
   END SetPressedProc;
 

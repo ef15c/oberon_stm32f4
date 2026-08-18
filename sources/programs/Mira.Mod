@@ -16,20 +16,20 @@ CONST
  saddleBrown = 64H;
  darkOrange  = 0E8H;
 
-VAR F: D.Frame;
+VAR
  a: REAL;  k: INTEGER;
  x1, x2, x3, x4, x5, x6, x7: REAL;
  y1, y2, y3, y4, y5, y6, y7: REAL;
  p1, p2, p3, p4, p5, p6, p7: INTEGER;
 
-PROCEDURE Setup;
+PROCEDURE Setup(F: D.Frame);
 BEGIN
  D.SetSize(F, 450,450);
  D.SetBackground(F, 0);
  D.NoLoop(F);
 END Setup;
 
-PROCEDURE Orbit (x, y: REAL; p: INTEGER);
+PROCEDURE Orbit (F: D.Frame; x, y: REAL; p: INTEGER);
  VAR c, u, w, z: REAL;
   k, kMax: INTEGER;
 BEGIN
@@ -46,35 +46,35 @@ BEGIN
  END
 END Orbit;
 
-PROCEDURE Restore;
+PROCEDURE Restore(F: D.Frame);
  VAR x, y: REAL;
   p: INTEGER;
 BEGIN
  D.Translate(F, 210.0, 220.0);
  D.Stroke(F, lightBlue);
  x := x1;  y := y1;  p := p1;
- Orbit(x, y, p);
+ Orbit(F, x, y, p);
  D.Stroke(F, darkBlue);
  x := x2;  y := y2;  p := p2;
- Orbit(x, y, p);
+ Orbit(F, x, y, p);
  D.Stroke(F, lightGreen);
  x := x3;  y := y3;  p := p3;
- Orbit(x, y, p);
+ Orbit(F, x, y, p);
  D.Stroke(F, saddleBrown);
  x := x4; y := y4;  p := p4;
- Orbit(x, y, p);
+ Orbit(F, x, y, p);
  D.Stroke(F, darkOrange);
  x := x5;  y := y5;  p := p5;
- Orbit(x, y, p);
+ Orbit(F, x, y, p);
  D.Stroke(F, yellow);
  x := x6;  y := y6;  p := p6;
- Orbit(x, y, p);
+ Orbit(F, x, y, p);
  D.Stroke(F, white);
  x := x7;  y := y7;  p := p7;
- Orbit(x, y, p);
+ Orbit(F, x, y, p)
 END Restore;
 
-PROCEDURE MousePressed;
+PROCEDURE MousePressed(F: D.Frame);
  VAR mod: INTEGER;
 BEGIN INC(k);
  mod := k MOD 3;
@@ -107,10 +107,11 @@ BEGIN INC(k);
   x7 :=   0.0;  y7 := 0.0;  p7 := 0;
  END;
  D.SetBackground(F, black);
- D.Redraw(F);
+ D.Redraw(F)
 END MousePressed;
 
 PROCEDURE Draw*;
+  VAR F!: D.Frame;
 BEGIN
   a  :=   0.3;  k  := 2;
   x1 :=   7.0;  y1 := 0.0;  p1 := 2;
@@ -120,14 +121,13 @@ BEGIN
   x5 := -21.0;  y5 := 0.0;  p5 := 0;
   x6 :=   0.0;  y6 := 0.0;  p6 := 0;
   x7 :=   0.0;  y7 := 0.0;  p7 := 0;
-  D.Start(F, "Mira");
-END Draw;
-
-BEGIN
   F := D.New();
   D.SetSetupProc(F, Setup);
   D.SetDrawProc(F, Restore);
   D.SetPressedProc(F, MousePressed);
+  D.Start(F, "Mira")
+END Draw;
+
 END Mira.
 
 Net.SendFiles CS JDraw.Mod Mira.Mod~
