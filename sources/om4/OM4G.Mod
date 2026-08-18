@@ -983,11 +983,11 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       IF y.mode = FPReg THEN ASSERT((x.a) MOD A.C2 = 0);
         IF x.a >= A.C10 THEN S.Mark("RegI too far")
         END;
-        A.Put0(mcode, A.VSTRT2 + 1*A.C23 + y.r MOD A.C1*A.C22 + x.r*A.C16 + y.r DIV A.C1*A.C12 + x.a DIV A.C2);
-        DEC(SH)
-      ELSIF isLongint(x.type) THEN A.encDMemImm32(mcode, A.STRD, y.r, y.r+1, x.r, RH, x.a); DEC(RH)
-      ELSE A.encMemImm32(mcode, op, y.r, x.r, RH, x.a); DEC(RH)
-      END
+        A.Put0(mcode, A.VSTRT2 + 1*A.C23 + y.r MOD A.C1*A.C22 + x.r*A.C16 + y.r DIV A.C1*A.C12 + x.a DIV A.C2)
+      ELSIF isLongint(x.type) THEN A.encDMemImm32(mcode, A.STRD, y.r, y.r+1, x.r, RH, x.a)
+      ELSE A.encMemImm32(mcode, op, y.r, x.r, RH, x.a)
+      END;
+      DEC(RH)
     ELSE S.Mark("bad mode in Store")
     END;
     IF y.mode = FPReg THEN DEC(SH)
