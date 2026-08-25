@@ -339,7 +339,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         IF sym = S.comma THEN S.Get(sym)
         ELSIF sym # S.rbrace THEN S.Mark("missing comma")
         END ;
-        element(y); G.SetOp(S.plus, x, y)
+        IF sym # S.rbrace THEN element(y); G.SetOp(S.plus, x, y) ELSE S.Mark("expression expected") END
       END
     END
   END set; 
@@ -1115,7 +1115,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  17.03.25");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 Compiler  18.08.26");
   Texts.WriteLn(W);
   NEW(dummy); dummy.class := B.Var; dummy.type := B.intType; dummy.val := 0;
   expression := expression0; Type := Type0; FormalType := FormalType0

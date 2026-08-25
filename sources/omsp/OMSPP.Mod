@@ -331,7 +331,7 @@ MODULE OMSPP; (*N. Wirth 1.7.97 / 8.3.2020,
         IF sym = S.comma THEN S.Get(sym)
         ELSIF sym # S.rbrace THEN S.Mark("missing comma")
         END ;
-        element(y); G.SetOp(S.plus, x, y)
+        IF sym # S.rbrace THEN element(y); G.SetOp(S.plus, x, y) ELSE S.Mark("expression expected") END
       END
     END
   END set; 
