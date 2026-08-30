@@ -37,9 +37,15 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       end, ofsptos (*offset with previous top of stack*): INTEGER
     END;
 
-    FrameOffset = RECORD
+    FrameOffset = POINTER TO FrameOffsetDesc;
+    FrameOffsetDesc = RECORD
       NofSegs: INTEGER;
       Segs: ARRAY maxFOS OF FrameOffsetSegment
+    END;
+
+    Strings = POINTER TO StringsDesc;
+    StringsDesc = RECORD
+      a: ARRAY maxStrx OF CHAR
     END;
 
   VAR varsize, typesize: INTEGER;   (*variable index, type index*)
@@ -54,7 +60,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     
     relmap: ARRAY 6 OF INTEGER;    (*condition codes for relations*)
     data: ARRAY maxTD OF INTEGER;  (*type descriptors*)
-    str: ARRAY maxStrx OF CHAR;
+    str: Strings;
     mcode: A.ModuleCode;
     frmOfsSegs: FrameOffset;
 
@@ -343,8 +349,8 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     VAR i, len: INTEGER;
   BEGIN len := S.slen; x.mode := B.Const; x.type := B.strType; x.a := strx; x.r := 0; x.b := len; i := 0; x.dip := FALSE;
     IF strx + len + 4 < maxStrx THEN
-      WHILE len > 0 DO str[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END ;
-      WHILE strx MOD 4 # 0 DO str[strx] := 0X; INC(strx) END
+      WHILE len > 0 DO str.a[strx] := S.str[i]; INC(strx); INC(i); DEC(len) END ;
+      WHILE strx MOD 4 # 0 DO str.a[strx] := 0X; INC(strx) END
     ELSE S.Mark("too many strings")
     END
   END MakeStringItem;
@@ -941,7 +947,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   (* Code generation of Assignments *)
 
   PROCEDURE StrToChar*(VAR x: Item);
-  BEGIN x.type := B.charType; DEC(strx, 4); x.a := ORD(str[x.a])
+  BEGIN x.type := B.charType; DEC(strx, 4); x.a := ORD(str.a[x.a])
   END StrToChar;
 
   PROCEDURE Store*(VAR x, y: Item); (* x := y , frame = 0*)
@@ -1641,7 +1647,7 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     i := 0;
     WHILE i < tdx DO Files.WriteInt(R, data[i]); INC(i) END ; (*type descriptors*)
     Files.WriteInt(R, strx);
-    FOR i := 0 TO strx-1 DO Files.Write(R, str[i]) END ;  (*strings*)
+    FOR i := 0 TO strx-1 DO Files.Write(R, str.a[i]) END ;  (*strings*)
     Files.WriteInt(R, varsize);
     Files.WriteInt(R, mcode.pc);  (*code len*)
     FOR i := 0 TO mcode.pc-1 DO Files.WriteByte(R, mcode.code[i]) END ;  (*program*)
@@ -1691,9 +1697,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
     Files.Register(F)
   END Close;
 
-BEGIN NEW(mcode);
+BEGIN NEW(mcode); NEW(frmOfsSegs); NEW(str);
   relmap[0] := A.EQ; relmap[1] := A.NE; relmap[2] := A.LT; 
   relmap[3] := A.LE; relmap[4] := A.GT; relmap[5] := A.GE
 END OM4G.
 
-OM4Tool.DecSym OM4G2.sm4
+OM4Tool.DecSym OM4G.sm4
+OM4Tool.DecObj OM4G.m4c
+data 14724
+data  6724
+data   728
