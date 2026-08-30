@@ -31,8 +31,9 @@ Commands for generation of the compiler
 OM4P.Compile FLASH.Mod/s OM4S.Mod/s OM4B.Mod/s OM4A.Mod/s OM4G.Mod/s OM4P.Mod/s
   OM4X.Mod/s OM4L.Mod/s OM4D.Mod/s OM4Tool.Mod/s StackTrace.Mod/s ~
 ** optional **
-OM4L.LinkEF Modules System Edit OnStartup Image OM4L OM4P ~
+OM4L.LinkEF Modules System Edit OnStartup Image OM4P ~
 OM4L.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
+OM4Tool.DecBin OM4P.efb ~
 
 Commands for generation of graphic system
 OM4P.Compile Graphics.Mod/s GraphicFrames.Mod/s Draw.Mod/s Rectangles.Mod/s Curves.Mod/s

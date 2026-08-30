@@ -14,6 +14,10 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     INITF = BSP.INITF;
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
+    StorageInfo = POINTER TO StorageInfoDesc;
+    StorageInfoDesc = RECORD
+      map: ARRAY mapsize DIV 32 OF SET
+    END;
   
     ExceptionFrame* = POINTER TO ExceptionFrameDesc;
     ExceptionFrameDesc* = RECORD
@@ -28,7 +32,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     tick: INTEGER;
 
     list0*, list1*, list2*, list3*: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
-    sectorMap: ARRAY mapsize DIV 32 OF SET;
+    sector: StorageInfo;
 
 (* ---------- New: heap allocation ----------*)
 
@@ -182,22 +186,22 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE InitSecMap;
     CONST NofReservedSectors = (BootReservedSize + SectorLength - 1) DIV SectorLength + 2;
     VAR i, r: INTEGER;
-  BEGIN NofSectors := 0; i := 0;
-    WHILE i < NofReservedSectors DIV 32 DO sectorMap[i] := {0 .. 31}; INC(i) END;
-    r := NofReservedSectors MOD 32; IF r > 0 THEN sectorMap[i] := {0 .. r}; INC(i) END;
-    WHILE i < mapsize DIV 32 DO sectorMap[i] := {}; INC(i) END
+  BEGIN NEW(sector); NofSectors := 0; i := 0;
+    WHILE i < NofReservedSectors DIV 32 DO sector.map[i] := {0 .. 31}; INC(i) END;
+    r := NofReservedSectors MOD 32; IF r > 0 THEN sector.map[i] := {0 .. r}; INC(i) END;
+    WHILE i < mapsize DIV 32 DO sector.map[i] := {}; INC(i) END
   END InitSecMap;
 
   PROCEDURE MarkSector*(sec29: INTEGER);
     VAR sec: INTEGER;
   BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
-    INCL(sectorMap[sec DIV 32], sec MOD 32); INC(NofSectors);
+    INCL(sector.map[sec DIV 32], sec MOD 32); INC(NofSectors);
   END MarkSector;
 
   PROCEDURE FreeSector*(sec29: INTEGER);
     VAR sec: INTEGER;
   BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
-    EXCL(sectorMap[sec DIV 32], sec MOD 32); DEC(NofSectors)
+    EXCL(sector.map[sec DIV 32], sec MOD 32); DEC(NofSectors)
   END FreeSector;
 
   PROCEDURE AllocSector*(hint29: INTEGER; VAR sec29: INTEGER);
@@ -206,9 +210,9 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     hint := hint29 DIV 29; ASSERT(hint29 = hint*29); s := hint;
     REPEAT INC(s);
       IF s >= mapsize THEN s := 1 END ;
-    UNTIL ~(s MOD 32 IN sectorMap[s DIV 32]) OR (s = hint);
-    ASSERT (~(s MOD 32 IN sectorMap[s DIV 32]));
-    INCL(sectorMap[s DIV 32], s MOD 32); INC(NofSectors); sec29 := s * 29
+    UNTIL ~(s MOD 32 IN sector.map[s DIV 32]) OR (s = hint);
+    ASSERT (~(s MOD 32 IN sector.map[s DIV 32]));
+    INCL(sector.map[s DIV 32], s MOD 32); INC(NofSectors); sec29 := s * 29
   END AllocSector;
 
   PROCEDURE GetSector*(src29: INTEGER; VAR dst: Sector);
