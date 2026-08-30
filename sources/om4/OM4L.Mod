@@ -8,7 +8,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
     ModAdr = 32;
  
     TYPE ModulesList = POINTER TO ModulesListDesc;
-      ModulesListDesc = RECORD m: Modules.Module; body: INTEGER; next: ModulesList END;
+      ModulesListDesc = RECORD m: Modules.Module; body, vsize: INTEGER; next: ModulesList END;
       Segment = RECORD org, size, start, cur: INTEGER END;
 
   VAR root: Modules.Module;
@@ -157,7 +157,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
           mod.data := var.cur
         ELSE mod.data := mod.const
         END;
-        Files.ReadInt(R, n); (*variables*)
+        Files.ReadInt(R, n); (*variables*); tail.vsize := n;
         IF var.start = 0 THEN allocate(var, n) (*variable space*)
         ELSE WHILE n > 0 DO put(var, 0); DEC(n, 4) END
         END;
@@ -372,7 +372,8 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
         tail := modules; (*generate initilization sequence*)
         WHILE tail # NIL DO (*call each module body in order*)
           Texts.WriteString(W, "  "); Texts.WriteString(W, tail.m.name); Texts.Write(W, 09X);
-          Texts.WriteHex(W, tail.body + flash.org); Texts.WriteLn(W);
+          Texts.WriteHex(W, tail.body + flash.org); Texts.WriteInt(W, tail.vsize, 8);
+          Texts.WriteLn(W);
           put(flash, thumbSwap(A.BL + A.formatEvenImm25(tail.body - 4 - flash.cur)));
           tail := tail.next
         END;
