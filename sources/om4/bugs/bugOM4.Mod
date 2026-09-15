@@ -1,35 +1,89 @@
 MODULE bugOM4;
-  IMPORT Q := Queue;
 
-  TYPE
-    DebugMsg = POINTER TO DebugMsgDesc;
-    DebugMsgDesc = RECORD(Q.MsgDesc) END;
+  PROCEDURE Int*(): INTEGER;
+    VAR i: LONGINT;
+    RETURN 0 + i
+  END Int;
 
-  VAR DebugMP: Q.Msg;
+  PROCEDURE Longint*(): LONGINT;
+    VAR i: INTEGER;
+    RETURN 0L + i
+  END Longint;
 
-  PROCEDURE p*;
-    VAR msg!: Q.Msg; dbm!: DebugMsg;
-      i: INTEGER;
-  BEGIN
-    FOR i := 1 TO 10 DO
-      msg := Q.Get(DebugMP);
-      IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^);
-      END
-    END
-  END p;
+  PROCEDURE Integer*(): INTEGER;
+    VAR i: INTEGER;
+    RETURN 0 + i
+  END Integer;
 
-    PROCEDURE newDebugMsg(): Q.Msg;
-      VAR item!: DebugMsg;
-    BEGIN NEW(item)
+  PROCEDURE Halfword*(): HALFWORD;
+    VAR i: INTEGER;
+    RETURN 0M + i
+  END Halfword;
 
-      RETURN item
-    END newDebugMsg;
+  PROCEDURE Byte*(): BYTE;
+    VAR i: INTEGER;
+    RETURN 0S + i
+  END Byte;
 
-BEGIN DebugMP := Q.CreatePool(1, newDebugMsg)
 END bugOM4.
 
 OM4P.Compile bugOM4.Mod/s~
 System.Free bugOM4~
-bugOM4.p
+bugOM4.Check
 
 OM4Tool.DecObj bugOM4.m4c
+decode bugOM4.m4c
+bugOM4 28353EB8   2    124
+imports:
+type descriptors
+
+strings
+
+data     0
+code
+commands:
+entries
+ 00000052 00000000 0000000E 00000020 0000002E 00000040
+pointer refs
+
+fixP =  00000000
+fixV =  00000000
+fixC =  00000000
+fixT =  00000000
+entry =  00000052
+ 00000000	     B082	SUB SP SP #8
+ 00000002	     B500	PUSH LR
+ 00000004	     9801	LDR R0 [ SP + 4 ]
+ 00000006	 F85DEB04	LDR LR [ SP ] + 4
+ 0000000A	     B002	ADD SP SP #8
+ 0000000C	     4770	BX LR
+ 0000000E	     B081	SUB SP SP #4
+ 00000010	     B500	PUSH LR
+ 00000012	     9801	LDR R0 [ SP + 4 ]
+ 00000014	 F34071C0	SBFX R1 R0 #31 #1
+ 00000018	 F85DEB04	LDR LR [ SP ] + 4
+ 0000001C	     B001	ADD SP SP #4
+ 0000001E	     4770	BX LR
+ 00000020	     B081	SUB SP SP #4
+ 00000022	     B500	PUSH LR
+ 00000024	     9801	LDR R0 [ SP + 4 ]
+ 00000026	 F85DEB04	LDR LR [ SP ] + 4
+ 0000002A	     B001	ADD SP SP #4
+ 0000002C	     4770	BX LR
+ 0000002E	     B081	SUB SP SP #4
+ 00000030	     B500	PUSH LR
+ 00000032	     9801	LDR R0 [ SP + 4 ]
+ 00000034	 F36F401F	BFC R0 #16 #16
+ 00000038	 F85DEB04	LDR LR [ SP ] + 4
+ 0000003C	     B001	ADD SP SP #4
+ 0000003E	     4770	BX LR
+ 00000040	     B081	SUB SP SP #4
+ 00000042	     B500	PUSH LR
+ 00000044	     9801	LDR R0 [ SP + 4 ]
+ 00000046	 F36F201F	BFC R0 #8 #24
+ 0000004A	 F85DEB04	LDR LR [ SP ] + 4
+ 0000004E	     B001	ADD SP SP #4
+ 00000050	     4770	BX LR
+ 00000052	     B500	PUSH LR
+ 00000054	 F85DEB04	LDR LR [ SP ] + 4
+ 00000058	     4770	BX LR

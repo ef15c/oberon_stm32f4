@@ -364,6 +364,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       END
     ELSIF sym = S.int THEN G.MakeConstItem(x, B.intType, S.ival); S.Get(sym)
+    ELSIF sym = S.byte THEN G.MakeConstItem(x, B.byteType, S.ival); S.Get(sym)
+    ELSIF sym = S.half THEN G.MakeConstItem(x, B.halfwordType, S.ival); S.Get(sym)
     ELSIF sym = S.long THEN G.MakeConstItem(x, B.longintType, S.ival); S.Get(sym)
     ELSIF sym = S.real THEN G.MakeRealItem(x, S.rval); S.Get(sym)
     ELSIF sym = S.char THEN G.MakeConstItem(x, B.charType, S.ival); S.Get(sym)
@@ -1026,12 +1028,21 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     END
   END Import;
 
+  PROCEDURE logFailure;
+    VAR oldCol: INTEGER;
+  BEGIN Texts.Append(Oberon.Log, W.buf); Texts.WriteLn(W);
+    oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END logFailure;
+
   PROCEDURE Module;
     VAR key, oldCol: INTEGER;
-  BEGIN Texts.WriteString(W, "  compiling "); S.Get(sym);
+  BEGIN Texts.WriteString(W, "  compiling "); Texts.Append(Oberon.Log, W.buf); S.Get(sym);
     IF sym = S.module THEN
       S.Get(sym); vc := 0; cc := 0;
-      IF sym = S.times THEN version := 0; Texts.Write(W, "*"); S.Get(sym) ELSE version := 1 END;
+      IF sym = S.times THEN version := 0; Texts.Write(W, "*"); Texts.Append(Oberon.Log, W.buf);
+        S.Get(sym) ELSE version := 1
+      END;
       initmode := FALSE;
       B.Init; B.OpenScope;
       IF sym = S.ident THEN
@@ -1063,12 +1074,12 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       END ;
       IF S.errcnt = 0 THEN
         Texts.WriteInt(W, G.Here(), 6); Texts.WriteInt(W, vc, 8); Texts.WriteInt(W, cc, 8);; Texts.WriteHex(W, key);
+        Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
         G.Close(modid, key, exno)
-      ELSE Texts.WriteLn(W); oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol 
+      ELSE logFailure
       END ;
-      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
       B.CloseScope; pbsList := NIL
-    ELSE S.Mark("must start with MODULE")
+    ELSE S.Mark("must start with MODULE"); logFailure
     END
   END Module;
 
@@ -1084,7 +1095,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR beg, end, time: INTEGER;
       T!: Texts.Text;
       S1!: Texts.Scanner;
-  BEGIN Texts.OpenScanner(S1, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S1);
+  BEGIN Texts.Append(Oberon.Log, W.buf);
+    Texts.OpenScanner(S1, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S1);
     IF S1.class = Texts.Char THEN
       IF S1.c = "@" THEN
         Option(S1); Oberon.GetSelection(T, beg, end, time);
@@ -1097,7 +1109,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
             Texts.WriteString(W, S1.s); NEW(T); Texts.Open(T, S1.s);
             IF T.len > 0 THEN S.Init(T, 0); Module
             ELSE Texts.WriteString(W, " not found");
-              Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+              logFailure; Texts.Append(Oberon.Log, W.buf)
             END
           END
         END

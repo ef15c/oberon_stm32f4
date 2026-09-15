@@ -19,10 +19,11 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     and* = 5; plus* = 6; minus* = 7; or* = 8; eql* = 9;
     neq* = 10; lss* = 11; leq* = 12; gtr* = 13; geq* = 14;
     in* = 15; is* = 16; arrow* = 17; period* = 18; emark* = 19;
-    char* = 20; int* = 21; long* = 22; real* = 23; false* = 24; true* = 25;
-    nil* = 26; string* = 27; not* = 28; lparen* = 29; lbrak* = 30;
-    lbrace* = 31; ident* = 32;
-    if* = 33; while* = 34; repeat* = 35; case* = 36; for* = 37;
+    char* = 20; int* = 21; long* = 22; half* = 23; byte* = 24;
+    real* = 25; false* = 26; true* = 27;
+    nil* = 28; string* = 29; not* = 30; lparen* = 31; lbrak* = 32;
+    lbrace* = 33; ident* = 34;
+    if* = 35; while* = 36; repeat* = 37; case* = 38; for* = 39;
     comma* = 40; colon* = 41; becomes* = 42; upto* = 43; rparen* = 44;
     rbrak* = 45; rbrace* = 46; then* = 47; of* = 48; do* = 49;
     to* = 50; by* = 51; semicolon* = 52; end* = 53; bar* = 54;
@@ -39,7 +40,7 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     errcnt*: INTEGER;
 
     ch: CHAR;  (*last character read*)
-    errpos: INTEGER;
+    errpos, pos: INTEGER;
     R: Texts.Reader;
     W: Texts.Writer;
     k: INTEGER;
@@ -52,7 +53,8 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   END CopyId;
 
   PROCEDURE Pos*(): INTEGER;
-  BEGIN RETURN Texts.Pos(R) - 1
+
+    RETURN pos
   END Pos;
 
   PROCEDURE Mark*(msg: ARRAY OF CHAR);
@@ -205,7 +207,11 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
         END ;
         INC(i)
       UNTIL i = n;
-      IF ch = "L" THEN Texts.Read(R, ch); sym := long ELSE sym := int END; ival := k
+      IF ch = "L" THEN Texts.Read(R, ch); sym := long
+      ELSIF ch = "S" THEN Texts.Read(R, ch); sym := byte
+      ELSIF ch = "M" THEN Texts.Read(R, ch); sym := half
+      ELSE sym := int END;
+      ival := k
     END
   END Number;
 
@@ -226,7 +232,7 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   PROCEDURE Get*(VAR sym: INTEGER);
   BEGIN
     REPEAT
-      WHILE ~R.eot & (ch <= " ") DO Texts.Read(R, ch) END;
+      WHILE ~R.eot & (ch <= " ") DO Texts.Read(R, ch) END; pos := Texts.Pos(R) - 1;
       IF R.eot THEN sym := eot
       ELSIF ch < "A" THEN
         IF ch < "0" THEN
@@ -279,8 +285,8 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
     UNTIL sym # null
   END Get;
 
-  PROCEDURE Init*(T: Texts.Text; pos: INTEGER);
-  BEGIN errpos := pos; errcnt := 0; Texts.OpenReader(R, T, pos); Texts.Read(R, ch)
+  PROCEDURE Init*(T: Texts.Text; ipos: INTEGER);
+  BEGIN errpos := ipos - 1; pos := ipos; errcnt := 0; Texts.OpenReader(R, T, pos); Texts.Read(R, ch)
   END Init;
 
   PROCEDURE EnterKW(sym: INTEGER; name: ARRAY OF CHAR);

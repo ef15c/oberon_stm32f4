@@ -1267,7 +1267,13 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
       END
     END;
     IF form # B.NoTyp THEN 
-      IF x.type.form = B.Real THEN loadFP(x); ELSE load(x) END
+      IF x.type.form = B.Real THEN loadFP(x)
+      ELSE
+        IF x.mode # Reg THEN load(x) (*the correct size is guaranted when loading x*)
+        ELSIF x.type.size < WordSize THEN (*upper bits must be cleared*) 
+          A.encBFC(mcode, 0(*R0*), x.type.size*8, 31)
+        END
+      END
     END;
     mcode.allowSPUpdate := TRUE; (*to allow update of SP*)
     (*POP T3 LR *) A.encMemImm8PUW(mcode, A.LDRIT4, LR, SP, FALSE, TRUE, TRUE, 4); OfsPTOS(-1, -1, TRUE);
