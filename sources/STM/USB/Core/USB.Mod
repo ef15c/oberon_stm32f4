@@ -1,5 +1,7 @@
 MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
-  IMPORT Kernel, Log := USBLog, Def := USBDef, UC := HALUC, HDef := USBHDef, H := USBHal, USBH, HID := USBHHID;
+  IMPORT Kernel, Log := USBLog, Def := USBDef, UC := HALUC, H := USBHal,
+    HDef := USBHDef, USBH, HID := USBHHID,
+    DDef := USBDDef, USBD;
 
   CONST MODE_STABILIZATION_TIME = 500;
 
@@ -19,7 +21,16 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
         END
       ELSE Log.Error("Host mode initialization failed"); Log.ErrorLn
       END
-    ELSE Log.Error("Device mode not implemented"); Log.ErrorLn
+    ELSE Log.Debug("Initialize Peripheral controller"); Log.DebugLn;
+      ctrl := USBD.Init(usb, id);
+      IF ctrl # NIL THEN
+        CASE ctrl OF
+          DDef.Handle: ctrl.User(id, Def.USER_REGISTER_DETAILS); (*register device classes and interfaces*)
+            USBD.Start(ctrl); ctrl.cState := UC.STATE_READY
+          | Def.Handle: ASSERT(FALSE)
+        END
+      ELSE Log.Error("Peripheral mode initialization failed"); Log.ErrorLn
+      END
     END
 
     RETURN ctrl
@@ -78,6 +89,14 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
 
     RETURN H.IsHost(Def.usbCores[id](UC.Handle))
   END IsHost;
+
+  PROCEDURE RegisterDescriptors*(id: BYTE; desc: Def.DescriptorGetters);
+  BEGIN USBD.RegisterDescriptors(Def.usbCores[id], desc)
+  END RegisterDescriptors;
+
+  PROCEDURE RegisterClass*(id: BYTE; class: Def.Class);
+  BEGIN USBD.RegisterClass(Def.usbCores[id], class)
+  END RegisterClass;
 
 END USB.
 

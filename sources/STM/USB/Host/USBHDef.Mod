@@ -1,5 +1,5 @@
 MODULE USBHDef;
-  (** ported to Oberon from:
+  (** USB host definitions, ported to Oberon from:
   ******************************************************************************
   * @author  MCD Application Team
   * @brief   USB host library common definitions
@@ -76,59 +76,6 @@ MODULE USBHDef;
     MAX_EP_PACKET_SIZE* = 400H;
     MAX_DATA_BUFFER* = 400H;
 
-    LEN_DESC_HDR* =  2;
-    LEN_DEV_DESC* = 12H;
-    LEN_CFG_DESC* = 9;
-    LEN_IF_DESC* = 9;
-    LEN_EP_DESC* = 7;
-    LEN_OTG_DESC* = 3;
-    LEN_SETUP_PKT* = 8;
-
-  (* Table 9-4. Standard Request Codes  *)
-  (* bRequest , Value *)
-    REQ_GET_STATUS* = 0;
-    REQ_CLEAR_FEATURE* = 1;
-    REQ_SET_FEATURE* = 3;
-    REQ_SET_ADDRESS* = 5;
-    REQ_GET_DESCRIPTOR* = 6;
-    REQ_SET_DESCRIPTOR* = 7;
-    REQ_GET_CONFIGURATION* = 8;
-    REQ_SET_CONFIGURATION* = 9;
-    REQ_GET_INTERFACE* = 0AH;
-    REQ_SET_INTERFACE* = 0BH;
-    REQ_SYNCH_FRAME* = 0CH;
-
-  (* Table 9-5. Descriptor Types of USB Specifications *)
-    DESC_TYPE_DEVICE* = 1;
-    DESC_TYPE_CONFIGURATION* = 2;
-    DESC_TYPE_STRING* = 3;
-    DESC_TYPE_INTERFACE* = 4;
-    DESC_TYPE_ENDPOINT* = 5;
-    DESC_TYPE_DEVICE_QUALIFIER* = 6;
-    DESC_TYPE_OTHER_SPEED_CONFIGURATION* = 7;
-    DESC_TYPE_INTERFACE_POWER* = 8;
-    DESC_TYPE_HID* = 21H;
-    DESC_TYPE_HID_REPORT* = 22H;
-
-    DEVICE_DESC_SIZE* = 12H;
-    CONFIGURATION_DESC_SIZE* = 9;
-    HID_DESC_SIZE* = 9;
-    INTERFACE_DESC_SIZE* = 9;
-    ENDPOINT_DESC_SIZE* = 7;
-
-  (* Descriptor Type and Descriptor Index  *)
-  (* Use the following values when calling the function USBH_GetDescriptor  *)
-    DESC_DEVICE* = TOSET(LSL(DESC_TYPE_DEVICE,  8));
-    DESC_CONFIGURATION* = TOSET(LSL(DESC_TYPE_CONFIGURATION,  8));
-    DESC_STRING* = TOSET(LSL(DESC_TYPE_STRING,  8));
-    DESC_INTERFACE* = TOSET(LSL(DESC_TYPE_INTERFACE,  8));
-    DESC_ENDPOINT* = TOSET(LSL(DESC_TYPE_INTERFACE,  8));
-    DESC_DEVICE_QUALIFIER* = TOSET(LSL(DESC_TYPE_DEVICE_QUALIFIER,  8));
-    DESC_OTHER_SPEED_CONFIGURATION* = TOSET(LSL(DESC_TYPE_OTHER_SPEED_CONFIGURATION,  8));
-    DESC_INTERFACE_POWER* = TOSET(LSL(DESC_TYPE_INTERFACE_POWER,  8));
-    DESC_HID_REPORT* = TOSET(LSL(DESC_TYPE_HID_REPORT,  8));
-    DESC_HID* = TOSET(LSL(DESC_TYPE_HID,  8));
-
     ADDRESS_DEFAULT* = 0;
     ADDRESS_ASSIGNED* = 1;
     MPS_DEFAULT* = 40H;
@@ -137,18 +84,11 @@ MODULE USBHDef;
     SELF_POWERED* = 6;
 
   TYPE
-    DataBuffer* = ARRAY Conf.MAX_DATA_BUFFER OF BYTE;
-
-    Setup* = RECORD(Def.Buffer)
-      bmRequestType*: BYTESET; bRequest*: BYTE;
-      wValue*, wIndex*, wLength*: HALFWORD
-    END;
-
     (* Control request structure *)
     Ctrl* = RECORD
       pipe_in*, pipe_out*, pipe_size*: BYTE;
       length*, timer*: INTEGER;
-      setup*: Setup;
+      setup*: Def.Setup;
       state*: BYTE;
       errorcount*: BYTE
     END;
@@ -202,15 +142,9 @@ MODULE USBHDef;
       Itf_Desc*: ARRAY Conf.MAX_NUM_INTERFACES OF InterfaceDescriptor
     END;
 
-    RawDescriptorData* = RECORD(Def.Buffer) buf*: ARRAY Conf.MAX_SIZE_CONFIGURATION OF BYTE END;
-
-    RawDescriptor* = RECORD(RawDescriptorData)
-      length*, index, headeridx: HALFWORD
-    END;
-
     (* Attached device structure *)
     Device* = RECORD
-      CfgRaw*, tmprd*: RawDescriptor;
+      CfgRaw*, tmprd*: Def.RawDescriptorDesc;
       address*, speed*, EnumCnt*, RstCnt*: BYTE;
       is_connected*, is_disconnected*, is_ReEnumerated*, PortEnabled*: BOOLEAN;
       current_interface*: BYTE;
@@ -220,9 +154,6 @@ MODULE USBHDef;
 
     Handle* = POINTER TO HandleDesc;
 
-    ClassHandle* = POINTER TO ClassHandleDesc;
-    ClassHandleDesc* = RECORD END;
-
     (* USB Host Class structure *)
     Class* = POINTER TO ClassDesc;
     ClassDesc* = RECORD(Def.ClassDesc)
@@ -230,7 +161,7 @@ MODULE USBHDef;
       ClassCode*: BYTE;
       Init*, DeInit*, Requests*, BgndProcess*: PROCEDURE(host: Def.Handle): BYTE;
       SOFProcess*: Def.Callback;
-      clsh*: ClassHandle
+      clsh*: Def.ClassHandle
     END;
 
     (* USB Host handle structure *)
@@ -250,67 +181,16 @@ MODULE USBHDef;
   uint32_t              NakTimeout;
 #endif /* defined (USBH_IN_NAK_PROCESS) && (USBH_IN_NAK_PROCESS == 1U) */*)
       Timeout*: INTEGER;
-      Stop*: PROCEDURE^5(phost: Handle);
+      Stop*: PROCEDURE^5(phost: Def.Handle);
       OpenPipe*: PROCEDURE(phost: Handle; pipe_num, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD);
       SetToggle*: PROCEDURE(phost: Handle; pipe: BYTE; toggle: BOOLEAN);
       ClosePipe*: PROCEDURE(phost: Handle; pipe_num: BYTE);
       SubmitURB*: PROCEDURE(phost: Handle; pipe: BYTE; direction: BOOLEAN; ep_type, token: BYTE;
-        buff: Def.Buffer; length: HALFWORD; do_ping: BOOLEAN);
+        buff: Def.BufferDesc; do_ping: BOOLEAN);
       GetURBState*:  PROCEDURE(phost: Handle; pipe: BYTE): BYTE;
       GetLastXferSize*: PROCEDURE(phost: Handle; pipe: BYTE): INTEGER
     END;
 
-  PROCEDURE Reset*(VAR rd: RawDescriptor);
-  BEGIN rd.index := 0; rd.headeridx := 0
-  END Reset;
-
-  PROCEDURE NextHeaderIdx(rd: RawDescriptor): HALFWORD;
-
-    RETURN rd.headeridx + rd.buf[rd.headeridx]
-  END NextHeaderIdx;
-
-  PROCEDURE HeaderType*(rd: RawDescriptor): BYTE;
-
-    RETURN rd.buf[rd.headeridx + 1]
-  END HeaderType;
-
-  PROCEDURE HeaderSize*(rd: RawDescriptor): BYTE;
-
-    RETURN rd.buf[rd.headeridx]
-  END HeaderSize;
-
-  PROCEDURE HasMoreHeaders*(rd: RawDescriptor): BOOLEAN;
-
-    RETURN (rd.index < Def.LE16(rd.buf, 2)) & (NextHeaderIdx(rd) < Def.LE16(rd.buf, 2))
-  END HasMoreHeaders;
-
-  PROCEDURE GoNextHeader*(VAR buf: RawDescriptor);
-  BEGIN buf.headeridx := NextHeaderIdx(buf); buf.index := buf.headeridx
-  END GoNextHeader;
-
-  PROCEDURE ReadByte*(VAR rd: RawDescriptor): BYTE;
-    VAR res: BYTE;
-  BEGIN
-    IF rd.index < NextHeaderIdx(rd) THEN res := rd.buf[rd.index]; INC(rd.index)
-    ELSE res := 0 END
-
-    RETURN res
-  END ReadByte;
-
-  PROCEDURE ReadHalfword*(VAR rd: RawDescriptor): HALFWORD;
-    VAR res: HALFWORD;
-  BEGIN
-    IF rd.index < NextHeaderIdx(rd) - 1 THEN res := Def.LE16(rd.buf, rd.index); INC(rd.index, 2)
-    ELSE res := 0 END
-
-    RETURN res
-  END ReadHalfword;
-
-  PROCEDURE GetIndex*(buf: RawDescriptor): HALFWORD;
-
-    RETURN buf.index
-  END GetIndex;
-
-END USBHDef.
+ END USBHDef.
 
 OM4Tool.DecSym USBHDef.sm4

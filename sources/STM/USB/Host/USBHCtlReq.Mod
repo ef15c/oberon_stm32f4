@@ -29,9 +29,9 @@ MODULE USBHCtlReq;
   * @param  phost: Host Handle
   * @retval USBH Status
   *)
-  PROCEDURE HandleControl(host: HDef.Handle; VAR buff: Def.Buffer): BYTE;
-    VAR status, URB_Status: BYTE; dummy: Def.Buffer;
-  BEGIN status := Def.BUSY; URB_Status := Def.IDLE; dummy.size := 0;
+  PROCEDURE HandleControl(host: HDef.Handle; VAR buff: Def.BufferDesc): BYTE;
+    VAR status, URB_Status: BYTE; dummy: Def.BufferDesc;
+  BEGIN status := Def.BUSY; URB_Status := Def.IDLE; dummy.size := 0; dummy.length := 0;
     IF host.Control.state = HDef.CTRL_SETUP THEN
       (* send a SETUP packet *)
       IoReq.CtlSendSetup(host, host.Control.setup, host.Control.pipe_out);
@@ -59,7 +59,7 @@ MODULE USBHCtlReq;
       host->NakTimer = host->Timer;
 #endif /* defined (USBH_IN_NAK_PROCESS) && (USBH_IN_NAK_PROCESS == 1U) */
 *)
-      IoReq.CtlReceiveData(host, buff, host.Control.length, host.Control.pipe_in);
+      buff.length := host.Control.length; IoReq.CtlReceiveData(host, buff, host.Control.pipe_in);
       host.Control.state := HDef.CTRL_DATA_IN_WAIT;
     ELSIF host.Control.state = HDef.CTRL_DATA_IN_WAIT THEN
       URB_Status := host.GetURBState(host, host.Control.pipe_in);
@@ -85,7 +85,7 @@ MODULE USBHCtlReq;
       ELSIF URB_Status = HDef.URB_ERROR THEN host.Control.state := HDef.CTRL_ERROR; (* Device error *)
       END
     ELSIF host.Control.state = HDef.CTRL_DATA_OUT THEN
-      IoReq.CtlSendData(host, buff, host.Control.length, host.Control.pipe_out, TRUE);
+      buff.length := host.Control.length; IoReq.CtlSendData(host, buff, host.Control.pipe_out, TRUE);
       host.Control.timer := host.Timer;
       host.Control.state := HDef.CTRL_DATA_OUT_WAIT;
     ELSIF host.Control.state = HDef.CTRL_DATA_OUT_WAIT THEN
@@ -99,7 +99,7 @@ MODULE USBHCtlReq;
         host.Control.state := HDef.CTRL_ERROR; status := Def.FAIL
       END
     ELSIF host.Control.state = HDef.CTRL_STATUS_IN THEN
-      IoReq.CtlReceiveData(host, dummy, 0, host.Control.pipe_in); (* Send 0 bytes out packet *)
+      IoReq.CtlReceiveData(host, dummy, host.Control.pipe_in); (* Send 0 bytes out packet *)
 (*
 #if defined (USBH_IN_NAK_PROCESS) && (USBH_IN_NAK_PROCESS == 1U)
       host->NakTimer = host->Timer;
@@ -128,7 +128,7 @@ MODULE USBHCtlReq;
       ELSIF URB_Status = HDef.URB_ERROR THEN host.Control.state := HDef.CTRL_ERROR
       ELSIF URB_Status = HDef.URB_STALL THEN status := HDef.NOT_SUPPORTED (* Control transfers completed, Exit the State Machine *)
       END
-    ELSIF host.Control.state = HDef.CTRL_STATUS_OUT THEN IoReq.CtlSendData(host, dummy, 0, host.Control.pipe_out, TRUE);
+    ELSIF host.Control.state = HDef.CTRL_STATUS_OUT THEN IoReq.CtlSendData(host, dummy, host.Control.pipe_out, TRUE);
       host.Control.timer := host.Timer; host.Control.state := HDef.CTRL_STATUS_OUT_WAIT
     ELSIF host.Control.state = HDef.CTRL_STATUS_OUT_WAIT THEN
       URB_Status := host.GetURBState(host, host.Control.pipe_out);
@@ -169,10 +169,9 @@ MODULE USBHCtlReq;
   * @param  phost: Host Handle
   * @param  req: Setup Request Structure
   * @param  buff: data buffer address to store the response
-  * @param  length: length of the response
   * @retval USBH Status
   *)
-  PROCEDURE CtlReq*(host: HDef.Handle; VAR buff: Def.Buffer): BYTE;
+  PROCEDURE CtlReq*(host: HDef.Handle; VAR buff: Def.BufferDesc): BYTE;
     VAR status: BYTE;
   BEGIN status := Def.BUSY;
     IF host.RequestState = HDef.CMD_SEND THEN
@@ -202,11 +201,11 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE ClrFeature*(host: HDef.Handle; ep_num: BYTE): BYTE;
-    VAR dummy: Def.Buffer;
-  BEGIN dummy.size := 0;
+    VAR dummy: Def.BufferDesc;
+  BEGIN dummy.size := 0; dummy.length := 0;
     IF host.RequestState = HDef.CMD_SEND THEN
       host.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_ENDPOINT + Def.REQ_TYPE_STANDARD;
-      host.Control.setup.bRequest := HDef.REQ_CLEAR_FEATURE;
+      host.Control.setup.bRequest := Def.REQ_CLEAR_FEATURE;
       host.Control.setup.wValue := FEATURE_SELECTOR_ENDPOINT;
       host.Control.setup.wIndex := ep_num;
       host.Control.setup.wLength := 0
@@ -221,16 +220,15 @@ MODULE USBHCtlReq;
   * @param  phost: Host Handle
   * @param  dev_desc: device_descriptor destination address
   * @param  buf: Buffer where the source descriptor is available
-  * @param  length: Length of the descriptor
   * @retval USBH status
   *)
-  PROCEDURE ParseDevDesc(host: HDef.Handle; VAR dev_desc: HDef.DevDescriptor; VAR buf: HDef.RawDescriptor): BYTE;
+  PROCEDURE ParseDevDesc(host: HDef.Handle; VAR dev_desc: HDef.DevDescriptor; VAR buf: Def.RawDescriptorDesc): BYTE;
     VAR status: BYTE;
-  BEGIN status := Def.OK; HDef.Reset(buf);
-    dev_desc.bLength := HDef.ReadByte(buf); dev_desc.bDescriptorType := HDef.ReadByte(buf);
-    dev_desc.bcdUSB := HDef.ReadHalfword(buf);
-    dev_desc.bDeviceClass := HDef.ReadByte(buf); dev_desc.bDeviceSubClass := HDef.ReadByte(buf);
-    dev_desc.bDeviceProtocol := HDef.ReadByte(buf); dev_desc.bMaxPacketSize := HDef.ReadByte(buf);
+  BEGIN status := Def.OK; Def.Reset(buf);
+    dev_desc.bLength := Def.ReadByte(buf); dev_desc.bDescriptorType := Def.ReadByte(buf);
+    dev_desc.bcdUSB := Def.ReadHalfword(buf);
+    dev_desc.bDeviceClass := Def.ReadByte(buf); dev_desc.bDeviceSubClass := Def.ReadByte(buf);
+    dev_desc.bDeviceProtocol := Def.ReadByte(buf); dev_desc.bMaxPacketSize := Def.ReadByte(buf);
     IF host.device.speed IN {Def.SPEED_HIGH, Def.SPEED_FULL} THEN
       (* Make sure that the max packet size is either 8, 16, 32, 64 or force it to minimum allowed value *)
       IF (dev_desc.bMaxPacketSize # 8) &
@@ -246,10 +244,10 @@ MODULE USBHCtlReq;
     IF (status = Def.OK) & (buf.length > 8) THEN
       (* For 1st time after device connection, Host may issue only 8 bytes for
           Device Descriptor Length  *)
-      dev_desc.idVendor := HDef.ReadHalfword(buf); dev_desc.idProduct := HDef.ReadHalfword(buf);
-      dev_desc.bcdDevice := HDef.ReadHalfword(buf); dev_desc.iManufacturer := HDef.ReadByte(buf);
-      dev_desc.iProduct := HDef.ReadByte(buf); dev_desc.iSerialNumber := HDef.ReadByte(buf);
-      dev_desc.bNumConfigurations := HDef.ReadByte(buf);
+      dev_desc.idVendor := Def.ReadHalfword(buf); dev_desc.idProduct := Def.ReadHalfword(buf);
+      dev_desc.bcdDevice := Def.ReadHalfword(buf); dev_desc.iManufacturer := Def.ReadByte(buf);
+      dev_desc.iProduct := Def.ReadByte(buf); dev_desc.iSerialNumber := Def.ReadByte(buf);
+      dev_desc.bNumConfigurations := Def.ReadByte(buf);
     END
 
     RETURN status
@@ -264,15 +262,15 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE ParseEPDesc(host: HDef.Handle; VAR ep_descriptor: HDef.EpDescriptor;
-    VAR buf: HDef.RawDescriptor): BYTE;
+    VAR buf: Def.RawDescriptorDesc): BYTE;
     VAR status: BYTE;
   BEGIN status := Def.OK;
-    ep_descriptor.bLength := HDef.ReadByte(buf);
-    ep_descriptor.bDescriptorType := HDef.ReadByte(buf);
-    ep_descriptor.bEndpointAddress := HDef.ReadByte(buf);
-    ep_descriptor.bmAttributes := TOSET(HDef.ReadByte(buf));
-    ep_descriptor.wMaxPacketSize := HDef.ReadHalfword(buf);
-    ep_descriptor.bInterval := HDef.ReadByte(buf);
+    ep_descriptor.bLength := Def.ReadByte(buf);
+    ep_descriptor.bDescriptorType := Def.ReadByte(buf);
+    ep_descriptor.bEndpointAddress := Def.ReadByte(buf);
+    ep_descriptor.bmAttributes := TOSET(Def.ReadByte(buf));
+    ep_descriptor.wMaxPacketSize := Def.ReadHalfword(buf);
+    ep_descriptor.bInterval := Def.ReadByte(buf);
     (* Make sure that wMaxPacketSize is different from 0 *)
     IF (ep_descriptor.wMaxPacketSize = 0) OR
       (ep_descriptor.wMaxPacketSize > HDef.MAX_EP_PACKET_SIZE) OR
@@ -316,26 +314,26 @@ MODULE USBHCtlReq;
   END ParseEPDesc;
 
   PROCEDURE ParseInterface(host: HDef.Handle; cfg_desc: HDef.CfgDescriptor; VAR if_descriptor: HDef.InterfaceDescriptor;
-    VAR buf: HDef.RawDescriptor): BYTE;
+    VAR buf: Def.RawDescriptorDesc): BYTE;
     (*feed interface descriptor from buf[index..index+8]*)
     VAR status, ep_ix: BYTE;
   BEGIN status := Def.OK;
-    if_descriptor.bLength := HDef.ReadByte(buf);
+    if_descriptor.bLength := Def.ReadByte(buf);
     (* Make sure that the interface descriptor's bLength is equal to USB_INTERFACE_DESC_SIZE *)
-    if_descriptor.bLength := HDef.INTERFACE_DESC_SIZE;
-    if_descriptor.bDescriptorType := HDef.ReadByte(buf);
-    if_descriptor.bInterfaceNumber := HDef.ReadByte(buf);
-    if_descriptor.bAlternateSetting := HDef.ReadByte(buf);
-    if_descriptor.bNumEndpoints := HDef.ReadByte(buf);
-    if_descriptor.bInterfaceClass := HDef.ReadByte(buf);
-    if_descriptor.bInterfaceSubClass := HDef.ReadByte(buf);
-    if_descriptor.bInterfaceProtocol := HDef.ReadByte(buf);
-    if_descriptor.iInterface := HDef.ReadByte(buf);
+    if_descriptor.bLength := Def.LEN_IF_DESC;
+    if_descriptor.bDescriptorType := Def.ReadByte(buf);
+    if_descriptor.bInterfaceNumber := Def.ReadByte(buf);
+    if_descriptor.bAlternateSetting := Def.ReadByte(buf);
+    if_descriptor.bNumEndpoints := Def.ReadByte(buf);
+    if_descriptor.bInterfaceClass := Def.ReadByte(buf);
+    if_descriptor.bInterfaceSubClass := Def.ReadByte(buf);
+    if_descriptor.bInterfaceProtocol := Def.ReadByte(buf);
+    if_descriptor.iInterface := Def.ReadByte(buf);
     ep_ix := 0;
     WHILE (status = Def.OK) & (ep_ix < Conf.MAX_NUM_ENDPOINTS) &
-      (ep_ix < if_descriptor.bNumEndpoints) & HDef.HasMoreHeaders(buf) DO
-      HDef.GoNextHeader(buf); (*next descriptor*)
-      IF HDef.HeaderType(buf) = HDef.DESC_TYPE_ENDPOINT THEN
+      (ep_ix < if_descriptor.bNumEndpoints) & Def.HasMoreHeaders(buf) DO
+      Def.GoNextHeader(buf); (*next descriptor*)
+      IF Def.HeaderType(buf) = Def.DESC_TYPE_ENDPOINT THEN
         status := ParseEPDesc(host, if_descriptor.Ep_Desc[ep_ix], buf);
         (* Check if the endpoint is appartening to an audio streaming interface *)
         IF (if_descriptor.bInterfaceClass = 1) & (if_descriptor.bInterfaceSubClass IN {2, 3}) THEN
@@ -343,7 +341,7 @@ MODULE USBHCtlReq;
           IF (if_descriptor.bInterfaceProtocol = 0) THEN if_descriptor.Ep_Desc[ep_ix].bLength := 9 END
         ELSE (* Make sure that the endpoint descriptor's bLength is equal to
            USB_ENDPOINT_DESC_SIZE for all other endpoints types *)
-          if_descriptor.Ep_Desc[ep_ix].bLength := HDef.ENDPOINT_DESC_SIZE
+          if_descriptor.Ep_Desc[ep_ix].bLength := Def.LEN_EP_DESC
         END;
         INC(ep_ix)
       END
@@ -361,13 +359,13 @@ MODULE USBHCtlReq;
   * @param  buf: the raw descriptor given by the device
   * @retval None
   *)
-  PROCEDURE ParseConfig(VAR cfg_desc: HDef.CfgDescriptor; VAR buf: HDef.RawDescriptor);
+  PROCEDURE ParseConfig(VAR cfg_desc: HDef.CfgDescriptor; VAR buf: Def.RawDescriptorDesc);
   BEGIN
-    cfg_desc.bLength := HDef.ReadByte(buf); cfg_desc.bDescriptorType := HDef.ReadByte(buf);
-    cfg_desc.wTotalLength := Def.MIN(HDef.ReadHalfword(buf), Conf.MAX_SIZE_CONFIGURATION);
-    cfg_desc.bNumInterfaces := HDef.ReadByte(buf); cfg_desc.bConfigurationValue := HDef.ReadByte(buf);
-    cfg_desc.iConfiguration := HDef.ReadByte(buf); cfg_desc.bmAttributes := TOSET(HDef.ReadByte(buf));
-    cfg_desc.bMaxPower := HDef.ReadByte(buf)
+    cfg_desc.bLength := Def.ReadByte(buf); cfg_desc.bDescriptorType := Def.ReadByte(buf);
+    cfg_desc.wTotalLength := Def.MIN(Def.ReadHalfword(buf), Conf.MAX_SIZE_CONFIGURATION);
+    cfg_desc.bNumInterfaces := Def.ReadByte(buf); cfg_desc.bConfigurationValue := Def.ReadByte(buf);
+    cfg_desc.iConfiguration := Def.ReadByte(buf); cfg_desc.bmAttributes := TOSET(Def.ReadByte(buf));
+    cfg_desc.bMaxPower := Def.ReadByte(buf)
   END ParseConfig;
 
   (**
@@ -377,7 +375,7 @@ MODULE USBHCtlReq;
   * @param  pdest: Destination address pointer
   * @retval None
   *)
-  PROCEDURE ParseStringDesc(psrc: HDef.RawDescriptor; VAR pdest: ARRAY OF CHAR);
+  PROCEDURE ParseStringDesc(psrc: Def.RawDescriptorDesc; VAR pdest: ARRAY OF CHAR);
     VAR strlength, idx, idd: HALFWORD;
   BEGIN
     (* The UNICODE string descriptor is not NULL-terminated. The string length is
@@ -386,10 +384,10 @@ MODULE USBHCtlReq;
     (* Check which is lower size, the Size of string or the length of bytes read
     from the device *)
 
-    IF HDef.HeaderType(psrc) = HDef.DESC_TYPE_STRING THEN
+    IF Def.HeaderType(psrc) = Def.DESC_TYPE_STRING THEN
       (* Make sure the Descriptor is String Type *)
       (* psrc[0] contains Size of Descriptor, subtract 2 to get the length of string *)
-      IF HDef.HeaderSize(psrc) - 2 <= psrc.length THEN strlength := HDef.HeaderSize(psrc) - 2 ELSE strlength := psrc.length END;
+      IF Def.HeaderSize(psrc) - 2 <= psrc.length THEN strlength := Def.HeaderSize(psrc) - 2 ELSE strlength := psrc.length END;
       idd := 0;
       FOR idx := 2 TO strlength BY 2 DO
         (* Copy Only the string and ignore the UNICODE ID, hence add the src *)
@@ -405,21 +403,20 @@ MODULE USBHCtlReq;
   *         This function Parses the configuration descriptor
   * @param  phost: USB Host handler
   * @param  buf: Buffer where the source descriptor is available
-  * @param  length: Length of the descriptor
   * @retval USBH status
   *)
-  PROCEDURE ParseCfgDesc(host: HDef.Handle; VAR buf: HDef.RawDescriptor): BYTE;
+  PROCEDURE ParseCfgDesc(host: HDef.Handle; VAR buf: Def.RawDescriptorDesc): BYTE;
     VAR status, if_ix: BYTE;
 
-  BEGIN status := Def.OK; if_ix := 0; HDef.Reset(buf);
+  BEGIN status := Def.OK; if_ix := 0; Def.Reset(buf);
     (* Make sure that the Configuration descriptor's bLength is equal to USB_CONFIGURATION_DESC_SIZE *)
-    IF HDef.HeaderSize(buf) # HDef.CONFIGURATION_DESC_SIZE THEN
+    IF Def.HeaderSize(buf) # Def.LEN_CFG_DESC THEN
       Log.Error("buggy device: bad configuration length"); Log.ErrorLn; status := HDef.NOT_SUPPORTED
     ELSE ParseConfig(host.device.CfgDesc, buf);
-      IF buf.length > HDef.CONFIGURATION_DESC_SIZE THEN
-        WHILE (status = Def.OK) & (if_ix < Conf.MAX_NUM_INTERFACES) & HDef.HasMoreHeaders(buf) DO
-          HDef.GoNextHeader(buf);
-          IF HDef.HeaderType(buf) = HDef.DESC_TYPE_INTERFACE THEN
+      IF buf.length > Def.LEN_CFG_DESC THEN
+        WHILE (status = Def.OK) & (if_ix < Conf.MAX_NUM_INTERFACES) & Def.HasMoreHeaders(buf) DO
+          Def.GoNextHeader(buf);
+          IF Def.HeaderType(buf) = Def.DESC_TYPE_INTERFACE THEN
             status := ParseInterface(host, host.device.CfgDesc, host.device.CfgDesc.Itf_Desc[if_ix], buf);
             INC(if_ix)
           END
@@ -440,16 +437,15 @@ MODULE USBHCtlReq;
   * @param  req_type: Descriptor type
   * @param  value_idx: Value for the GetDescriptor request
   * @param  buff: Buffer to store the descriptor
-  * @param  length: Length of the descriptor
   * @retval USBH Status
   *)
-  PROCEDURE GetDescriptor*(host: HDef.Handle; req_type: BYTESET; value_idx: HALFSET; VAR rd: HDef.RawDescriptor): BYTE;
+  PROCEDURE GetDescriptor*(host: HDef.Handle; req_type: BYTESET; value_idx: HALFSET; VAR rd: Def.RawDescriptorDesc): BYTE;
   BEGIN
     IF host.RequestState = HDef.CMD_SEND THEN
       host.Control.setup.bmRequestType := Def.D2H + req_type;
-      host.Control.setup.bRequest := HDef.REQ_GET_DESCRIPTOR;
+      host.Control.setup.bRequest := Def.REQ_GET_DESCRIPTOR;
       host.Control.setup.wValue := ORD(value_idx);
-      IF value_idx*{8..15} = HDef.DESC_STRING THEN host.Control.setup.wIndex := 0409H (*English/USA language ID*)
+      IF value_idx*{8..15} = Def.DESC_STRING THEN host.Control.setup.wIndex := 0409H (*English/USA language ID*)
       ELSE host.Control.setup.wIndex := 0
       END;
       host.Control.setup.wLength := rd.length;
@@ -466,11 +462,11 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE SetAddress*(host: HDef.Handle; DeviceAddress: BYTE): BYTE;
-    VAR dummy: Def.Buffer;
-  BEGIN dummy.size := 0;
+    VAR dummy: Def.BufferDesc;
+  BEGIN dummy.size := 0; dummy.length := 0;
     IF host.RequestState = HDef.CMD_SEND THEN
       host.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD;
-      host.Control.setup.bRequest := HDef.REQ_SET_ADDRESS;
+      host.Control.setup.bRequest := Def.REQ_SET_ADDRESS;
       host.Control.setup.wValue := DeviceAddress;
       host.Control.setup.wIndex := 0;
       host.Control.setup.wLength := 0
@@ -487,11 +483,11 @@ MODULE USBHCtlReq;
   * @retval USBH Status
   *)
   PROCEDURE SetCfg*(host: HDef.Handle;  cfg_idx: HALFWORD): BYTE;
-    VAR dummy: Def.Buffer;
-  BEGIN dummy.size := 0;
+    VAR dummy: Def.BufferDesc;
+  BEGIN dummy.size := 0; dummy.length := 0;
     IF host.RequestState = HDef.CMD_SEND THEN
       host.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD;
-      host.Control.setup.bRequest := HDef.REQ_SET_CONFIGURATION;
+      host.Control.setup.bRequest := Def.REQ_SET_CONFIGURATION;
       host.Control.setup.wValue := cfg_idx;
       host.Control.setup.wIndex := 0;
       host.Control.setup.wLength := 0
@@ -508,11 +504,11 @@ MODULE USBHCtlReq;
   * @retval Status
   *)
   PROCEDURE SetFeature*(host: HDef.Handle; wValue: HALFWORD): BYTE;
-    VAR dummy: Def.Buffer;
-  BEGIN dummy.size := 0;
+    VAR dummy: Def.BufferDesc;
+  BEGIN dummy.size := 0; dummy.length := 0;
     IF host.RequestState = HDef.CMD_SEND THEN
       host.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD;
-      host.Control.setup.bRequest := HDef.REQ_SET_FEATURE;
+      host.Control.setup.bRequest := Def.REQ_SET_FEATURE;
       host.Control.setup.wValue := wValue;
       host.Control.setup.wIndex := 0;
       host.Control.setup.wLength := 0
@@ -537,7 +533,7 @@ MODULE USBHCtlReq;
       status := HDef.NOT_SUPPORTED
     ELSE host.device.tmprd.length := length;
       status := GetDescriptor(host, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
-                      HDef.DESC_DEVICE, host.device.tmprd);
+                      Def.DESC_DEVICE, host.device.tmprd);
       IF status = Def.OK THEN (* Commands successfully sent and Response Received *)
         status := ParseDevDesc(host, host.device.DevDesc, host.device.tmprd)
       END
@@ -563,7 +559,7 @@ MODULE USBHCtlReq;
       status := HDef.NOT_SUPPORTED;
     ELSE host.device.CfgRaw.length := length;
       status := GetDescriptor(host, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
-                      HDef.DESC_CONFIGURATION, host.device.CfgRaw);
+                      Def.DESC_CONFIGURATION, host.device.CfgRaw);
       IF status = Def.OK THEN (* Commands successfully sent and Response Received  *)
         status := ParseCfgDesc(host, host.device.CfgRaw)
       END
@@ -589,7 +585,7 @@ MODULE USBHCtlReq;
       status := HDef.NOT_SUPPORTED
     ELSE host.device.tmprd.length := length;
       status := GetDescriptor(host, Def.REQ_RECIPIENT_DEVICE + Def.REQ_TYPE_STANDARD,
-                            HDef.DESC_STRING + TOSET(string_index), host.device.tmprd);
+                            Def.DESC_STRING + TOSET(string_index), host.device.tmprd);
       IF status = Def.OK THEN (* Commands successfully sent and Response Received *)
         ParseStringDesc(host.device.tmprd, buff);
       END

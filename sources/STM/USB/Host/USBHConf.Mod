@@ -2,7 +2,7 @@ MODULE USBHConf;
   (** ported to Oberon from:
   ******************************************************************************
   * @author  MCD Application Team
-  * @brief   General low level driver configuration
+  * @brief   Host mode sizes configuration
   ******************************************************************************
   *)
 

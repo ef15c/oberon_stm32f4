@@ -9,16 +9,13 @@ MODULE HALHCD;
   IMPORT SYSTEM, BSP, ll := LLUSB, Def := USBDef, Q := Queue, UC := HALUC, HDef := USBHDef, Log := USBLog;
 
   CONST
-    STATE_READY* = 1;
-    STATE_ERROR* = 2;
-    STATE_BUSY* = 3;
-    STATE_RESET* = 4;
-    STATE_STARTED* = 5;
+    SPEED_HIGH* = ll.USBH_HS_SPEED;
+    SPEED_FULL* = ll.USBH_FSLS_SPEED;
+    SPEED_LOW* = ll.USBH_FSLS_SPEED;
 
   TYPE
     Handle* = POINTER TO HandleDesc;
-    Callback* = PROCEDURE^5(cdd: Handle);
-    InitCallback* = PROCEDURE(hhcd: Handle);
+    Callback* = PROCEDURE^5(hcd: Handle);
     HandleDesc* = RECORD(HDef.HandleDesc)
       hc*: ARRAY 16 OF ll.HCDesc;     (*!< Host channels parameters *)
       State*: BYTE; (*!< HCD communication state *)
@@ -135,7 +132,7 @@ MODULE HALHCD;
   * @retval HAL status
   *)
   PROCEDURE HC_SubmitRequest*(hhcd: Handle; ch_num: BYTE; direction: BOOLEAN;
-    ep_type, token: BYTE; buff: Def.Buffer; length: HALFWORD; do_ping: BOOLEAN);
+    ep_type, token: BYTE; buff: Def.BufferDesc; do_ping: BOOLEAN);
   BEGIN hhcd.hc[ch_num].ep_is_in := direction; hhcd.hc[ch_num].ep_type := ep_type;
     IF token = 0 THEN hhcd.hc[ch_num].data_pid := ll.HC_PID_SETUP;
       hhcd.hc[ch_num].do_ping := do_ping
@@ -145,7 +142,7 @@ MODULE HALHCD;
     IF ep_type = Def.EP_TYPE_CTRL THEN
       IF token = 1 THEN (* send data *)
         IF ~direction THEN
-          IF length = 0 THEN (* For Status OUT stage, Length == 0U, Status Out PID = 1 *)
+          IF buff.length = 0 THEN (* For Status OUT stage, Length == 0U, Status Out PID = 1 *)
             hhcd.hc[ch_num].toggle_out := TRUE;
           END;
           (* Set the Data Toggle bit as per the Flag *)
@@ -176,13 +173,13 @@ MODULE HALHCD;
       END
     ELSIF ep_type = Def.EP_TYPE_ISOC THEN hhcd.hc[ch_num].data_pid := ll.HC_PID_DATA0
     END;
-    IF ~(length <= buff.size) THEN
-      Log.Error("length: "); Log.ErrorInt(length, 1); Log.ErrorString(", buff.size: "); Log.ErrorInt(buff.size, 1);
+    IF ~(buff.length <= buff.size) THEN
+      Log.Error("length: "); Log.ErrorInt(buff.length, 1); Log.ErrorString(", buff.size: "); Log.ErrorInt(buff.size, 1);
       Log.ErrorLn; Log.Flush
     END;
-    ASSERT(length <= buff.size);
-    hhcd.hc[ch_num].xfer_buff := SYSTEM.ADR(buff) + SYSTEM.SIZE(Def.Buffer);
-    hhcd.hc[ch_num].xfer_len := length;
+    ASSERT(buff.length <= buff.size);
+    hhcd.hc[ch_num].xfer_buff := SYSTEM.ADR(buff) + SYSTEM.SIZE(Def.BufferDesc);
+    hhcd.hc[ch_num].xfer_len := buff.length;
     hhcd.hc[ch_num].urb_state := Def.IDLE; hhcd.hc[ch_num].xfer_count := 0;
     hhcd.hc[ch_num].ch_num := ch_num; hhcd.hc[ch_num].state := Def.IDLE;
     ll.HC_StartXfer(hhcd.Instance, hhcd.hc[ch_num], hhcd.Init.dma_enable)
@@ -213,12 +210,12 @@ MODULE HALHCD;
       INCL(hprt0_dup, ll.HPRT_PENCHNG);
       IF ll.HPRT_PENA IN hprt0 THEN
         IF hhcd.Init.phy_itface = ll.EMBEDDED_PHY THEN
-          IF hprt0*ll.HPRT_PSPD_Msk = ll.HPRT_PSPD_LOW_SPEED THEN
+          IF hprt0*ll.HPRT_PSPD_Msk = ll.HPRT_LOW_SPEED THEN
             fslspcs := ll.HCFG_6_MHZ
           ELSE fslspcs := ll.HCFG_48_MHZ
           END;
           res := ll.InitFSLSPClkSel(hhcd.Instance, fslspcs)
-        ELSIF hhcd.Init.speed = Def.SPEED_FULL THEN USBx_HOST.HFIR := ll.HFIR_60_MHZ
+        ELSIF hhcd.Init.speed = SPEED_FULL THEN USBx_HOST.HFIR := ll.HFIR_60_MHZ
         END;
         ll.SetXFSIZ(hhcd.Instance); (*workaround channel hang with CHDIS and CHENA set*)
         msg := Q.Get(hhcd.PortEnabledMP); IF msg # NIL THEN Q.Post(hhcd.MsgPendQ, msg) END
@@ -589,11 +586,11 @@ MODULE HALHCD;
     (* Check the HCD handle allocation *)
     IF hhcd = NIL THEN res := ll.HAL_ERROR
     ELSE
-      hhcd.State := STATE_BUSY;
+      hhcd.State := Def.STATE_BUSY;
       (* Init Host *) ASSERT(hhcd.ControllerIRQHandler # NIL);
       IF ll.HostInit(hhcd.Instance, hhcd.Init) # ll.HAL_OK THEN
-        hhcd.State := STATE_ERROR; res := ll.HAL_ERROR
-      ELSE hhcd.State := STATE_READY; res := ll.HAL_OK
+        hhcd.State := Def.STATE_ERROR; res := ll.HAL_ERROR
+      ELSE hhcd.State := Def.STATE_READY; res := ll.HAL_OK
       END
     END
 
@@ -650,7 +647,7 @@ MODULE HALHCD;
     IF 7 IN TOSET(epnum) THEN hhcd.hc[ch_num].ep_is_in := TRUE ELSE hhcd.hc[ch_num].ep_is_in := FALSE END;
     HostCoreSpeed := ll.GetHostSpeed(hhcd.Instance);
     IF (ep_type = Def.EP_TYPE_ISOC) &
-      (speed = Def.SPEED_FULL) & (HostCoreSpeed = ll.HPRT_PSPD_HIGH_SPEED) & (* FS device plugged to HS HUB *)
+      (speed = Def.SPEED_FULL) & (HostCoreSpeed = ll.HPRT_HIGH_SPEED) & (* FS device plugged to HS HUB *)
       (HCcharMps > ll.ISO_SPLT_MPS) THEN (* ISO Max Packet Size for Split mode *) HCcharMps := ll.ISO_SPLT_MPS
     END;
     hhcd.hc[ch_num].speed := speed;
@@ -680,7 +677,7 @@ MODULE HALHCD;
   * @retval HAL status
   *)
   PROCEDURE DeInit*(hhcd: Handle);
-  BEGIN hhcd.State := STATE_RESET
+  BEGIN hhcd.State := Def.STATE_RESET
   END DeInit;
 
   (**
@@ -708,10 +705,8 @@ MODULE HALHCD;
   *)
   PROCEDURE Start*(hhcd: Handle);
   BEGIN
-(*  __HAL_LOCK(hhcd);*)
-    hhcd.State := STATE_STARTED;
+    hhcd.State := Def.STATE_STARTED;
     ll.DriveVbus(hhcd.Instance, TRUE); (* Enable port power *)
-(*  __HAL_UNLOCK(hhcd);*)
   END Start;
 
   (**
@@ -722,7 +717,7 @@ MODULE HALHCD;
   PROCEDURE Stop*(hhcd: Handle);
     VAR res: BYTE;
   BEGIN
-    res := ll.StopHost(hhcd.Instance); hhcd.State := STATE_RESET
+    res := ll.StopHost(hhcd.Instance); hhcd.State := Def.STATE_RESET
   END Stop;
 
   (**
@@ -783,6 +778,7 @@ MODULE HALHCD;
   * @retval last transfer size in byte
   *)
   PROCEDURE HC_GetXferCount*(hhcd: Handle; chnum: BYTE): INTEGER;
+  BEGIN Log.Debug("xfer_len: "); Log.DebugInt(hhcd.hc[chnum].xfer_len, 1); Log.DebugLn;
     RETURN hhcd.hc[chnum].xfer_count
   END HC_GetXferCount;
 
@@ -830,10 +826,10 @@ MODULE HALHCD;
   PROCEDURE New*(): Handle;
     VAR h!: Handle;
   BEGIN NEW(h);
-    h.Control.setup.size := SYSTEM.SIZE(HDef.Setup) - SYSTEM.SIZE(Def.Buffer);
+    h.Control.setup.size := SYSTEM.SIZE(Def.Setup) - SYSTEM.SIZE(Def.BufferDesc);
     Log.Debug("setup size: "); Log.DebugInt(h.Control.setup.size, 1); Log.DebugLn;
-    h.device.CfgRaw.size := SYSTEM.SIZE(HDef.RawDescriptorData) - SYSTEM.SIZE(Def.Buffer);
-    h.device.tmprd.size := SYSTEM.SIZE(HDef.RawDescriptorData) - SYSTEM.SIZE(Def.Buffer);
+    h.device.CfgRaw.size := SYSTEM.SIZE(Def.RawDescriptorData) - SYSTEM.SIZE(Def.BufferDesc);
+    h.device.tmprd.size := SYSTEM.SIZE(Def.RawDescriptorData) - SYSTEM.SIZE(Def.BufferDesc);
 
     RETURN h
   END New;

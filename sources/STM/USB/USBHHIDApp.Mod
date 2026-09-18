@@ -59,7 +59,7 @@ MODULE USBHHIDApp;
   END UserProcess;
 
   PROCEDURE WriteMenu(t: ARRAY OF CHAR);
-  BEGIN Texts.WriteString(MW, " USBHHIDApp."); Texts.WriteString(MW, t)
+  BEGIN IF t # "" THEN Texts.WriteString(MW, " USBHHIDApp."); Texts.WriteString(MW, t) END
   END WriteMenu;
 
   (**
@@ -92,7 +92,7 @@ MODULE USBHHIDApp;
   PROCEDURE MouseMenuProcess;
   BEGIN
     IF hid_demo.mouse_state = Def.IDLE THEN hid_demo.mouse_state := HID_MOUSE_START;
-      SelectItem("StartMouse", "Return");
+      SelectItem("", "Return");
       hid_demo.select := {}; prev_select := {};
     ELSIF hid_demo.mouse_state = HID_MOUSE_WAIT THEN
       IF hid_demo.select # prev_select THEN
@@ -157,14 +157,14 @@ MODULE USBHHIDApp;
   BEGIN
     IF hid_demo.keyboard_state = Def.IDLE THEN
       hid_demo.keyboard_state := HID_KEYBOARD_START;
-      SelectItem("StartKeyboard", "Return");   
+      SelectItem("", "Return");   
       hid_demo.select := {}; prev_select := {}
     ELSIF hid_demo.keyboard_state = HID_KEYBOARD_WAIT THEN
       IF hid_demo.select # prev_select THEN
-      prev_select := hid_demo.select;
-      (* Handle select item *)
-      IF 7 IN hid_demo.select THEN
-        EXCL(hid_demo.select, 7);
+        prev_select := hid_demo.select;
+        (* Handle select item *)
+        IF 7 IN hid_demo.select THEN
+          EXCL(hid_demo.select, 7);
           IF ORD(hid_demo.select) = 0 THEN 
             hid_demo.keyboard_state := HID_KEYBOARD_START
           ELSIF ORD(hid_demo.select) = 1 THEN (* Return *)
@@ -281,7 +281,7 @@ MODULE USBHHIDApp;
       Log.Debug("USBH lib started."); Log.DebugLn;
       (* Run Application (Non blocking mode) *)
       IF processTask = NIL THEN processTask := Oberon.NewTask(Process, 10); Oberon.Install(processTask) END
-    ELSE Log.Error("USBH lib failed to start");
+    ELSE Log.Error("USBH lib failed to start")
     END;
     Log.Flush
   END Run;

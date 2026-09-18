@@ -1,4 +1,4 @@
-MODULE USBHHal;
+MODULE USBHHal; (*The BSP part of USB Host Controller configuration, C. Schoffit*)
   (** ported to Oberon from:
   ******************************************************************************
   * @author  MCD Application Team
@@ -190,10 +190,10 @@ MODULE USBHHal;
   * @retval USBH Status
   *)
   PROCEDURE SubmitURB(host: HDef.Handle; pipe: BYTE; direction: BOOLEAN; ep_type, token: BYTE;
-    buff: Def.Buffer; length: HALFWORD; do_ping: BOOLEAN);
+    buff: Def.BufferDesc; do_ping: BOOLEAN);
   BEGIN
     HCD.HC_SubmitRequest(host(HCD.Handle), pipe,
-      direction, ep_type, token, buff, length, do_ping)
+      direction, ep_type, token, buff, do_ping)
   END SubmitURB;
 
 (*******************************************************************************
@@ -204,7 +204,7 @@ MODULE USBHHal;
   * @param  phost: Host handle
   * @retval USBH Status
   *)
-  PROCEDURE Stop*(host: HDef.Handle);
+  PROCEDURE Stop*(host: Def.Handle);
   BEGIN HCD.Stop(host(HCD.Handle));
   END Stop;
 
@@ -233,6 +233,7 @@ MODULE USBHHal;
 
     host.SOFCallback := SOF_Callback;
     (* Set LL Driver parameters *)
+    host.Init.speed := HCD.SPEED_FULL;
     host.Init.Host_channels := 11;
     host.Init.Sof_enable := FALSE;
     OldHandler := host.ControllerIRQHandler; host.ControllerIRQHandler := HCD.IRQHandler;

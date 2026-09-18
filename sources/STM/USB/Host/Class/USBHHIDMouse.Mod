@@ -44,13 +44,9 @@ MODULE USBHHIDMouse;
       mouse_report_data[i] := 0; hidh.Data.buf[i] := 0
     END;
 *)
-    IF hidh.length > LEN(mouse_report_data) THEN hidh.length := LEN(mouse_report_data) END;
-    IF HCl.QUEUE_SIZE * LEN(mouse_report_data) > LEN(hidh.fifo.buf) THEN res := Def.FAIL
-    ELSE HCl.FifoInit(hidh.fifo);
-      res := Def.OK
-    END
+    IF hidh.Data.length > LEN(mouse_report_data) THEN hidh.Data.length := LEN(mouse_report_data) END;
 
-    RETURN res
+    RETURN HCl.FifoInit(hidh.fifo, LEN(mouse_report_data))
   END Init;
 
   (**
@@ -62,8 +58,8 @@ MODULE USBHHIDMouse;
   PROCEDURE MouseDecode(host: HDef.Handle): BYTE;
     VAR HID_Handle!: HCl.Handle; res: BYTE;
   BEGIN HID_Handle := host.ActiveClass.clsh(HCl.Handle); res :=  Def.FAIL;
-    IF (HID_Handle.length # 0) &
-      (HCl.FifoRead(HID_Handle.fifo, mouse_report_data, HID_Handle.length) = HID_Handle.length) THEN
+    IF (HID_Handle.Data.length # 0) &
+      (HCl.FifoRead(HID_Handle.fifo, mouse_report_data, HID_Handle.Data.length) = HID_Handle.Data.length) THEN
       (*Decode report *)
       info.x := P.ReadItem(mouse_report_data, prop_x, 0);
       info.y := P.ReadItem(mouse_report_data, prop_y, 0);

@@ -72,8 +72,8 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
     (* Set LL Driver parameters *)
     core.Instance := SYSTEM.VAL(ll.OTGCore, ll.HS_PERIPH_BASE);
     core.Init.dma_enable := FALSE;
+    core.Init.low_power_enable := FALSE;
     core.Init.phy_itface := ll.EMBEDDED_PHY;
-    core.Init.speed := Def.SPEED_HIGH;
     core.id := id;
     core.User := UserFunc;
     IF UC.Init(core) = ll.HAL_OK THEN (* Initialize LL Driver *)

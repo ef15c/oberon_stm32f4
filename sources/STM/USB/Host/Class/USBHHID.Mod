@@ -48,9 +48,9 @@ MODULE USBHHID;
   * @param  buf: Buffer where the source descriptor is available
   * @retval None
   *)
-  PROCEDURE ParseHIDDesc(VAR desc: HCl.DescriptorDesc; VAR rd: HDef.RawDescriptor);
+  PROCEDURE ParseHIDDesc(VAR desc: HCl.DescriptorDesc; VAR rd: Def.RawDescriptorDesc);
     VAR done: BOOLEAN;
-  BEGIN HDef.Reset(rd); done := FALSE;
+  BEGIN Def.Reset(rd); done := FALSE;
 (* Keyboard:
 DEBUG: configuration descriptor: (59)
   09  02  3B  00  02  01  00  A0  32 Configuration descriptor: length 59 bytes, 2 interfaces, config 1, string index 0, bus powered and remote wakeup, 100 mA
@@ -69,12 +69,12 @@ DEBUG: configuration descriptor: (34)
   07  05  81  03  04  00  0A         Endpoint descriptor: endpoint IN address 1, interrupt, max packet size 4 bytes, polling interval 10 frames
 *)
     Log.Debug("configuration descriptor: "); Log.DebugBuf(rd.buf, rd.length); Log.DebugLn; Log.Flush;
-    WHILE ~done & HDef.HasMoreHeaders(rd) DO HDef.GoNextHeader(rd);
-      IF HDef.HeaderType(rd) = HDef.DESC_TYPE_HID THEN
-        desc.bLength := HDef.ReadByte(rd); desc.bDescriptorType := HDef.ReadByte(rd);
-        desc.bcdHID := HDef.ReadHalfword(rd); desc.bCountryCode := HDef.ReadByte(rd);
-        desc.bNumDescriptors := HDef.ReadByte(rd); desc.bReportDescriptorType := HDef.ReadByte(rd);
-        desc.wItemLength := HDef.ReadHalfword(rd);
+    WHILE ~done & Def.HasMoreHeaders(rd) DO Def.GoNextHeader(rd);
+      IF Def.HeaderType(rd) = Def.DESC_TYPE_HID THEN
+        desc.bLength := Def.ReadByte(rd); desc.bDescriptorType := Def.ReadByte(rd);
+        desc.bcdHID := Def.ReadHalfword(rd); desc.bCountryCode := Def.ReadByte(rd);
+        desc.bNumDescriptors := Def.ReadByte(rd); desc.bReportDescriptorType := Def.ReadByte(rd);
+        desc.wItemLength := Def.ReadHalfword(rd);
         done := TRUE
       END
     END
@@ -88,13 +88,13 @@ DEBUG: configuration descriptor: (34)
   * @param  Length : HID Report Descriptor Length
   * @retval USBH Status
   *)
-  PROCEDURE GetHIDReportDescriptor(host: HDef.Handle; VAR rd: HDef.RawDescriptor): BYTE;
+  PROCEDURE GetHIDReportDescriptor(host: HDef.Handle; VAR rd: Def.RawDescriptorDesc): BYTE;
     VAR status: BYTE;
   BEGIN
     IF rd.length > rd.size THEN Log.Error("Control error: Get HID Report Descriptor failed, data buffer size issue"); Log.ErrorLn;
       status := HDef.NOT_SUPPORTED
     ELSE status := CtlReq.GetDescriptor(host, Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_STANDARD,
-                              HDef.DESC_HID_REPORT, rd)
+                              Def.DESC_HID_REPORT, rd)
     END
     (* HID report descriptor is available in rd.buf.
     In case of USB Boot Mode devices for In report handling ,
@@ -134,8 +134,8 @@ DEBUG: configuration descriptor: (34)
   * @retval USBH Status
   *)
   PROCEDURE SetIdle*(host: Def.Handle; duration, reportId: BYTE): BYTE;
-    VAR dummy: Def.Buffer;
-  BEGIN dummy.size := 0;
+    VAR dummy: Def.BufferDesc;
+  BEGIN dummy.size := 0; dummy.length := 0;
     CASE host OF
       HDef.Handle:
         host.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
@@ -156,8 +156,8 @@ DEBUG: configuration descriptor: (34)
   * @retval USBH Status
   *)
   PROCEDURE SetProtocol*(host: Def.Handle; protocol: BYTE): BYTE;
-    VAR dummy: Def.Buffer;
-  BEGIN dummy.size := 0;
+    VAR dummy: Def.BufferDesc;
+  BEGIN dummy.size := 0; dummy.length := 0;
     CASE host OF
       HDef.Handle:
         host.Control.setup.bmRequestType := Def.H2D + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
@@ -177,14 +177,13 @@ DEBUG: configuration descriptor: (34)
   * @param  reportType  : Report type to be sent
   * @param  reportId    : Targeted report ID for Set Report request
   * @param  reportBuff  : Report Buffer
-  * @param  reportLen   : Length of data report to be send
   * @retval USBH Status
   *)
-  PROCEDURE GetReport(host: HDef.Handle; reportType, reportId: BYTE; VAR reportBuff: Def.Buffer; reportLen: BYTE): BYTE;
+  PROCEDURE GetReport(host: HDef.Handle; reportType, reportId: BYTE; VAR reportBuff: Def.BufferDesc): BYTE;
   BEGIN host.Control.setup.bmRequestType := Def.D2H + Def.REQ_RECIPIENT_INTERFACE + Def.REQ_TYPE_CLASS;
     host.Control.setup.bRequest := HCl.GET_REPORT;
     host.Control.setup.wValue := reportType*100H + reportId;
-    host.Control.setup.wIndex := 0; host.Control.setup.wLength := reportLen
+    host.Control.setup.wIndex := 0; host.Control.setup.wLength := reportBuff.length
 
     RETURN CtlReq.CtlReq(host, reportBuff)
   END GetReport;
@@ -226,7 +225,7 @@ DEBUG: configuration descriptor: (34)
           hidh.state := HCl.INIT;
           hidh.ctl_state := HCl.REQ_INIT;
           hidh.ep_addr := host.device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
-          hidh.length := host.device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
+          hidh.Data.length := host.device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
           hidh.poll := host.device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bInterval;
           IF hidh.poll < HCl.MIN_POLL THEN hidh.poll := HCl.MIN_POLL END;
           (* Check of available number of endpoints *)
@@ -353,7 +352,7 @@ DEBUG: configuration descriptor: (34)
           ELSE Log.Error("HID Class Init failed"); Log.ErrorLn;
             hidh.state := HCl.ERROR; status := Def.FAIL
           END
-        ELSIF hidh.state = HCl.IDLE THEN status := GetReport(host, 1, 0, hidh.Data, hidh.length);
+        ELSIF hidh.state = HCl.IDLE THEN status := GetReport(host, 1, 0, hidh.Data);
           IF status = Def.OK THEN hidh.state := HCl.SYNC; Log.Debug("GetReport successful"); Log.DebugLn
           ELSIF status = Def.BUSY THEN hidh.state := HCl.IDLE; status := Def.OK
           ELSIF status = HDef.NOT_SUPPORTED THEN hidh.state := HCl.SYNC; status := Def.OK
@@ -362,17 +361,19 @@ DEBUG: configuration descriptor: (34)
         ELSIF hidh.state = HCl.SYNC THEN
           (* Sync with start of Even Frame *)
           IF ODD(host.Timer) THEN hidh.state := HCl.GET_DATA; Log.Debug("in odd frame"); Log.DebugLn END
-        ELSIF hidh.state = HCl.GET_DATA THEN IoReq.InterruptReceiveData(host, hidh.Data, hidh.length, hidh.InPipe);
+        ELSIF hidh.state = HCl.GET_DATA THEN IoReq.InterruptReceiveData(host, hidh.Data, hidh.InPipe);
           hidh.state := HCl.POLL; hidh.timer := host.Timer; hidh.DataReady := FALSE
         ELSIF hidh.state = HCl.POLL THEN
           IF host.GetURBState(host, hidh.InPipe) = HDef.URB_DONE THEN
             XferSize := host.GetLastXferSize(host, hidh.InPipe);
+            Log.Debug(""); Log.DebugInt(XferSize, 1); Log.DebugString(" bytes received"); Log.DebugLn;
             IF ~hidh.DataReady & (XferSize # 0) THEN
-              fcnt := HCl.FifoWrite(hidh.fifo, hidh.Data.buf, hidh.length);
+              fcnt := HCl.FifoWrite(hidh.fifo, hidh.Data.buf, hidh.Data.length);
               hidh.DataReady := TRUE;
               IF hidh.EventCallback # NIL THEN hidh.EventCallback(host) END;
             END
           ELSIF host.GetURBState(host, hidh.InPipe) = HDef.URB_STALL THEN (* IN Endpoint Stalled *)
+            Log.Debug("IN EP stalled"); Log.DebugLn;
             (* Issue Clear Feature on interrupt IN endpoint *)
             IF CtlReq.ClrFeature(host, hidh.ep_addr) = Def.OK THEN hidh.state := HCl.GET_DATA END (* Change state to issue next IN token *)
           END

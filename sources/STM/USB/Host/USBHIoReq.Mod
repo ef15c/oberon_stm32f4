@@ -36,15 +36,14 @@ MODULE USBHIoReq;
   * @param  pipe_num: Pipe Number
   * @retval USBH Status
   *)
-  PROCEDURE CtlSendSetup*(host: HDef.Handle; buff: HDef.Setup; pipe_num: BYTE);
-  BEGIN
+  PROCEDURE CtlSendSetup*(host: HDef.Handle; VAR buff: Def.Setup; pipe_num: BYTE);
+  BEGIN buff.length := SETUP_PKT_SIZE; (* data length      *)
     host.SubmitURB(host, (* Driver handle    *)
       pipe_num, (* Pipe index       *)
       FALSE, (* Direction : OUT  *)
       EP_CONTROL, (* EP type          *)
       PID_SETUP, (* Type setup       *)
       buff, (* data buffer      *)
-      SETUP_PKT_SIZE, (* data length      *)
       FALSE)
   END CtlSendSetup;
 
@@ -53,11 +52,10 @@ MODULE USBHIoReq;
   *         Sends a data Packet to the Device
   * @param  phost: Host Handle
   * @param  buff: Buffer pointer from which the Data will be sent to Device
-  * @param  length: Length of the data to be sent
   * @param  pipe_num: Pipe Number
   * @retval USBH Status
   *)
-  PROCEDURE CtlSendData*(host: HDef.Handle; buff: Def.Buffer; length: HALFWORD; pipe_num: BYTE; do_ping: BOOLEAN);
+  PROCEDURE CtlSendData*(host: HDef.Handle; buff: Def.BufferDesc; pipe_num: BYTE; do_ping: BOOLEAN);
   BEGIN IF host.device.speed # Def.SPEED_HIGH THEN do_ping := FALSE END;
     host.SubmitURB(host, (* Driver handle    *)
                           pipe_num, (* Pipe index       *)
@@ -65,7 +63,6 @@ MODULE USBHIoReq;
                           EP_CONTROL, (* EP type          *)
                           PID_DATA, (* Type Data        *)
                           buff, (* data buffer      *)
-                          length, (* data length      *)
                           do_ping) (* do ping (HS Only)*)
   END CtlSendData;
 
@@ -74,11 +71,10 @@ MODULE USBHIoReq;
   *         Receives the Device Response to the Setup Packet
   * @param  phost: Host Handle
   * @param  buff: Buffer pointer in which the response needs to be copied
-  * @param  length: Length of the data to be received
   * @param  pipe_num: Pipe Number
   * @retval USBH Status.
   *)
-  PROCEDURE CtlReceiveData*(host: HDef.Handle; VAR buff: Def.Buffer; length: HALFWORD; pipe_num: BYTE);
+  PROCEDURE CtlReceiveData*(host: HDef.Handle; VAR buff: Def.BufferDesc; pipe_num: BYTE);
   BEGIN
     host.SubmitURB(host, (* Driver handle    *)
       pipe_num, (* Pipe index       *)
@@ -86,7 +82,6 @@ MODULE USBHIoReq;
       EP_CONTROL, (* EP type          *)
       PID_DATA, (* Type Data        *)
       buff, (* data buffer      *)
-      length, (* data length      *)
       FALSE)
   END CtlReceiveData;
 
@@ -95,11 +90,10 @@ MODULE USBHIoReq;
   *         Receives the Device Response to the Interrupt IN token
   * @param  phost: Host Handle
   * @param  buff: Buffer pointer in which the response needs to be copied
-  * @param  length: Length of the data to be received
   * @param  pipe_num: Pipe Number
   * @retval USBH Status.
   *)
-  PROCEDURE InterruptReceiveData*(host: HDef.Handle; VAR buff: Def.Buffer; length, pipe_num: BYTE);
+  PROCEDURE InterruptReceiveData*(host: HDef.Handle; VAR buff: Def.BufferDesc; pipe_num: BYTE);
   BEGIN
     host.SubmitURB(host, (* Driver handle    *)
                           pipe_num, (* Pipe index       *)
@@ -107,7 +101,6 @@ MODULE USBHIoReq;
                           EP_INTERRUPT, (* EP type          *)
                           PID_DATA, (* Type Data        *)
                           buff, (* data buffer      *)
-                          length, (* data length      *)
                           FALSE)
   END InterruptReceiveData;
 

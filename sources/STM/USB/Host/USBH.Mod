@@ -1,5 +1,5 @@
 MODULE USBH;
-  (** ported to Oberon from:
+  (** USB host library, ported to Oberon from:
   ******************************************************************************
   * @author  MCD Application Team
   * @brief   USB host library
@@ -235,7 +235,7 @@ MODULE USBH;
       END
     ELSIF host.EnumState = HDef.ENUM_GET_FULL_DEV_DESC THEN
       (* Get FULL Device Desc  *)
-      ReqStatus := CtlReq.Get_DevDesc(host, HDef.DEVICE_DESC_SIZE);
+      ReqStatus := CtlReq.Get_DevDesc(host, Def.LEN_DEV_DESC);
       IF ReqStatus = Def.OK THEN
         Log.UserString("PID: "); Log.UserHexVLen(host.device.DevDesc.idProduct, 4, FALSE); Log.User("h");
         Log.UserString("VID: "); Log.UserHexVLen(host.device.DevDesc.idVendor, 4, FALSE); Log.User("h");
@@ -273,7 +273,7 @@ MODULE USBH;
       END
     ELSIF host.EnumState = HDef.ENUM_GET_CFG_DESC THEN
       (* get standard configuration descriptor *)
-      ReqStatus := CtlReq.Get_CfgDesc(host, HDef.CONFIGURATION_DESC_SIZE);
+      ReqStatus := CtlReq.Get_CfgDesc(host, Def.LEN_CFG_DESC);
       IF ReqStatus = Def.OK THEN host.EnumState := HDef.ENUM_GET_FULL_CFG_DESC;
         Log.Debug("wTotalLength: "); Log.DebugInt(host.device.CfgDesc.wTotalLength, 1); Log.DebugLn
       ELSIF ReqStatus = HDef.NOT_SUPPORTED THEN
@@ -486,7 +486,7 @@ MODULE USBH;
 
   (**
   * @brief  USBH_Init
-  *         Initialize the HOST Core.
+  *         Initialize the Host portion of the driver.
   * @param  pcd: Contoller Driver Handle
   * @param  pUsrFunc: User Callback
   * @retval USBH Status
@@ -532,7 +532,7 @@ MODULE USBH;
           host.device.is_ReEnumerated := FALSE;
           host.device.RstCnt := 0;
           host.device.EnumCnt := 0;
-          IF HCD.GetState(host(HCD.Handle)) = HCD.STATE_STARTED THEN HH.Stop(host) END;
+          IF HCD.GetState(host(HCD.Handle)) = Def.STATE_STARTED THEN HH.Stop(host) END;
           HH.DeInit(host);
           IF processTask # NIL THEN Def.Remove(processTask); processTask := NIL END;
           Log.Flush

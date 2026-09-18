@@ -54,13 +54,9 @@ MODULE USBHHIDKeybd;
       keybd_report_data[x] := 0; hidh.Data.buf[x] := 0
     END;
 *)
-    IF hidh.length > LEN(keybd_report_data) THEN hidh.length := LEN(keybd_report_data) END;
-    IF HCl.QUEUE_SIZE * LEN(keybd_report_data) > LEN(hidh.fifo.buf) THEN res := Def.FAIL
-    ELSE  HCl.FifoInit(hidh.fifo);
-      res := Def.OK
-    END
+    IF hidh.Data.length > LEN(keybd_report_data) THEN hidh.Data.length := LEN(keybd_report_data) END;
 
-    RETURN res
+    RETURN HCl.FifoInit(hidh.fifo, LEN(keybd_report_data))
   END Init;
 
   (**
@@ -72,8 +68,8 @@ MODULE USBHHIDKeybd;
   PROCEDURE KeybdDecode(host: HDef.Handle): BYTE;
     VAR HID_Handle!: HCl.Handle; res: BYTE; x: INTEGER;
   BEGIN HID_Handle := host.ActiveClass.clsh(HCl.Handle); res := Def.FAIL;
-    IF (HID_Handle.length # 0) &
-      (HCl.FifoRead(HID_Handle.fifo, keybd_report_data, HID_Handle.length) =  HID_Handle.length) THEN
+    IF (HID_Handle.Data.length # 0) &
+      (HCl.FifoRead(HID_Handle.fifo, keybd_report_data, HID_Handle.Data.length) =  HID_Handle.Data.length) THEN
       (*Fill report *)
       info.lctrl :=  SYSTEM.VAL(BOOLEAN, P.ReadItem(keybd_report_data, imp_0_lctrl, 0));
       info.lshift := SYSTEM.VAL(BOOLEAN, P.ReadItem(keybd_report_data, imp_0_lshift, 0));
