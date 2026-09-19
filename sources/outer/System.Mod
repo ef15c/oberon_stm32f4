@@ -356,7 +356,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   (* ------------- Toolbox for system inspection ---------------*)
 
   PROCEDURE Watch*;
-    VAR modUsed, size: INTEGER;
+    VAR modUsed, size, hwm, v: INTEGER;
   BEGIN Texts.WriteString(W, "System.Watch"); Texts.WriteLn(W);
     modUsed := Modules.AllocPtr - modBase;
     Texts.WriteString(W, "  Modules space (bytes)"); Texts.WriteInt(W, modUsed, 8);
@@ -370,7 +370,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     Texts.WriteString(W, ", write errors "); Texts.WriteInt(W, SDCard.hsd.writeErrors, 1); Texts.WriteString(W, ", unrecoverable ");
     Texts.WriteInt(W, SDCard.hsd.unrecoverableErrors, 1); EndLine;
     Texts.WriteString(W, "  Tasks"); Texts.WriteInt(W, Oberon.NofTasks, 4); EndLine;
-    Texts.WriteString(W, "  MSP high water mark   "); Texts.WriteHex(W, Kernel.SPHWM); EndLine
+    hwm := 20030000H - 1024; REPEAT SYSTEM.GET(hwm, v); INC(hwm, 4) UNTIL v #5A5A5A5AH;
+    Texts.WriteString(W, "  MSP high water mark   "); Texts.WriteHex(W, hwm - 4); EndLine
   END Watch;
 
   PROCEDURE ShowModules*;
@@ -481,7 +482,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       BSP.led(127); REPEAT UNTIL FALSE (*Other faults need debugging*)
     END;
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(CFSR, cfsr*UFSR_Mask); (*reset UFSR flags*) Kernel.setSPHWM;
+    SYSTEM.PUT(CFSR, cfsr*UFSR_Mask); (*reset UFSR flags*)
     SYSTEM.MBI(2)
   END Trap;
 
@@ -494,7 +495,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     END;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(CFSR, cfsr*BFSR_Mask); (*reset BFSR flags*) Kernel.setSPHWM;
+    SYSTEM.PUT(CFSR, cfsr*BFSR_Mask); (*reset BFSR flags*)
     SYSTEM.MBI(2)
   END BusFaultHandler;
 
@@ -507,7 +508,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     INC(f.returnAddress, 4); (*return to next instruction*)
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(CFSR, cfsr*MMFSR_Mask); (*reset MMFSR flags*) Kernel.setSPHWM;
+    SYSTEM.PUT(CFSR, cfsr*MMFSR_Mask); (*reset MMFSR flags*)
     SYSTEM.MBI(2)
   END MemManageFaultHandler;
 
@@ -517,7 +518,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
   BEGIN cfsr := {ABORTKEY}; TrappedAdr := f.returnAddress;
     (*Trigger abort by requesting a PendSV interrupt*)
     SYSTEM.GET(ICSR, icsr); INCL(icsr, PENDSVSET); SYSTEM.PUT(ICSR, icsr); SYSTEM.MBI(3); (*ISB*)
-    SYSTEM.PUT(PR, {BSP.B1Pin}); (* Clear pending IRQ*) Kernel.setSPHWM;
+    SYSTEM.PUT(PR, {BSP.B1Pin}); (* Clear pending IRQ*)
     SYSTEM.MBI(2)
   END AbortHandler;
 
@@ -570,7 +571,6 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
       ELSE stack.eos := SYSTEM.VAL(INTEGER, cf) + sz; stack.LR := cf.lr; IF 9 IN SYSTEM.VAL(SET, cf.xpsr) THEN (*stack was realigned*) INC(stack.eos, 4) END
       END; stack.len := (10010000H - stack.eos) DIV 4;
       IF (stack.eos < 10010000H) & (stack.len <= 10000H DIV 4) THEN SYSTEM.COPY(stack.eos, SYSTEM.ADR(stack.stack), stack.len) END;
-      Kernel.setSPHWM;
       (*build exception frame*)
       f := SYSTEM.VAL(Kernel.ExceptionFrame, 10010000H - sz);
       f.r0 := 0; f.r1 := 0; f.r2 := 0; f.r3 := 0; f.r12 := 0; f.lr := 0FFFFFFFFH; f.returnAddress := SYSTEM.ADR(Reset);
@@ -604,3 +604,5 @@ BEGIN SYSTEM.GET(Kernel.bootParams+16, modBase);
   stack := SYSTEM.VAL(StackDump, (*20000600H*) 0D0110000H); stack.len := 0; stack.cause := 0;
   stack.cfsr := {}; stack.far := 0; stack.eos := 0; stack.PC := 0; stack.LR := 0;
 END System.
+
+OM4Tool.DecObj System.m4c

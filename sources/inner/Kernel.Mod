@@ -28,7 +28,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   VAR allocated*, NofSectors*: INTEGER;
     heapOrg*, heapLim*: INTEGER;
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
-    SPHWM*, SVCReturnAddress*, bootParams*: INTEGER;
+    SVCReturnAddress*, bootParams*: INTEGER;
     tick: INTEGER;
 
     list0*, list1*, list2*, list3*: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
@@ -281,13 +281,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   BEGIN SYSTEM.PUT(at, Padr)
   END Install;
 
-  PROCEDURE setSPHWM*;
-  BEGIN
-    IF (SYSTEM.REG(13) >= stackOrg) & (SYSTEM.REG(13) < SPHWM) THEN
-      SPHWM := SYSTEM.REG(13)
-    END
-  END setSPHWM;
-
   PROCEDURE^4 Trap(VAR f: ExceptionFrameDesc);
     VAR u, w: INTEGER;
   BEGIN SYSTEM.GET(f.returnAddress, u); w := u DIV 10000H MOD 10H; (*trap number*)
@@ -295,7 +288,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   END Trap;
 
   PROCEDURE^4 IncTick;
-  BEGIN INC(tick); setSPHWM
+  BEGIN INC(tick)
   END IncTick;
 
   PROCEDURE defaultHandler; (*infinite loop*)
@@ -312,7 +305,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       END
     ELSIF param = 1 THEN BSP.led(f.r0)
     ELSIF param = 2 THEN LongDiv.DivL(SYSTEM.VAL(LongDiv.DivParam, f))
-    END; setSPHWM;
+    END;
     SVCReturnAddress := 0
   END SVCallHandler;
 
@@ -364,7 +357,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SYSTEM.GET(bootParams+28, heapOrg); stackSize := 10000H; heapLim := MemLim;
     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
     SYSTEM.PUT(list0, heapLim - heapOrg); SYSTEM.PUT(list0+4, -1); SYSTEM.PUT(list0+8, 0);
-    allocated := 0; SPHWM := LSL(1, 31) - 1; InitSecMap; BSP.InitDisplay
+    allocated := 0; InitSecMap; BSP.InitDisplay
   END Init;
 
 BEGIN Init

@@ -40,7 +40,7 @@ OM4P.Compile Graphics.Mod/s GraphicFrames.Mod/s Draw.Mod/s Rectangles.Mod/s Curv
   MacroTool.Mod/s GraphTool.Mod/s ~
 
 Command for generating programs
-OM4P.Compile Hilbert.Mod Sierpinski.Mod Blink.Mod Stars.Mod ~
+OM4P.Compile Hilbert.Mod Sierpinski.Mod Blink.Mod Stars.Mod Mira.Mod~
 
 OM4Tool.DecBin Modules.bin ~
 

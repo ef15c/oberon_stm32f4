@@ -44,7 +44,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
       MaxMove = 200;
     VAR curTick, x, y, dx, dy, dz: INTEGER; flags: SET;
       next: INTEGER;
-  BEGIN Kernel.setSPHWM;
+  BEGIN
     IF dev.connectedDevice = MOUSE THEN
       curTick := Kernel.Time();
       IF curTick - dev.tickLastReport > 5 THEN (*The mouse didn't send report for a while. Start to begin of frame*)
@@ -76,7 +76,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
 
   PROCEDURE requestToSend(VAR dev: DeviceDesc);
     VAR clockBit: BOOLEAN;
-  BEGIN Kernel.setSPHWM;
+  BEGIN
     IF dev.activityLED # 0 THEN SYSTEM.PUT(dev.activityLED, ON) END;
     SYSTEM.PUT(dev.clock_Out, HIGH);
     REPEAT SYSTEM.GET(dev.clock_In, clockBit) UNTIL clockBit; (*wait until clock is high*)
@@ -158,7 +158,7 @@ MODULE PS2; (*PS/2 Mouse and keyboard driver*)
         END
       ELSE INC(dev.badEdge)
       END
-    END; Kernel.setSPHWM
+    END
   END ProcessData;
 
   PROCEDURE StopReporting(VAR dev: DeviceDesc): INTEGER;
@@ -256,3 +256,4 @@ BEGIN mkb := SYSTEM.VAL(MKB, SYSTEM.ADR(mkbBlock));
 END PS2.
 
 OM4Tool.DecSym PS2.sm4
+OM4Tool.DecObj PS2.m4c

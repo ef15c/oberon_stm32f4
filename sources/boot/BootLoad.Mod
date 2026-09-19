@@ -793,10 +793,13 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
   END SystemClockInit;
 
   PROCEDURE SystemInit;
-    VAR reg: SET;
+    VAR reg: SET; a: INTEGER;
   BEGIN SYSTEM.PUT(BSP.ACTLR, {BSP.DISMCYCINT}); (*disable interrupt on multi_cycle instructions, as a workaround for 2.3.15 SDRAM silicon bug*)
     (*enable instruction cache, data cache and instruction prefetch*)
-    SYSTEM.GET(BSP.FLASH_BASE + BSP.ACR, reg); SYSTEM.PUT(BSP.FLASH_BASE + BSP.ACR, reg + {BSP.ICEN, BSP.DCEN, BSP.PRFTEN})
+    SYSTEM.GET(BSP.FLASH_BASE + BSP.ACR, reg); SYSTEM.PUT(BSP.FLASH_BASE + BSP.ACR, reg + {BSP.ICEN, BSP.DCEN, BSP.PRFTEN});
+    (*paint stack with 5A5A5A5AH pattern*)
+    a := SYSTEM.REG(13) - 4;
+    WHILE a >= 20030000H - 1024 (*1KB system stack*) DO SYSTEM.PUT(a, 5A5A5A5AH); DEC(a, 4) END
   END SystemInit;
 
   PROCEDURE RTCInit;
