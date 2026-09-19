@@ -1468,8 +1468,9 @@ MODULE OM4G; (* N.Wirth, 16.4.2016 / 4.4.2017 / 31.5.2019  Oberon compiler;
   PROCEDURE Shift*(fct: INTEGER; VAR x, y: Item);
     VAR xa, ya: INTEGER;
   BEGIN xa := x.a; ya := y.a;
-    IF (x.mode = B.Const) & (y.mode = B.Const) THEN
-      IF fct = 0 THEN x.a := LSL(x.a, ya) ELSIF fct = 1 THEN x.a := ASR(x.a, ya) ELSIF fct = 2 THEN x.a := ROR(xa, ya) ELSE x.a := LSR(x.a, ya) END 
+    IF (y.mode = B.Const) & (y.a = 0) THEN (*nothing to do*)
+    ELSIF (x.mode = B.Const) & (y.mode = B.Const) THEN
+      IF fct = 0 THEN x.a := LSL(x.a, ya) ELSIF fct = 1 THEN x.a := ASR(x.a, ya) ELSIF fct = 2 THEN x.a := ROR(xa, ya) ELSE x.a := LSR(x.a, ya) END
     ELSIF fct = 0 THEN Lsl(x, y) ELSIF fct = 1 THEN Asr(x, y) ELSIF fct = 3 THEN Lsr(x, y)
     ELSE load(x); IF isLongint(x.type) THEN S.Mark("not implemented") END;
       IF y.mode = B.Const THEN A.encShiftImm5(mcode, A.ROr, x.r, x.r, ya MOD 20H)
