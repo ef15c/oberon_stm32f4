@@ -1,6 +1,7 @@
 MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
   C. Schoffit 05.02.25 Oberon compiler for Cortex M4 in Oberon-07*)
   (*C. Schoffit 16.04.26: improve register usage check*)
+  (*C. Schoffit 20.09.26: improve the precison of the source text position*)
   IMPORT Display, Texts, Oberon, S := OM4S, B := OM4B, G := OM4G;
   (*Author: Niklaus Wirth, 2014.
     Parser of Oberon-Cortex M4 compiler. Uses Scanner OM4S to obtain symbols (tokens),

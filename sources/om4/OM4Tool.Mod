@@ -1,10 +1,11 @@
-MODULE OM4Tool;  (*NW 18.2.2013
-  C. Schoffit 16.04.26: improve register usage check*)
-  IMPORT SYSTEM, Files, Texts, Oberon, OM4B, OM4A, OM4D, Modules;
+MODULE OM4Tool;  (*NW 18.2.2013*)
+  (*C. Schoffit 16.04.26: improve register usage check*)
+  (*C. Schoffit 20.09.26: improve the precison of the source text position*)
+  IMPORT SYSTEM, Files, Texts, Oberon, B := OM4B, A := OM4A, D := OM4D, Modules;
 
   TYPE
     ExternalRefMap = RECORD
-      ext: ARRAY OM4A.maxCode OF BYTE
+      ext: ARRAY A.maxCode OF BYTE
     END;
 
     BootParams = POINTER TO BootParamsList;
@@ -17,7 +18,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
   VAR W: Texts.Writer;
     Form: INTEGER;  (*result of ReadType*)
     RdG, mno: BYTE;
-    mcode: OM4A.ModuleCode; eref: ExternalRefMap;
+    mcode: A.ModuleCode; eref: ExternalRefMap;
   
   PROCEDURE Read(VAR R: Files.Rider; VAR n: INTEGER);
     VAR b: BYTE;
@@ -30,15 +31,15 @@ MODULE OM4Tool;  (*NW 18.2.2013
       ref, class, form, readonly: INTEGER;
       name, modname: ARRAY 32 OF CHAR;
   BEGIN Read(R, ref); Texts.Write(W, " "); Texts.Write(W, "[");
-    IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1); IF -ref <= OM4B.String THEN form := -ref END
+    IF ref < 0 THEN Texts.Write(W, "^"); Texts.WriteInt(W, -ref, 1); IF -ref <= B.String THEN form := -ref END
     ELSE Texts.WriteInt(W, ref, 1);
       Read(R, form); Texts.WriteString(W, "  form = "); Texts.WriteInt(W, form, 1);
-      IF form = OM4B.Pointer THEN ReadType(R, version)
-      ELSIF form = OM4B.Array THEN
+      IF form = B.Pointer THEN ReadType(R, version)
+      ELSIF form = B.Array THEN
         ReadType(R, version); Files.ReadNum(R, len); Files.ReadNum(R, size);
         Texts.WriteString(W, "  len = "); Texts.WriteInt(W, len, 1);
         Texts.WriteString(W, "  size = "); Texts.WriteInt(W, size, 1)
-      ELSIF form = OM4B.Record THEN
+      ELSIF form = B.Record THEN
         ReadType(R, version);  (*base type*)
         Files.ReadNum(R, off); Texts.WriteString(W, "  exno = "); Texts.WriteInt(W, off, 1); 
         Files.ReadNum(R, off); Texts.WriteString(W, "  extlev = "); Texts.WriteInt(W, off, 1);
@@ -52,7 +53,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
           Files.ReadNum(R, off); Texts.WriteInt(W, off, 4); Read(R, class)
         END ;
         Texts.Write(W, "}")
-      ELSIF form = OM4B.Proc THEN
+      ELSIF form = B.Proc THEN
         ReadType(R, version);
         IF version = 2 THEN Files.ReadNum(R, class);
           Texts.WriteString(W, " ur = "); Texts.WriteInt(W, class, 1)
@@ -89,26 +90,26 @@ MODULE OM4Tool;  (*NW 18.2.2013
         Files.Set(R, F, 0); Files.ReadInt(R, k); Files.ReadInt(R, k);
         Files.ReadString(R, name); Texts.WriteString(W, name); Texts.WriteHex(W, k);
         Read(R, version); Texts.WriteInt(W, version, 3); (*sym file version*)
-        IF version <= OM4B.versionkey THEN
+        IF version <= B.versionkey THEN
           Texts.WriteLn(W); Read(R, class);
           WHILE class # 0 DO
             Texts.WriteInt(W, class, 4); Files.ReadString(R, name); Texts.Write(W, " "); Texts.WriteString(W, name);
             ReadType(R, version);
-            IF class = OM4B.Typ THEN
+            IF class = B.Typ THEN
               Texts.Write(W, "("); Read(R, class);
               WHILE class # 0 DO  (*pointer base fixup*)
                 Texts.WriteString(W, " ->"); Texts.WriteInt(W, class, 4); Read(R, class)
               END ;
               Texts.Write(W, ")")
-            ELSIF class = OM4B.Const THEN
-              IF Form = OM4B.Real THEN Files.ReadInt(R, k)
-              ELSIF Form = OM4B.String THEN Files.ReadInt(R, k); Texts.WriteString(W, "len:");
+            ELSIF class = B.Const THEN
+              IF Form = B.Real THEN Files.ReadInt(R, k)
+              ELSIF Form = B.String THEN Files.ReadInt(R, k); Texts.WriteString(W, "len:");
                 Texts.WriteInt(W, k DIV 10000H, 6); (*len*);
                 k := k MOD 10000H (*offset*)
               ELSE Files.ReadNum(R, k)
               END;
               Texts.WriteInt(W, k, 8);
-            ELSIF class = OM4B.Var THEN
+            ELSIF class = B.Var THEN
               Files.ReadNum(R, k); Texts.WriteInt(W, k, 6);  (*exno*)
             END ;
             Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
@@ -130,20 +131,20 @@ MODULE OM4Tool;  (*NW 18.2.2013
   BEGIN
     ext := er.ext[i];
     IF ext = 0 THEN
-      OM4D.opcode(W, c, i, base)
+      D.opcode(W, c, i, base)
     ELSE b1 := c[i+1]; b2 := c[i]; INC(i, 2); b3 := c[i+1]; b4 := c[i]; INC(i, 2);
       IF ext = 1 THEN (*Get lower 16-bits of address of the object*)
         op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
         Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
-        RdG := b1 DIV OM4A.C4; mno := b1 MOD OM4A.C4;
-        OM4D.WriteOp(W, op, "MOV", FALSE, FALSE); OM4D.WriteReg(W, RdG); Texts.WriteString(W, " lower 16-bits base(");
+        RdG := b1 DIV ORD({4}); mno := b1 MOD ORD({4});
+        D.WriteOp(W, op, "MOV", FALSE, FALSE); D.WriteReg(W, RdG); Texts.WriteString(W, " lower 16-bits base(");
         Texts.WriteInt(W, mno, 1); Texts.WriteString(W, "), next at ");
-        next := i-4 - (b4 + 100H*(b3 + 100H*b2))*OM4A.C1;
+        next := i-4 - (b4 + 100H*(b3 + 100H*b2))*ORD({1});
         Texts.WriteHex(W, next)
       ELSIF ext IN {2, 4} THEN (*Get higher 16-bits of address of the object*)
         op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
         Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
-        OM4D.WriteOp(W, op, "MOVT", FALSE, FALSE); OM4D.WriteReg(W, RdG);
+        D.WriteOp(W, op, "MOVT", FALSE, FALSE); D.WriteReg(W, RdG);
         Texts.WriteString(W, " higher 16-bits ");
         IF mno = 0 THEN IF ext = 2 THEN Texts.WriteString(W, "var + ") ELSE Texts.WriteString(W, "const + ") END;
           Texts.WriteInt(W, 0+b4+100H*(b3+100H*b2), 1)
@@ -157,8 +158,8 @@ MODULE OM4Tool;  (*NW 18.2.2013
       ELSIF ext = 3 THEN (*BL Call external procedure*)
         op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
         Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
-        mno := b1 DIV OM4A.C4; proc := b1 MOD OM4A.C4*OM4A.C4 + b2 DIV OM4A.C4;
-        OM4D.WriteOp(W, op, "BL", FALSE, FALSE); Texts.WriteString(W, " Mod("); Texts.WriteInt(W, mno, 3);
+        mno := b1 DIV ORD({4}); proc := b1 MOD ORD({4})*ORD({4}) + b2 DIV ORD({4});
+        D.WriteOp(W, op, "BL", FALSE, FALSE); Texts.WriteString(W, " Mod("); Texts.WriteInt(W, mno, 3);
         Texts.WriteString(W, ") proc("); Texts.WriteInt(W, proc, 1);
         Texts.WriteString(W, ")")
       ELSE Texts.WriteString(W, "TODO: External reference")
@@ -175,21 +176,33 @@ MODULE OM4Tool;  (*NW 18.2.2013
   BEGIN Files.WriteByte(R, x)  (* -128 <= x < 128 *)
   END Write;
 
+  PROCEDURE GetPos(VAR R: Files.Rider; VAR nbi: BYTE; VAR smi, pos: INTEGER; i: INTEGER);
+  BEGIN
+    WHILE smi <= i DO IF nbi = 0 THEN (*get next position*) Files.ReadByte(R, nbi); Files.ReadInt(R, pos) END;
+      INC(smi, 2); DEC(nbi)
+    END
+  END GetPos;
+
   PROCEDURE DecObj*;   (*decode object file*)
-    VAR version, i, n, key, size, adr, data: INTEGER;
-      bl: BYTE;
+    VAR version, i, smi, pos, n, key, size, adr, data: INTEGER;
+      bl, nbi: BYTE;
       next: INTEGER;
       ch: CHAR;
-      name: ARRAY 32 OF CHAR;
-      F!: Files.File; R!: Files.Rider;
+      name, smName: ARRAY 32 OF CHAR;
+      F!, SM!: Files.File; R!, SMR!: Files.Rider;
       S!: Texts.Scanner;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
-      IF F # NIL THEN OM4A.Init(mcode);
+      IF F # NIL THEN A.Init(mcode);
+        
         Files.Set(R, F, 0); Files.ReadString(R, name); Texts.WriteLn(W); Texts.WriteString(W, name);
         Files.ReadInt(R, key); Texts.WriteHex(W, key); Read(R, version); Texts.WriteInt(W, version, 4);
         Texts.Append(Oberon.Log, W.buf); ASSERT(version IN {0, 1, 2});
+        B.MakeFileName(smName, name, ".osm"); SM := Files.Old(smName);
+        IF SM # NIL THEN Files.Set(SMR, SM, 0); Files.ReadInt(SMR, smi); (*skip end address field*)
+          smi := 0; Files.ReadByte(SMR, nbi); Files.ReadInt(SMR, pos)
+        END;
         Files.ReadInt(R, size); Texts.WriteInt(W, size, 7); Texts.WriteLn(W);
         Texts.Append(Oberon.Log, W.buf); ASSERT(size < 500000);
         Texts.WriteString(W, "imports:"); Texts.WriteLn(W); Files.ReadString(R, name);
@@ -241,20 +254,20 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (* Sync(R); *)
         Files.ReadInt(R, data); Texts.WriteString(W, "fixP = "); Texts.WriteHex(W, data); Texts.WriteLn(W);
         WHILE data # 0 DO eref.ext[data] := 3;
-          next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*(mcode.code[data] MOD OM4A.C4)))*OM4A.C1;
+          next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*(mcode.code[data] MOD ORD({4}))))*ORD({1});
           data := next
         END;
         Files.ReadInt(R, data);
         IF version < 2 THEN Texts.WriteString(W, "fixD = ") ELSE Texts.WriteString(W, "fixV = ") END;
         Texts.WriteHex(W, data); Texts.WriteLn(W);
         WHILE data # 0 DO eref.ext[data] := 1; eref.ext[data+4] := 2;
-          next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*OM4A.C1;
+          next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*ORD({1});
           data := next
         END;
         IF version = 2 THEN Files.ReadInt(R, data); Texts.WriteString(W, "fixC = ");
           Texts.WriteHex(W, data); Texts.WriteLn(W);
           WHILE data # 0 DO eref.ext[data] := 1; eref.ext[data+4] := 4;
-            next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*OM4A.C1;
+            next := data-(mcode.code[data+2] + 100H*(mcode.code[data+3] + 100H*mcode.code[data]))*ORD({1});
             data := next
           END
         END;
@@ -265,7 +278,12 @@ MODULE OM4Tool;  (*NW 18.2.2013
       (* Sync(R); *)
         i := 0;
         WHILE i < mcode.pc DO
-          Texts.WriteHex(W, i); Texts.Write(W, 9X); 
+          Texts.Append(Oberon.Log, W.buf);
+          Texts.WriteHex(W, i);
+          IF SM # NIL THEN GetPos(SMR, nbi, smi, pos, i);
+            Texts.WriteString(W, "  "); Texts.WriteInt(W, pos, 8)
+          END;
+          Texts.Write(W, 9X);
           opcode(mcode.code, eref, i, 0); Texts.WriteLn(W)
         END
       ELSE Texts.WriteString(W, " not found"); Texts.WriteLn(W)
@@ -317,13 +335,13 @@ MODULE OM4Tool;  (*NW 18.2.2013
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); Texts.WriteLn(W);
       F := Files.Old(S.s);
-      IF F # NIL THEN OM4A.Init(mcode);
+      IF F # NIL THEN A.Init(mcode);
         Files.Set(R, F, 0); 
         FOR i := 0 TO SYSTEM.SIZE(BootParamsList) DIV 4 - 1 DO Files.ReadInt(R, bpb[i]) END;
         bp := SYSTEM.VAL(BootParams, SYSTEM.ADR(bpb)); 
         ramOrg := bp.BootfileLoadAOrg; root := bp.RootModule;
         n := 0; Texts.WriteHex(W, n+ramOrg); Texts.Write(W, 9X);
-        OM4D.opcode(W, bp.BranchToRootInit, n, ramOrg); Texts.WriteLn(W);
+        D.opcode(W, bp.BranchToRootInit, n, ramOrg); Texts.WriteLn(W);
         EmitWord(W, bp.SDHandle, n, ramOrg, "SD card description"); EmitWord(W, bp.BootfileLoadAOrg, n, ramOrg, "Modules origin");
         EmitWord(W, bp.MemLim, n, ramOrg, "RAM end"); EmitWord(W, bp.BootfileLoadEnd, n, ramOrg, "Modules allocation pointer");
         EmitWord(W, bp.RootModule, n, ramOrg, "Root module descriptor"); EmitWord(W, bp.StackOrg, n, ramOrg, "Stack origin"); 
@@ -410,7 +428,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
             END;
             i := 0; 
             WHILE i < mcode.pc DO 
-              Texts.WriteHex(W, mod.code + i); Texts.Write(W, 9X); OM4D.opcode(W, mcode.code, i, mod.code);
+              Texts.WriteHex(W, mod.code + i); Texts.Write(W, 9X); D.opcode(W, mcode.code, i, mod.code);
               Texts.WriteLn(W)
             END
           END;
@@ -485,7 +503,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
           IF mcode.pc > 0 THEN Texts.WriteString(W, "; global initialization section found"); Texts.WriteLn(W);
             i := 0; 
             WHILE i < mcode.pc DO 
-              Texts.WriteHex(W, n+ramOrg + i); Texts.Write(W, 9X); OM4D.opcode(W, mcode.code, i, n+ramOrg);
+              Texts.WriteHex(W, n+ramOrg + i); Texts.Write(W, 9X); D.opcode(W, mcode.code, i, n+ramOrg);
               Texts.WriteLn(W)
             END
           ELSE
@@ -529,7 +547,7 @@ MODULE OM4Tool;  (*NW 18.2.2013
       WHILE i < mod.imp DO SYSTEM.GET(i, mcode.code[mcode.pc]); INC(mcode.pc); INC(i) END;
       i := 0; Texts.WriteString(W, " ; code "); Texts.WriteLn(W);
       WHILE i < mcode.pc DO
-        Texts.WriteHex(W, mod.code + i); Texts.Write(W, 9X); OM4D.opcode(W, mcode.code, i, mod.code);
+        Texts.WriteHex(W, mod.code + i); Texts.Write(W, 9X); D.opcode(W, mcode.code, i, mod.code);
         Texts.WriteLn(W)
       END;
       Texts.Append(Oberon.Log, W.buf);

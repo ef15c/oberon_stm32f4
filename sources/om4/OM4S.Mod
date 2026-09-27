@@ -1,4 +1,5 @@
 MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
+  (*C. Schoffit 20.09.26: improve the precison of the source text position*)
   IMPORT SYSTEM, Texts, Oberon;
 
 (* Oberon Scanner does lexical analysis. Input is Oberon-Text, output is
@@ -70,6 +71,13 @@ MODULE OM4S; (* NW 19.9.93 / 15.3.2017  Scanner in Oberon-07*)
   PROCEDURE WriteInt*(i, l: INTEGER);
   BEGIN IF errcnt < 26 THEN Texts.WriteInt(W, i, l); Texts.Append(Oberon.Log, W.buf) END
   END WriteInt;
+
+  PROCEDURE DebugInt*(msg: ARRAY OF CHAR; v, l: INTEGER);
+    VAR p: INTEGER;
+  BEGIN p := Pos();
+    Texts.WriteLn(W); Texts.WriteString(W, msg); Texts.WriteString(W, " at pos "); Texts.WriteInt(W, p, 1); Texts.Write(W, " ");
+    Texts.WriteInt(W, v, l); Texts.Append(Oberon.Log, W.buf)
+  END DebugInt;
 
   PROCEDURE DebugHex*(msg: ARRAY OF CHAR; v: INTEGER);
     VAR p: INTEGER;

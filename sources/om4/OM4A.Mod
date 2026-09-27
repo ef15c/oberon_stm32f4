@@ -1,5 +1,6 @@
-MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F processor*) 
+MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F processor*)
   (*C. Schoffit 16.04.26: improve register usage check*)
+  (*C. Schoffit 20.09.26: improve the precison of the source text position*)
   IMPORT S := OM4S, B := OM4B;
   
   CONST NSF* = {0}; (*Don't set flags*) SF* = {1}; (*Set flags*) Any* = NSF + SF; (*use the shortest instruction*)
@@ -894,7 +895,9 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   BEGIN
     sig := c.code[at+1] DIV C3;
     IF sig = BRCSIG THEN fix21(c, at, with)
-    ELSE ASSERT(sig = BRSIG); modify(c, at, BT4 + formatEvenImm25(with)) END
+    ELSIF sig = BRSIG THEN modify(c, at, BT4 + formatEvenImm25(with))
+    ELSE ASSERT(S.errcnt > 0)
+    END
   END fix;
   
 (*  Format of forward conditionaljump T1 :
@@ -930,7 +933,7 @@ MODULE OM4A; (*C. Schoffit 10/11/2023 Instruction encoder for Cortex M4F process
   PROCEDURE FixLink*(VAR c: ModuleCode; L: INTEGER);
     VAR L1: INTEGER;
   BEGIN
-    WHILE L # 0 DO L1 := load22(c, L); fix(c, L, c.pc-L-4); L := L1 END
+    WHILE (L # 0) & (S.errcnt = 0) DO L1 := load22(c, L); fix(c, L, c.pc-L-4); L := L1 END
   END FixLink;
 
   PROCEDURE FixLinkWith*(VAR c: ModuleCode; L0, dst: INTEGER);
@@ -1092,6 +1095,5 @@ BEGIN
   memimm5shift[STRH] := 1; (*offset = ZeroExtend(imm5:'0', 32);*)
 END OM4A.
 
-OM4Tool.DecSym OM4A2.sm4
-
-OM4Tool.DecObj OM4A2.m4c
+OM4Tool.DecSym OM4A.sm4
+OM4Tool.DecObj OM4A.m4c
