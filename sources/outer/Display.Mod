@@ -243,6 +243,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   PROCEDURE MovePattern*(xc, yc: INTEGER);
     VAR xl, xr, yt, yb, x0, y0, w, h: INTEGER;
+      bpcr: INTEGER;
   BEGIN
     IF ms # NIL THEN yc := Height - 1 - yc; (*convert Oberon y-coordinate in LTDC coordinate*)
       xl := xc - ms.ox; xr := xc + ms.w - 1 - ms.ox;
@@ -255,8 +256,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CFBAR, ORD(ms) + 4 + (x0 - xl) + ms.w*(y0 - yt));
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CFBLR,
         LSL(0 + ms.w*BSP.Display_BPP DIV 8, 16) + (w + 3)*BSP.Display_BPP DIV 8);
-      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WHPCR, LSL(356+1 + x0 + w-1, 16) + 356+1 + x0);
-      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WVPCR, LSL(27+1 + y0 + h-1, 16) + 27+1 + y0);
+      SYSTEM.GET(BSP.LTDC_BASE + BSP.BPCR, bpcr); (*retrieve current AHBP and AVBP*)
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WHPCR, LSL(LSR(bpcr, 16)+1 + x0 + w-1, 16) + LSR(bpcr, 16)+1 + x0);
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WVPCR, LSL(bpcr MOD 1024+1 + y0 + h-1, 16) + bpcr MOD 1024+1 + y0);
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CR, {BSP.COLKEN, BSP.LEn}); (*enable layer 2 with transparent color*)
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CFBLNR, h);
       SYSTEM.PUT(BSP.vbr, TRUE) (*reload shadow registers immediately*)

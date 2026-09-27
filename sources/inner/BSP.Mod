@@ -685,16 +685,17 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
   BEGIN Display_InitGPIOs;
     (*Init and start LTDC*)
     (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
-    SYSTEM.PUT(RCC_BASE + PLLSAICFGR, LSL(4, 24) + LSL(160, 6) + LSL(2, 28)); (*PLLSAIQ = 4, PLLSAIN = 160, PLLSAIR = 2*)
+    SYSTEM.PUT(RCC_BASE + PLLSAICFGR, LSL(4, 24) + LSL(171, 6) + LSL(2, 28)); (*LCD-TFT = 85.5MHz. PLLSAIQ = 4, PLLSAIN = 171, PLLSAIR = 2*)
     SYSTEM.GET(RCC_BASE + DCKCFGR, reg); SYSTEM.PUT(RCC_BASE + DCKCFGR, reg - PLLSAIDIVRm); (*PLLSADIVR = 2*)
     SYSTEM.PUT(pllsaiEn, TRUE); REPEAT UNTIL SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
 
+    (*use VESA standard timing DMT ID: 51h*)
     (*LTDC*) SYSTEM.PUT(rcc_ltdcEn, TRUE); SYSTEM.GET(rcc_ltdcEn, reg); (*delay*)
     SYSTEM.GET(LTDC_BASE + GCR, reg); SYSTEM.PUT(LTDC_BASE + GCR, reg - (DEPOLm + PCPOLm) + (HSPOLm + VSPOLm)); (*HS and VS polarity high*)
-    SYSTEM.PUT(LTDC_BASE + SSCR, LSL(143, 16) + 3); (*HSW 143, VSH 3*)
-    SYSTEM.PUT(LTDC_BASE + BPCR, LSL(356, 16) + 27); (*AHBP 356, AVBP 27*)
-    SYSTEM.PUT(LTDC_BASE + ACWR, LSL(1722, 16) + 795); (*AAW 1722, AAH 795*)
-    SYSTEM.PUT(LTDC_BASE + TWCR, LSL(1792, 16) + 798); (*Total Width 1792, height 798*)
+    SYSTEM.PUT(LTDC_BASE + SSCR, LSL(142, 16) + 2); (*HSW 142, VSH 2*)
+    SYSTEM.PUT(LTDC_BASE + BPCR, LSL(355, 16) + 26); (*AHBP 355, AVBP 26*)
+    SYSTEM.PUT(LTDC_BASE + ACWR, LSL(1721, 16) + 794); (*AAW 1721, AAH 794*)
+    SYSTEM.PUT(LTDC_BASE + TWCR, LSL(1791, 16) + 797); (*Total Width 1791, height 797*)
     SYSTEM.PUT(LTDC_BASE + BCCR, 0); (*Background red, green and blue 0*)
     SYSTEM.PUT(gcr_ltdcEn, TRUE);
 
@@ -718,8 +719,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     UNTIL i = 0;
 
     (*Layer 1*)
-    SYSTEM.PUT(LTDC_BASE + L1WHPCR, LSL(1722, 16) + 356+1); (*first visible pixel 357, last 1722*)
-    SYSTEM.PUT(LTDC_BASE + L1WVPCR, LSL(795, 16) + 27+1); (*first visible line 28, last 795*)
+    SYSTEM.PUT(LTDC_BASE + L1WHPCR, LSL(1721, 16) + 355+1); (*first visible pixel 356, last 1721*)
+    SYSTEM.PUT(LTDC_BASE + L1WVPCR, LSL(794, 16) + 26+1); (*first visible line 27, last 794*)
     SYSTEM.PUT(LTDC_BASE + L1PFCR, 5); (*pixel format L8*)
     SYSTEM.PUT(LTDC_BASE + L1DCCR, 0); (*Default color transparent black*)
     SYSTEM.PUT(LTDC_BASE + L1CACR, 255); (*constant alpha value 1*)
