@@ -1,7 +1,7 @@
 MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 (*CS 23/12/2023*)
 
-  IMPORT SYSTEM, BSP;
+  IMPORT SYSTEM, BSP(*, DMA2D*);
 
   CONST black* = 0; white* = 255;  (*black = background*) midgrey* = 49H; (*010 010 01*)
     red* = 0E0H; green* = 1CH; blue* = 3H; yellow* = 0FCH; magenta* = 0E3H; cyan* = 1FH;
@@ -9,9 +9,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
     Base* = BSP.Display_FBA; Width* = BSP.Display_Width; Height* = BSP.Display_Height; NofBPP* = BSP.Display_BPP;
     Span = BSP.Display_Pitch;
     NofPixperWord* = 32 DIV NofBPP;
-
-    STREAM7_BASE = BSP.DMA2_BASE + BSP.STREAM_PARAM_SIZE*7;
-    s7En = BSP.PeriphBBAlias + (STREAM7_BASE + BSP.SxCR - BSP.PeriphBase + BSP.SxCR_EN DIV 8)*32 + BSP.SxCR_EN MOD 8*4;
 
   TYPE Frame* = POINTER TO FrameDesc;
     FrameMsg* = RECORD END ;
@@ -27,7 +24,6 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   VAR
     (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
     arrowL2*, star*, hook*, updownL2*, block*, cross*, grey*, busy*: INTEGER;
-    pattern: SET; (*cannot be in Core Coupled Memory to be accessible from DMA*)
     ms: Pattern;
 
   PROCEDURE Handle*(F: Frame; VAR M: FrameMsg);
@@ -37,9 +33,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
 
   (* raster ops *)
   PROCEDURE Dot*(col, x, y, mode: INTEGER);
-    VAR a, pp: INTEGER; u, s: SET;
+    VAR a, pp: INTEGER; u, s, pattern: SET;
   BEGIN a := Base + x DIV NofPixperWord*4 + (Height-1-y)*Span; pp := x MOD NofPixperWord*NofBPP;
-    pattern := TOSET(0+col + 256*(col + 256*(col + 256*col)));
+    pattern := TOSET(col + 256*(col + 256*(col + 256*col)));
     s := {pp .. pp+NofBPP-1}; SYSTEM.GET(a, u);
     IF mode = paint THEN SYSTEM.PUT(a, u + s*pattern)
     ELSIF mode = invert THEN SYSTEM.PUT(a, u / (s*pattern))
@@ -48,12 +44,12 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
   END Dot;
 
   PROCEDURE ReplConst*(col, x, y, w, h, mode: INTEGER);
-    VAR al, ar, a0, a1, i, ppl, ppr: INTEGER; left, right, mid, pix, pixl, pixr: SET;
+    VAR al, ar, a0, a1, i, ppl, ppr: INTEGER; left, right, mid, pix, pixl, pixr, pattern: SET;
       en: INTEGER;
   BEGIN al := Base + (Height-1-y)*Span;
     ar := (x+w-1) DIV NofPixperWord*4 + al; al := x DIV NofPixperWord*4 + al;
     ppl := x MOD NofPixperWord*NofBPP; ppr := (x+w-1) MOD NofPixperWord*NofBPP;
-    pattern := TOSET(0+col + 256*(col + 256*(col + 256*col)));
+    pattern := TOSET(col + 256*(col + 256*(col + 256*col)));
     IF ar = al THEN
       mid := {ppl .. ppr+NofBPP-1};
       a1 := al;
@@ -66,15 +62,9 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         DEC(a1, Span)
       END
     ELSIF ar > al THEN
+(*      IF mode = replace THEN DMA2D.FillRect(col, x DIV 4*4 + 4, y, ar - al - 4, h) END;*)
       left := {ppl .. 31}; right := {0 .. ppr+NofBPP-1};
       a0 := al;
-      IF  mode = replace THEN ASSERT((ar - a0 - 4) DIV 4 < 10000H);
-        REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
-        SYSTEM.PUT(STREAM7_BASE + BSP.SxCR, LSL(TOSET(1), BSP.CHSEL) +
-          LSL(BSP.INCR4, BSP.PBURST) + LSL({1}, BSP.MSIZE) + LSL({1}, BSP.PSIZE) + BSP.MINCm +
-          BSP.MEMORY_TO_MEMORY);
-        SYSTEM.PUT(STREAM7_BASE + BSP.SxFCR, BSP.DMDISm + BSP.FULL_FIFO);
-      END;
       FOR i := 1 TO h DO
         SYSTEM.GET(a0, pixl); SYSTEM.GET(ar, pixr);
         IF mode = invert THEN
@@ -83,16 +73,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
           SYSTEM.PUT(ar, pixr / (right*pattern))
         ELSIF mode = replace THEN
           SYSTEM.PUT(a0, pixl - left + left*pattern);
-          (*FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, pattern) END ;*)
-          (*use DMA*)
-          IF a0+4 < ar THEN
-            REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
-            SYSTEM.PUT(BSP.DMA2_BASE + BSP.HIFCR, LSL(BSP.STREAM_FLAGSm, BSP.HI_OFS7)); (*Clear all DMA2 stream 7 interrupt flags*)
-            SYSTEM.PUT(STREAM7_BASE + BSP.SxPAR, SYSTEM.ADR(pattern));
-            SYSTEM.PUT(STREAM7_BASE + BSP.SxM0AR, a0 + 4);
-            SYSTEM.PUT(STREAM7_BASE + BSP.SxNDTR, (ar - a0 - 4) DIV 4);
-            SYSTEM.PUT(s7En, 1); (*don't use TRUE because this register must be accessed by words (32 bits)*)
-          END;
+          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, pattern) END;
           SYSTEM.PUT(ar, pixr - right + right*pattern)
         ELSE (*mode = paint *)
           SYSTEM.PUT(a0, pixl + left*pattern);
@@ -101,9 +82,7 @@ MODULE Display;  (*NW 5.11.2013 / 17.1.2019*)
         END ;
         DEC(ar, Span); DEC(a0, Span)
       END;
-      IF  mode = replace THEN
-        REPEAT SYSTEM.GET(s7En, en) UNTIL en = 0; (*Wait until previous transfer is complete*)
-      END
+(*      IF mode = replace THEN DMA2D.WaitForCompletion END;*)
     END
   END ReplConst;
 

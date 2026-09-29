@@ -68,6 +68,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     MemManageExcNum* = 4; BusFaultExcNum* = 5; UsageFaultExcNum* = 6; SVCallExcNum* = 11; PendSVExcNum* = 14; SysTickExcNum* = 15;
 
     (*STM32F429*)
+    PERIPH_BASE* = 40000000H; (*!< Peripheral base address in the alias region                                *)
+    AHB1PERIPH_BASE* = PERIPH_BASE + 20000H;
 
     (*IRQ numbers*)
     EXTI0_IRQNum* = 16+6; EXTI1_IRQNum* = 16+7; EXTI2_IRQNum* = 16+8; EXTI3_IRQNum* = 16+9; EXTI4_IRQNum* = 16+10;
@@ -135,6 +137,18 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       FEIEm* = {FEIE}; FSm* = {3..5}; DMDISm* = {DMDIS}; FTHm* = {0..1};
       QUARTER_FULL_FIFO* = {}; HALF_FULL_FIFO* = {0}; THREE_QUARTER_FULL_FIFO* = {1}; FULL_FIFO* = {0, 1};
 
+    (*DMA2D*)
+    DMA2D_BASE* = AHB1PERIPH_BASE + 0B000H;
+    DMA2D_CR* = 0;
+    DMA2D_START* = 0; DMA2D_SUSP* = 1;
+
+    (*color modes*)
+    L8* = {0, 2};
+
+    DMA2DEN* = 23;
+    dma2dStart* = PeriphBBAlias + (DMA2D_BASE + DMA2D_CR - PeriphBase + DMA2D_START DIV 8)*32 + DMA2D_START MOD 8*4;
+    dma2dSusp* = PeriphBBAlias + (DMA2D_BASE + DMA2D_CR - PeriphBase + DMA2D_SUSP DIV 8)*32 + DMA2D_SUSP MOD 8*4;
+
     (*EXTI*)
     EXTI_BASE* = 40013C00H; EXTI_IMR* = 0; EMR* = 4; RTSR* = 8; FTSR* = 0CH; SWIER* = 10H; PR* = 14H;
 
@@ -170,6 +184,14 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     imr* = PeriphBBAlias + (LTDC_BASE + SRCR - PeriphBase + SRCR_IMR DIV 8)*32 + SRCR_IMR MOD 8*4;
 
     BCCR* = 2CH; BCREDm* = {16..23}; BCGREENm* = {8..15}; BCBLUEm* = {0..8};
+
+    LTDC_IER* = 34H; LIE* = 0; FUIE* = 1; TERRIE* = 2; RRIE* = 3;
+    LTDC_ISR* = 38H; LIF* = 0; FUIF* = 1; TERRIF* = 2; RRIF* = 3;
+    LTDC_ICR* = 3CH; CLIF* = 0; CFUIF* = 1; CTERRIF* = 2; CRRIF* = 3;
+
+    LIPCR* = 40H;
+
+    LTDC_IRQNum* = 16+88;
 
     L1CR* = 84H;
       CLUTEN* = 4; COLKEN* = 1; LEn* = 0;
@@ -272,6 +294,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     BDCR* = 70H; RTCEN* = 15; BDRST* = 16; RTCSEL* = {8..9}; (*backup domain control register*)
     rtcEn* = PeriphBBAlias + (RCC_BASE + BDCR - PeriphBase + RTCEN DIV 8)*32 + RTCEN MOD 8*4;
     bdRst* = PeriphBBAlias + (RCC_BASE + BDCR - PeriphBase + BDRST DIV 8)*32 + BDRST MOD 8*4;
+    dma2dEn* = PeriphBBAlias + (RCC_BASE + AHB1ENR - PeriphBase + DMA2DEN DIV 8)*32 + DMA2DEN MOD 8*4;
 
     PLLSAICFGR* = 88H; PLLSAIRm* = {28..30}; PLLSAIQm* = {24..27}; PLLSAINm* = {6..14};
     DCKCFGR* = 8CH; TIMPREm* = {24}; SAI1BSRCm* = {22..23}; SAI1ASRCm* = {20..21}; PLLSAIDIVRm* = {16..17};
@@ -280,8 +303,8 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     (*RTC*)
     RTC_BASE* =  40002800H; 
     TR* = 0; RTC_DR* = 4; RTC_CR* = 8;
-    ISR* = 0CH; INIT* = 7; INITF* = 6; RSF* = 5;(*flags*)
-    rtcInit* = PeriphBBAlias + (RTC_BASE + ISR - PeriphBase + INIT DIV 8)*32 + INIT MOD 8*4;
+    RTC_ISR* = 0CH; INIT* = 7; INITF* = 6; RSF* = 5;(*flags*)
+    rtcInit* = PeriphBBAlias + (RTC_BASE + RTC_ISR - PeriphBase + INIT DIV 8)*32 + INIT MOD 8*4;
 
     PRER* = 10H; WUTR* = 14H; CALIBR* = 18H; ALRMAR* = 1CH; ALRMBR* = 20H; WPR* = 24H; SSR* = 28H;
     SHIFTR* = 2CH; TSTR* = 30H; TSDR* = 34H; TSSSR* = 38H; CALR* = 3CH; TAFCR* = 40H; ALRMASSR* = 44H;
@@ -462,6 +485,37 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     Display_FBA* = 0D0000000H;
 
     Display_Pitch* = (Display_Width*Display_BPP DIV 8+63) DIV 64*64;
+
+  TYPE
+  (**
+  * @brief DMA2D Controller
+  *)
+  DMA2D* = POINTER TO DMA2D_Desc;
+  DMA2D_Desc* = RECORD
+    CR*, (*!< DMA2D Control Register,                         Address offset: 0x00 *)
+    ISR*, (*!< DMA2D Interrupt Status Register,                Address offset: 0x04 *)
+    IFCR*: SET; (*!< DMA2D Interrupt Flag Clear Register,            Address offset: 0x08 *)
+    FGMAR*, (*!< DMA2D Foreground Memory Address Register,       Address offset: 0x0C *)
+    FGOR*, (*!< DMA2D Foreground Offset Register,               Address offset: 0x10 *)
+    BGMAR*, (*!< DMA2D Background Memory Address Register,       Address offset: 0x14 *)
+    BGOR*: INTEGER; (*!< DMA2D Background Offset Register,               Address offset: 0x18 *)
+    FGPFCCR*: SET; (*!< DMA2D Foreground PFC Control Register,          Address offset: 0x1C *)
+    FGCOLR*: INTEGER; (*!< DMA2D Foreground Color Register,                Address offset: 0x20 *)
+    BGPFCCR*: SET; (*!< DMA2D Background PFC Control Register,          Address offset: 0x24 *)
+    BGCOLR*, (*!< DMA2D Background Color Register,                Address offset: 0x28 *)
+    FGCMAR*, (*!< DMA2D Foreground CLUT Memory Address Register,  Address offset: 0x2C *)
+    BGCMAR*: INTEGER; (*!< DMA2D Background CLUT Memory Address Register,  Address offset: 0x30 *)
+    OPFCCR*: SET; (*!< DMA2D Output PFC Control Register,              Address offset: 0x34 *)
+    OCOLR*, (*!< DMA2D Output Color Register,                    Address offset: 0x38 *)
+    OMAR*, (*!< DMA2D Output Memory Address Register,           Address offset: 0x3C *)
+    OOR*, (*!< DMA2D Output Offset Register,                   Address offset: 0x40 *)
+    NLR*, (*!< DMA2D Number of Line Register,                  Address offset: 0x44 *)
+    LWR*: INTEGER; (*!< DMA2D Line Watermark Register,                  Address offset: 0x48 *)
+    AMTCR*: SET; (*!< DMA2D AHB Master Timer Configuration Register,  Address offset: 0x4C *)
+    RESERVED: ARRAY 236 OF INTEGER; (*!< Reserved, 0x50-0x3FF *)
+    FGCLUT*, (*!< DMA2D Foreground CLUT,                          Address offset:400-7FF *)
+    BGCLUT*: ARRAY 256 OF INTEGER (*!< DMA2D Background CLUT,                          Address offset:800-BFF *)
+  END;
 
   VAR Leds*: ARRAY 7 OF INTEGER;
 
@@ -684,12 +738,12 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
       i: INTEGER; r, g, b: BYTE;
   BEGIN Display_InitGPIOs;
     (*Init and start LTDC*)
+    (*use VESA custom timing based on DMT ID: 51h with reduced pixel clock*)
     (*PLLSAI*) SYSTEM.PUT(pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
-    SYSTEM.PUT(RCC_BASE + PLLSAICFGR, LSL(4, 24) + LSL(171, 6) + LSL(2, 28)); (*LCD-TFT = 85.5MHz. PLLSAIQ = 4, PLLSAIN = 171, PLLSAIR = 2*)
+    SYSTEM.PUT(RCC_BASE + PLLSAICFGR, LSL(4, 24) + LSL(164, 6) + LSL(2, 28)); (*LCD-TFT = 82MHz. PLLSAIQ = 4, PLLSAIN = 164, PLLSAIR = 2*)
     SYSTEM.GET(RCC_BASE + DCKCFGR, reg); SYSTEM.PUT(RCC_BASE + DCKCFGR, reg - PLLSAIDIVRm); (*PLLSADIVR = 2*)
     SYSTEM.PUT(pllsaiEn, TRUE); REPEAT UNTIL SYSTEM.BIT(RCC_BASE + RCC_CR, PLLSAIRDY);
 
-    (*use VESA standard timing DMT ID: 51h*)
     (*LTDC*) SYSTEM.PUT(rcc_ltdcEn, TRUE); SYSTEM.GET(rcc_ltdcEn, reg); (*delay*)
     SYSTEM.GET(LTDC_BASE + GCR, reg); SYSTEM.PUT(LTDC_BASE + GCR, reg - (DEPOLm + PCPOLm) + (HSPOLm + VSPOLm)); (*HS and VS polarity high*)
     SYSTEM.PUT(LTDC_BASE + SSCR, LSL(142, 16) + 2); (*HSW 142, VSH 2*)
@@ -763,7 +817,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
 
     SYSTEM.PUT(RTC_BASE + WPR, 0CAH); SYSTEM.PUT(RTC_BASE + WPR, 53H); (*disable write protection on RTC registers*)
     SYSTEM.PUT(rtcInit, TRUE); (*put RTC in init mode*)
-    REPEAT UNTIL SYSTEM.BIT(RTC_BASE + ISR, INITF); (*RTC is now in init mode*)
+    REPEAT UNTIL SYSTEM.BIT(RTC_BASE + RTC_ISR, INITF); (*RTC is now in init mode*)
     SYSTEM.PUT(RTC_BASE + RTC_CR, 0); (*24 hour/day format, output disabled*)
     SYSTEM.PUT(RTC_BASE + PRER, 3999); (*two access are required, with synchronous prescaler first. Value is 3999*)
     SYSTEM.PUT(RTC_BASE + PRER, LSL(124, 16) + 3999); (*then write asynchronous prescaler factor. Value is 124*)

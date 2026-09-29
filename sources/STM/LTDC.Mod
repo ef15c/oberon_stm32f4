@@ -44,7 +44,7 @@ MODULE LTDC;
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WHPCR, LSL(356+1 + x0 + w-1, 16) + 356+1 + x0);
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2WVPCR, LSL(27+1 + y0 + h-1, 16) + 27+1 + y0);
       SYSTEM.PUT(BSP.LTDC_BASE + BSP.L2CR, {BSP.COLKEN, BSP.LEn}); (*enable layer 2 with transparent color*)
-      SYSTEM.PUT(BSP.vbr, TRUE) (*reload shadow registers immediately*)
+      SYSTEM.PUT(BSP.vbr, TRUE) (*reload shadow during vertical blanking*)
     END
   END SetWindow;
 
@@ -141,7 +141,8 @@ MODULE LTDC;
     SYSTEM.PUT(BSP.pllsaiEn, TRUE); REPEAT UNTIL SYSTEM.BIT(BSP.RCC_BASE + BSP.RCC_CR, BSP.PLLSAIRDY);
 
     (*LTDC*) SYSTEM.PUT(BSP.rcc_ltdcEn, TRUE); SYSTEM.GET(BSP.rcc_ltdcEn, reg); (*delay*)
-    SYSTEM.GET(BSP.LTDC_BASE + BSP.GCR, reg); SYSTEM.PUT(BSP.LTDC_BASE + BSP.GCR, reg - (BSP.DEPOLm + BSP.PCPOLm) + (BSP.HSPOLm + BSP.VSPOLm)); (*HS and VS polarity high*)
+    (*HS and VS polarity low, for testing*)
+    SYSTEM.GET(BSP.LTDC_BASE + BSP.GCR, reg); SYSTEM.PUT(BSP.LTDC_BASE + BSP.GCR, reg - (BSP.DEPOLm + BSP.PCPOLm + BSP.HSPOLm + BSP.VSPOLm)); 
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.SSCR, LSL(55, 16) + 2); (*HSW 55, VSH 2*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.BPCR, LSL(119, 16) + 30); (*AHBP 119, AVBP 30*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.ACWR, LSL(1485, 16) + 798); (*AAW 1485, AAH 798*)
@@ -193,7 +194,7 @@ MODULE LTDC;
 
     (*Layer 1*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1WHPCR, LSL(1721, 16) + 355+1); (*first visible pixel 356, last 1721*)
-    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1WVPCR, LSL(794, 16) + 26+1); (*first visible line 26, last 794*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1WVPCR, LSL(794, 16) + 26+1); (*first visible line 27, last 794*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1PFCR, 5); (*pixel format L8*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1DCCR, 0); (*Default color transparent black*)
     SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CACR, 255); (*constant alpha value 1*)
@@ -212,6 +213,90 @@ MODULE LTDC;
     (*Layer 2*)
     Display.L2Init
   END ReinitDisplayDMTID51h;
+
+  PROCEDURE ReinitDisplayCustom*;
+    VAR reg: SET;
+      i: INTEGER; r, g, b: BYTE;
+  BEGIN
+    SYSTEM.PUT(BSP.gcr_ltdcEn, FALSE);
+    (*LTDC*) SYSTEM.PUT(BSP.rcc_ltdcEn, FALSE); SYSTEM.GET(BSP.rcc_ltdcEn, reg); (*delay*)
+    (*PLLSAI*) SYSTEM.PUT(BSP.pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(BSP.RCC_BASE + BSP.RCC_CR, BSP.PLLSAIRDY);
+    SYSTEM.PUT(BSP.RCC_BASE + BSP.PLLSAICFGR, LSL(4, 24) + LSL(164, 6) + LSL(2, 28)); (*LCD-TFT = 82MHz. PLLSAIQ = 4, PLLSAIN = 171, PLLSAIR = 2*)
+    SYSTEM.GET(BSP.RCC_BASE + BSP.DCKCFGR, reg); SYSTEM.PUT(BSP.RCC_BASE + BSP.DCKCFGR, reg - BSP.PLLSAIDIVRm); (*PLLSADIVR = 2*)
+    SYSTEM.PUT(BSP.pllsaiEn, TRUE); REPEAT UNTIL SYSTEM.BIT(BSP.RCC_BASE + BSP.RCC_CR, BSP.PLLSAIRDY);
+
+    (*LTDC*) SYSTEM.PUT(BSP.rcc_ltdcEn, TRUE); SYSTEM.GET(BSP.rcc_ltdcEn, reg); (*delay*)
+    SYSTEM.GET(BSP.LTDC_BASE + BSP.GCR, reg); SYSTEM.PUT(BSP.LTDC_BASE + BSP.GCR, reg - (BSP.DEPOLm + BSP.PCPOLm) + (BSP.HSPOLm + BSP.VSPOLm)); (*HS and VS polarity high*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.SSCR, LSL(142, 16) + 2); (*HSW 142, VSH 2*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.BPCR, LSL(355, 16) + 26); (*AHBP 355, AVBP 26*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.ACWR, LSL(1721, 16) + 794); (*AAW 1721, AAH 794*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.TWCR, LSL(1791, 16) + 797); (*Total Width 1791, height 797*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.BCCR, 0); (*Background red, green and blue 0*)
+    SYSTEM.PUT(BSP.gcr_ltdcEn, TRUE);
+
+    (*Layer 1*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1WHPCR, LSL(1721, 16) + 355+1); (*first visible pixel 356, last 1721*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1WVPCR, LSL(794, 16) + 26+1); (*first visible line 27, last 794*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1PFCR, 5); (*pixel format L8*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1DCCR, 0); (*Default color transparent black*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CACR, 255); (*constant alpha value 1*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1BFCR, LSL(6, 8) + 7); (*blending factors 1 and 2 Pixel Alpha x Constant Alpha*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CFBAR, BSP.Display_FBA);
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CFBLR, LSL(BSP.Display_Pitch, 16) + (BSP.Display_Width + 3)*BSP.Display_BPP DIV 8);
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CFBLNR, BSP.Display_Height);
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CR, {}); (*disable layer 1 for CLUT update*)
+    SYSTEM.PUT(BSP.imr, TRUE); (*reload shadow registers immediately*)
+    FOR i := 0 TO 255 DO r := LSR(i, 5) MOD 8; g := LSR(i, 2) MOD 8; b := i MOD 4;
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CLUTWR, LSL(i, 24) + LSL(r*255 DIV 7, 16) + LSL(g*255 DIV 7, 8) + b*255 DIV 3)
+    END;
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CR, BSP.CLUTENm + BSP.LENm); (*finally (re)enable layer 1 and color lookup table*)
+    SYSTEM.PUT(BSP.vbr, TRUE); (*reload shadow registers during vertical blanking*)
+
+    (*Layer 2*)
+    Display.L2Init
+  END ReinitDisplayCustom;
+
+  PROCEDURE ReinitDisplayCVTrb2*;
+    VAR reg: SET;
+      i: INTEGER; r, g, b: BYTE;
+  BEGIN
+    SYSTEM.PUT(BSP.gcr_ltdcEn, FALSE);
+    (*LTDC*) SYSTEM.PUT(BSP.rcc_ltdcEn, FALSE); SYSTEM.GET(BSP.rcc_ltdcEn, reg); (*delay*)
+    (*PLLSAI*) SYSTEM.PUT(BSP.pllsaiEn, FALSE); REPEAT UNTIL ~SYSTEM.BIT(BSP.RCC_BASE + BSP.RCC_CR, BSP.PLLSAIRDY);
+    SYSTEM.PUT(BSP.RCC_BASE + BSP.PLLSAICFGR, LSL(4, 24) + LSL(139, 6) + LSL(2, 28)); (*LCD-TFT = 69.5MHz. PLLSAIQ = 4, PLLSAIN = 139, PLLSAIR = 2*)
+    SYSTEM.GET(BSP.RCC_BASE + BSP.DCKCFGR, reg); SYSTEM.PUT(BSP.RCC_BASE + BSP.DCKCFGR, reg - BSP.PLLSAIDIVRm); (*PLLSADIVR = 2*)
+    SYSTEM.PUT(BSP.pllsaiEn, TRUE); REPEAT UNTIL SYSTEM.BIT(BSP.RCC_BASE + BSP.RCC_CR, BSP.PLLSAIRDY);
+
+    (*LTDC*) SYSTEM.PUT(BSP.rcc_ltdcEn, TRUE); SYSTEM.GET(BSP.rcc_ltdcEn, reg); (*delay*)
+    SYSTEM.GET(BSP.LTDC_BASE + BSP.GCR, reg); SYSTEM.PUT(BSP.LTDC_BASE + BSP.GCR, reg - (BSP.DEPOLm + BSP.PCPOLm) + (BSP.HSPOLm + BSP.VSPOLm)); (*HS and VS polarity high*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.SSCR, LSL(31, 16) + 7); (*HSW 31, VSH 7*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.BPCR, LSL(71, 16) + 13); (*AHBP 71, AVBP 13*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.ACWR, LSL(1437, 16) + 781); (*AAW 1437, AAH 781*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.TWCR, LSL(1445, 16) + 800); (*Total Width 1445, height 800*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.BCCR, 0); (*Background red, green and blue 0*)
+    SYSTEM.PUT(BSP.gcr_ltdcEn, TRUE);
+
+    (*Layer 1*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1WHPCR, LSL(1437, 16) + 71+1); (*first visible pixel 72, last 1437*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1WVPCR, LSL(781, 16) + 13+1); (*first visible line 14, last 781*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1PFCR, 5); (*pixel format L8*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1DCCR, 0); (*Default color transparent black*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CACR, 255); (*constant alpha value 1*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1BFCR, LSL(6, 8) + 7); (*blending factors 1 and 2 Pixel Alpha x Constant Alpha*)
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CFBAR, BSP.Display_FBA);
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CFBLR, LSL(BSP.Display_Pitch, 16) + (BSP.Display_Width + 3)*BSP.Display_BPP DIV 8);
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CFBLNR, BSP.Display_Height);
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CR, {}); (*disable layer 1 for CLUT update*)
+    SYSTEM.PUT(BSP.imr, TRUE); (*reload shadow registers immediately*)
+    FOR i := 0 TO 255 DO r := LSR(i, 5) MOD 8; g := LSR(i, 2) MOD 8; b := i MOD 4;
+      SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CLUTWR, LSL(i, 24) + LSL(r*255 DIV 7, 16) + LSL(g*255 DIV 7, 8) + b*255 DIV 3)
+    END;
+    SYSTEM.PUT(BSP.LTDC_BASE + BSP.L1CR, BSP.CLUTENm + BSP.LENm); (*finally (re)enable layer 1 and color lookup table*)
+    SYSTEM.PUT(BSP.vbr, TRUE); (*reload shadow registers during vertical blanking*)
+
+    (*Layer 2*)
+    Display.L2Init
+  END ReinitDisplayCVTrb2;
 
 BEGIN
   arrowL2 := SYSTEM.ADR($  0F 00 0F 00
@@ -263,3 +348,5 @@ LTDC.addrBusy
 LTDC.ReinitDisplayOld;
 LTDC.ReinitDisplayDMTID56h
 LTDC.ReinitDisplayDMTID51h
+LTDC.ReinitDisplayCVTrb2
+LTDC.ReinitDisplayCustom
