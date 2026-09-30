@@ -1033,7 +1033,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     VAR oldCol: INTEGER;
   BEGIN Texts.Append(Oberon.Log, W.buf); Texts.WriteLn(W);
     oldCol := W.col; W.col := Display.red; Texts.WriteString(W, "compilation FAILED"); W.col := oldCol;
-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+    Oberon.Return(1)
   END logFailure;
 
   PROCEDURE Module;

@@ -59,7 +59,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
       vwr*: Viewers.Viewer;
       frame*: Display.Frame;
       text*: Texts.Text;
-      pos*: INTEGER
+      pos*: INTEGER;
+      res*: INTEGER
     END;
 
     CurFnt*: Fonts.Font;
@@ -74,6 +75,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     ps2: ARRAY 2 OF PS2.DeviceDesc;
 
     prevZ: INTEGER;
+
+    S: Texts.Scanner;
 
   (*user identification*)
 
@@ -306,6 +309,29 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     END
   END GC;
 
+  PROCEDURE add(VAR cmd: ARRAY OF CHAR; VAR cmdl: INTEGER; source: ARRAY OF CHAR);
+    VAR i: INTEGER;
+  BEGIN i := 0;
+    WHILE source[i] # 0X DO cmd[cmdl] := source[i]; INC(i); INC(cmdl) END;
+    cmd[cmdl] := 0X
+  END add;
+
+  PROCEDURE Batch*;
+    VAR cmd: ARRAY 80 OF CHAR; cmdl: INTEGER; pos, res: INTEGER;
+  BEGIN Texts.OpenScanner(S, Par.text, Par.pos); Par.res := 0; Texts.Scan(S);
+    WHILE (Par.res = 0) & ~S.eot & ((S.class # Texts.Char) OR (S.c # "~")) DO
+      IF S.class = Texts.Name THEN cmdl := 0; add(cmd, cmdl, S.s); pos := Texts.Pos(S); Texts.Scan(S);
+        REPEAT Texts.Scan(S) UNTIL S.eot OR (S.class = Texts.Char) & (S.c = "~");
+        Par.pos := pos; Call(cmd, res); IF res # 0 THEN Par.res := res END; ActCnt := 0; GC
+      END;
+      Texts.Scan(S)
+    END
+  END Batch;
+
+  PROCEDURE Return*(n: INTEGER); (*set command return code*)
+  BEGIN Par.res := n
+  END Return;
+
   PROCEDURE module(t: Task): Modules.Module;
     VAR adr: INTEGER; mod!: Modules.Module;
   BEGIN adr := SYSTEM.VAL(INTEGER, t.handle); mod := Modules.root;
@@ -478,3 +504,4 @@ BEGIN User[0] := 0X; prevZ := 0;
 END Oberon.
 
 OM4Tool.DecSym Oberon.sm4
+OM4Tool.DecObj Oberon.m4c
