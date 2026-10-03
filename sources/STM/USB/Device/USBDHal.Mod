@@ -152,18 +152,6 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
     | Def.Handle: ASSERT(FALSE)
     END;
     dev.SOFCallback := SOFCallback;
-    dev.SetupStageCallback := SetupStageCallback;
-    dev.ResetCallback := ResetCallback;
-    dev.SuspendCallback := SuspendCallback;
-    dev.ResumeCallback := ResumeCallback;
-    dev.ConnectCallback := ConnectCallback;
-    dev.DisconnectCallback := DisconnectCallback;
-    dev.DataOutStageCallback := DataOutStageCallback;
-    dev.DataInStageCallback := DataInStageCallback;
-    dev.ISOOUTIncompleteCallback := ISOOUTIncompleteCallback;
-    dev.ISOINIncompleteCallback := ISOINIncompleteCallback;
-    dev.LPMCallback := NIL;
-    dev.BCDCallback := NIL;
     dev.useUsbHS := FALSE;
     (* Set LL Driver parameters *)
     dev.Init.dev_endpoints := 4;
@@ -174,6 +162,20 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
     dev.Init.lpm_enable := FALSE;
     OldHandler := dev.ControllerIRQHandler; dev.ControllerIRQHandler := PCD.IRQHandler;
     (*Oberon specific callbacks*)
+(*TODO*)
+    dev.StallEP := NIL;
+    dev.ClearStallEP := NIL;
+    dev.SetUSBAddress := NIL;
+    dev.IsStallEP := NIL;
+    dev.Transmit := NIL;
+    dev.SetClassConfig := NIL;
+    dev.ClrClassConfig := NIL;
+    dev.CoreFindIF := NIL;
+    dev.CoreFindEP := NIL;
+    dev.PrepareReceive := NIL;
+    dev.OpenEP := NIL;
+    dev.GetRxDataSize := NIL;
+
     (* Initialize LL Driver *)
     IF PCD.Init(dev) # ll.HAL_OK THEN dev := NIL
     ELSE PCD.SetRxFiFo(dev, 0A0H); PCD.SetTxFiFo(dev, 0, 0A0H)

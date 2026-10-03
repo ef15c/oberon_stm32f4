@@ -7,9 +7,11 @@ MODULE USBHHIDApp;
   *)
 
   IMPORT Display, Texts, Viewers, MenuViewers, Oberon, TextFrames,
-    Def := USBDef, USB, USBH, Log := USBLog, HID := USBHHID, M := USBHHIDMouse, K := USBHHIDKeybd;
+    USB, USBH, Log := USBLog, HID := USBHHID, M := USBHHIDMouse, K := USBHHIDKeybd;
 
   CONST
+    IDLE = 0;
+
     APPLICATION_DISCONNECT = 1;
     APPLICATION_START = 2;
     APPLICATION_READY = 3;
@@ -47,13 +49,13 @@ MODULE USBHHIDApp;
   PROCEDURE UserProcess(usbid, reason: BYTE);
   BEGIN
     Log.Debug("UserProcessId: "); Log.DebugInt(reason, 1); Log.DebugLn; Log.Flush;
-    IF reason = Def.USER_DISCONNECTION THEN
+    IF reason = USB.USER_DISCONNECTION THEN
       Appli_state := APPLICATION_DISCONNECT
-    ELSIF reason = Def.USER_CLASS_ACTIVE THEN
+    ELSIF reason = USB.USER_CLASS_ACTIVE THEN
       Appli_state := APPLICATION_READY
-    ELSIF reason =  Def.USER_CONNECTION THEN
+    ELSIF reason =  USB.USER_CONNECTION THEN
       Appli_state := APPLICATION_START
-    ELSIF reason =  Def.USER_USB_RESET THEN
+    ELSIF reason =  USB.USER_USB_RESET THEN
       Appli_state := APPLICATION_DISCONNECT
     END
   END UserProcess;
@@ -91,7 +93,7 @@ MODULE USBHHIDApp;
   *)
   PROCEDURE MouseMenuProcess;
   BEGIN
-    IF hid_demo.mouse_state = Def.IDLE THEN hid_demo.mouse_state := HID_MOUSE_START;
+    IF hid_demo.mouse_state = IDLE THEN hid_demo.mouse_state := HID_MOUSE_START;
       SelectItem("", "Return");
       hid_demo.select := {}; prev_select := {};
     ELSIF hid_demo.mouse_state = HID_MOUSE_WAIT THEN
@@ -155,7 +157,7 @@ MODULE USBHHIDApp;
   *)
   PROCEDURE KeyboardMenuProcess;
   BEGIN
-    IF hid_demo.keyboard_state = Def.IDLE THEN
+    IF hid_demo.keyboard_state = IDLE THEN
       hid_demo.keyboard_state := HID_KEYBOARD_START;
       SelectItem("", "Return");   
       hid_demo.select := {}; prev_select := {}
@@ -202,7 +204,7 @@ MODULE USBHHIDApp;
   *)
   PROCEDURE MenuProcess;
   BEGIN
-    IF hid_demo.state = Def.IDLE THEN SelectItem("StartHID", "ReEnumerate");
+    IF hid_demo.state = IDLE THEN SelectItem("StartHID", "ReEnumerate");
       hid_demo.state := HID_DEMO_WAIT;
       hid_demo.select := {}
     ELSIF hid_demo.state = HID_DEMO_MOUSE THEN
@@ -215,8 +217,8 @@ MODULE USBHHIDApp;
       END
     END;
     IF Appli_state = APPLICATION_DISCONNECT THEN
-      Appli_state := Def.IDLE; Log.Error("HID device disconnected!"); Log.ErrorLn; Log.ErrorLn;
-      hid_demo.state := Def.IDLE; hid_demo.select := {}
+      Appli_state := IDLE; Log.Error("HID device disconnected!"); Log.ErrorLn; Log.ErrorLn;
+      hid_demo.state := IDLE; hid_demo.select := {}
     END
   END MenuProcess;
 
@@ -225,9 +227,9 @@ MODULE USBHHIDApp;
     IF hid_demo.state = HID_DEMO_WAIT THEN
       IF Appli_state = APPLICATION_READY THEN
         IF HID.GetDeviceType(0) = HID.KEYBOARD THEN
-          hid_demo.keyboard_state := Def.IDLE; hid_demo.state := HID_DEMO_KEYBOARD
+          hid_demo.keyboard_state := IDLE; hid_demo.state := HID_DEMO_KEYBOARD
         ELSIF HID.GetDeviceType(0) = HID.MOUSE THEN
-          hid_demo.mouse_state := Def.IDLE; hid_demo.state := HID_DEMO_MOUSE
+          hid_demo.mouse_state := IDLE; hid_demo.state := HID_DEMO_MOUSE
         END
       ELSE Log.Error("No supported HID device!"); Log.ErrorLn; Log.ErrorLn;
       END
@@ -241,7 +243,7 @@ MODULE USBHHIDApp;
   END ReEnumerate;
 
   PROCEDURE Return*;
-  BEGIN hid_demo.state := Def.IDLE;
+  BEGIN hid_demo.state := IDLE;
   END Return;
 
   (* USB Host Background task *)
@@ -257,7 +259,7 @@ MODULE USBHHIDApp;
   PROCEDURE MenuInit;
   BEGIN (* Start HID Interface *)
     Log.User("Starting HID Demo");
-    hid_demo.state := Def.IDLE;
+    hid_demo.state := IDLE;
     MenuProcess;
   END MenuInit;
 
@@ -276,8 +278,8 @@ MODULE USBHHIDApp;
     VAR res: BYTE;
   BEGIN
     (* Init USB Library *)
-    IF Def.usbCores[0] = NIL THEN USB.Init(UserProcess, 0) END;
-    IF (Def.usbCores[0] # NIL) & USB.IsHost(0) THEN
+    IF ~USB.IsRegistered(0) THEN USB.Init(UserProcess, 0) END;
+    IF USB.IsRegistered(0) & USB.IsHost(0) THEN
       Log.Debug("USBH lib started."); Log.DebugLn;
       (* Run Application (Non blocking mode) *)
       IF processTask = NIL THEN processTask := Oberon.NewTask(Process, 10); Oberon.Install(processTask) END
@@ -313,3 +315,5 @@ System.Free USBHHIDApp~
 
 USBHHIDApp.Open
 USBHHIDApp.Stop
+
+OM4Tool.DecObj USBHHIDApp.m4c

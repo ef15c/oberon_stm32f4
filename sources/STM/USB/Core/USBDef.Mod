@@ -165,6 +165,9 @@ MODULE USBDef; (*USB OTG common definitions. C.S 29.06.26*)
     ClassHandle* = POINTER TO ClassHandleDesc;
     ClassHandleDesc* = RECORD END;
 
+    UserData* = POINTER TO UserDataDesc;
+    UserDataDesc* = RECORD END;
+
     Handle* = POINTER TO HandleDesc;
     Callback* = PROCEDURE^5(usb: Handle): BYTE;
     UserCallback* = PROCEDURE(usbid, reason: BYTE);
@@ -202,7 +205,7 @@ MODULE USBDef; (*USB OTG common definitions. C.S 29.06.26*)
  (* ------- buffer handling procedures ------- *)
 
   PROCEDURE PutByte*(b: Buffer; v: BYTE);
-  BEGIN b.WriteByte(b, v); INC(b.length)
+  BEGIN b.WriteByte(b, v)
   END PutByte;
 
   PROCEDURE PutByteSet*(b: Buffer; v: BYTESET);
@@ -234,12 +237,16 @@ MODULE USBDef; (*USB OTG common definitions. C.S 29.06.26*)
   END GetInteger;
 
   (* ------- raw descriptor decoding procedures ------- *)
+  PROCEDURE CheckCfgDescriptor*(rd: RawDescriptorDesc);
+  BEGIN ASSERT(LE16(rd.buf, 2) = rd.length)
+  END CheckCfgDescriptor;
 
- PROCEDURE Reset*(VAR rd: RawDescriptorDesc);
+  PROCEDURE Reset*(VAR rd: RawDescriptorDesc);
   BEGIN rd.index := 0; rd.headeridx := 0
   END Reset;
 
   PROCEDURE NextHeaderIdx(rd: RawDescriptorDesc): HALFWORD;
+  BEGIN ASSERT(rd.buf[rd.headeridx] > 0)
 
     RETURN rd.headeridx + rd.buf[rd.headeridx]
   END NextHeaderIdx;
@@ -294,12 +301,32 @@ MODULE USBDef; (*USB OTG common definitions. C.S 29.06.26*)
   BEGIN PutByteInDescriptorAt(rd, ofs, v MOD 100H); PutByteInDescriptorAt(rd, ofs + 1, v DIV 100H)
   END PutHalfwordInDescriptorAt;
 
- (* ------- raw descriptor creator ------- *)
+  (* ------- raw descriptor handling ------- *)
+  PROCEDURE RawReadByte(b: Buffer): BYTE;
+    VAR r: BYTE;
+  BEGIN
+    CASE b OF
+      RawDescriptor:
+        r := b.buf[b.index]; INC(b.index)
+    | Buffer: ASSERT(FALSE)
+    END
+
+    RETURN r
+  END RawReadByte;
+
+  PROCEDURE RawWriteByte(b: Buffer; v: BYTE);
+  BEGIN
+    CASE b OF
+      RawDescriptor:
+        b.buf[b.length] := v; INC(b.length)
+    | Buffer: ASSERT(FALSE)
+    END
+  END RawWriteByte;
 
   PROCEDURE NewRawDescriptor*(): RawDescriptor;
     VAR rd!: RawDescriptor;
-  BEGIN NEW(rd); rd.size := SYSTEM.SIZE(RawDescriptorData) - SYSTEM.SIZE(BufferDesc)
-
+  BEGIN NEW(rd); rd.size := SYSTEM.SIZE(RawDescriptorData) - SYSTEM.SIZE(BufferDesc);
+    rd.ReadByte := RawReadByte; rd.WriteByte := RawWriteByte
     RETURN rd
   END NewRawDescriptor;
 

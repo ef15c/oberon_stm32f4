@@ -479,19 +479,19 @@ MODULE HALHCD;
   *)
   PROCEDURE RXQLVL_IRQHandler(hhcd: Handle; dbm: DebugMsg);
     VAR USBx_HCi!: ll.OTGHostChannel;
-      GrxstspReg, pktsts: SET; bytecnt, xferSizePktCnt, res: INTEGER; chnum: BYTE;
+      GrxstspReg, pktsts: SET; bytecnt, xferSizePktCnt: INTEGER; chnum: BYTE;
   BEGIN (*WARNING: GRXSTSP must be read only once, because reading it pops one item from input FIFO*)
     GrxstspReg := hhcd.Instance.GRXSTSP;
     IF dbm # NIL THEN dbm.grxstsp := GrxstspReg END;
-    chnum := ORD(GrxstspReg*ll.GRXSTSP_EPNUM_Msk);
-    pktsts := GrxstspReg*ll.GRXSTSP_PKTSTS_Msk;
-    bytecnt := LSR(ORD(GrxstspReg*ll.GRXSTSP_BCNT_Msk), 4);
+    chnum := ORD(GrxstspReg*ll.GRXSTS_EPNUM_Msk);
+    pktsts := GrxstspReg*ll.GRXSTS_PKTSTS_Msk;
+    bytecnt := LSR(ORD(GrxstspReg*ll.GRXSTS_BCNT_Msk), ll.GRXSTS_BCNT_Pos);
     USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
-    IF pktsts = ll.GRXSTS_PKTSTS_IN THEN
+    IF pktsts = ll.GRXSTS_PKTSTS_PKTRCV THEN
       (* Read the data into the host buffer. *)
       IF (bytecnt > 0) & (hhcd.hc[chnum].xfer_buff # 0) THEN
         IF hhcd.hc[chnum].xfer_count + bytecnt <= hhcd.hc[chnum].xfer_len THEN
-          res := ll.ReadPacket(hhcd.Instance, hhcd.hc[chnum].xfer_buff, bytecnt);
+          ll.ReadPacket(hhcd.Instance, hhcd.hc[chnum].xfer_buff, bytecnt);
           (* manage multiple Xfer *)
           INC(hhcd.hc[chnum].xfer_buff, bytecnt); INC(hhcd.hc[chnum].xfer_count, bytecnt);
           (* get transfer size packet count *)
@@ -542,7 +542,7 @@ MODULE HALHCD;
             hhcd.Instance.GINTSTS := {ll.GINTSTS_DISCINT};
             SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, reg);
             IF ~(ll.HPRT_PCSTS IN reg) THEN
-              res := ll.FlushTxFifo(hhcd.Instance, 10H); res := ll.FlushRxFifo(hhcd.Instance); (* Flush USB Fifo *)
+              res := ll.FlushTxFifo(hhcd.Instance, ll.ALL_FIFOS); res := ll.FlushRxFifo(hhcd.Instance); (* Flush USB Fifo *)
               IF hhcd.Init.phy_itface = ll.EMBEDDED_PHY THEN
                 res := ll.InitFSLSPClkSel(hhcd.Instance, ll.HCFG_48_MHZ) (* Restore FS Clock *)
               END;
@@ -635,9 +635,6 @@ MODULE HALHCD;
   *)
   PROCEDURE HC_Init*(hhcd: Handle; ch_num, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD): BYTE;
     VAR HostCoreSpeed: SET; HCcharMps: HALFWORD;
-(*
-  HAL_StatusTypeDef status;
-*)
   BEGIN HCcharMps := mps;
 (*  __HAL_LOCK(hhcd);*)
     hhcd.hc[ch_num].do_ping := FALSE; hhcd.hc[ch_num].dev_addr := dev_address;
@@ -818,7 +815,7 @@ MODULE HALHCD;
     | PortDisabledMsg: Q.PostFirst(hcdh.PortDisabledMP, msg)
     | URBChangeMsg: Q.PostFirst(hcdh.URBChangeMP, msg)
     | DebugMsg: Q.PostFirst(hcdh.DebugMP, msg)
-    | Q.Msg: UC.GiveMsg(hcdh, msg) (*see if HALCD can handle the message*)
+    | Q.Msg: ASSERT(FALSE) (*unsupported message type*)
     END;
     ll.EnableGlobalInt(hcdh.Instance)
   END GiveMsg;

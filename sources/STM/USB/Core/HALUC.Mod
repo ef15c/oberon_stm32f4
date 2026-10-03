@@ -14,8 +14,6 @@ MODULE HALUC; (*The USB Core driver*)
     (*!< USB debug message *)
     DebugMsg* = POINTER TO DebugMsgDesc;
     DebugMsgDesc* = RECORD(Q.MsgDesc) gintsts*: SET END;
-(*    InitControllerMsg* = POINTER TO InitControllerMsgDesc;
-    InitControllerMsgDesc = RECORD(Q.MsgDesc) END;*)
 
     Handle* = POINTER TO HandleDesc;
     IRQHandlerProc* = PROCEDURE^5(core: Handle);
@@ -25,16 +23,9 @@ MODULE HALUC; (*The USB Core driver*)
       cState*: BYTE;                (*!< CD initialization state  *)
       Timer*: INTEGER;         (*!< CD timer for OTG mode stabilization*)
       ControllerIRQHandler*: IRQHandlerProc;
-      (*InitControllerMP, *)DebugMP: Q.Msg; (*the pools of available IRQ messages*)
-      MsgPendQ: Q.Msg (*the deferred work message queue*)
+(*      DebugMP: Q.Msg; (*the pools of available IRQ messages*)
+      MsgPendQ: Q.Msg (*the deferred work message queue*)*)
     END;
-
-(*    PROCEDURE newInitControllerMsg(): Q.Msg; (*create a initialization controller message object*)
-      VAR item!: InitControllerMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newInitControllerMsg;*)
 
     PROCEDURE newDebugMsg(): Q.Msg; (*create a debug message object*)
       VAR item!: DebugMsg;
@@ -109,20 +100,6 @@ MODULE HALUC; (*The USB Core driver*)
     (* Init the USB Core *)
     res := ll.CoreInit(core.Instance, core.Init); core.Timer := Kernel.Time();
     ll.EnableGlobalInt(core.Instance)
-(*    IF ll.CoreInit(instance, init) # ll.HAL_OK THEN res := ll.HAL_ERROR
-    ELSE
-        (* Force Host Mode *)
-        IF ll.SetCurrentMode(hhcd.Instance, ll.USB_HOST_MODE) # ll.HAL_OK THEN
-          hhcd.State := STATE_ERROR; res := ll.HAL_ERROR
-        ELSE
-          (* Init Host *)
-          IF ll.HostInit(hhcd.Instance, hhcd.Init) # ll.HAL_OK THEN
-            hhcd.State := STATE_ERROR; res := ll.HAL_ERROR;
-          ELSE hhcd.State := STATE_READY; res := ll.HAL_OK
-          END
-        END
-    END
-*)
 
     RETURN res
   END Init;
@@ -140,9 +117,9 @@ MODULE HALUC; (*The USB Core driver*)
   * @brief  Initialize the pool of messages for each type of deferred work.
   * @param core handle
   *)
+(*
   PROCEDURE InitPools*(core: Handle);
   BEGIN
-(*    cdh.InitControllerMP := Q.CreatePool(1, newInitControllerMsg);*)
     Log.Debug("create 100 debug message objects"); Log.DebugLn;
     core.DebugMP := Q.CreatePool(100, newDebugMsg)
   END InitPools;
@@ -163,13 +140,14 @@ MODULE HALUC; (*The USB Core driver*)
   PROCEDURE GiveMsg*(core: Handle; msg: Q.Msg); (*return message object to the appropriate pool*)
   BEGIN ll.DisableGlobalInt(core.Instance);
     CASE msg OF
-(*      InitControllerMsg: Q.PostFirst(core.InitControllerMP, msg)
-    |*)  DebugMsg: Q.PostFirst(core.DebugMP, msg)
+      DebugMsg: Q.PostFirst(core.DebugMP, msg)
     | Q.Msg: ASSERT(FALSE) (*unknown message type*)
     END;
     ll.EnableGlobalInt(core.Instance)
   END GiveMsg;
+*)
 
+(*
   PROCEDURE debug*;
     VAR core!: Def.Handle;
   BEGIN core := Def.usbCores[0];
@@ -181,6 +159,7 @@ MODULE HALUC; (*The USB Core driver*)
       END
     END
   END debug;
+*)
 
 END HALUC.
 

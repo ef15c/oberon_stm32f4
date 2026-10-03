@@ -65,7 +65,7 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
   PROCEDURE Init*(UserFunc: Def.UserCallback; id: BYTE): UC.Handle;
     VAR core!: UC.Handle;
   BEGIN ASSERT(id < Def.NB_OTG_CORES);
-    IF Def.usbCores[id] = NIL THEN NEW(core); UC.InitPools(core);
+    IF Def.usbCores[id] = NIL THEN NEW(core); (*UC.InitPools(core);*)
     ELSE core := Def.usbCores[id](UC.Handle)
     END;
     IF hsid = 0FFH THEN MspInit END; (* Init the low level hardware : GPIO, CLOCK, NVIC... *)
@@ -145,6 +145,7 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
   BEGIN
   END ProcessMsg;
 
+(*
   (**
   * @brief  Retrieve and process IRQ messages.
   *)
@@ -154,13 +155,13 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
     msg := UC.TakeMsg(core);
     WHILE msg # NIL DO
       CASE msg OF
-(*       UC.InitControllerMsg: InitController(pusb)
-      |*)  UC.DebugMsg: IRQLog(msg)
+        UC.DebugMsg: IRQLog(msg)
       | Q.Msg: ASSERT(FALSE) (*unknown message type*)
       END; UC.GiveMsg(core, msg);
       msg := UC.TakeMsg(core)
     END
   END ProcessDeferredIRQWork;
+*)
 
 BEGIN hsid := 0FFH
 END USBHal.

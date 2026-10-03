@@ -77,7 +77,7 @@ MODULE USBDDef;
       EP0_TxSent*, EP0_RxReady*: PROCEDURE(dev: Handle);
       (* Class Specific Endpoints*)
       DataIn*, DataOut*: PROCEDURE(dev: Handle; epnum: BYTE);
-      SOF*: PROCEDURE(dev: Handle): BYTE;
+      SOF*: PROCEDURE^5(dev: Handle): BYTE;
       IsoINIncomplete*, IsoOUTIncomplete*: PROCEDURE(dev: Handle; epnum: BYTE);
       GetHSConfigDescriptor*, GetFSConfigDescriptor*, GetOtherSpeedConfigDescriptor*,
       GetDeviceQualifierDescriptor*: PROCEDURE(): Def.Buffer;
@@ -85,7 +85,7 @@ MODULE USBDDef;
     END;
 
     UserData* = POINTER TO UserDataDesc;
-    UserDataDesc* = RECORD END;
+    UserDataDesc* = RECORD(Def.UserDataDesc) END;
 
     HandleDesc* = RECORD(UC.HandleDesc)
       config*, default_config*: BYTE;

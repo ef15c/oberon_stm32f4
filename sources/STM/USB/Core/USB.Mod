@@ -5,6 +5,20 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
 
   CONST MODE_STABILIZATION_TIME = 500;
 
+  (* User callback reason codes *)
+    (*Host reasons*)
+    USER_SELECT_CONFIGURATION* = Def.USER_SELECT_CONFIGURATION;
+    USER_CLASS_ACTIVE* = Def.USER_CLASS_ACTIVE;
+    USER_CLASS_SELECTED* = Def.USER_CLASS_SELECTED;
+    USER_CONNECTION* = Def.USER_CONNECTION;
+    USER_DISCONNECTION* = Def.USER_DISCONNECTION;
+    USER_UNRECOVERED_ERROR* = Def.USER_UNRECOVERED_ERROR;
+    (*Core reasons*)
+    USER_USB_RESET* = Def.USER_USB_RESET;
+    (*Peripheral reasons*)
+    USER_ASSIGN_DESCRIPTORS* = Def.USER_ASSIGN_DESCRIPTORS;
+    USER_REGISTER_DETAILS* = Def.USER_REGISTER_DETAILS;
+
   VAR processTask: Def.Task;
 
   PROCEDURE InitController(usb: UC.Handle; id: BYTE): Def.Handle;
@@ -42,7 +56,7 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
   BEGIN ctrl := core;
     CASE core OF
       UC.Handle:
-        H.ProcessDeferredIRQWork(core); (*do the deferred job triggered by interrupts*);
+        (*H.ProcessDeferredIRQWork(core); (*do the deferred job triggered by interrupts*);*)
         IF (core.cState = Def.IDLE) & (Kernel.Time() - core.Timer > MODE_STABILIZATION_TIME) THEN core.cState := UC.STATE_CMOD_STABLE
         ELSIF core.cState = UC.STATE_CMOD_STABLE THEN (*Initialize the host or device controller*)
           ctrl := InitController(core, id)
@@ -85,6 +99,10 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
     END
   END DeInit;
 
+  PROCEDURE IsRegistered*(id: BYTE): BOOLEAN;
+    RETURN Def.usbCores[id] # NIL
+  END IsRegistered;
+
   PROCEDURE IsHost*(id: BYTE): BOOLEAN;
 
     RETURN H.IsHost(Def.usbCores[id](UC.Handle))
@@ -97,6 +115,10 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
   PROCEDURE RegisterClass*(id: BYTE; class: Def.Class);
   BEGIN USBD.RegisterClass(Def.usbCores[id], class)
   END RegisterClass;
+
+  PROCEDURE RegisterInterface*(id: BYTE; uif: Def.UserData);
+  BEGIN USBD.RegisterInterface(Def.usbCores[id], uif)
+  END RegisterInterface;
 
 END USB.
 

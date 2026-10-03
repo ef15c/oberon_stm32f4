@@ -54,6 +54,13 @@ MODULE LLUSB;
     ULPI_PHY* = 1;
     EMBEDDED_PHY* = 2;
 
+  (** @defgroup USB_LL_Turnaround_Timeout Turnaround Timeout Value
+  * @{
+  *)
+    USBD_HS_TRDT_VALUE* = 9;
+    USBD_FS_TRDT_VALUE* = 5;
+    USBD_DEFAULT_TRDT_VALUE* = 9;
+
   (** @defgroup USB_LL_CH_PID_Type USB Low Layer Channel PID Type
   * @{
   *)
@@ -144,6 +151,7 @@ MODULE LLUSB;
 
   (********************  Bit definition for USB_OTG_GSNPSID register  ********************)
     GSNPSID_CORE_REV_Msk* = {0..15}; (*!< Core revision *)
+    GSNPSID_CORE_ID_Msk* = {16..31}; (*!< Synopsys Core Id*)
 
   (********************  Bit definition for USB_OTG_GUSBCFG register  ********************)
     GUSBCFG_TOCAL_Msk* = {0..2}; (*!< FS timeout calibration *)
@@ -153,7 +161,8 @@ MODULE LLUSB;
     GUSBCFG_SRPCAP_Msk* = {GUSBCFG_SRPCAP};
     GUSBCFG_HNPCAP* = 9; (*!< HNP-capable *)
     GUSBCFG_HNPCAP_Msk* = {GUSBCFG_HNPCAP};
-    GUSBCFG_TRDT_Msk* = {10..13}; (*!< USB turnabout time *)
+    GUSBCFG_TRDT_Pos* = 10; (*!< USB turnabout time *)
+    GUSBCFG_TRDT_Msk* = {GUSBCFG_TRDT_Pos..13};
     GUSBCFG_PHYLPCS* = 15; (*!< PHY Low-power clock select *)
     GUSBCFG_PHYLPCS_Msk* = {GUSBCFG_PHYLPCS};
     GUSBCFG_ULPIFSLS* = 17; (**!< ULPI FS/LS select               *)
@@ -206,6 +215,32 @@ MODULE LLUSB;
     HPTXSTS_PTXQTOP_Pos* = 24;
     HPTXSTS_PTXQTOP_Msk* = {HPTXSTS_PTXQTOP_Pos, 31}; (*!< Top of the periodic transmit request queue *)
 
+  (********************  Bit definition for USB_OTG_DOEPMSK register  ********************)
+    DOEPMSK_XFRCM* = 0; (*!< Transfer completed interrupt mask              *)
+    DOEPMSK_XFRCM_Msk* = {DOEPMSK_XFRCM};
+    DOEPMSK_EPDM* = 1; (*!< Endpoint disabled interrupt mask               *)
+    DOEPMSK_EPDM_Msk* = {DOEPMSK_EPDM};
+    DOEPMSK_AHBERRM* = 2; (*!< OUT transaction AHB Error interrupt mask       *)
+    DOEPMSK_AHBERRM_Msk* = {DOEPMSK_AHBERRM};
+    DOEPMSK_STUPM* = 3; (*!< SETUP phase done mask                          *)
+    DOEPMSK_STUPM_Msk* = {DOEPMSK_STUPM};
+    DOEPMSK_OTEPDM* = 4; (*!< OUT token received when endpoint disabled mask *)
+    DOEPMSK_OTEPDM_Msk* = {DOEPMSK_OTEPDM};
+    DOEPMSK_OTEPSPRM* = 5; (*!< Status Phase Received mask                     *)
+    DOEPMSK_OTEPSPRM_Msk* = {DOEPMSK_OTEPSPRM};
+    DOEPMSK_B2BSTUP* = 6; (*!< Back-to-back SETUP packets received mask       *)
+    DOEPMSK_B2BSTUP_Msk* = {DOEPMSK_B2BSTUP};
+    DOEPMSK_OPEM* = 8; (*!< OUT packet error mask                          *)
+    DOEPMSK_OPEM_Msk* = {DOEPMSK_OPEM};
+    DOEPMSK_BOIM* = 9; (*!< Buffer not available interrupt mask                             *)
+    DOEPMSK_BOIM_Msk* = {DOEPMSK_BOIM};
+    DOEPMSK_BERRM* = 12; (*!< Babble error interrupt mask                   *)
+    DOEPMSK_BERRM_Msk* = {DOEPMSK_BERRM};
+    DOEPMSK_NAKM* = 13; (*!< OUT Packet NAK interrupt mask                  *)
+    DOEPMSK_NAKM_Msk* = {DOEPMSK_NAKM};
+    DOEPMSK_NYETM* = 14; (*!< NYET interrupt mask                            *)
+    DOEPMSK_NYETM_Msk* = {DOEPMSK_NYETM};
+
   (********************  Bit definition for USB_OTG_GINTSTS register  ********************)
     GINTSTS_CMOD* = 0; (*!< Current mode of operation                      *)
     GINTSTS_CMOD_Msk* = {GINTSTS_CMOD};
@@ -221,8 +256,8 @@ MODULE LLUSB;
     GINTSTS_NPTXFE_Msk* = {GINTSTS_NPTXFE};
     GINTSTS_GINAKEFF* = 6; (*!< Global IN nonperiodic NAK effective            *)
     GINTSTS_GINAKEFF_Msk* = {GINTSTS_GINAKEFF};
-    GINTSTS_BOUTNAKEFF* = 7; (*!< Global OUT NAK effective                       *)
-    GINTSTS_BOUTNAKEFF_Msk* = {GINTSTS_BOUTNAKEFF};
+    GINTSTS_GOUTNAKEFF* = 7; (*!< Global OUT NAK effective                       *)
+    GINTSTS_GOUTNAKEFF_Msk* = {GINTSTS_GOUTNAKEFF};
     GINTSTS_ESUSP* = 10; (*!< Early suspend                                  *)
     GINTSTS_ESUSP_Msk* = {GINTSTS_ESUSP};
     GINTSTS_USBSUSP* = 11; (*!< USB suspend                                    *)
@@ -313,6 +348,12 @@ MODULE LLUSB;
     GINTMSK_SRQIM_Msk* = {GINTMSK_SRQIM};
     GINTMSK_WUIM* = 31; (*!< Resume/remote wakeup detected interrupt mask        *)
     GINTMSK_WUIM_Msk* = {GINTMSK_WUIM};
+
+  (********************  Bit definition for USB_OTG_DAINT register  ********************)
+    DAINT_IEPINT_Pos* = 0; (*!< IN endpoint interrupt bits  *)
+    DAINT_IEPINT_Msk* = {DAINT_IEPINT_Pos..15};
+    DAINT_OEPINT_Pos* = 16; (*!< OUT endpoint interrupt bits *)
+    DAINT_OEPINT_Msk* = {DAINT_OEPINT_Pos..31};
 
   (********************  Bit definition forUSB_OTG_HCFG register  ********************)
     HCFG_FSLSPCS_Pos* = 0;
@@ -417,6 +458,10 @@ MODULE LLUSB;
     HCTSIZ_DPID_Msk* = {HCTSIZ_DPID_Pos..30}; (*!< Data PID *)
     HCTSIZ_DOPING* = 31; (*!< Do PING *)
     HCTSIZ_DOPING_Msk* = {HCTSIZ_DOPING};
+
+  (********************  Bit definition for USB_OTG_DTXFSTS register  ********************)
+    DTXFSTS_INEPTFSAV_Pos* = 0; (*!< IN endpoint TxFIFO space available *)
+    DTXFSTS_INEPTFSAV_Msk* = {DTXFSTS_INEPTFSAV_Pos..15};
 
   (********************  Bit definition for USB_OTG_DIEPMSK register  ********************)
     DIEPMSK_XFRCM* = 0; (*!< Transfer completed interrupt mask                 *)
@@ -569,6 +614,32 @@ MODULE LLUSB;
     DOEPCTL_EPENA* = 31; (*!< Endpoint enable                  *)
     DOEPCTL_EPENA_Msk* = {DIEPCTL_EPENA};
 
+  (********************  Bit definition for USB_OTG_DOEPINT register  ********************)
+    DOEPINT_XFRC* = 0; (*!< Transfer completed interrupt *)
+    DOEPINT_XFRC_Msk* = {DOEPINT_XFRC};
+    DOEPINT_EPDISD* = 1; (*!< Endpoint disabled interrupt *)
+    DOEPINT_EPDISD_Msk* = {DOEPINT_EPDISD};
+    DOEPINT_AHBERR* = 2; (*!< AHB Error (AHBErr) during an OUT transaction *)
+    DOEPINT_AHBERR_Msk* = {DOEPINT_AHBERR};
+    DOEPINT_STUP* = 3; (*!< SETUP phase done *)
+    DOEPINT_STUP_Msk* = {DOEPINT_STUP};
+    DOEPINT_OTEPDIS* = 4; (*!< OUT token received when endpoint disabled *)
+    DOEPINT_OTEPDIS_Msk* = {DOEPINT_OTEPDIS};
+    DOEPINT_OTEPSPR* = 5; (*!< Status Phase Received For Control Write *)
+    DOEPINT_OTEPSPR_Msk* = {DOEPINT_OTEPSPR};
+    DOEPINT_B2BSTUP* = 6; (*!< Back-to-back SETUP packets received *)
+    DOEPINT_B2BSTUP_Msk* = {DOEPINT_B2BSTUP};
+    DOEPINT_OUTPKTERR* = 8; (*!< OUT packet error *)
+    DOEPINT_OUTPKTERR_Msk* = {DOEPINT_OUTPKTERR};
+    DOEPINT_BERR* = 12; (*!< Babble received *)
+    DOEPINT_BERR_Msk* = {DOEPINT_BERR};
+    DOEPINT_NAK* = 13; (*!< NAK Packet is transmitted or received by the device *)
+    DOEPINT_NAK_Msk* = {DOEPINT_NAK};
+    DOEPINT_NYET* = 14; (*!< NYET interrupt *)
+    DOEPINT_NYET_Msk* = {DOEPINT_NYET};
+    DOEPINT_STPKTRX* = 15; (*!< Setup Packet Received *)
+    DOEPINT_STPKTRX_Msk* = {DOEPINT_STPKTRX};
+
   (********************  Bit definition for USB_OTG_DOEPTSIZ register  ********************)
     DOEPTSIZ_XFRSIZ_Pos* = 0; (*!< Transfer size *)
     DOEPTSIZ_XFRSIZ_Msk* = {DOEPTSIZ_XFRSIZ_Pos..18};
@@ -602,14 +673,36 @@ MODULE LLUSB;
     HCINTMSK_DTERRM_Msk* = {HCINTMSK_DTERRM};
 
   (********************  Bit definition for USB_OTG_GRXSTSP register  ********************)
-    GRXSTSP_EPNUM_Msk* = {0..3}; (*!< Endpoint or channel number  *)
-    GRXSTSP_BCNT_Msk* = {4..14}; (*!< byte count of received data *)
-    GRXSTSP_DPID_Msk* = {15..16}; (*!< data PID of the received packet*)
-    GRXSTSP_PKTSTS_Msk* = {17..20}; (* packet status *)
-    GRXSTS_PKTSTS_IN* = {18};
-    GRXSTS_PKTSTS_IN_XFER_COMP* = {17..18};
-    GRXSTS_PKTSTS_DATA_TOGGLE_ERR* = {17, 19};
-    GRXSTS_PKTSTS_HALTED* = {17..19};
+    GRXSTS_EPNUM_Msk* = {0..3}; (*!< Endpoint or channel number  *)
+    GRXSTS_BCNT_Pos* = 4; (*!< byte count of received data *)
+    GRXSTS_BCNT_Msk* = {GRXSTS_BCNT_Pos..14};
+    GRXSTS_DPID_Msk* = {15..16}; (*!< data PID of the received packet*)
+    GRXSTS_PKTSTS_Msk* = {17..20}; (* packet status *)
+    GRXSTS_FRMNUM_Msk* = {21..24}; (* least significant 4 bits of the frame number in which the packet is received*)
+    (*both modes*)
+    GRXSTS_PKTSTS_PKTRCV* = {18}; (*IN packet received for host mode, OUT packet received for device mode*)
+    GRXSTS_PKTSTS_XFER_COMPL* = {17..18}; (*transfer completeted, IN for host mode, OUT for device mode (triggers an interrupt)*)
+    (*device mode*)
+    GRXSTS_PKTSTS_GOUTNAK* = {17}; (*Global OUT NAK (triggers an interrupt)*)
+    GRXSTS_PKTSTS_SETUPCOMPL* = {19}; (*SETUP transaction completed (triggers an interrupt)*)
+    GRXSTS_PKTSTS_SETUPRCV* = {18, 19}; (*SETUP packet received*)
+    (*host mode*)
+    GRXSTS_PKTSTS_TGLERR* = {17, 19}; (*Data toggle error (triggers an interrupt)*)
+    GRXSTS_PKTSTS_CHLT* = {17..19}; (*Channel halted (triggers an interrupt)*)
+
+  (********************  Bit definition for USB_OTG_GOTGINT register  ********************)
+    GOTGINT_SEDET* = 2; (*!< Session end detected                   *)
+    GOTGINT_SEDET_Msk* = {GOTGINT_SEDET};
+    GOTGINT_SRSSCHG* = 8; (*!< Session request success status change  *)
+    GOTGINT_SRSSCHG_Msk* = {GOTGINT_SRSSCHG};
+    GOTGINT_HNSSCHG* = 9; (*!< Host negotiation success status change *)
+    GOTGINT_HNSSCHG_Msk* = {GOTGINT_HNSSCHG};
+    GOTGINT_HNGDET* = 17; (*!< Host negotiation detected              *)
+    GOTGINT_HNGDET_Msk* = {GOTGINT_HNGDET};
+    GOTGINT_ADTOCHG* = 18; (*!< A-device timeout change                *)
+    GOTGINT_ADTOCHG_Msk* = {GOTGINT_ADTOCHG};
+    GOTGINT_DBCDNE* = 19; (*!< Debounce done                          *)
+    GOTGINT_DBCDNE_Msk* = {GOTGINT_DBCDNE};
 
   (********************  Bit definition for USB_OTG_DCTL register  ********************)
     DCTL_RWUSIG* = 0; (*!< Remote wakeup signaling *)
@@ -632,6 +725,25 @@ MODULE LLUSB;
     DCTL_CGONAK_Msk* = {DCTL_CGONAK};
     DCTL_POPRGDNE* = 11; (*!< Power-on programming done *)
     DCTL_POPRGDNE_Msk* = {DCTL_POPRGDNE};
+
+  (********************  Bit definition for USB_OTG_HFNUM register  ********************)
+    HFNUM_FRNUM_Pos* = 0; (*!< Frame number         *)
+    HFNUM_FRNUM_Msk* = {HFNUM_FRNUM_Pos..15};
+    HFNUM_FTREM_Pos* = 16; (*!< Frame time remaining *)
+    HFNUM_FTREM_Msk* = {HFNUM_FTREM_Pos..31};
+
+  (********************  Bit definition for USB_OTG_DSTS register  ********************)
+    DSTS_SUSPSTS* = 0; (*!< Suspend status   *)
+    DSTS_SUSPSTS_Msk* = {DSTS_SUSPSTS};
+    DSTS_ENUMSPD_Pos* = 1; (*!< Enumerated speed *)
+    DSTS_ENUMSPD_Msk* = {DSTS_ENUMSPD_Pos..2};
+    DSTS_ENUMSPD_HS_PHY_30MHZ_OR_60MHZ* = {};
+    DSTS_ENUMSPD_FS_PHY_30MHZ_OR_60MHZ* = {1};
+    DSTS_ENUMSPD_FS_PHY_48MHZ* = {1..2};
+    DSTS_EERR* = 3; (*!< Erratic error     *)
+    DSTS_EERR_Msk* = {DSTS_EERR};
+    DSTS_FNSOF_Pos* = 8; (*!< Frame number of the received SOF *)
+    DSTS_FNSOF_Msk* = {DSTS_FNSOF_Pos..21};
 
   (********************  Bit definition for PCGCCTL register  ********************)
     PCGCCTL_STOPCLK* = 0; (*!< Stop PHY clock *)
@@ -705,9 +817,9 @@ MODULE LLUSB;
       DIEPINT*,           (*!< dev IN Endpoint Itr Reg        900h + (ep_num * 20h) + 08h *)
       Reserved0C,             (*!< Reserved                       900h + (ep_num * 20h) + 0Ch *)
       DIEPTSIZ*: SET;          (*!< IN Endpoint Txfer Size         900h + (ep_num * 20h) + 10h *)
-      DIEPDMA*,           (*!< IN Endpoint DMA Address Reg    900h + (ep_num * 20h) + 14h *)
+      DIEPDMA*: INTEGER;           (*!< IN Endpoint DMA Address Reg    900h + (ep_num * 20h) + 14h *)
       DTXFSTS*,           (*!< IN Endpoint Tx FIFO Status Reg 900h + (ep_num * 20h) + 18h *)
-      Reserved18: INTEGER             (*!< Reserved  900h+(ep_num*20h)+1Ch-900h+ (ep_num * 20h) + 1Ch *)
+      Reserved18: SET             (*!< Reserved  900h+(ep_num*20h)+1Ch-900h+ (ep_num * 20h) + 1Ch *)
     END;
 
   (**
@@ -721,7 +833,7 @@ MODULE LLUSB;
       Reserved0C,         (*!< Reserved                               B00h + (ep_num * 20h) + 0Ch *)
       DOEPTSIZ*: SET;      (*!< dev OUT Endpoint Txfer Size            B00h + (ep_num * 20h) + 10h *)
       DOEPDMA*: INTEGER;       (*!< dev OUT Endpoint DMA Address           B00h + (ep_num * 20h) + 14h *)
-      Reserved18: ARRAY 2 OF INTEGER      (*!< Reserved B00h + (ep_num * 20h) + 18h - B00h + (ep_num * 20h) + 1Ch *)
+      Reserved18: ARRAY 2 OF SET      (*!< Reserved B00h + (ep_num * 20h) + 18h - B00h + (ep_num * 20h) + 1Ch *)
     END;
 
   (**
@@ -846,6 +958,28 @@ MODULE LLUSB;
     END;
 
   (**
+  * @brief  Prepare the EP0 to start the first control setup
+  * @param  USBx  Selected device
+  * @param  dma USB dma enabled or disabled
+  *          This parameter can be one of these values:
+  *           FALSE : DMA feature not used
+  *           TRUE : DMA feature used
+  * @param  address of setup packet
+  * @retval HAL status
+  *)
+  PROCEDURE EP0_OutStart*(USBx: OTGCore; dma: BOOLEAN; setup: INTEGER);
+    VAR USBx_OUTEPi!: OTGOUTEndpoint;
+  BEGIN USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + 0*EP_REG_SIZE);
+    IF (ORD(USBx.GSNPSID*GSNPSID_CORE_REV_Msk) <= 300AH) OR ~(DOEPCTL_EPENA IN USBx_OUTEPi.DOEPCTL) THEN
+      (*1 packet, 3*8 bytes, 3 back-to-back setup data packets allowed*)
+      USBx_OUTEPi.DOEPTSIZ := LSL(TOSET(1), DOEPTSIZ_PKTCNT_Pos) + TOSET(3* 8) + LSL(TOSET(3), DOEPTSIZ_STUPCNT_Pos);
+      IF dma THEN USBx_OUTEPi.DOEPDMA := setup;
+        USBx_OUTEPi.DOEPCTL := USBx_OUTEPi.DOEPCTL + {DOEPCTL_EPENA, DOEPCTL_USBAEP} (* EP enable *)
+      END
+    END
+  END EP0_OutStart;
+
+  (**
   * @brief  Reset the USB Core (needed after USB clock settings change)
   * @param  USBx  Selected device
   * @retval HAL status
@@ -922,9 +1056,40 @@ MODULE LLUSB;
   END CoreInit;
 
   (**
+  * @brief  Set the USB turnaround time
+  * @param  USBx USB Instance
+  * @param  hclk: AHB clock frequency
+  * @retval USB turnaround time In PHY Clocks number
+  *)
+  PROCEDURE SetTurnaroundTime*(USBx: OTGCore; hclk: INTEGER; speed: BYTE);
+    VAR UsbTrd: BYTE;
+  BEGIN
+    (* The USBTRD is configured according to the tables below, depending on AHB frequency
+    used by application. In the low AHB frequency range it is used to stretch enough the USB response
+    time to IN tokens, the USB turnaround time, so to compensate for the longer AHB read access
+    latency to the Data FIFO *)
+    IF speed = USBD_FS_SPEED THEN
+      IF hclk < 15000000 THEN (* hclk Clock Range between 0-15 MHz *) UsbTrd := 15
+      ELSIF hclk < 16000000 THEN (* hclk Clock Range between 15-16 MHz *) UsbTrd := 14
+      ELSIF hclk < 17200000 THEN (* hclk Clock Range between 16-17.2 MHz *) UsbTrd := 13
+      ELSIF hclk < 18500000 THEN (* hclk Clock Range between 17.2-18.5 MHz *) UsbTrd := 12
+      ELSIF hclk < 20000000 THEN (* hclk Clock Range between 18.5-20 MHz *) UsbTrd := 11
+      ELSIF hclk < 21800000 THEN (* hclk Clock Range between 20-21.8 MHz *) UsbTrd := 10
+      ELSIF hclk < 24000000 THEN (* hclk Clock Range between 21.8-24 MHz *) UsbTrd := 9
+      ELSIF hclk < 27700000 THEN (* hclk Clock Range between 24-27.7 MHz *) UsbTrd := 8
+      ELSIF hclk < 32000000 THEN (* hclk Clock Range between 27.7-32 MHz *) UsbTrd := 7
+      ELSE (* hclk Clock greater or equal than 200 MHz *) UsbTrd := 6
+      END
+    ELSIF speed = USBD_HS_SPEED THEN UsbTrd := USBD_HS_TRDT_VALUE
+    ELSE UsbTrd := USBD_DEFAULT_TRDT_VALUE
+    END;
+    USBx.GUSBCFG := USBx.GUSBCFG - GUSBCFG_TRDT_Msk + TOSET(LSL(UsbTrd, GUSBCFG_TRDT_Pos))*GUSBCFG_TRDT_Msk
+  END SetTurnaroundTime;
+
+  (**
   * @brief  Returns USB core mode
   * @param  USBx  Selected device
-  * @retval return core mode : Host or Device
+  * @retval return boolean indicating if the USB controller is in Host or Device mode
   *          This parameter can be one of these values:
   *           TRUE : Host
   *           FALSE : Device
@@ -1033,9 +1198,8 @@ MODULE LLUSB;
   * @param  USBx  Selected device
   * @param  dest  source pointer
   * @param  len  Number of bytes to read
-  * @retval pointer to destination buffer
   *)
-  PROCEDURE ReadPacket*(USBx: OTGCore; dest, len: INTEGER): INTEGER;
+  PROCEDURE ReadPacket*(USBx: OTGCore; dest, len: INTEGER);
     VAR i, t, remaining_bytes: INTEGER;
     BEGIN remaining_bytes := len MOD 4;
     FOR i := 0 TO len DIV 4 - 1 DO SYSTEM.GET(ORD(USBx) + FIFO_BASE, t);
@@ -1048,8 +1212,6 @@ MODULE LLUSB;
         INC(i); INC(dest); DEC(remaining_bytes)
       UNTIL remaining_bytes = 0
     END
-
-    RETURN dest
   END ReadPacket;
 
   (**
@@ -1058,9 +1220,9 @@ MODULE LLUSB;
   * @param  USBx  Selected device
   * @param  speed  device speed
   *          This parameter can be one of these values:
-  *            @arg USB_OTG_SPEED_HIGH: High speed mode
-  *            @arg USB_OTG_SPEED_HIGH_IN_FULL: High speed core in Full Speed mode
-  *            @arg USB_OTG_SPEED_FULL: Full speed mode
+  *            @arg DCFG_HIGH_SPEED: High speed mode
+  *            @arg DCFG_FULL_SPEED_ULPI_PHY: High speed phy in Full Speed mode
+  *            @arg DCFG_FULL_SPEED_INTERNAL_PHY: Full speed mode
   * @retval  Hal status
   *)
   PROCEDURE SetDevSpeed(USBx: OTGCore; speed: BYTESET);
@@ -1068,6 +1230,28 @@ MODULE LLUSB;
   BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
     USBx_DEVICE.DCFG := USBx_DEVICE.DCFG - DCFG_DSPD_Msk + speed
   END SetDevSpeed;
+
+  (**
+    * @brief  USB_GetDevSpeed  Return the Dev Speed
+    * @param  USBx  Selected device
+    * @retval speed  device speed
+    *          This parameter can be one of these values:
+    *            @arg USBD_HS_SPEED: High speed mode
+    *            @arg USBD_FS_SPEED: Full speed mode
+    *)
+  PROCEDURE GetDevSpeed*(USBx: OTGCore): BYTE;
+    VAR USBx_DEVICE!: OTGDeviceMode;
+      DevEnumSpeed: SET; speed: BYTE;
+  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+    DevEnumSpeed := USBx_DEVICE.DSTS*DSTS_ENUMSPD_Msk;
+    IF DevEnumSpeed = DSTS_ENUMSPD_HS_PHY_30MHZ_OR_60MHZ THEN speed := USBD_HS_SPEED
+    ELSIF (DevEnumSpeed = DSTS_ENUMSPD_FS_PHY_30MHZ_OR_60MHZ) OR
+      (DevEnumSpeed = DSTS_ENUMSPD_FS_PHY_48MHZ) THEN speed := USBD_FS_SPEED
+    ELSE speed := 0FH
+    END
+
+    RETURN speed
+  END GetDevSpeed;
 
   (**
   * @brief  Activate and configure an endpoint
@@ -1185,6 +1369,7 @@ MODULE LLUSB;
         END
       END
     ELSE (* OUT endpoint *)
+      USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
       (* Program the transfer size and packet count as follows:
       * pktcnt = N
       * xfersize = N * maxpacket
@@ -1217,6 +1402,34 @@ MODULE LLUSB;
       USBx_OUTEPi.DOEPCTL := USBx_OUTEPi.DOEPCTL + {DOEPCTL_CNAK, DOEPCTL_EPENA} (* EP enable *)
     END
   END EPStartXfer;
+
+  (**
+   * @brief  USB_EPStoptXfer  Stop transfer on an EP
+   * @param  USBx  usb device instance
+   * @param  ep pointer to endpoint structure
+   * @retval HAL status
+   *)
+  PROCEDURE EPStopXfer*(USBx: OTGCore; ep: EPDesc): BYTE;
+    VAR ret: BYTE; count: INTEGER;
+      USBx_INEPi!: OTGINEndpoint; USBx_OUTEPi!: OTGOUTEndpoint;
+  BEGIN ret := HAL_OK; count := 0;
+    IF ep.is_in THEN (* IN endpoint *)
+      USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
+      IF DIEPCTL_EPENA IN USBx_INEPi.DIEPCTL THEN (* EP enabled, IN data in FIFO *)
+        USBx_INEPi.DIEPCTL := USBx_INEPi.DIEPCTL + {DIEPCTL_SNAK, DIEPCTL_EPDIS};
+        REPEAT INC(count) UNTIL  (count > 10000) OR ~(DIEPCTL_EPENA IN USBx_INEPi.DIEPCTL)
+      END
+    ELSE (* OUT endpoint *)
+      USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
+      IF DOEPCTL_EPENA IN USBx_OUTEPi.DOEPCTL THEN
+        USBx_OUTEPi.DOEPCTL := USBx_OUTEPi.DOEPCTL + {DOEPCTL_SNAK, DOEPCTL_EPDIS};
+        REPEAT INC(count) UNTIL (count > 10000) OR ~(DOEPCTL_EPENA IN USBx_OUTEPi.DOEPCTL)
+      END
+    END;
+    IF count > 10000 THEN ret := HAL_ERROR END
+
+    RETURN ret
+  END EPStopXfer;
 
   (**
   * @brief  USB_DevInit Initializes the USB_OTG controller registers
@@ -1357,7 +1570,7 @@ MODULE LLUSB;
     ELSE EXCL(USBx_HOST.HCFG, HCFG_FSLSS) (* Set default Max speed support *)
     END;
     (* Make sure the FIFOs are flushed. *)
-    IF FlushTxFifo(USBx, 10H (* all Tx FIFOs *)) # HAL_OK THEN ret := HAL_ERROR END;
+    IF FlushTxFifo(USBx, ALL_FIFOS) # HAL_OK THEN ret := HAL_ERROR END;
     IF FlushRxFifo(USBx) # HAL_OK THEN ret := HAL_ERROR END;
     (* Clear all pending HC Interrupts *) ASSERT(cfg.Host_channels <= 12);
     FOR i := 0 TO cfg.Host_channels - 1 DO
@@ -1649,6 +1862,89 @@ MODULE LLUSB;
   END ReadChInterrupts;
 
   (**
+  * @brief  USB_ReadDevAllOutEpInterrupts: return the USB device OUT endpoints interrupt status
+  * @param  USBx  Selected device
+  * @retval USB Device OUT EP interrupt status
+  *)
+  PROCEDURE ReadDevAllOutEpInterrupts*(USBx: OTGCore): SET;
+    VAR USBx_DEVICE!: OTGDeviceMode;
+  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+
+    RETURN LSR(USBx_DEVICE.DAINT*USBx_DEVICE.DAINTMSK*DAINT_OEPINT_Msk, DAINT_OEPINT_Pos)
+  END ReadDevAllOutEpInterrupts;
+
+  (**
+  * @brief  USB_ReadDevAllInEpInterrupts: return the USB device IN endpoints interrupt status
+  * @param  USBx  Selected device
+  * @retval USB Device IN EP interrupt status
+  *)
+  PROCEDURE ReadDevAllInEpInterrupts*(USBx: OTGCore): SET;
+    VAR USBx_DEVICE!: OTGDeviceMode;
+  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+
+    RETURN LSR(USBx_DEVICE.DAINT*USBx_DEVICE.DAINTMSK*DAINT_IEPINT_Msk, DAINT_IEPINT_Pos)
+  END ReadDevAllInEpInterrupts;
+
+  (**
+  * @brief  Returns Device OUT EP non masked Interrupts
+  * @param  USBx  Selected device
+  * @param  epnum  endpoint number
+  *          This parameter can be a value from 0 to 15
+  * @retval Device OUT EP Interrupt register
+  *)
+  PROCEDURE ReadDevOutEPInterrupts*(USBx: OTGCore; epnum: BYTE): SET;
+    VAR USBx_DEVICE!: OTGDeviceMode; USBx_OUTEPi!: OTGOUTEndpoint;
+  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+    USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + epnum*EP_REG_SIZE);
+
+    RETURN USBx_OUTEPi.DOEPINT*USBx_DEVICE.DOEPMSK
+  END ReadDevOutEPInterrupts;
+
+(**
+  * @brief  Returns Device IN EP non masked Interrupts
+  * @param  USBx  Selected device
+  * @param  epnum  endpoint number
+  *          This parameter can be a value from 0 to 15
+  * @retval Device IN EP Interrupt register
+  *)
+  PROCEDURE ReadDevInEPInterrupts*(USBx: OTGCore; epnum: BYTE): SET;
+    VAR USBx_DEVICE!: OTGDeviceMode; USBx_INEPi!: OTGINEndpoint;
+  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+    USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + epnum*EP_REG_SIZE);
+
+    RETURN USBx_INEPi.DIEPINT*(USBx_DEVICE.DIEPMSK +
+      LSL(LSR(USBx_DEVICE.DIEPEMPMSK, epnum MOD 10H)*{0}, DIEPINT_TXFE))
+  END ReadDevInEPInterrupts;
+
+  (**
+  * @brief  Clears Device OUT EP Interrupts
+  * @param  USBx  Selected device
+  * @param  epnum  endpoint number
+  *          This parameter can be a value from 0 to 15
+  * @param  flags  interrupts to clear
+  *)
+  PROCEDURE ClearOutEPInterrupts*(USBx: OTGCore; epnum: BYTE; flags: SET);
+    VAR USBx_DEVICE!: OTGDeviceMode; USBx_OUTEPi!: OTGOUTEndpoint;
+  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+    USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + epnum*EP_REG_SIZE);
+    USBx_OUTEPi.DOEPINT := flags
+  END ClearOutEPInterrupts;
+
+  (**
+  * @brief  Clears Device IN EP Interrupts
+  * @param  USBx  Selected device
+  * @param  epnum  endpoint number
+  *          This parameter can be a value from 0 to 15
+  * @param  flags  interrupts to clear
+  *)
+  PROCEDURE ClearInEPInterrupts*(USBx: OTGCore; epnum: BYTE; flags: SET);
+    VAR USBx_DEVICE!: OTGDeviceMode; USBx_INEPi!: OTGINEndpoint;
+  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+    USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + epnum*EP_REG_SIZE);
+    USBx_INEPi.DIEPINT := flags
+  END ClearInEPInterrupts;
+
+  (**
   * @brief Read all host channel interrupts status
   * @param  USBx  Selected device
   * @retval HAL state
@@ -1659,6 +1955,19 @@ MODULE LLUSB;
 
     RETURN USBx_HOST.HAINT*{0..15}
   END HC_ReadInterrupt;
+
+  (**
+  * @brief  Activate EP0 for Setup transactions
+  * @param  USBx  Selected device
+  * @retval HAL status
+  *)
+  PROCEDURE ActivateSetup*(USBx: OTGCore);
+    VAR USBx_INEPi!: OTGINEndpoint; USBx_DEVICE!: OTGDeviceMode;
+  BEGIN USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + 0*EP_REG_SIZE);
+    USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+    USBx_INEPi.DIEPCTL := USBx_INEPi.DIEPCTL - DIEPCTL_MPSIZ_Msk; (* Set the MPS of the IN EP0 to 64 bytes *)
+    INCL(USBx_DEVICE.DCTL, DCTL_CGINAK)
+  END ActivateSetup;
 
   (**
   * @brief  USB_InitFSLSPClkSel : Initializes the FSLSPClkSel field of the
@@ -1765,7 +2074,7 @@ MODULE LLUSB;
     ret := HAL_OK; count := 0; USBx_HOST := SYSTEM.VAL(OTGHostMode, ORD(USBx) + HOST_BASE);
     DisableGlobalInt(USBx);
     (* Flush USB FIFO *)
-    IF (FlushTxFifo(USBx, 10H(* all Tx FIFOs *)) # HAL_OK) OR
+    IF (FlushTxFifo(USBx, ALL_FIFOS) # HAL_OK) OR
       (FlushRxFifo(USBx) # HAL_OK) THEN ret := HAL_ERROR
     ELSE
       (* Flush out any leftover queued requests. *)

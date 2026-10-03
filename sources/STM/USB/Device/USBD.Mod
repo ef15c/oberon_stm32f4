@@ -91,6 +91,14 @@ MODULE USBD;
   BEGIN dev(DDef.Handle).Desc := descriptors(DDef.DescriptorGetters)
   END RegisterDescriptors;
 
+  PROCEDURE RegisterInterface*(dev: Def.Handle; uif: Def.UserData);
+  BEGIN
+    CASE dev OF
+      DDef.Handle: dev.UserData[dev.classId] := uif(DDef.UserData)
+    | Def.Handle: ASSERT(FALSE)
+    END
+  END RegisterInterface;
+
   (**
   * @brief  USBD_RegisterClass
   *         Link class driver to Device Core.
