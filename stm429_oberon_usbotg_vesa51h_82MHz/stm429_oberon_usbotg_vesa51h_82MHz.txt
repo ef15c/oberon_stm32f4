@@ -1,6 +1,6 @@
-Configuration	stm429_oberon_usbotg_vgarb
+Configuration	stm429_oberon_usbotg_vesa51h_82MHz
 STM32CubeMX 	6.18.1
-Date	09/26/2026
+Date	10/03/2026
 MCU	STM32F429ZITx
 
 
@@ -397,8 +397,8 @@ Pin Nb	PINs	FUNCTIONs	LABELs
 SOFTWARE PROJECT
 
 Project Settings : 
-Project Name : stm429_oberon_usbotg_vgarb
-Project Folder : /home/nounours/projects/ProjectOberon/2020/stm429_oberon_usbotg_vgarb
+Project Name : stm429_oberon_usbotg_vesa51h_82MHz
+Project Folder : /home/nounours/projects/ProjectOberon/2020/stm429_oberon_usbotg_vesa51h_82MHz
 Toolchain / IDE : STM32CubeIDE
 Firmware Package Name and Version : STM32Cube FW_F4 V1.28.3
 
