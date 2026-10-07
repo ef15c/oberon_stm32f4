@@ -6,9 +6,11 @@ OM4X.Load BootLoad.hex
 (*no more used: OM4X.WriteASM BootLoad.m4c BootLoad.s ~*)
 
 Commands for generation of the boot file (inner core)
-OM4P.Compile BSP.Mod/s SDCard.Mod/s LongDiv.Mod/s Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s ~
-OM4L.Link Modules ~
-OM4L.Load Modules.bin ~
+Oberon.Batch
+  OM4P.Compile BSP.Mod/s SDCard.Mod/s LongDiv.Mod/s Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s ~
+  OM4L.Link Modules ~
+  OM4L.Load Modules.bin ~
+~
  ** or/and **
 OM4L.LinkEF Modules ~
 OM4L.LoadEF Modules.efb OM4L.CompareEF Modules.efb
@@ -40,7 +42,7 @@ OM4P.Compile Graphics.Mod/s GraphicFrames.Mod/s Draw.Mod/s Rectangles.Mod/s Curv
   MacroTool.Mod/s GraphTool.Mod/s ~
 
 Command for generating programs
-OM4P.Compile Hilbert.Mod Sierpinski.Mod Blink.Mod Stars.Mod Mira.Mod~
+OM4P.Compile Hilbert.Mod Sierpinski.Mod Blink.Mod Stars.Mod JDraw.Mod/s Mira.Mod~
 
 OM4Tool.DecBin Modules.bin ~
 
