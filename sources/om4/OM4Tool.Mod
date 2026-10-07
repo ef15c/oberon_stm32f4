@@ -324,13 +324,14 @@ MODULE OM4Tool;  (*NW 18.2.2013*)
   
   PROCEDURE DecBin*;   (*decode binary boot file*)
     VAR i, n, modLoc, root, ramOrg, data, next: INTEGER; b: BYTE;
-      F!: Files.File; R!: Files.Rider;
+      F!, SM!: Files.File; R!, SMR!: Files.Rider;
       S!: Texts.Scanner;
       bpb: ARRAY SYSTEM.SIZE(Modules.ModDesc) DIV 4 OF INTEGER; bp!: BootParams;
       mod!: Modules.Module;
       ok: BOOLEAN;
       ch: CHAR;
-      name: ARRAY 32 OF CHAR;
+      name, smName: ARRAY 32 OF CHAR;
+      smi, pos: INTEGER; nbi: BYTE;
   BEGIN ok := TRUE; Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "decode "); Texts.WriteString(W, S.s); Texts.WriteLn(W);
@@ -421,14 +422,22 @@ MODULE OM4Tool;  (*NW 18.2.2013*)
             Texts.WriteString(W, "format error, at "); Texts.WriteHex(W, n+ramOrg); 
             Texts.WriteLn(W)
           END;
+          B.MakeFileName(smName, mod.name, ".osm"); SM := Files.Old(smName);
+          IF SM # NIL THEN Files.Set(SMR, SM, 0); Files.ReadInt(SMR, smi); (*skip end address field*)
+            smi := 0; Files.ReadByte(SMR, nbi); Files.ReadInt(SMR, pos)
+          END;
           IF ok THEN
             mcode.pc := 0;
             WHILE (n - modLoc < mod.size) & (n+ramOrg # mod.imp) DO 
               Files.ReadByte(R, mcode.code[mcode.pc]); INC(mcode.pc); INC(n)
             END;
             i := 0; 
-            WHILE i < mcode.pc DO 
-              Texts.WriteHex(W, mod.code + i); Texts.Write(W, 9X); D.opcode(W, mcode.code, i, mod.code);
+            WHILE i < mcode.pc DO
+              Texts.WriteHex(W, mod.code + i);
+              IF SM # NIL THEN GetPos(SMR, nbi, smi, pos, i);
+                Texts.WriteString(W, "  "); Texts.WriteInt(W, pos, 8)
+              END;
+              Texts.Write(W, 9X); D.opcode(W, mcode.code, i, mod.code);
               Texts.WriteLn(W)
             END
           END;
