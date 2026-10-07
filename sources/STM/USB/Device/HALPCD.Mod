@@ -28,7 +28,6 @@ MODULE HALPCD;
   *)
     Handle* = POINTER TO HandleDesc;
     IRQCallback* = PROCEDURE^5(pcd: Handle);
-    MsgCallback* = PROCEDURE(pcd: Handle; msg: BYTE);
     HandleDesc* = RECORD(DDef.HandleDesc)
       Address*: BYTE; (*!< USB Address                       *)
       IN_ep*, (*!< IN endpoint parameters            *)
@@ -43,11 +42,11 @@ MODULE HALPCD;
       battery_charging_active: BOOLEAN;    (*!< Enable or disable Battery charging.
                                        This parameter can be set to ENABLE or DISABLE        *)
       SOFCallback*: IRQCallback;
-      BCDCallback*: MsgCallback;
       DataOutStageMP*, DataInStageMP*, SetupStageMP*,
       ISOOUTIncompleteMP*, ISOINIncompleteMP*,
       LPMMP*, ResumeMP*, SuspendMP*, ResetMP*,
       ConnectMP*, DisconnectMP*, (*the pools of available IRQ messages*)
+      DebugMP*, (*the interrupt trace message pool*)
       MsgPendQ: Q.Msg (*the deferred work message queue*)
     END;
 
@@ -95,6 +94,12 @@ MODULE HALPCD;
     DisconnectMsg* = POINTER TO DisconnectMsgDesc;
     DisconnectMsgDesc* = RECORD(Q.MsgDesc) END;
  
+    (*!< USB debug message *)
+    DebugMsg* = POINTER TO DebugMsgDesc;
+    DebugMsgDesc* = RECORD(Q.MsgDesc)
+      is_in*: BOOLEAN; ts*: INTEGER; epnum*: BYTE; gintsts*, dxepint*, diepmsk*: SET
+    END;
+
     PROCEDURE newDataOutStageMsg(): Q.Msg;
       VAR item!: DataOutStageMsg;
     BEGIN NEW(item)
@@ -161,6 +166,13 @@ MODULE HALPCD;
       RETURN item
     END newDisconnectMsg;
 
+    PROCEDURE newDebugMsg(): Q.Msg; (*create a debug message object*)
+      VAR item!: DebugMsg;
+    BEGIN NEW(item)
+
+      RETURN item
+    END newDebugMsg;
+
   (**
   * @brief  process EP OUT transfer complete interrupt.
   * @param  hpcd PCD handle
@@ -168,12 +180,11 @@ MODULE HALPCD;
   * @retval HAL status
   *)
   PROCEDURE OutXfrComplete_int(hpcd: Handle; epnum: BYTE);
-    VAR DoepintReg: SET; USBx_OUTEPi!: ll.OTGOUTEndpoint;
-      USBx!: ll.OTGCore; msg!: Q.Msg;
-    PROCEDURE HandlePacketReceived(hpcd: Handle; VAR ep: ll.EPDesc; USBx_OUTEPi: ll.OTGOUTEndpoint; epnum: BYTE);
+    VAR DoepintReg: SET; USBx!: ll.OTGCore; msg!: Q.Msg;
+    PROCEDURE HandlePacketReceived(hpcd: Handle; VAR ep: ll.EPDesc; epnum: BYTE);
       VAR msg!: Q.Msg;
     BEGIN (* out data packet received over EP *)
-      ep.xfer_count := ep.xfer_size - ORD(USBx_OUTEPi.DOEPTSIZ*ll.DOEPTSIZ_XFRSIZ_Msk);
+      ep.xfer_count := ep.xfer_size - ORD(hpcd.Instance.OUTEP[epnum].DOEPTSIZ*ll.DOEPTSIZ_XFRSIZ_Msk);
       IF epnum = 0 THEN
         IF ep.xfer_len = 0 THEN (* this is ZLP, so prepare EP0 for next setup *)
             ll.EP0_OutStart(hpcd.Instance, TRUE, SYSTEM.ADR(hpcd.Setup));
@@ -185,8 +196,7 @@ MODULE HALPCD;
     END HandlePacketReceived;
 
   BEGIN USBx := hpcd.Instance;
-    USBx_OUTEPi := SYSTEM.VAL(ll.OTGOUTEndpoint, ORD(USBx) + ll.OUT_ENDPOINT_BASE + epnum*ll.EP_REG_SIZE);
-    DoepintReg := USBx_OUTEPi.DOEPINT;
+    DoepintReg := USBx.OUTEP[epnum].DOEPINT;
     IF hpcd.Init.dma_enable THEN
       IF ll.DOEPINT_STUP IN DoepintReg THEN (* Class C *)
         IF (ORD(USBx.GSNPSID*ll.GSNPSID_CORE_REV_Msk) > 300AH) & (ll.DOEPINT_STPKTRX IN DoepintReg) THEN
@@ -197,7 +207,7 @@ MODULE HALPCD;
       ELSE (* StupPktRcvd = 1 this is a setup packet *)
         IF (ORD(USBx.GSNPSID*ll.GSNPSID_CORE_REV_Msk) > 300AH) & (ll.DOEPINT_STPKTRX IN DoepintReg) THEN
           ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_STPKTRX})
-        ELSE HandlePacketReceived(hpcd, hpcd.OUT_ep[epnum], USBx_OUTEPi, epnum)
+        ELSE HandlePacketReceived(hpcd, hpcd.OUT_ep[epnum], epnum)
         END
       END
    ELSE
@@ -211,13 +221,21 @@ MODULE HALPCD;
       ELSE
         IF (epnum = 0) & (hpcd.OUT_ep[epnum].xfer_len = 0) THEN
           (* this is ZLP, so prepare EP0 for next setup *)
-          ll.EP0_OutStart(hpcd.Instance, FALSE, SYSTEM.ADR(hpcd.Setup))
+          ll.EP0_OutStart(USBx, FALSE, SYSTEM.ADR(hpcd.Setup))
         END;
         msg := Q.Get(hpcd.DataOutStageMP);
         IF msg # NIL THEN msg(DataOutStageMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END
       END
     END
   END OutXfrComplete_int;
+
+  PROCEDURE Post_OutSetupPacket_int*(hpcd: Handle);
+  BEGIN
+    IF (ORD(hpcd.Instance.GSNPSID*ll.GSNPSID_CORE_REV_Msk) > 300AH) & (hpcd.Init.dma_enable) THEN
+      ll.EP0_OutStart(hpcd.Instance, TRUE, SYSTEM.ADR(hpcd.Setup))
+    END;
+    ll.EnableEPInt(hpcd.Instance, 0, TRUE); (*resume IN 0 interrupts handling*)
+  END Post_OutSetupPacket_int;
 
   (**
   * @brief  process EP OUT setup packet received interrupt.
@@ -226,21 +244,15 @@ MODULE HALPCD;
   * @retval HAL status
   *)
   PROCEDURE EP_OutSetupPacket_int(hpcd: Handle; epnum: BYTE);
-    VAR DoepintReg: SET; USBx_OUTEPi!: ll.OTGOUTEndpoint;
-      USBx!: ll.OTGCore; msg!: Q.Msg;
-  BEGIN USBx := hpcd.Instance;
-    USBx_OUTEPi := SYSTEM.VAL(ll.OTGOUTEndpoint, ORD(USBx) + ll.OUT_ENDPOINT_BASE + epnum*ll.EP_REG_SIZE);
-    DoepintReg := USBx_OUTEPi.DOEPINT;
+    VAR DoepintReg: SET; USBx!: ll.OTGCore; msg!: Q.Msg;
+  BEGIN USBx := hpcd.Instance; ASSERT(epnum = 0);
+    DoepintReg := USBx.OUTEP[epnum].DOEPINT;
     IF (ORD(USBx.GSNPSID*ll.GSNPSID_CORE_REV_Msk) > 300AH) & (ll.DOEPINT_STPKTRX IN DoepintReg) THEN
       ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_STPKTRX})
     END;
-    (* Inform the upper layer that a setup packet is available *)
-    msg := Q.Get(hpcd.SetupStageMP);
-    IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END;
-(*TODO: the following code must probably be deported at the end of SetupStageMsg process*)
-    IF (ORD(USBx.GSNPSID*ll.GSNPSID_CORE_REV_Msk) > 300AH) & (hpcd.Init.dma_enable) THEN
-      ll.EP0_OutStart(hpcd.Instance, TRUE, SYSTEM.ADR(hpcd.Setup))
-    END
+    ll.DisableEPInt(hpcd.Instance, 0, TRUE); (*delay IN 0 interrupts handling*)
+    msg := Q.Get(hpcd.SetupStageMP); (* Inform the upper layer that a setup packet is available *)
+    IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END
   END EP_OutSetupPacket_int;
 
   (**
@@ -252,15 +264,13 @@ MODULE HALPCD;
   PROCEDURE WriteEmptyTxFifo(hpcd: Handle; epnum: BYTE);
  
     PROCEDURE wetxfifo(VAR ep: ll.EPDesc; hpcd: Handle; epnum: BYTE);
-      VAR len, len32b: INTEGER; USBx_DEVICE!: ll.OTGDeviceMode;
-      USBx_INEPi!: ll.OTGINEndpoint;
-    BEGIN USBx_DEVICE := SYSTEM.VAL(ll.OTGDeviceMode, ORD(hpcd.Instance) + ll.DEVICE_BASE);
-      USBx_INEPi := SYSTEM.VAL(ll.OTGINEndpoint, ORD(hpcd.Instance) + ll.IN_ENDPOINT_BASE + epnum*ll.EP_REG_SIZE);
+      VAR len, len32b: INTEGER;
+    BEGIN
       IF ep.xfer_count <=  ep.xfer_len THEN
         len := ep.xfer_len - ep.xfer_count;
         IF len > ep.maxpacket THEN len := ep.maxpacket END;
         len32b := (len + 3) DIV 4;
-        WHILE (ORD(LSR(USBx_INEPi.DTXFSTS*ll.DTXFSTS_INEPTFSAV_Msk, ll.DTXFSTS_INEPTFSAV_Pos)) >= len32b) &
+        WHILE (ORD(LSR(hpcd.Instance.INEP[epnum].DTXFSTS*ll.DTXFSTS_INEPTFSAV_Msk, ll.DTXFSTS_INEPTFSAV_Pos)) >= len32b) &
           (ep.xfer_count < ep.xfer_len) & (ep.xfer_len # 0) DO
           (* Write the FIFO *)
           len := ep.xfer_len - ep.xfer_count;
@@ -269,7 +279,7 @@ MODULE HALPCD;
           ll.WritePacket(hpcd.Instance, ep.xfer_buff, epnum, len, hpcd.Init.dma_enable);
           INC(ep.xfer_buff, len); INC(ep.xfer_count, len)
         END;
-        IF ep.xfer_len <= ep.xfer_count THEN EXCL(USBx_DEVICE.DIEPEMPMSK, epnum MOD 10H) END
+        IF ep.xfer_len <= ep.xfer_count THEN EXCL(hpcd.Instance.DIEPEMPMSK, epnum MOD 10H) END
       END
     END wetxfifo;
 
@@ -299,9 +309,9 @@ MODULE HALPCD;
   * @retval None
   *)
   PROCEDURE IRQHandler*(hpcd: UC.Handle);
-    VAR USBx_DEVICE!: ll.OTGDeviceMode; flags, RegVal, ep_intr, epint: SET;
+    VAR flags, RegVal, ep_intr, epint: SET; USBx!: ll.OTGCore;
       epnum: BYTE; msg!: Q.Msg; ret: BYTE; i: INTEGER;
-      USBx_INEPi!: ll.OTGINEndpoint; USBx_OUTEPi!: ll.OTGOUTEndpoint;
+      dbm!: DebugMsg;
 
     PROCEDURE HandleRXFLVL(RegVal: SET; VAR ep: ll.EPDesc; hpcd: Handle);
       VAR bytecnt: INTEGER;
@@ -315,79 +325,86 @@ MODULE HALPCD;
       END
     END HandleRXFLVL;
 
-  BEGIN BSP.ledsOnOff({2}, {}); USBx_DEVICE := SYSTEM.VAL(ll.OTGDeviceMode, ORD(hpcd.Instance) + ll.DEVICE_BASE);
+  BEGIN BSP.ledsOnOff({2}, {}); USBx := hpcd.Instance;
     CASE hpcd OF
       Handle:
-        flags := ll.ReadInterrupts(hpcd.Instance);
-        IF ~ll.IsHost(hpcd.Instance) & (flags # {}) THEN (* ensure that we are in device mode and avoid spurious interrupt *)
-          hpcd.FrameNumber := LSR(ORD(USBx_DEVICE.DSTS*ll.DSTS_FNSOF_Msk), ll.DSTS_FNSOF_Pos); (* store current frame number *)
+        flags := ll.ReadInterrupts(USBx);
+        IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(hpcd.DebugMP);
+          IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^); dbm.epnum := 0FFH;
+            dbm.ts := BSP.TimeStamp(); dbm.gintsts := flags
+          END
+        END;
+        IF ~ll.IsHost(USBx) & (flags # {}) THEN (* ensure that we are in device mode and avoid spurious interrupt *)
+          hpcd.FrameNumber := LSR(ORD(USBx.DSTS*ll.DSTS_FNSOF_Msk), ll.DSTS_FNSOF_Pos); (* store current frame number *)
           (* Handle RxQLevel Interrupt *)
-          IF ll.GINTSTS_RXFLVL IN flags THEN EXCL(hpcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL);
-            (*hpcd.Instance.GRXSTSP must be read only once per interrupt, because reading it pops one item from input FIFO*)
-            RegVal := hpcd.Instance.GRXSTSP;
+          IF ll.GINTSTS_RXFLVL IN flags THEN EXCL(USBx.GINTMSK, ll.GINTSTS_RXFLVL);
+            (*USBx.GRXSTSP must be read only once per interrupt, because reading it pops one item from input FIFO*)
+            RegVal := USBx.GRXSTSP;
             HandleRXFLVL(RegVal, hpcd.OUT_ep[ORD(RegVal*ll.GRXSTS_EPNUM_Msk)], hpcd);
-            INCL(hpcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL)
+            INCL(USBx.GINTMSK, ll.GINTSTS_RXFLVL)
           END;
           IF ll.GINTSTS_OEPINT IN flags THEN epnum := 0;
-            ep_intr := ll.ReadDevAllOutEpInterrupts(hpcd.Instance); (* Read in the device interrupt bits *)
+            ep_intr := ll.ReadDevAllOutEpInterrupts(USBx); (* Read in the device interrupt bits *)
             WHILE ep_intr # {} DO
               IF epnum IN ep_intr THEN
-                epint := ll.ReadDevOutEPInterrupts(hpcd.Instance, epnum);
+                epint := ll.ReadDevOutEPInterrupts(USBx, epnum);
+                IF dbm # NIL THEN dbm.is_in := FALSE; dbm.epnum := epnum; dbm.dxepint := epint END;
                 IF ll.DOEPINT_XFRC IN epint THEN
-                  ll.ClearOutEPInterrupts(hpcd.Instance, epnum, {ll.DOEPINT_XFRC});
+                  ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_XFRC});
                   OutXfrComplete_int(hpcd, epnum)
                 END;
                 IF ll.DOEPINT_STUP IN epint THEN
-                  ll.ClearOutEPInterrupts(hpcd.Instance, epnum, {ll.DOEPINT_STUP});
+                  ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_STUP});
                   (* Class B setup phase done for previous decoded setup *)
                   EP_OutSetupPacket_int(hpcd, epnum)
                 END;
                 IF ll.DOEPINT_OTEPDIS IN epint THEN
-                  ll.ClearOutEPInterrupts(hpcd.Instance, epnum, {ll.DOEPINT_OTEPDIS})
+                  ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_OTEPDIS})
                 END;
                 (* Clear OUT Endpoint disable interrupt *)
                 IF ll.DOEPINT_EPDISD IN epint THEN
-                  IF ll.GINTSTS_GOUTNAKEFF IN hpcd.Instance.GINTSTS THEN INCL(USBx_DEVICE.DCTL, ll.DCTL_CGONAK) END;
+                  IF ll.GINTSTS_GOUTNAKEFF IN USBx.GINTSTS THEN INCL(USBx.DCTL, ll.DCTL_CGONAK) END;
                   IF hpcd.OUT_ep[epnum].is_iso_incomplete THEN
                     hpcd.OUT_ep[epnum].is_iso_incomplete := FALSE;
                     msg := Q.Get(hpcd.ISOOUTIncompleteMP);
                     IF msg # NIL THEN msg(ISOOUTIncompleteMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END;
                   END;
-                  ll.ClearOutEPInterrupts(hpcd.Instance, epnum, {ll.DOEPINT_EPDISD})
+                  ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_EPDISD})
                 END;
                 (* Clear Status Phase Received interrupt *)
-                IF ll.DOEPINT_OTEPSPR IN epint THEN ll.ClearOutEPInterrupts(hpcd.Instance, epnum, {ll.DOEPINT_OTEPSPR}) END;
+                IF ll.DOEPINT_OTEPSPR IN epint THEN ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_OTEPSPR}) END;
                 (* Clear OUT NAK interrupt *)
-                IF ll.DOEPINT_NAK IN epint THEN ll.ClearOutEPInterrupts(hpcd.Instance,epnum, {ll.DOEPINT_NAK}) END;
+                IF ll.DOEPINT_NAK IN epint THEN ll.ClearOutEPInterrupts(USBx,epnum, {ll.DOEPINT_NAK}) END;
                 EXCL(ep_intr, epnum)
               END;
               INC(epnum)
             END
           END;
           IF ll.GINTSTS_IEPINT IN flags THEN epnum := 0;
-            ep_intr := ll.ReadDevAllInEpInterrupts(hpcd.Instance); (* Read in the device interrupt bits *)
+            ep_intr := ll.ReadDevAllInEpInterrupts(USBx); (* Read in the device interrupt bits *)
             WHILE ep_intr # {} DO
               IF epnum IN ep_intr THEN (* In ITR *)
-                epint := ll.ReadDevInEPInterrupts(hpcd.Instance, epnum);
-                IF ll.DIEPINT_XFRC IN epint THEN EXCL(USBx_DEVICE.DIEPEMPMSK, epnum MOD 10H);
-                  ll.ClearInEPInterrupts(hpcd.Instance, epnum, {ll.DIEPINT_XFRC});
+                epint := ll.ReadDevInEPInterrupts(USBx, epnum);
+                IF dbm # NIL THEN dbm.is_in := TRUE; dbm.epnum := epnum; dbm.dxepint := epint END;
+                IF ll.DIEPINT_XFRC IN epint THEN EXCL(USBx.DIEPEMPMSK, epnum MOD 10H);
+                  ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_XFRC});
                   IF hpcd.Init.dma_enable THEN INC(hpcd.IN_ep[epnum].xfer_buff, hpcd.IN_ep[epnum].maxpacket);
                     IF (epnum = 0) & (hpcd.IN_ep[epnum].xfer_len = 0) THEN (* this is ZLP, so prepare EP0 for next setup *)
-                      ll.EP0_OutStart(hpcd.Instance, TRUE, SYSTEM.ADR(hpcd.Setup)) (* prepare to rx more setup packets *)
+                      ll.EP0_OutStart(USBx, TRUE, SYSTEM.ADR(hpcd.Setup)) (* prepare to rx more setup packets *)
                     END
                   END;
                   msg := Q.Get(hpcd.DataInStageMP);
                   IF msg # NIL THEN msg(DataInStageMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END
                 END;
-                IF ll.DIEPINT_TOC IN epint THEN ll.ClearInEPInterrupts(hpcd.Instance, epnum, {ll.DIEPINT_TOC}) END;
-                IF ll.DIEPINT_ITTXFE IN epint THEN ll.ClearInEPInterrupts(hpcd.Instance, epnum, {ll.DIEPINT_ITTXFE}) END;
-                IF ll.DIEPINT_INEPNE IN epint THEN ll.ClearInEPInterrupts(hpcd.Instance, epnum, {ll.DIEPINT_INEPNE}) END;
-                IF ll.DIEPINT_EPDISD IN epint THEN ret := ll.FlushTxFifo(hpcd.Instance, epnum);
+                IF ll.DIEPINT_TOC IN epint THEN ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_TOC}) END;
+                IF ll.DIEPINT_ITTXFE IN epint THEN ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_ITTXFE}) END;
+                IF ll.DIEPINT_INEPNE IN epint THEN ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_INEPNE}) END;
+                IF ll.DIEPINT_EPDISD IN epint THEN ret := ll.FlushTxFifo(USBx, epnum);
                   IF hpcd.IN_ep[epnum].is_iso_incomplete THEN hpcd.IN_ep[epnum].is_iso_incomplete := FALSE;
                     msg := Q.Get(hpcd.ISOINIncompleteMP);
                     IF msg # NIL THEN msg(ISOINIncompleteMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END;
                   END;
-                  ll.ClearInEPInterrupts(hpcd.Instance, epnum, {ll.DIEPINT_EPDISD})
+                  ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_EPDISD})
                 END;
                 IF ll.DIEPINT_TXFE IN epint THEN WriteEmptyTxFifo(hpcd, epnum) END;
                 EXCL(ep_intr, epnum)
@@ -397,7 +414,7 @@ MODULE HALPCD;
           END;
           (* Handle Resume Interrupt *)
           IF ll.GINTSTS_WKUINT IN flags THEN
-            EXCL(USBx_DEVICE.DCTL, ll.DCTL_RWUSIG); (* Clear the Remote Wake-up Signaling *)
+            EXCL(USBx.DCTL, ll.DCTL_RWUSIG); (* Clear the Remote Wake-up Signaling *)
             IF hpcd.LPM_State = LPM_L1 THEN
               hpcd.LPM_State := LPM_L0;
               msg := Q.Get(hpcd.LPMMP);
@@ -406,63 +423,66 @@ MODULE HALPCD;
               msg := Q.Get(hpcd.ResumeMP);
               IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END
             END;
-            hpcd.Instance.GINTSTS := {ll.GINTSTS_WKUINT}
+            USBx.GINTSTS := {ll.GINTSTS_WKUINT}
           END;
           (* Handle Suspend Interrupt *)
           IF ll.GINTSTS_USBSUSP IN flags THEN
-            IF ll.DSTS_SUSPSTS IN USBx_DEVICE.DSTS THEN
+            IF ll.DSTS_SUSPSTS IN USBx.DSTS THEN
               msg := Q.Get(hpcd.SuspendMP);
               IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END
             END;
-            hpcd.Instance.GINTSTS := {ll.GINTSTS_USBSUSP}
+            USBx.GINTSTS := {ll.GINTSTS_USBSUSP}
           END;
           (* Handle Reset Interrupt *)
           IF ll.GINTSTS_USBRST IN flags THEN
-            EXCL(USBx_DEVICE.DCTL, ll.DCTL_RWUSIG);
-            ret := ll.FlushTxFifo(hpcd.Instance, ll.ALL_FIFOS);
-            FOR i := 0 TO hpcd.Init.dev_endpoints - 1 DO
-              USBx_INEPi := SYSTEM.VAL(ll.OTGINEndpoint, ORD(hpcd.Instance) + ll.IN_ENDPOINT_BASE + i*ll.EP_REG_SIZE);
-              USBx_INEPi.DIEPINT := {ll.DIEPINT_XFRC, ll.DIEPINT_EPDISD, ll.DIEPINT_AHBERR, ll.DIEPINT_TOC,
-                ll.DIEPINT_ITTXFE, ll.DIEPINT_INEPNM, ll.DIEPINT_INEPNE, ll.DIEPINT_TXFIFOUDRN, ll.DIEPINT_BNA,
-                ll.DIEPINT_PKTDRPSTS, ll.DIEPINT_BERR, ll.DIEPINT_NAK};
-              EXCL(USBx_INEPi.DIEPCTL, ll.DIEPCTL_STALL);
-              USBx_OUTEPi := SYSTEM.VAL(ll.OTGOUTEndpoint, ORD(hpcd.Instance) + ll.OUT_ENDPOINT_BASE + i*ll.EP_REG_SIZE);
-              USBx_OUTEPi.DOEPINT := {ll.DOEPINT_XFRC, ll.DOEPINT_EPDISD, ll.DOEPINT_AHBERR, ll.DOEPINT_STUP,
-                ll.DOEPINT_OTEPDIS, ll.DOEPINT_OTEPSPR, ll.DOEPINT_B2BSTUP, ll.DOEPINT_OUTPKTERR, ll.DOEPINT_BERR,
-                ll.DOEPINT_NAK, ll.DOEPINT_NYET, ll.DOEPINT_STPKTRX};
-              EXCL(USBx_OUTEPi.DOEPCTL, ll.DOEPCTL_STALL);
-              INCL(USBx_OUTEPi.DOEPCTL, ll.DOEPCTL_SNAK);
+            IF ~(ll.DCTL_SDIS IN USBx.DCTL) (*avoid spurious USBRST triggered by DCTL_SDIS*) THEN
+              EXCL(USBx.DCTL, ll.DCTL_RWUSIG);
+              ret := ll.FlushTxFifo(USBx, ll.ALL_FIFOS);
+              FOR i := 0 TO hpcd.Init.dev_endpoints - 1 DO
+                USBx.INEP[i].DIEPINT := {ll.DIEPINT_XFRC, ll.DIEPINT_EPDISD, ll.DIEPINT_AHBERR, ll.DIEPINT_TOC,
+                  ll.DIEPINT_ITTXFE, ll.DIEPINT_INEPNM, ll.DIEPINT_INEPNE, ll.DIEPINT_TXFIFOUDRN, ll.DIEPINT_BNA,
+                  ll.DIEPINT_PKTDRPSTS, ll.DIEPINT_BERR, ll.DIEPINT_NAK};
+                EXCL(USBx.INEP[i].DIEPCTL, ll.DIEPCTL_STALL);
+                USBx.OUTEP[i].DOEPINT := {ll.DOEPINT_XFRC, ll.DOEPINT_EPDISD, ll.DOEPINT_AHBERR, ll.DOEPINT_STUP,
+                  ll.DOEPINT_OTEPDIS, ll.DOEPINT_OTEPSPR, ll.DOEPINT_B2BSTUP, ll.DOEPINT_OUTPKTERR, ll.DOEPINT_BERR,
+                  ll.DOEPINT_NAK, ll.DOEPINT_NYET, ll.DOEPINT_STPKTRX};
+                EXCL(USBx.OUTEP[i].DOEPCTL, ll.DOEPCTL_STALL);
+                INCL(USBx.OUTEP[i].DOEPCTL, ll.DOEPCTL_SNAK)
+              END;
+              USBx.DAINTMSK := {0, 16}; (*unmask OUT interrupts*)
+              IF hpcd.Init.use_dedicated_ep1 THEN
+                USBx.DOUTEP1MSK :=  USBx.DOUTEP1MSK + 
+                  {ll.DOEPMSK_STUPM, ll.DOEPMSK_XFRCM, ll.DOEPMSK_EPDM};
+                USBx.DINEP1MSK := USBx.DINEP1MSK +
+                  {ll.DIEPMSK_TOM, ll.DIEPMSK_XFRCM, ll.DIEPMSK_EPDM}
+              ELSE
+                USBx.DOEPMSK := USBx.DOEPMSK +
+                  {ll.DOEPMSK_STUPM, ll.DOEPMSK_XFRCM, ll.DOEPMSK_EPDM + ll.DOEPMSK_OTEPSPRM + ll.DOEPMSK_NAKM};
+                USBx.DIEPMSK := USBx.DIEPMSK +
+                  {ll.DIEPMSK_TOM, ll.DIEPMSK_XFRCM, ll.DIEPMSK_EPDM};
+                IF dbm # NIL THEN dbm.diepmsk := USBx.DIEPMSK END;
+              END;
+              (* Set Default Address to 0 *)
+              USBx.DCFG := USBx.DCFG - ll.DCFG_DAD_Msk;
+              (* setup EP0 to receive SETUP packets *)
+              ll.EP0_OutStart(USBx, hpcd.Init.dma_enable, SYSTEM.ADR(hpcd.Setup))
             END;
-            USBx_DEVICE.DAINTMSK := {0, 16}; (*unmask EP0 IN and OUT interrupts*)
-            IF hpcd.Init.use_dedicated_ep1 THEN
-              USBx_DEVICE.DOUTEP1MSK :=  USBx_DEVICE.DOUTEP1MSK + 
-                {ll.DOEPMSK_STUPM, ll.DOEPMSK_XFRCM, ll.DOEPMSK_EPDM};
-              USBx_DEVICE.DINEP1MSK := USBx_DEVICE.DINEP1MSK +
-                {ll.DIEPMSK_TOM, ll.DIEPMSK_XFRCM, ll.DIEPMSK_EPDM}
-            ELSE
-              USBx_DEVICE.DOEPMSK := USBx_DEVICE.DOEPMSK +
-                {ll.DOEPMSK_STUPM, ll.DOEPMSK_XFRCM, ll.DOEPMSK_EPDM + ll.DOEPMSK_OTEPSPRM + ll.DOEPMSK_NAKM};
-              USBx_DEVICE.DIEPMSK := USBx_DEVICE.DIEPMSK +
-                {ll.DIEPMSK_TOM + ll.DIEPMSK_XFRCM + ll.DIEPMSK_EPDM}
-            END;
-            (* Set Default Address to 0 *)
-            USBx_DEVICE.DCFG := USBx_DEVICE.DCFG - ll.DCFG_DAD_Msk;
-            (* setup EP0 to receive SETUP packets *)
-            ll.EP0_OutStart(hpcd.Instance, hpcd.Init.dma_enable, SYSTEM.ADR(hpcd.Setup));
-            hpcd.Instance.GINTSTS := {ll.GINTSTS_USBRST}
+            USBx.GINTSTS := {ll.GINTSTS_USBRST}
           END;
           (* Handle Enumeration done Interrupt *)
           IF ll.GINTSTS_ENUMDNE IN flags THEN
-            ll.ActivateSetup(hpcd.Instance); hpcd.Init.speed := ll.GetDevSpeed(hpcd.Instance);
-            ll.SetTurnaroundTime(hpcd.Instance, BSP.HCLKFreq*1000000, hpcd.Init.speed);
-            msg := Q.Get(hpcd.ResetMP);
-            IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END;
-            hpcd.Instance.GINTSTS := {ll.GINTSTS_ENUMDNE}
+            IF ~(ll.DCTL_SDIS IN USBx.DCTL) (*avoid spurious ENUMDNE triggered by DCTL_SDIS*) THEN
+              ll.ActivateSetup(USBx); hpcd.Init.speed := ll.GetDevSpeed(USBx);
+              ll.SetTurnaroundTime(USBx, BSP.HCLKFreq*1000000, hpcd.Init.speed);
+              msg := Q.Get(hpcd.ResetMP);
+              IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END
+            END;
+            USBx.GINTSTS := {ll.GINTSTS_ENUMDNE}
           END;
           (* Handle SOF Interrupt *)
-          IF ll.GINTSTS_SOF IN flags THEN hpcd.SOFCallback(hpcd); hpcd.Instance.GINTSTS := {ll.GINTSTS_SOF} END;
+          IF ll.GINTSTS_SOF IN flags THEN hpcd.SOFCallback(hpcd); USBx.GINTSTS := {ll.GINTSTS_SOF} END;
           (* Handle Global OUT NAK effective Interrupt *)
-          IF ll.GINTSTS_GOUTNAKEFF IN flags THEN EXCL(hpcd.Instance.GINTMSK, ll.GINTMSK_GONAKEFFM);
+          IF ll.GINTSTS_GOUTNAKEFF IN flags THEN EXCL(USBx.GINTMSK, ll.GINTMSK_GONAKEFFM);
             FOR epnum := 1 TO hpcd.Init.dev_endpoints - 1 DO
               IF hpcd.OUT_ep[epnum].is_iso_incomplete THEN
                 ret := EP_Abort(hpcd, epnum) (* Abort current transaction and disable the EP *)
@@ -472,48 +492,47 @@ MODULE HALPCD;
           (* Handle Incomplete ISO IN Interrupt *)
           IF ll.GINTSTS_IISOIXFR IN flags THEN
             FOR epnum := 1 TO hpcd.Init.dev_endpoints - 1 DO
-              USBx_INEPi := SYSTEM.VAL(ll.OTGINEndpoint, ORD(hpcd.Instance) + ll.IN_ENDPOINT_BASE + epnum*ll.EP_REG_SIZE);
-              RegVal := USBx_INEPi.DIEPCTL;
+              RegVal := USBx.INEP[epnum].DIEPCTL;
               IF (hpcd.IN_ep[epnum].type = Def.EP_TYPE_ISOC) & (ll.DIEPCTL_EPENA IN RegVal) THEN
                 hpcd.IN_ep[epnum].is_iso_incomplete := TRUE;
                 ret := EP_Abort(hpcd, ORD(TOSET(epnum) + {7})) (* Abort current transaction and disable the EP *)
               END
             END;
-            hpcd.Instance.GINTSTS := {ll.GINTSTS_IISOIXFR}
+            USBx.GINTSTS := {ll.GINTSTS_IISOIXFR}
           END;
           (* Handle Incomplete ISO OUT Interrupt *)
           IF ll.GINTSTS_PXFR_INCOMPISOOUT IN flags THEN
             epnum := 1;
             WHILE epnum < hpcd.Init.dev_endpoints DO
-              USBx_OUTEPi := SYSTEM.VAL(ll.OTGOUTEndpoint, ORD(hpcd.Instance) + ll.OUT_ENDPOINT_BASE + epnum*ll.EP_REG_SIZE);
-              RegVal := USBx_OUTEPi.DOEPCTL;
+              RegVal := USBx.OUTEP[epnum].DOEPCTL;
               IF (hpcd.OUT_ep[epnum].type = Def.EP_TYPE_ISOC) & (ll.DOEPCTL_EPENA IN RegVal) &
                 (LSR(RegVal*ll.DIEPCTL_EONUM_DPID_Msk, ll.DIEPCTL_EONUM_DPID) = TOSET(hpcd.FrameNumber)*{0}) THEN
-                hpcd.OUT_ep[epnum].is_iso_incomplete := TRUE; INCL(hpcd.Instance.GINTMSK, ll.GINTMSK_GONAKEFFM);
-                IF  ~(ll.GINTSTS_GOUTNAKEFF IN hpcd.Instance.GINTSTS) THEN INCL(USBx_DEVICE.DCTL, ll.DCTL_SGONAK);
+                hpcd.OUT_ep[epnum].is_iso_incomplete := TRUE; INCL(USBx.GINTMSK, ll.GINTMSK_GONAKEFFM);
+                IF  ~(ll.GINTSTS_GOUTNAKEFF IN USBx.GINTSTS) THEN INCL(USBx.DCTL, ll.DCTL_SGONAK);
                   epnum := hpcd.Init.dev_endpoints; (*exit FOR*)
                 END
               END;
               INC(epnum)
             END;
-            hpcd.Instance.GINTSTS := {ll.GINTSTS_PXFR_INCOMPISOOUT}
+            USBx.GINTSTS := {ll.GINTSTS_PXFR_INCOMPISOOUT}
           END;
           (* Handle Connection event Interrupt *)
           IF ll.GINTSTS_SRQINT IN flags THEN
             msg := Q.Get(hpcd.ConnectMP);
             IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END;
-            hpcd.Instance.GINTSTS := {ll.GINTSTS_SRQINT}
+            USBx.GINTSTS := {ll.GINTSTS_SRQINT}
           END;
           (* Handle Disconnection event Interrupt *)
           IF ll.GINTSTS_OTGINT IN flags THEN
-            RegVal := hpcd.Instance.GOTGINT;
+            RegVal := USBx.GOTGINT;
             IF ll.GOTGINT_SEDET IN RegVal THEN
               msg := Q.Get(hpcd.DisconnectMP);
               IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END;
             END;
-            hpcd.Instance.GOTGINT := RegVal (*warning: clear all GOTGINT flags!*)
+            USBx.GOTGINT := RegVal (*warning: clear all GOTGINT flags!*)
           END
-        END
+        END;
+        IF dbm # NIL THEN Q.Post(hpcd.MsgPendQ, dbm) END
     | UC.Handle: ASSERT(FALSE)
     END;
     BSP.ledsOnOff({}, {2});
@@ -581,6 +600,17 @@ MODULE HALPCD;
   END Start;
 
   (**
+  * @brief  Set the USB Device address.
+  * @param  hpcd PCD handle
+  * @param  address new device address
+  * @retval HAL status
+  *)
+  PROCEDURE SetAddress*(hpcd: Handle; address: BYTE);
+  BEGIN hpcd.Address := address;
+    ll.SetDevAddress(hpcd.Instance, address)
+  END SetAddress;
+
+  (**
   * @brief  Open and configure an endpoint.
   * @param  hpcd PCD handle
   * @param  ep_addr endpoint address
@@ -595,9 +625,7 @@ MODULE HALPCD;
       ep.type := ep_type;
       IF isIn THEN ep.tx_fifo_num := ep.num (* Assign a Tx FIFO *) END;
       IF ep_type = Def.EP_TYPE_BULK THEN ep.data_pid_start := 0 (* Set initial data PID. *) END;
-(*  __HAL_LOCK(hpcd);*)
-     ll.ActivateEndpoint(hpcd.Instance, ep)
-(*  __HAL_UNLOCK(hpcd);*)
+      ll.ActivateEndpoint(hpcd.Instance, ep)
     END OpenEP;
   BEGIN 
     IF 7 IN TOSET(ep_addr) THEN OpenEP(hpcd, hpcd.IN_ep[ep_addr MOD 10H], TRUE, ep_addr, ep_mps, ep_type)
@@ -631,16 +659,40 @@ MODULE HALPCD;
   * @param  len amount of data to be sent
   * @retval HAL status
   *)
-  PROCEDURE EP_Transmit*(hpcd: Handle; ep_addr: BYTE; Buf: Def.Buffer);
-    PROCEDURE TransmitEP(hpcd: Handle; VAR ep: ll.EPDesc; ep_addr: BYTE; Buf: Def.Buffer);
+  PROCEDURE EP_Transmit*(hpcd: Handle; ep_addr: BYTE; buff: Def.BufferDesc; len: HALFWORD);
+    PROCEDURE TransmitEP(hpcd: Handle; VAR ep: ll.EPDesc; ep_addr: BYTE; buff: Def.BufferDesc; len: HALFWORD);
     BEGIN (*setup and start the Xfer *)
-      ep.xfer_buff := SYSTEM.ADR(Buf) + SYSTEM.SIZE(Def.Buffer); ep.xfer_len := Buf.length;
+      ep.xfer_buff := SYSTEM.ADR(buff) + SYSTEM.SIZE(Def.BufferDesc) + buff.offset; ep.xfer_len := len;
       ep.xfer_count := 0; ep.is_in := TRUE; ep.num := ep_addr MOD 10H;
       IF hpcd.Init.dma_enable THEN ep.dma_addr := ep.xfer_buff END;
-      ll.EPStartXfer(hpcd.Instance, ep, hpcd.Init.dma_enable)
+      ll.EPStartXfer(hpcd.Instance, ep, hpcd.Init.dma_enable);
     END TransmitEP;
-  BEGIN TransmitEP(hpcd, hpcd.IN_ep[ep_addr MOD 10H], ep_addr, Buf)
+  BEGIN TransmitEP(hpcd, hpcd.IN_ep[ep_addr MOD 10H], ep_addr, buff, len)
   END EP_Transmit;
+
+  (**
+  * @brief  Set a STALL condition over an endpoint
+  * @param  hpcd PCD handle
+  * @param  ep_addr endpoint address
+  * @retval HAL status
+  *)
+  PROCEDURE EP_SetStall*(hpcd: Handle; ep_addr: BYTE): BYTE;
+    VAR ret: BYTE;
+    PROCEDURE SetStallEP(hpcd: Handle; VAR ep: ll.EPDesc; ep_addr: BYTE; isIn: BOOLEAN);
+    BEGIN ep.is_in := isIn; ep.is_stall := TRUE; ep.num := ep_addr MOD 10H;
+      ll.EPSetStall(hpcd.Instance, ep);
+      IF ep_addr MOD 10H = 0 THEN ll.EP0_OutStart(hpcd.Instance, hpcd.Init.dma_enable, SYSTEM.ADR(hpcd.Setup)) END
+    END SetStallEP;
+  BEGIN
+    IF ep_addr MOD 10H > hpcd.Init.dev_endpoints THEN ret := ll.HAL_ERROR
+    ELSE ret := ll.HAL_OK;
+      IF 7 IN TOSET(ep_addr) THEN SetStallEP(hpcd, hpcd.IN_ep[ep_addr MOD 10H], ep_addr, TRUE)
+      ELSE SetStallEP(hpcd, hpcd.OUT_ep[ep_addr MOD 10H], ep_addr, FALSE)
+      END
+    END
+
+    RETURN ret
+  END EP_SetStall;
 
 (* @author  MCD Application Team
  * @brief   PCD Extended HAL module driver.*)
@@ -700,7 +752,7 @@ MODULE HALPCD;
     hpcd.ResetMP := Q.CreatePool(1, newResetMsg);
     hpcd.ConnectMP := Q.CreatePool(1, newConnectMsg);
     hpcd.DisconnectMP := Q.CreatePool(1, newDisconnectMsg);
-(*    hcdh.DebugMP := Q.CreatePool(100, newDebugMsg)*)
+    hpcd.DebugMP := Q.CreatePool(100, newDebugMsg)
   END InitPools;
 
   PROCEDURE TakeMsg*(hpcd: Handle): Q.Msg;
@@ -730,7 +782,7 @@ MODULE HALPCD;
     | ResetMsg: Q.PostFirst(hpcd.ResetMP, msg)
     | ConnectMsg: Q.PostFirst(hpcd.ConnectMP, msg)
     | DisconnectMsg: Q.PostFirst(hpcd.DisconnectMP, msg)
-(*    | DebugMsg: Q.PostFirst(hcdh.DebugMP, msg)*)
+    | DebugMsg: Q.PostFirst(hpcd.DebugMP, msg)
     | Q.Msg: ASSERT(FALSE) (*unsupported message type*)
     END;
     ll.EnableGlobalInt(hpcd.Instance)

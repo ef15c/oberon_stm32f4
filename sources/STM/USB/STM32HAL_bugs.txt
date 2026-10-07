@@ -1,0 +1,6 @@
+Bugs STM32HAL OTG_xS:
+
+Fichier stm32f4xx_ll_usb.c:
+  Fonction USB_ActivateEndpoint:
+    DIEPCTL_MPSIZ n'est pas correctement initialisé pour EP = 0
+    DIEPCTL_TXFNUM devrait être initialisé avec ep->tx_fifo_num

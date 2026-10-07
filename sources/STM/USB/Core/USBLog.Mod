@@ -108,6 +108,10 @@ MODULE USBLog;
   BEGIN IF ErrorHexVLenCbk # NIL THEN W.col := Display.red; ErrorHexVLenCbk(x, n, lz) END
   END ErrorHexVLen;
 
+  PROCEDURE ErrorSet*(s: SET);
+  BEGIN IF ErrorSetCbk # NIL THEN ErrorSetCbk(s) END
+  END ErrorSet;
+
   PROCEDURE ErrorLn*;
   BEGIN IF ErrorLnCbk # NIL THEN ErrorLnCbk END
   END ErrorLn;

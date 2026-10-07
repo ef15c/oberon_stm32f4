@@ -15,7 +15,7 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   *
   ******************************************************************************
   *)
-  IMPORT Def := USBDef, ll := LLUSB, UC := HALUC, PCD := HALPCD, DCore := USBDCore;
+  IMPORT Def := USBDef, Log := USBLog, ll := LLUSB, Q := Queue, UC := HALUC, DDef := USBDDef, PCD := HALPCD, DCore := USBDCore;
 
   VAR OldHandler: UC.IRQHandlerProc;
 
@@ -28,8 +28,14 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   * @param  hpcd: PCD handle
   * @retval None
   *)
-  PROCEDURE SetupStageCallback(hpcd: PCD.Handle);
-  BEGIN DCore.SetupStage(hpcd, hpcd.Setup)
+  PROCEDURE SetupStageCallback(hpcd: DDef.Handle);
+  BEGIN
+    CASE hpcd OF
+      PCD.Handle:
+        DCore.SetupStage(hpcd, hpcd.Setup);
+        PCD.Post_OutSetupPacket_int(hpcd)
+    | DDef.Handle: ASSERT(FALSE)
+    END
   END SetupStageCallback;
 
  (**
@@ -68,8 +74,7 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   *)
   PROCEDURE ResetCallback(hpcd: PCD.Handle);
     VAR speed: BYTE;
-  BEGIN
-    (* Set USB Current Speed *)
+  BEGIN (* Set USB Current Speed *)
     IF hpcd.Init.speed = PCD.SPEED_HIGH THEN speed := Def.SPEED_HIGH
     ELSIF hpcd.Init.speed = PCD.SPEED_FULL THEN speed := Def.SPEED_FULL
     ELSE speed := Def.SPEED_FULL
@@ -139,6 +144,70 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
 *******************************************************************************)
 
   (**
+  * @brief  Starts the Low Level portion of the Device driver. 
+  * @param  pdev: Device handle
+  * @retval USBD Status
+  *)
+  PROCEDURE Start*(dev: Def.Handle);
+  BEGIN PCD.Start(dev(PCD.Handle))
+  END Start;
+
+  (**
+  * @brief  Opens an endpoint of the Low Level Driver.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @param  ep_type: Endpoint Type
+  * @param  ep_mps: Endpoint Max Packet Size
+  * @retval USBD Status
+  *)
+  PROCEDURE OpenEP*(dev: DDef.Handle; ep_addr, ep_type: BYTE; ep_mps: HALFWORD);
+  BEGIN PCD.EP_Open(dev(PCD.Handle), ep_addr, ep_mps, ep_type)
+  END OpenEP;  
+
+  (**
+  * @brief  Closes an endpoint of the Low Level Driver.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @retval USBD Status
+  *)
+  PROCEDURE CloseEP*(dev: DDef.Handle; ep_addr: BYTE);
+  BEGIN PCD.EP_Close(dev(PCD.Handle), ep_addr)
+  END CloseEP;
+
+  (**
+  * @brief  Sets a Stall condition on an endpoint of the Low Level Driver.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @retval USBD Status
+  *)
+  PROCEDURE StallEP(dev: DDef.Handle; ep_addr: BYTE);
+    VAR ret: BYTE;
+  BEGIN ret := PCD.EP_SetStall(dev(PCD.Handle), ep_addr)
+  END StallEP;
+
+  (**
+  * @brief  Assigns a USB address to the device.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @retval USBD Status
+  *)
+  PROCEDURE SetUSBAddress(dev: DDef.Handle; dev_addr: BYTE);
+  BEGIN PCD.SetAddress(dev(PCD.Handle), dev_addr)
+  END SetUSBAddress;
+
+  (**
+  * @brief  Transmits data over an endpoint.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @param  pbuf: Pointer to data to be sent
+  * @param  len: number of bytes to be sent
+  * @retval USBD Status
+  *)
+  PROCEDURE Transmit*(dev: DDef.Handle; ep_addr: BYTE; buf: Def.BufferDesc; len: HALFWORD);
+  BEGIN PCD.EP_Transmit(dev(PCD.Handle), ep_addr, buf, len)
+  END Transmit;
+
+  (**
   * @brief  Initializes the Low Level portion of the Device driver.
   * @param  core: Core handle
   * @retval Device handle
@@ -162,18 +231,18 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
     dev.Init.lpm_enable := FALSE;
     OldHandler := dev.ControllerIRQHandler; dev.ControllerIRQHandler := PCD.IRQHandler;
     (*Oberon specific callbacks*)
+    dev.StallEP := StallEP;
 (*TODO*)
-    dev.StallEP := NIL;
     dev.ClearStallEP := NIL;
-    dev.SetUSBAddress := NIL;
+    dev.SetUSBAddress := SetUSBAddress;
     dev.IsStallEP := NIL;
-    dev.Transmit := NIL;
+    dev.Transmit := Transmit;
     dev.SetClassConfig := NIL;
     dev.ClrClassConfig := NIL;
     dev.CoreFindIF := NIL;
     dev.CoreFindEP := NIL;
     dev.PrepareReceive := NIL;
-    dev.OpenEP := NIL;
+    dev.OpenEP := OpenEP;
     dev.GetRxDataSize := NIL;
 
     (* Initialize LL Driver *)
@@ -184,46 +253,54 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
     RETURN dev
   END Init;
 
-  (**
-  * @brief  Starts the Low Level portion of the Device driver. 
-  * @param  pdev: Device handle
-  * @retval USBD Status
-  *)
-  PROCEDURE Start*(dev: Def.Handle);
-  BEGIN PCD.Start(dev(PCD.Handle))
-  END Start;
+  PROCEDURE ReportError*;
+  BEGIN DCore.ReportError
+  END ReportError;
+
+  PROCEDURE IRQLog(msg: PCD.DebugMsg);
+  BEGIN Log.Debug("["); Log.DebugInt(msg.ts, 10); Log.DebugString("] ");
+    Log.DebugString("IRQ gintsts: ");  Log.DebugSet(msg.gintsts);
+    Log.DebugString(", diepmsk: ");  Log.DebugSet(msg.diepmsk);
+    IF msg.epnum # 255 THEN Log.DebugString(", ep "); Log.DebugInt(msg.epnum, 3);
+      IF msg.is_in THEN Log.DebugString(", diepint: ") ELSE Log.DebugString(", doepint: ") END;
+      Log.DebugSet(msg.dxepint)
+    END;
+    Log.DebugLn
+  END IRQLog;
 
   (**
-  * @brief  Opens an endpoint of the Low Level Driver.
-  * @param  pdev: Device handle
-  * @param  ep_addr: Endpoint Number
-  * @param  ep_type: Endpoint Type
-  * @param  ep_mps: Endpoint Max Packet Size
-  * @retval USBD Status
+  * @brief  Do the work offloaded by IRQs in the process loop.
   *)
-  PROCEDURE OpenEP*(dev: Def.Handle; ep_addr, ep_type: BYTE; ep_mps: HALFWORD);
-  BEGIN PCD.EP_Open(dev(PCD.Handle), ep_addr, ep_mps, ep_type)
-  END OpenEP;  
-
-  (**
-  * @brief  Closes an endpoint of the Low Level Driver.
-  * @param  pdev: Device handle
-  * @param  ep_addr: Endpoint Number
-  * @retval USBD Status
-  *)
-  PROCEDURE CloseEP*(dev: Def.Handle; ep_addr: BYTE);
-  BEGIN PCD.EP_Close(dev(PCD.Handle), ep_addr)
-  END CloseEP;
-
-  (**
-  * @brief  Transmits data over an endpoint.
-  * @param  pdev: Device handle
-  * @param  ep_addr: Endpoint Number
-  * @param  pbuf: Pointer to data to be sent
-  * @retval USBD Status
-  *)
-  PROCEDURE Transmit*(dev: Def.Handle; ep_addr: BYTE; buf: Def.Buffer);
-  BEGIN PCD.EP_Transmit(dev(PCD.Handle), ep_addr, buf)
-  END Transmit;
+ PROCEDURE ProcessDeferredIRQWork*(dev: Def.Handle);
+    VAR msg!: Q.Msg;
+  BEGIN
+    CASE dev OF
+      PCD.Handle:
+        msg := PCD.TakeMsg(dev);
+        WHILE msg # NIL DO (*Process the message*)
+          CASE msg OF
+            PCD.DataOutStageMsg: ASSERT(FALSE)
+          | PCD.DataInStageMsg: ASSERT(FALSE)
+          | PCD.SetupStageMsg: SetupStageCallback(dev); Log.Debug("SetupStage"); Log.DebugLn
+          | PCD.ISOOUTIncompleteMsg: ASSERT(FALSE)
+          | PCD.ISOINIncompleteMsg: ASSERT(FALSE)
+          | PCD.LPMMsg: ASSERT(FALSE)
+          | PCD.ResumeMsg: ASSERT(FALSE)
+          | PCD.SuspendMsg: SuspendCallback(dev); Log.Debug("Suspend"); Log.DebugLn
+          | PCD.ResetMsg: ResetCallback(dev); Log.Debug("Reset");
+             Log.DebugString(", GUSBCFG: "); Log.DebugSet(dev.Instance.GUSBCFG);
+             Log.DebugString(", DIEPMSK: "); Log.DebugSet(dev.Instance.DIEPMSK);
+             Log.DebugLn
+          | PCD.ConnectMsg: ConnectCallback(dev); Log.Debug("Connect"); Log.DebugLn
+          | PCD.DisconnectMsg: ASSERT(FALSE)
+          | PCD.DebugMsg: IRQLog(msg)
+          | Q.Msg: ASSERT(FALSE) (*unknown message*)
+          END; 
+          PCD.GiveMsg(dev, msg);
+          msg := PCD.TakeMsg(dev)
+        END
+      | Def.Handle: ASSERT(FALSE)
+    END
+  END ProcessDeferredIRQWork;
 
 END USBDHal.

@@ -16,7 +16,7 @@ MODULE USBDCore;
   *
   ******************************************************************************
   *)
-  IMPORT Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq;
+  IMPORT Log := USBLog, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq;
 
   (**
   * @brief  USBD_RunTestMode
@@ -66,6 +66,7 @@ MODULE USBDCore;
   *)
   PROCEDURE DataOutStage*(dev: DDef.Handle; epnum: BYTE);
     VAR recipient: SET; idx: BYTE;
+(*
     PROCEDURE dosEP0(dev: DDef.Handle; VAR pep: DDef.Endpoint);
     BEGIN
       IF pep.rem_length > pep.maxpacket THEN
@@ -73,10 +74,13 @@ MODULE USBDCore;
         pep.buffer.pktlen := Def.MAX(pep.rem_length, pep.maxpacket); IoReq.CtlContinueRx(dev, pep.buffer)
       END
     END dosEP0;
+*)
   BEGIN
     IF epnum = 0 THEN
+(*
       IF dev.ep0_state = DDef.EP0_DATA_OUT THEN dosEP0(dev, dev.ep_out[0])
       ELSE (* Find the class ID relative to the current request *)
+*)
         recipient := dev.request.bmRequestType*Def.REQ_RECIPIENT_MASK;
         IF recipient = Def.REQ_RECIPIENT_DEVICE THEN
           (* Device requests must be managed by the first instantiated class
@@ -98,7 +102,9 @@ MODULE USBDCore;
           END
         END;
         IoReq.CtlSendStatus(dev)
+(*
       END
+*)
     ELSE (* Get the class index relative to this interface *)
       idx := dev.CoreFindEP(dev, epnum MOD 80H);
       IF (idx # 0FFH) & (idx < DDef.MAX_SUPPORTED_CLASS) THEN
@@ -124,6 +130,7 @@ MODULE USBDCore;
     PROCEDURE disEP0(dev: DDef.Handle; VAR pep: DDef.Endpoint);
       VAR  ret: BYTE;
     BEGIN
+(*
       IF pep.rem_length > pep.maxpacket THEN
         DEC(pep.rem_length, pep.maxpacket); INC(pep.buffer.pktidx, pep.maxpacket);
         IoReq.CtlContinueSendData(dev, pep.buffer);
@@ -137,12 +144,15 @@ MODULE USBDCore;
           (* Prepare endpoint for premature end of transfer *)
           dev.PrepareReceive(dev, 0, NIL)
         ELSE
+*)
           IF dev.state = DDef.STATE_CONFIGURED THEN
             IF dev.Class[0].EP0_TxSent # NIL THEN dev.classId := 0; dev.Class[0].EP0_TxSent(dev) END
           END;
           dev.StallEP(dev, 80H); IoReq.CtlReceiveStatus(dev)
+(*
         END
       END
+*)
     END disEP0;
   BEGIN
     IF epnum = 0 THEN
@@ -248,10 +258,10 @@ MODULE USBDCore;
 *)
     (* Open EP0 OUT *)
     dev.OpenEP(dev, 0, Def.EP_TYPE_CTRL, Def.MAX_EP0_SIZE);
-    dev.ep_out[0].is_used := TRUE; dev.ep_out[0].maxpacket := Def.MAX_EP0_SIZE;
+    dev.ep_out[0].is_used := TRUE;
     (* Open EP0 IN *)
     dev.OpenEP(dev, 80H, Def.EP_TYPE_CTRL, Def.MAX_EP0_SIZE);
-    dev.ep_in[0].is_used := TRUE; dev.ep_in[0].maxpacket := Def.MAX_EP0_SIZE;
+    dev.ep_in[0].is_used := TRUE
   END Reset;
 
   (**
@@ -366,5 +376,16 @@ MODULE USBDCore;
   PROCEDURE SetSpeed*(dev: DDef.Handle; speed: BYTE);
   BEGIN dev.speed := speed
   END SetSpeed;
+
+  PROCEDURE ReportError*;
+  BEGIN
+    IF (CtlReq.setupInError.bRequest # 0) OR (CtlReq.setupInError.bmRequestType # {}) THEN
+      Log.Error("CtlReq error, setup packet: "); Log.ErrorSet(CtlReq.setupInError.bmRequestType);
+      Log.ErrorInt(CtlReq.setupInError.bRequest, 4); Log.ErrorInt(CtlReq.setupInError.wValue, 6);
+      Log.ErrorInt(CtlReq.setupInError.wIndex, 6);  Log.ErrorInt(CtlReq.setupInError.wLength, 6);
+      Log.ErrorLn;
+      CtlReq.ClearError
+    END
+  END ReportError;
 
 END USBDCore.

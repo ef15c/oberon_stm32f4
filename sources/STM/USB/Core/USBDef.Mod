@@ -130,8 +130,7 @@ MODULE USBDef; (*USB OTG common definitions. C.S 29.06.26*)
     TaskDesc = RECORD task: Oberon.Task END;
 
     Buffer* = POINTER TO BufferDesc;
-    BufferDesc* = RECORD size*, length*, index*,
-      pktidx*, pktlen*: HALFWORD; (*beginning and size of a transmitted packet*)
+    BufferDesc* = RECORD size*, length*, index*, offset*: HALFWORD;
       ReadByte*: PROCEDURE(b: Buffer): BYTE;
       WriteByte*: PROCEDURE(b: Buffer; v: BYTE)
     END;

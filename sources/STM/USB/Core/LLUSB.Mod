@@ -14,10 +14,6 @@ MODULE LLUSB;
     FS_PERIPH_BASE* = 50000000H;
 
     GLOBAL_BASE* = 0;
-    DEVICE_BASE* = 800H;
-    IN_ENDPOINT_BASE* = 900H;
-    OUT_ENDPOINT_BASE* = 0B00H;
-    EP_REG_SIZE* = 20H;
     HOST_BASE * = 400H;
     HOST_PORT_BASE* = 440H;
     HOST_CHANNEL_BASE* = 500H;
@@ -489,20 +485,20 @@ MODULE LLUSB;
     DCFG_FULL_SPEED_INTERNAL_PHY* = {0..1};
     DCFG_NZLSOHSK* = 2; (*!< Nonzero-length status OUT handshake *)
     DCFG_NZLSOHSK_Msk* = {DCFG_NZLSOHSK};
-    DCFG_DAD* = 4; (*!< Device address *)
-    DCFG_DAD_Msk* = {DCFG_DAD..10};
-    DCFG_PFIVL* = 11; (*!< Periodic (micro)frame interval *)
-    DCFG_PFIVL_Msk* = {DCFG_PFIVL, 12};
+    DCFG_DAD_Pos* = 4; (*!< Device address *)
+    DCFG_DAD_Msk* = {DCFG_DAD_Pos..10};
+    DCFG_PFIVL_Pos* = 11; (*!< Periodic (micro)frame interval *)
+    DCFG_PFIVL_Msk* = {DCFG_PFIVL_Pos, 12};
     DCFG_XCVRDLY* = 14; (*!< Transceiver delay *)
     DCFG_XCVRDLY_Msk* = {DCFG_XCVRDLY};
     DCFG_ERRATIM* = 15; (*!< Erratic error interrupt mask *)
     DCFG_ERRATIM_Msk* = {DCFG_ERRATIM};
-    DCFG_PERSCHIVL* = 24; (*!< Periodic scheduling interval *)
-    DCFG_PERSCHIVL_Msk* = {DCFG_PERSCHIVL, 25};
+    DCFG_PERSCHIVL_Pos* = 24; (*!< Periodic scheduling interval *)
+    DCFG_PERSCHIVL_Msk* = {DCFG_PERSCHIVL_Pos, 25};
 
   (********************  Bit definition for USB_OTG_DIEPCTL register  ********************)
-    DIEPCTL_MPSIZ* = 0; (*!< Maximum packet size              *)
-    DIEPCTL_MPSIZ_Msk* = {DIEPCTL_MPSIZ..10};
+    DIEPCTL_MPSIZ_Pos* = 0; (*!< Maximum packet size              *)
+    DIEPCTL_MPSIZ_Msk* = {DIEPCTL_MPSIZ_Pos..10};
     DIEPCTL_USBAEP* = 15; (*!< USB active endpoint              *)
     DIEPCTL_USBAEP_Msk* = {DIEPCTL_USBAEP};
     DIEPCTL_EONUM_DPID* = 16; (*!< Even/odd frame                   *)
@@ -583,16 +579,16 @@ MODULE LLUSB;
     HCSPLT_SPLITEN_Msk* = {HCSPLT_SPLITEN};
 
   (********************  Bit definition for USB_OTG_DOEPCTL register  ********************)
-    DOEPCTL_MPSIZ* = 0; (*!< Maximum packet size              *)
-    DOEPCTL_MPSIZ_Msk* = {DIEPCTL_MPSIZ..10};
+    DOEPCTL_MPSIZ_Pos* = 0; (*!< Maximum packet size              *)
+    DOEPCTL_MPSIZ_Msk* = {DOEPCTL_MPSIZ_Pos..10};
     DOEPCTL_USBAEP* = 15; (*!< USB active endpoint              *)
-    DOEPCTL_USBAEP_Msk* = {DIEPCTL_USBAEP};
+    DOEPCTL_USBAEP_Msk* = {DOEPCTL_USBAEP};
     DOEPCTL_EONUM_DPID* = 16; (*!< Even/odd frame                   *)
-    DOEPCTL_EONUM_DPID_Msk* = {DIEPCTL_EONUM_DPID};
+    DOEPCTL_EONUM_DPID_Msk* = {DOEPCTL_EONUM_DPID};
     DOEPCTL_NAKSTS* = 17; (*!< NAK status                       *)
-    DOEPCTL_NAKSTS_Msk* = {DIEPCTL_NAKSTS};
+    DOEPCTL_NAKSTS_Msk* = {DOEPCTL_NAKSTS};
     DOEPCTL_EPTYP_Pos* = 18; (*!< Endpoint type                    *)
-    DOEPCTL_EPTYP_Msk* = {DIEPCTL_EPTYP_Pos, 19};
+    DOEPCTL_EPTYP_Msk* = {DOEPCTL_EPTYP_Pos..19};
     DOEPCTL_CTRL* = {};
     DOEPCTL_ISOC* = {18};
     DOEPCTL_BULK* = {19};
@@ -600,19 +596,19 @@ MODULE LLUSB;
     DOEPCTL_SNPM* = 20; (*!< Snoop mode *)
     DOEPCTL_SNPM_Msk* = {DOEPCTL_SNPM};
     DOEPCTL_STALL* = 21; (*!< STALL handshake                  *)
-    DOEPCTL_STALL_Msk* = {DIEPCTL_STALL};
+    DOEPCTL_STALL_Msk* = {DOEPCTL_STALL};
     DOEPCTL_CNAK* = 26; (*!< Clear NAK                        *)
-    DOEPCTL_CNAK_Msk* = {DIEPCTL_CNAK};
+    DOEPCTL_CNAK_Msk* = {DOEPCTL_CNAK};
     DOEPCTL_SNAK* = 27; (*!< Set NAK *)
-    DOEPCTL_SNAK_Msk* = {DIEPCTL_SNAK};
+    DOEPCTL_SNAK_Msk* = {DOEPCTL_SNAK};
     DOEPCTL_SD0PID_SEVNFRM* = 28; (*!< Set DATA0 PID                    *)
-    DOEPCTL_SD0PID_SEVNFRM_Msk* = {DIEPCTL_SD0PID_SEVNFRM};
+    DOEPCTL_SD0PID_SEVNFRM_Msk* = {DOEPCTL_SD0PID_SEVNFRM};
     DOEPCTL_SODDFRM* = 29; (*!< Set odd frame                    *)
-    DOEPCTL_SODDFRM_Msk* = {DIEPCTL_SODDFRM};
+    DOEPCTL_SODDFRM_Msk* = {DOEPCTL_SODDFRM};
     DOEPCTL_EPDIS* = 30; (*!< Endpoint disable                 *)
-    DOEPCTL_EPDIS_Msk* = {DIEPCTL_EPDIS};
+    DOEPCTL_EPDIS_Msk* = {DOEPCTL_EPDIS};
     DOEPCTL_EPENA* = 31; (*!< Endpoint enable                  *)
-    DOEPCTL_EPENA_Msk* = {DIEPCTL_EPENA};
+    DOEPCTL_EPENA_Msk* = {DOEPCTL_EPENA};
 
   (********************  Bit definition for USB_OTG_DOEPINT register  ********************)
     DOEPINT_XFRC* = 0; (*!< Transfer completed interrupt *)
@@ -755,62 +751,22 @@ MODULE LLUSB;
 
   TYPE
   (**
-  * @brief USB_OTG_Core_Registers
+  * @brief USB_OTG_Host_Channel_Specific_Registers
   *)
-    OTGCore* = POINTER TO OTGCoreDesc;
-    OTGCoreDesc* = RECORD
-      GOTGCTL*,              (*!< USB_OTG Control and Status Register          000h *)
-      GOTGINT*,              (*!< USB_OTG Interrupt Register                   004h *)
-      GAHBCFG*,             (*!< Core AHB Configuration Register              008h *)
-      GUSBCFG*,              (*!< Core USB Configuration Register              00Ch *)
-      GRSTCTL*,               (*!< Core Reset Register                          010h *)
-      GINTSTS*,               (*!< Core Interrupt Register                      014h *)
-      GINTMSK*,              (*!< Core Interrupt Mask Register                 018h *)
-      GRXSTSR*,              (*!< Receive Sts Q Read Register                  01Ch *)
-      GRXSTSP*: SET;              (*!< Receive Sts Q Read & POP Register            020h *)
-      GRXFSIZ*,               (*!< Receive FIFO Size Register                   024h *)
-      DIEPTXF0_HNPTXFSIZ*: INTEGER;   (*!< EP0 / Non Periodic Tx FIFO Size Register     028h *)
-      HNPTXSTS*: SET;     (*!< Non Periodic Tx FIFO/Queue Sts reg           02Ch *)
-      Reserved30: ARRAY 2 OF INTEGER; (*!< Reserved                                     030h *)
-      GCCFG*: SET;                 (*!< General Purpose IO Register                  038h *)
-      CID*: INTEGER;      (*!< User ID Register                             03Ch *)
-      GSNPSID*: SET;     (*!< HW Release version*)
-      Reserved40: ARRAY 47 OF INTEGER; (*!< Reserved                                0x44-0xFF *)
-      HPTXFSIZ*: INTEGER; (*!< Host Periodic Tx FIFO Size Reg               100h *)
-      DIEPTXF*: ARRAY 0FH OF INTEGER (*!< dev Periodic Transmit FIFO                        *)
-    END;
-
-  (**
-  * @brief USB_OTG_Device_Mode_Registers
-  *)
-    OTGDeviceMode* = POINTER TO OTGDeviceModeDesc;
-    OTGDeviceModeDesc* = RECORD
-      DCFG*,            (*!< dev Configuration Register   800h *)
-      DCTL*,            (*!< dev Control Register         804h *)
-      DSTS*,            (*!< dev Status Register (RO)     808h *)
-      Reserved0C,           (*!< Reserved                     80Ch *)
-      DIEPMSK*,         (*!< dev IN Endpoint Mask         810h *)
-      DOEPMSK*,         (*!< dev OUT Endpoint Mask        814h *)
-      DAINT*,           (*!< dev All Endpoints Itr Reg    818h *)
-      DAINTMSK*,        (*!< dev All Endpoints Itr Mask   81Ch *)
-      Reserved20,          (*!< Reserved                     820h *)
-      Reserved9,            (*!< Reserved                     824h *)
-      DVBUSDIS*,        (*!< dev VBUS discharge Register  828h *)
-      DVBUSPULSE*,      (*!< dev VBUS Pulse Register      82Ch *)
-      DTHRCTL*,         (*!< dev threshold                830h *)
-      DIEPEMPMSK*,      (*!< dev empty msk                834h *)
-      DEACHINT*,        (*!< dedicated EP interrupt       838h *)
-      DEACHMSK*,        (*!< dedicated EP msk             83Ch *)
-      Reserved40,           (*!< dedicated EP mask            840h *)
-      DINEP1MSK*: SET;       (*!< dedicated EP mask            844h *)
-      Reserved44: ARRAY 15 OF INTEGER;      (*!< Reserved                 844-87Ch *)
-      DOUTEP1MSK*: SET;      (*!< dedicated EP msk             884h *)
+    OTGHostChannel* = POINTER TO OTGHostChannelDesc;
+    OTGHostChannelDesc* = RECORD
+      HCCHAR*,           (*!< Host Channel Characteristics Register    500h *)
+      HCSPLT*,           (*!< Host Channel Split Control Register      504h *)
+      HCINT*,            (*!< Host Channel Interrupt Register          508h *)
+      HCINTMSK*,         (*!< Host Channel Interrupt Mask Register     50Ch *)
+      HCTSIZ*: SET;           (*!< Host Channel Transfer Size Register      510h *)
+      HCDMA*: INTEGER;         (*!< Host Channel DMA Address Register        514h *)
+      Reserved: ARRAY 2 OF INTEGER;      (*!< Reserved                          518h- 51Fh*)
     END;
 
   (**
   * @brief USB_OTG_IN_Endpoint-Specific_Register
   *)
-    OTGINEndpoint* = POINTER TO OTGINEndpointDesc;
     OTGINEndpointDesc* = RECORD
       DIEPCTL*,           (*!< dev IN Endpoint Control Reg    900h + (ep_num * 20h) + 00h *)
       Reserved04,             (*!< Reserved                       900h + (ep_num * 20h) + 04h *)
@@ -825,7 +781,6 @@ MODULE LLUSB;
   (**
   * @brief USB_OTG_OUT_Endpoint-Specific_Registers
   *)
-    OTGOUTEndpoint* = POINTER TO OTGOUTEndpointDesc;
     OTGOUTEndpointDesc* = RECORD
       DOEPCTL*,       (*!< dev OUT Endpoint Control Reg           B00h + (ep_num * 20h) + 00h *)
       Reserved04,         (*!< Reserved                               B00h + (ep_num * 20h) + 04h *)
@@ -834,6 +789,71 @@ MODULE LLUSB;
       DOEPTSIZ*: SET;      (*!< dev OUT Endpoint Txfer Size            B00h + (ep_num * 20h) + 10h *)
       DOEPDMA*: INTEGER;       (*!< dev OUT Endpoint DMA Address           B00h + (ep_num * 20h) + 14h *)
       Reserved18: ARRAY 2 OF SET      (*!< Reserved B00h + (ep_num * 20h) + 18h - B00h + (ep_num * 20h) + 1Ch *)
+    END;
+
+  (**
+  * @brief USB_OTG_Core_Registers
+  *)
+    OTGCore* = POINTER TO OTGCoreDesc;
+    OTGCoreDesc* = RECORD
+      (*global registers*)
+      GOTGCTL*,              (*!< USB_OTG Control and Status Register          0h *)
+      GOTGINT*,              (*!< USB_OTG Interrupt Register                   4h *)
+      GAHBCFG*,             (*!< Core AHB Configuration Register              8h *)
+      GUSBCFG*,              (*!< Core USB Configuration Register              0Ch *)
+      GRSTCTL*,               (*!< Core Reset Register                          10h *)
+      GINTSTS*,               (*!< Core Interrupt Register                      14h *)
+      GINTMSK*,              (*!< Core Interrupt Mask Register                 18h *)
+      GRXSTSR*,              (*!< Receive Sts Q Read Register                 1Ch *)
+      GRXSTSP*: SET;              (*!< Receive Sts Q Read & POP Register            20h *)
+      GRXFSIZ*,               (*!< Receive FIFO Size Register                   24h *)
+      DIEPTXF0_HNPTXFSIZ*: INTEGER;   (*!< EP0 / Non Periodic Tx FIFO Size Register     28h *)
+      HNPTXSTS*: SET;     (*!< Non Periodic Tx FIFO/Queue Sts reg           2Ch *)
+      Reserved30: ARRAY 2 OF INTEGER; (*!< Reserved                                     30h-34h *)
+      GCCFG*: SET;                 (*!< General Purpose IO Register                  38h *)
+      CID*: INTEGER;      (*!< User ID Register                             3Ch *)
+      GSNPSID*: SET;     (*!< HW Release version*)
+      Reserved44: ARRAY 47 OF INTEGER; (*!< Reserved                                44h-FFh *)
+      HPTXFSIZ*: INTEGER; (*!< Host Periodic Tx FIFO Size Reg               100h *)
+      DIEPTXF*: ARRAY 0FH OF INTEGER; (*!< dev Periodic Transmit FIFO                   104h *)
+      Reserved140: ARRAY 176 OF INTEGER; (*!< Reserved                                140h-3FFh *)
+      (*host mode registers*)
+      HCFG*: SET;         (*!< Host Configuration Register          400h *)
+      HFIR*,             (*!< Host Frame Interval Register         404h *)
+      HFNUM*: INTEGER; (*!< Host Frame Nbr/Frame Remaining       408h *)
+      Reserved40C: INTEGER;           (*!< Reserved                             40Ch *)
+      HPTXSTS*,          (*!< Host Periodic Tx FIFO/ Queue Status  410h *)
+      HAINT*,            (*!< Host All Channels Interrupt Register 414h *)
+      HAINTMSK*: SET;     (*!< Host All Channels Interrupt Mask     418h *)
+      Reserved41C: ARRAY 9 OF INTEGER; (*!< Reserved                                41Ch-43Fh *)
+      HPRT*: SET; (*!< Host port control and status register 440h*)
+      Reserved444: ARRAY 47 OF INTEGER; (*!< Reserved                                444h-4FFh *)
+      HC*: ARRAY 12 OF OTGHostChannelDesc; (*host channels registers group 500h-67Fh*)
+      Reserved680: ARRAY 96 OF INTEGER; (*!< Reserved                                680h-7FFh *)
+      (*device mode registers*)
+      DCFG*,            (*!< dev Configuration Register   800h *)
+      DCTL*,            (*!< dev Control Register         804h *)
+      DSTS*,            (*!< dev Status Register (RO)     808h *)
+      Reserved80C,           (*!< Reserved                     80Ch *)
+      DIEPMSK*,         (*!< dev IN Endpoint Mask         810h *)
+      DOEPMSK*,         (*!< dev OUT Endpoint Mask        814h *)
+      DAINT*,           (*!< dev All Endpoints Itr Reg    818h *)
+      DAINTMSK*: SET;        (*!< dev All Endpoints Itr Mask   81Ch *)
+      Reserved820: ARRAY 2 OF INTEGER;          (*!< Reserved                     820h-827h *)
+      DVBUSDIS*,        (*!< dev VBUS discharge Register  828h *)
+      DVBUSPULSE*,      (*!< dev VBUS Pulse Register      82Ch *)
+      DTHRCTL*,         (*!< dev threshold                830h *)
+      DIEPEMPMSK*,      (*!< dev empty msk                834h *)
+      DEACHINT*,        (*!< device each EP interrupt register      838h *)
+      DEACHMSK*,        (*!< device each EP interrupt register msk             83Ch *)
+      Reserved840,           (*!< Reserved            840h *)
+      DINEP1MSK*: SET;       (*!< dedicated EP 1 mask            844h *)
+      Reserved848: ARRAY 15 OF INTEGER;      (*!< Reserved                 848h-883h *)
+      DOUTEP1MSK*: SET;      (*!< dedicated EP msk             884h *)
+      Reserved888: ARRAY 30 OF INTEGER;      (*!< Reserved                 888h-8FFh *)
+      INEP*: ARRAY 6 OF OTGINEndpointDesc; (*device IN enpoints control registers group 900h-9BFh*)
+      Reserved9C0: ARRAY 80 OF INTEGER;      (*!< Reserved                 9C0h-0AFFh *)
+      OUTEP*: ARRAY 6 OF OTGOUTEndpointDesc; (*device OUT enpoints control registers group 0B00h-0BBFh*)
     END;
 
   (**
@@ -848,20 +868,6 @@ MODULE LLUSB;
       HPTXSTS*,          (*!< Host Periodic Tx FIFO/ Queue Status  410h *)
       HAINT*,            (*!< Host All Channels Interrupt Register 414h *)
       HAINTMSK*: SET;     (*!< Host All Channels Interrupt Mask     418h *)
-    END;
-
-  (**
-  * @brief USB_OTG_Host_Channel_Specific_Registers
-  *)
-    OTGHostChannel* = POINTER TO OTGHostChannelDesc;
-    OTGHostChannelDesc* = RECORD
-      HCCHAR*,           (*!< Host Channel Characteristics Register    500h *)
-      HCSPLT*,           (*!< Host Channel Split Control Register      504h *)
-      HCINT*,            (*!< Host Channel Interrupt Register          508h *)
-      HCINTMSK*,         (*!< Host Channel Interrupt Mask Register     50Ch *)
-      HCTSIZ*: SET;           (*!< Host Channel Transfer Size Register      510h *)
-      HCDMA*: INTEGER;         (*!< Host Channel DMA Address Register        514h *)
-      Reserved: ARRAY 2 OF INTEGER;      (*!< Reserved                                      *)
     END;
 
   (**
@@ -968,13 +974,12 @@ MODULE LLUSB;
   * @retval HAL status
   *)
   PROCEDURE EP0_OutStart*(USBx: OTGCore; dma: BOOLEAN; setup: INTEGER);
-    VAR USBx_OUTEPi!: OTGOUTEndpoint;
-  BEGIN USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + 0*EP_REG_SIZE);
-    IF (ORD(USBx.GSNPSID*GSNPSID_CORE_REV_Msk) <= 300AH) OR ~(DOEPCTL_EPENA IN USBx_OUTEPi.DOEPCTL) THEN
+  BEGIN
+    IF (ORD(USBx.GSNPSID*GSNPSID_CORE_REV_Msk) <= 300AH) OR ~(DOEPCTL_EPENA IN USBx.OUTEP[0].DOEPCTL) THEN
       (*1 packet, 3*8 bytes, 3 back-to-back setup data packets allowed*)
-      USBx_OUTEPi.DOEPTSIZ := LSL(TOSET(1), DOEPTSIZ_PKTCNT_Pos) + TOSET(3* 8) + LSL(TOSET(3), DOEPTSIZ_STUPCNT_Pos);
-      IF dma THEN USBx_OUTEPi.DOEPDMA := setup;
-        USBx_OUTEPi.DOEPCTL := USBx_OUTEPi.DOEPCTL + {DOEPCTL_EPENA, DOEPCTL_USBAEP} (* EP enable *)
+      USBx.OUTEP[0].DOEPTSIZ := LSL(TOSET(1), DOEPTSIZ_PKTCNT_Pos) + TOSET(3* 8) + LSL(TOSET(3), DOEPTSIZ_STUPCNT_Pos);
+      IF dma THEN USBx.OUTEP[0].DOEPDMA := setup;
+        USBx.OUTEP[0].DOEPCTL := USBx.OUTEP[0].DOEPCTL + {DOEPCTL_EPENA, DOEPCTL_USBAEP} (* EP enable *)
       END
     END
   END EP0_OutStart;
@@ -1017,6 +1022,32 @@ MODULE LLUSB;
   PROCEDURE EnableGlobalInt*(USBx: OTGCore);
   BEGIN INCL(USBx.GAHBCFG, GAHBCFG_GINT)
   END EnableGlobalInt;
+
+  (**
+  * @brief  DisableEPInt
+  *         Disables the controller's Global Int in the AHB Config reg
+  * @param  USBx  Selected device
+  * @param  epnum  Endpoint number
+  * @param  isIn  select IN (TRUE) or OUT (FALSE) direction of the endpoint
+  *)
+  PROCEDURE DisableEPInt*(USBx: OTGCore; epnum: BYTE; isIn: BOOLEAN);
+  BEGIN
+    IF ~isIn THEN INC(epnum, 10H) END;
+    EXCL(USBx.DAINTMSK, epnum);
+  END DisableEPInt;
+
+  (**
+  * @brief  EnableEPInt
+  *         Enables the controller's Global Int in the AHB Config reg
+  * @param  USBx  Selected device
+  * @param  epnum  Endpoint number
+  * @param  isIn  select IN (TRUE) or OUT (FALSE) direction of the endpoint
+  *)
+  PROCEDURE EnableEPInt*(USBx: OTGCore; epnum: BYTE; isIn: BOOLEAN);
+  BEGIN
+    IF ~isIn THEN INC(epnum, 10H) END;
+    INCL(USBx.DAINTMSK, epnum)
+  END EnableEPInt;
 
   (**
   * @brief  Initializes the USB Core
@@ -1078,7 +1109,7 @@ MODULE LLUSB;
       ELSIF hclk < 24000000 THEN (* hclk Clock Range between 21.8-24 MHz *) UsbTrd := 9
       ELSIF hclk < 27700000 THEN (* hclk Clock Range between 24-27.7 MHz *) UsbTrd := 8
       ELSIF hclk < 32000000 THEN (* hclk Clock Range between 27.7-32 MHz *) UsbTrd := 7
-      ELSE (* hclk Clock greater or equal than 200 MHz *) UsbTrd := 6
+      ELSE (* hclk Clock greater or equal than 32 MHz *) UsbTrd := 6
       END
     ELSIF speed = USBD_HS_SPEED THEN UsbTrd := USBD_HS_TRDT_VALUE
     ELSE UsbTrd := USBD_DEFAULT_TRDT_VALUE
@@ -1184,13 +1215,14 @@ MODULE LLUSB;
     VAR count32b, i, t: INTEGER;
   BEGIN
     IF ~dma THEN
+      DisableGlobalInt(USBx); (*workaround for errata 2.15.1 "Trasnmit data FIFO is corrupted..."*)
       count32b := (len + 3) DIV 4;
       FOR i := 0 TO count32b - 1 DO SYSTEM.GET(src, t);
         SYSTEM.PUT(ORD(USBx) + FIFO_BASE + ch_ep_num*FIFO_SIZE, t);
         INC(src, 4)
-      END
+      END;
+      EnableGlobalInt(USBx)
     END
-
   END WritePacket;
 
   (**
@@ -1215,6 +1247,23 @@ MODULE LLUSB;
   END ReadPacket;
 
   (**
+  * @brief  USB_EPSetStall : set a stall condition over an EP
+  * @param  USBx  Selected device
+  * @param  ep pointer to endpoint structure
+  * @retval HAL status
+  *)
+  PROCEDURE EPSetStall*(USBx: OTGCore; ep: EPDesc);
+  BEGIN
+    IF ep.is_in THEN
+      IF ~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL) & (ep.num # 0) THEN EXCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_EPDIS) END;
+      INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_STALL)
+    ELSE
+      IF ~(DOEPCTL_EPENA IN USBx.OUTEP[ep.num].DOEPCTL) & (ep.num # 0) THEN EXCL(USBx.OUTEP[ep.num].DOEPCTL, DOEPCTL_EPDIS) END;
+      INCL(USBx.OUTEP[ep.num].DOEPCTL, DOEPCTL_STALL)
+    END
+  END EPSetStall;
+
+  (**
   * @brief  USB_SetDevSpeed  Initializes the DevSpd field of DCFG register
   *         depending the PHY type and the enumeration speed of the device.
   * @param  USBx  Selected device
@@ -1226,9 +1275,7 @@ MODULE LLUSB;
   * @retval  Hal status
   *)
   PROCEDURE SetDevSpeed(USBx: OTGCore; speed: BYTESET);
-    VAR USBx_DEVICE!: OTGDeviceMode;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    USBx_DEVICE.DCFG := USBx_DEVICE.DCFG - DCFG_DSPD_Msk + speed
+  BEGIN USBx.DCFG := USBx.DCFG - DCFG_DSPD_Msk + speed
   END SetDevSpeed;
 
   (**
@@ -1240,10 +1287,8 @@ MODULE LLUSB;
     *            @arg USBD_FS_SPEED: Full speed mode
     *)
   PROCEDURE GetDevSpeed*(USBx: OTGCore): BYTE;
-    VAR USBx_DEVICE!: OTGDeviceMode;
-      DevEnumSpeed: SET; speed: BYTE;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    DevEnumSpeed := USBx_DEVICE.DSTS*DSTS_ENUMSPD_Msk;
+    VAR DevEnumSpeed: SET; speed: BYTE;
+  BEGIN DevEnumSpeed := USBx.DSTS*DSTS_ENUMSPD_Msk;
     IF DevEnumSpeed = DSTS_ENUMSPD_HS_PHY_30MHZ_OR_60MHZ THEN speed := USBD_HS_SPEED
     ELSIF (DevEnumSpeed = DSTS_ENUMSPD_FS_PHY_30MHZ_OR_60MHZ) OR
       (DevEnumSpeed = DSTS_ENUMSPD_FS_PHY_48MHZ) THEN speed := USBD_FS_SPEED
@@ -1260,21 +1305,22 @@ MODULE LLUSB;
   * @retval HAL status
   *)
   PROCEDURE ActivateEndpoint*(USBx: OTGCore; ep: EPDesc);
-    VAR USBx_DEVICE!: OTGDeviceMode;
-      USBx_INEPi!: OTGINEndpoint; USBx_OUTEPi!: OTGOUTEndpoint;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    IF ep.is_in THEN INCL(USBx_DEVICE.DAINTMSK, ep.num MOD 10H);
-      USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
-      IF ~(DIEPCTL_USBAEP IN USBx_INEPi.DIEPCTL) THEN
-        USBx_INEPi.DIEPCTL := USBx_INEPi.DIEPCTL +
-          TOSET(ep.maxpacket)*DIEPCTL_MPSIZ_Msk + LSL(TOSET(ep.type), DIEPCTL_EPTYP_Pos) +
-            LSL(TOSET(ep.num), DIEPCTL_TXFNUM_Pos) + {DIEPCTL_SD0PID_SEVNFRM, DIEPCTL_USBAEP}
+    VAR mps, mpsiz: INTEGER;
+  BEGIN
+    IF ep.num = 0 THEN mpsiz := 0; mps := ep.maxpacket; ASSERT(ep.type = 0);
+      WHILE mps < 64 DO mps := mps*2; INC(mpsiz) END; ASSERT(mps = 64)
+    ELSE mpsiz := ep.maxpacket
+    END;
+    IF ep.is_in THEN INCL(USBx.DAINTMSK, ep.num MOD 10H);
+      IF ~(DIEPCTL_USBAEP IN USBx.INEP[ep.num].DIEPCTL) THEN
+        USBx.INEP[ep.num].DIEPCTL := USBx.INEP[ep.num].DIEPCTL +
+          TOSET(mpsiz)*DIEPCTL_MPSIZ_Msk + LSL(TOSET(ep.type)*DIEPCTL_EPTYP_Msk, DIEPCTL_EPTYP_Pos) +
+            LSL(TOSET(ep.tx_fifo_num)*DIEPCTL_TXFNUM_Msk, DIEPCTL_TXFNUM_Pos) + {DIEPCTL_SD0PID_SEVNFRM, DIEPCTL_USBAEP}
       END
-    ELSE INCL(USBx_DEVICE.DAINTMSK, ep.num MOD 10H + 16);
-      USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
-      IF ~(DOEPCTL_USBAEP IN USBx_OUTEPi.DOEPCTL) THEN
-        USBx_OUTEPi.DOEPCTL := USBx_OUTEPi.DOEPCTL +
-          TOSET(ep.maxpacket)*DOEPCTL_MPSIZ_Msk + LSL(TOSET(ep.type), DOEPCTL_EPTYP_Pos) +
+    ELSE INCL(USBx.DAINTMSK, ep.num MOD 10H + 16);
+      IF ~(DOEPCTL_USBAEP IN USBx.OUTEP[ep.num].DOEPCTL) THEN
+        USBx.OUTEP[ep.num].DOEPCTL := USBx.OUTEP[ep.num].DOEPCTL +
+          TOSET(mpsiz)*DOEPCTL_MPSIZ_Msk + LSL(TOSET(ep.type)*DIEPCTL_EPTYP_Msk, DOEPCTL_EPTYP_Pos) +
             {DIEPCTL_SD0PID_SEVNFRM, DOEPCTL_USBAEP}
       END
     END
@@ -1287,25 +1333,22 @@ MODULE LLUSB;
   * @retval HAL status
   *)
   PROCEDURE DeactivateEndpoint*(USBx: OTGCore; ep: EPDesc);
-    VAR USBx_DEVICE!: OTGDeviceMode;
-      USBx_INEPi!: OTGINEndpoint; USBx_OUTEPi!: OTGOUTEndpoint;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    (* Read DEPCTLn register *)
-    IF ep.is_in THEN USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
-      IF DIEPCTL_EPENA IN USBx_INEPi.DIEPCTL THEN
-        INCL(USBx_INEPi.DIEPCTL, DIEPCTL_SNAK); INCL(USBx_INEPi.DIEPCTL, DIEPCTL_EPDIS)
+  BEGIN (* Read DEPCTLn register *)
+    IF ep.is_in THEN
+      IF DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL THEN
+        INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_SNAK); INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_EPDIS)
       END;
-      EXCL(USBx_DEVICE.DEACHMSK, ep.num MOD 10H);
-      EXCL(USBx_DEVICE.DAINTMSK, ep.num MOD 10H);
-      USBx_INEPi.DIEPCTL := USBx_INEPi.DIEPCTL -
+      EXCL(USBx.DEACHMSK, ep.num MOD 10H);
+      EXCL(USBx.DAINTMSK, ep.num MOD 10H);
+      USBx.INEP[ep.num].DIEPCTL := USBx.INEP[ep.num].DIEPCTL -
         ({DIEPCTL_USBAEP} + DIEPCTL_MPSIZ_Msk + DIEPCTL_TXFNUM_Msk + {DIEPCTL_SD0PID_SEVNFRM} + DIEPCTL_EPTYP_Msk)
-   ELSE USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
-      IF DOEPCTL_EPENA IN USBx_OUTEPi.DOEPCTL THEN
-        INCL(USBx_OUTEPi.DOEPCTL, DOEPCTL_SNAK); INCL(USBx_OUTEPi.DOEPCTL, DOEPCTL_EPDIS)
+   ELSE
+      IF DOEPCTL_EPENA IN USBx.OUTEP[ep.num].DOEPCTL THEN
+        INCL(USBx.OUTEP[ep.num].DOEPCTL, DOEPCTL_SNAK); INCL(USBx.OUTEP[ep.num].DOEPCTL, DOEPCTL_EPDIS)
       END;
-      EXCL(USBx_DEVICE.DEACHMSK, ep.num MOD 10H + 16);
-      EXCL(USBx_DEVICE.DAINTMSK, ep.num MOD 10H + 16);
-      USBx_OUTEPi.DOEPCTL := USBx_OUTEPi.DOEPCTL -
+      EXCL(USBx.DEACHMSK, ep.num MOD 10H + 16);
+      EXCL(USBx.DAINTMSK, ep.num MOD 10H + 16);
+      USBx.OUTEP[ep.num].DOEPCTL := USBx.OUTEP[ep.num].DOEPCTL -
         ({DOEPCTL_USBAEP} + DOEPCTL_MPSIZ_Msk + {DOEPCTL_SD0PID_SEVNFRM} + DOEPCTL_EPTYP_Msk)
     END
   END DeactivateEndpoint;
@@ -1321,85 +1364,80 @@ MODULE LLUSB;
   * @retval HAL status
   *)
   PROCEDURE EPStartXfer*(USBx: OTGCore; VAR ep: EPDesc; dma: BOOLEAN);
-    VAR USBx_DEVICE!: OTGDeviceMode;
-      USBx_INEPi!: OTGINEndpoint; USBx_OUTEPi!: OTGOUTEndpoint;
-      pktcnt: HALFWORD;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
+    VAR pktcnt: HALFWORD;
+  BEGIN
     IF ep.is_in THEN (* IN endpoint *)
-      USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
       IF ep.xfer_len = 0 THEN (* Zero Length Packet? *)
-        USBx_INEPi.DIEPTSIZ := USBx_INEPi.DIEPTSIZ - (DIEPTSIZ_PKTCNT_Msk + DIEPTSIZ_XFRSIZ_Msk) +
+        USBx.INEP[ep.num].DIEPTSIZ := USBx.INEP[ep.num].DIEPTSIZ - (DIEPTSIZ_PKTCNT_Msk + DIEPTSIZ_XFRSIZ_Msk) +
           TOSET(LSL(1, DIEPTSIZ_PKTCNT_Pos))
       ELSE
-        (* Program the transfer size and packet count
-        * as follows: xfersize = N * maxpacket +
-        * short_packet pktcnt = N + (short_packet
-        * exist ? 1 : 0)
+        (* Program the transfer size and packet count as follows:
+        * xfersize = N * maxpacket + short_packet
+        * pktcnt = N + (short_packet exist ? 1 : 0)
         *)
-        USBx_INEPi.DIEPTSIZ := USBx_INEPi.DIEPTSIZ - (DIEPTSIZ_XFRSIZ_Msk + DIEPTSIZ_PKTCNT_Msk);
+        USBx.INEP[ep.num].DIEPTSIZ := USBx.INEP[ep.num].DIEPTSIZ - (DIEPTSIZ_XFRSIZ_Msk + DIEPTSIZ_PKTCNT_Msk);
         IF ep.num = 0 THEN
           IF ep.xfer_len > ep.maxpacket THEN ep.xfer_len := ep.maxpacket END;
-          USBx_INEPi.DIEPTSIZ := USBx_INEPi.DIEPTSIZ + TOSET(LSL(1, DIEPTSIZ_PKTCNT_Pos));
+          USBx.INEP[0].DIEPTSIZ := USBx.INEP[0].DIEPTSIZ + TOSET(LSL(1, DIEPTSIZ_PKTCNT_Pos));
         ELSE pktcnt := (ep.xfer_len + ep.maxpacket - 1) DIV ep.maxpacket;
-          USBx_INEPi.DIEPTSIZ := USBx_INEPi.DIEPTSIZ + DIEPTSIZ_PKTCNT_Msk*TOSET(LSL(pktcnt,  DIEPTSIZ_PKTCNT_Pos));
+          USBx.INEP[ep.num].DIEPTSIZ := USBx.INEP[ep.num].DIEPTSIZ + DIEPTSIZ_PKTCNT_Msk*TOSET(LSL(pktcnt,  DIEPTSIZ_PKTCNT_Pos));
           IF ep.type = Def.EP_TYPE_ISOC THEN
-            USBx_INEPi.DIEPTSIZ := USBx_INEPi.DIEPTSIZ - DIEPTSIZ_MULCNT_Msk +
+            USBx.INEP[ep.num].DIEPTSIZ := USBx.INEP[ep.num].DIEPTSIZ - DIEPTSIZ_MULCNT_Msk +
               DIEPTSIZ_MULCNT_Msk*TOSET(LSL(pktcnt, DIEPTSIZ_MULCNT_Pos))
           END
         END;
-        USBx_INEPi.DIEPTSIZ := USBx_INEPi.DIEPTSIZ + DIEPTSIZ_XFRSIZ_Msk*TOSET(ep.xfer_len)
+        USBx.INEP[ep.num].DIEPTSIZ := USBx.INEP[ep.num].DIEPTSIZ + DIEPTSIZ_XFRSIZ_Msk*TOSET(ep.xfer_len)
       END;
       IF dma THEN
-        IF ep.dma_addr # 0 THEN USBx_INEPi.DIEPDMA := ep.dma_addr END;
+        IF ep.dma_addr # 0 THEN USBx.INEP[ep.num].DIEPDMA := ep.dma_addr END;
         IF ep.type = Def.EP_TYPE_ISOC THEN
-          IF ~(8 IN USBx_DEVICE.DSTS) THEN INCL(USBx_INEPi.DIEPCTL, DIEPCTL_SODDFRM)
-          ELSE INCL(USBx_INEPi.DIEPCTL, DIEPCTL_SD0PID_SEVNFRM)
+          IF ~(8 IN USBx.DSTS) THEN INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_SODDFRM)
+          ELSE INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_SD0PID_SEVNFRM)
           END
         END;
-        USBx_INEPi.DIEPCTL := USBx_INEPi.DIEPCTL + {DIEPCTL_CNAK, DIEPCTL_EPENA} (* EP enable, IN data in FIFO *)
+        USBx.INEP[ep.num].DIEPCTL := USBx.INEP[ep.num].DIEPCTL + {DIEPCTL_CNAK, DIEPCTL_EPENA} (* EP enable, IN data in FIFO *)
       ELSE (* EP enable, IN data in FIFO *)
-        USBx_INEPi.DIEPCTL := USBx_INEPi.DIEPCTL + {DIEPCTL_CNAK, DIEPCTL_EPENA};
+        USBx.INEP[ep.num].DIEPCTL := USBx.INEP[ep.num].DIEPCTL + {DIEPCTL_CNAK, DIEPCTL_EPENA};
         IF ep.type # Def.EP_TYPE_ISOC THEN (* Enable the Tx FIFO Empty Interrupt for this EP *)
-          IF ep.xfer_len > 0 THEN INCL(USBx_DEVICE.DIEPEMPMSK, ep.num MOD 10H) END
+          IF ep.xfer_len > 0 THEN INCL(USBx.DIEPEMPMSK, ep.num MOD 10H) END
         ELSE
-          IF ~(8 IN USBx_DEVICE.DSTS) THEN INCL(USBx_INEPi.DIEPCTL, DIEPCTL_SODDFRM)
-          ELSE INCL(USBx_INEPi.DIEPCTL, DIEPCTL_SD0PID_SEVNFRM)
+          IF ~(DSTS_FNSOF_Pos IN USBx.DSTS) THEN INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_SODDFRM)
+          ELSE INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_SD0PID_SEVNFRM)
           END;
           WritePacket(USBx, ep.xfer_buff, ep.num, ep.xfer_len, dma)
         END
       END
     ELSE (* OUT endpoint *)
-      USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
       (* Program the transfer size and packet count as follows:
       * pktcnt = N
       * xfersize = N * maxpacket
       *)
-      USBx_OUTEPi.DOEPTSIZ := USBx_OUTEPi.DOEPTSIZ - (DOEPTSIZ_XFRSIZ_Msk + DOEPTSIZ_PKTCNT_Msk);
+      USBx.OUTEP[ep.num].DOEPTSIZ := USBx.OUTEP[ep.num].DOEPTSIZ - (DOEPTSIZ_XFRSIZ_Msk + DOEPTSIZ_PKTCNT_Msk);
       IF ep.num = 0 THEN
         IF ep.xfer_len > 0 THEN ep.xfer_len := ep.maxpacket END;
         (* Store transfer size, for EP0 this is equal to endpoint max packet size *)
         ep.xfer_size := ep.maxpacket;
-        USBx_OUTEPi.DOEPTSIZ := USBx_OUTEPi.DOEPTSIZ +
+        USBx.OUTEP[ep.num].DOEPTSIZ := USBx.OUTEP[ep.num].DOEPTSIZ +
           DOEPTSIZ_XFRSIZ_Msk*TOSET(ep.xfer_size) + DOEPTSIZ_PKTCNT_Msk*TOSET(LSL(1, DOEPTSIZ_PKTCNT_Pos))
       ELSE
         IF ep.xfer_len = 0 THEN
-          USBx_OUTEPi.DOEPTSIZ := USBx_OUTEPi.DOEPTSIZ + 
+          USBx.OUTEP[ep.num].DOEPTSIZ := USBx.OUTEP[ep.num].DOEPTSIZ + 
             DOEPTSIZ_XFRSIZ_Msk*TOSET(ep.maxpacket) + DOEPTSIZ_PKTCNT_Msk*TOSET(LSL(1, DOEPTSIZ_PKTCNT_Pos))
         ELSE pktcnt := (ep.xfer_len + ep.maxpacket - 1) DIV ep.maxpacket;
           ep.xfer_size := ep.maxpacket * pktcnt;
-          USBx_OUTEPi.DOEPTSIZ := USBx_OUTEPi.DOEPTSIZ  +
+          USBx.OUTEP[ep.num].DOEPTSIZ := USBx.OUTEP[ep.num].DOEPTSIZ  +
             DOEPTSIZ_PKTCNT_Msk*TOSET(LSL(pktcnt, DOEPTSIZ_PKTCNT_Pos)) + DOEPTSIZ_XFRSIZ_Msk*TOSET(ep.xfer_size)
         END
       END;
       IF dma THEN
-        IF ep.xfer_buff # 0 THEN USBx_OUTEPi.DOEPDMA := ep.xfer_buff END
+        IF ep.xfer_buff # 0 THEN USBx.OUTEP[ep.num].DOEPDMA := ep.xfer_buff END
       END;
       IF ep.type = Def.EP_TYPE_ISOC THEN
-        IF ~(8 IN USBx_DEVICE.DSTS) THEN INCL(USBx_OUTEPi.DOEPCTL, DOEPCTL_SODDFRM)
-        ELSE INCL(USBx_OUTEPi.DOEPCTL, DOEPCTL_SD0PID_SEVNFRM)
+        IF ~(8 IN USBx.DSTS) THEN INCL(USBx.OUTEP[ep.num].DOEPCTL, DOEPCTL_SODDFRM)
+        ELSE INCL(USBx.OUTEP[ep.num].DOEPCTL, DOEPCTL_SD0PID_SEVNFRM)
         END
       END;
-      USBx_OUTEPi.DOEPCTL := USBx_OUTEPi.DOEPCTL + {DOEPCTL_CNAK, DOEPCTL_EPENA} (* EP enable *)
+      USBx.OUTEP[ep.num].DOEPCTL := USBx.OUTEP[ep.num].DOEPCTL + {DOEPCTL_CNAK, DOEPCTL_EPENA} (* EP enable *)
     END
   END EPStartXfer;
 
@@ -1411,19 +1449,16 @@ MODULE LLUSB;
    *)
   PROCEDURE EPStopXfer*(USBx: OTGCore; ep: EPDesc): BYTE;
     VAR ret: BYTE; count: INTEGER;
-      USBx_INEPi!: OTGINEndpoint; USBx_OUTEPi!: OTGOUTEndpoint;
   BEGIN ret := HAL_OK; count := 0;
     IF ep.is_in THEN (* IN endpoint *)
-      USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
-      IF DIEPCTL_EPENA IN USBx_INEPi.DIEPCTL THEN (* EP enabled, IN data in FIFO *)
-        USBx_INEPi.DIEPCTL := USBx_INEPi.DIEPCTL + {DIEPCTL_SNAK, DIEPCTL_EPDIS};
-        REPEAT INC(count) UNTIL  (count > 10000) OR ~(DIEPCTL_EPENA IN USBx_INEPi.DIEPCTL)
+      IF DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL THEN (* EP enabled, IN data in FIFO *)
+        USBx.INEP[ep.num].DIEPCTL := USBx.INEP[ep.num].DIEPCTL + {DIEPCTL_SNAK, DIEPCTL_EPDIS};
+        REPEAT INC(count) UNTIL  (count > 10000) OR ~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL)
       END
     ELSE (* OUT endpoint *)
-      USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + ep.num*EP_REG_SIZE);
-      IF DOEPCTL_EPENA IN USBx_OUTEPi.DOEPCTL THEN
-        USBx_OUTEPi.DOEPCTL := USBx_OUTEPi.DOEPCTL + {DOEPCTL_SNAK, DOEPCTL_EPDIS};
-        REPEAT INC(count) UNTIL (count > 10000) OR ~(DOEPCTL_EPENA IN USBx_OUTEPi.DOEPCTL)
+      IF DOEPCTL_EPENA IN USBx.OUTEP[ep.num].DOEPCTL THEN
+        USBx.OUTEP[ep.num].DOEPCTL := USBx.OUTEP[ep.num].DOEPCTL + {DOEPCTL_SNAK, DOEPCTL_EPDIS};
+        REPEAT INC(count) UNTIL (count > 10000) OR ~(DOEPCTL_EPENA IN USBx.OUTEP[ep.num].DOEPCTL)
       END
     END;
     IF count > 10000 THEN ret := HAL_ERROR END
@@ -1440,9 +1475,8 @@ MODULE LLUSB;
   * @retval HAL status
   *)
   PROCEDURE DevInit*(USBx: OTGCore; cfg: CfgDesc): BYTE;
-    VAR ret: BYTE; i: INTEGER; USBx_DEVICE!: OTGDeviceMode;
-      USBx_INEPi!: OTGINEndpoint; USBx_OUTEPi!: OTGOUTEndpoint;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE); ret := HAL_OK;
+    VAR ret: BYTE; i: INTEGER;
+  BEGIN ret := HAL_OK;
     CLEAR(USBx.DIEPTXF);
     (* VBUS Sensing setup *)
     IF ~cfg.vbus_sensing_enable THEN
@@ -1450,7 +1484,7 @@ MODULE LLUSB;
        * Disable HW VBUS sensing. VBUS is internally considered to be always
        * at VBUS-Valid level (5V).
        *)
-      INCL(USBx_DEVICE.DCTL, DCTL_SDIS);
+      INCL(USBx.DCTL, DCTL_SDIS);
       INCL(USBx.GCCFG, GCCFG_NOVBUSSENS);
       EXCL(USBx.GCCFG, GCCFG_VBUSBSEN);
       EXCL(USBx.GCCFG, GCCFG_VBUSASEN)
@@ -1474,30 +1508,28 @@ MODULE LLUSB;
     IF FlushTxFifo(USBx, ALL_FIFOS) # HAL_OK THEN ret := HAL_ERROR END;
     IF FlushRxFifo(USBx) # HAL_OK THEN ret := HAL_ERROR END;
     (* Clear all pending Device Interrupts *)
-    USBx_DEVICE.DIEPMSK := {};
-    USBx_DEVICE.DOEPMSK := {};
-    USBx_DEVICE.DAINTMSK := {};
+    USBx.DIEPMSK := {};
+    USBx.DOEPMSK := {};
+    USBx.DAINTMSK := {};
     FOR i := 0 TO cfg.dev_endpoints - 1 DO
-      USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + i*EP_REG_SIZE);
-      IF DIEPCTL_EPENA IN USBx_INEPi.DIEPCTL THEN
-        IF i = 0 THEN (*control endpoint*) USBx_INEPi.DIEPCTL := {DIEPCTL_SNAK}
-        ELSE USBx_INEPi.DIEPCTL := {DIEPCTL_EPDIS, DIEPCTL_SNAK}
+      IF DIEPCTL_EPENA IN USBx.INEP[i].DIEPCTL THEN
+        IF i = 0 THEN (*control endpoint*) USBx.INEP[i].DIEPCTL := {DIEPCTL_SNAK}
+        ELSE USBx.INEP[i].DIEPCTL := {DIEPCTL_EPDIS, DIEPCTL_SNAK}
         END
-      ELSE USBx_INEPi.DIEPCTL := {}
+      ELSE USBx.INEP[i].DIEPCTL := {}
       END;
-      USBx_INEPi.DIEPTSIZ := {}; USBx_INEPi.DIEPINT := {0..5, 7..10, 12..15}
+      USBx.INEP[i].DIEPTSIZ := {}; USBx.INEP[i].DIEPINT := {0..5, 7..10, 12..15}
     END;
     FOR i := 0 TO cfg.dev_endpoints - 1 DO
-      USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + i*EP_REG_SIZE);
-      IF DOEPCTL_EPENA IN USBx_OUTEPi.DOEPCTL THEN
-        IF i = 0 THEN (*control endpoint*) USBx_OUTEPi.DOEPCTL := {DOEPCTL_SNAK}
-        ELSE USBx_OUTEPi.DOEPCTL := {DOEPCTL_EPDIS, DOEPCTL_SNAK}
+      IF DOEPCTL_EPENA IN USBx.OUTEP[i].DOEPCTL THEN
+        IF i = 0 THEN (*control endpoint*) USBx.OUTEP[i].DOEPCTL := {DOEPCTL_SNAK}
+        ELSE USBx.OUTEP[i].DOEPCTL := {DOEPCTL_EPDIS, DOEPCTL_SNAK}
         END
-      ELSE USBx_OUTEPi.DOEPCTL := {}
+      ELSE USBx.OUTEP[i].DOEPCTL := {}
       END;
-      USBx_OUTEPi.DOEPTSIZ := {}; USBx_OUTEPi.DOEPINT := {0..5, 7..10, 12..15}
+      USBx.OUTEP[i].DOEPTSIZ := {}; USBx.OUTEP[i].DOEPINT := {0..5, 7..10, 12..15}
     END;
-    EXCL(USBx_DEVICE.DIEPMSK, DIEPMSK_TXFURM);
+    EXCL(USBx.DIEPMSK, DIEPMSK_TXFURM);
     USBx.GINTSTS := {0..29, 31}; (* Clear any pending interrupts *)
     (* Enable the common interrupts *)
     IF ~cfg.dma_enable THEN INCL(USBx.GINTMSK, GINTMSK_RXFLVLM) END;
@@ -1512,17 +1544,27 @@ MODULE LLUSB;
   END DevInit;
 
   (**
+  * @brief  USB_SetDevAddress : Stop the usb device mode
+  * @param  USBx  Selected device
+  * @param  address  new device address to be assigned
+  *          This parameter can be a value from 0 to 255
+  * @retval HAL status
+  *)
+  PROCEDURE SetDevAddress*(USBx: OTGCore; address: BYTE);
+  BEGIN USBx.DCFG := USBx.DCFG - DCFG_DAD_Msk + TOSET(LSL(address, DCFG_DAD_Pos))*DCFG_DAD_Msk
+  END SetDevAddress;
+
+  (**
   * @brief  USB_DevConnect : Connect the USB device by enabling Rpu
   * @param  USBx  Selected device
   * @retval HAL status
   *)
   PROCEDURE DevConnect*(USBx: OTGCore);
-    VAR USBx_DEVICE!: OTGDeviceMode; reg: SET;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    (* In case phy is stopped, ensure to ungate and restore the phy CLK *)
+    VAR reg: SET;
+  BEGIN (* In case phy is stopped, ensure to ungate and restore the phy CLK *)
     SYSTEM.GET(ORD(USBx) + PCGCCTL_BASE, reg);
     SYSTEM.PUT(ORD(USBx) + PCGCCTL_BASE, reg-{PCGCCTL_STOPCLK, PCGCCTL_GATECLK});
-    EXCL(USBx_DEVICE.DCTL, DCTL_SDIS)
+    EXCL(USBx.DCTL, DCTL_SDIS)
   END DevConnect;
 
   (**
@@ -1831,12 +1873,11 @@ MODULE LLUSB;
   * @retval HAL status
   *)
   PROCEDURE DevDisconnect*(USBx: OTGCore);
-    VAR reg: SET; USBx_DEVICE!: OTGDeviceMode;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    (* In case phy is stopped, ensure to ungate and restore the phy CLK *)
+    VAR reg: SET;
+  BEGIN (* In case phy is stopped, ensure to ungate and restore the phy CLK *)
     SYSTEM.GET(ORD(USBx) + PCGCCTL_BASE, reg);
     SYSTEM.PUT(ORD(USBx) + PCGCCTL_BASE, reg - {PCGCCTL_STOPCLK, PCGCCTL_GATECLK});
-    INCL(USBx_DEVICE.DCTL, DCTL_SDIS)
+    INCL(USBx.DCTL, DCTL_SDIS)
   END DevDisconnect;
 
   (**
@@ -1867,10 +1908,8 @@ MODULE LLUSB;
   * @retval USB Device OUT EP interrupt status
   *)
   PROCEDURE ReadDevAllOutEpInterrupts*(USBx: OTGCore): SET;
-    VAR USBx_DEVICE!: OTGDeviceMode;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-
-    RETURN LSR(USBx_DEVICE.DAINT*USBx_DEVICE.DAINTMSK*DAINT_OEPINT_Msk, DAINT_OEPINT_Pos)
+  BEGIN
+    RETURN LSR(USBx.DAINT*USBx.DAINTMSK*DAINT_OEPINT_Msk, DAINT_OEPINT_Pos)
   END ReadDevAllOutEpInterrupts;
 
   (**
@@ -1879,10 +1918,8 @@ MODULE LLUSB;
   * @retval USB Device IN EP interrupt status
   *)
   PROCEDURE ReadDevAllInEpInterrupts*(USBx: OTGCore): SET;
-    VAR USBx_DEVICE!: OTGDeviceMode;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-
-    RETURN LSR(USBx_DEVICE.DAINT*USBx_DEVICE.DAINTMSK*DAINT_IEPINT_Msk, DAINT_IEPINT_Pos)
+  BEGIN
+    RETURN LSR(USBx.DAINT*USBx.DAINTMSK*DAINT_IEPINT_Msk, DAINT_IEPINT_Pos)
   END ReadDevAllInEpInterrupts;
 
   (**
@@ -1893,11 +1930,7 @@ MODULE LLUSB;
   * @retval Device OUT EP Interrupt register
   *)
   PROCEDURE ReadDevOutEPInterrupts*(USBx: OTGCore; epnum: BYTE): SET;
-    VAR USBx_DEVICE!: OTGDeviceMode; USBx_OUTEPi!: OTGOUTEndpoint;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + epnum*EP_REG_SIZE);
-
-    RETURN USBx_OUTEPi.DOEPINT*USBx_DEVICE.DOEPMSK
+    RETURN USBx.OUTEP[epnum].DOEPINT*USBx.DOEPMSK
   END ReadDevOutEPInterrupts;
 
 (**
@@ -1908,12 +1941,7 @@ MODULE LLUSB;
   * @retval Device IN EP Interrupt register
   *)
   PROCEDURE ReadDevInEPInterrupts*(USBx: OTGCore; epnum: BYTE): SET;
-    VAR USBx_DEVICE!: OTGDeviceMode; USBx_INEPi!: OTGINEndpoint;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + epnum*EP_REG_SIZE);
-
-    RETURN USBx_INEPi.DIEPINT*(USBx_DEVICE.DIEPMSK +
-      LSL(LSR(USBx_DEVICE.DIEPEMPMSK, epnum MOD 10H)*{0}, DIEPINT_TXFE))
+    RETURN USBx.INEP[epnum].DIEPINT*(USBx.DIEPMSK + LSL(LSR(USBx.DIEPEMPMSK, epnum MOD 10H)*{0}, DIEPINT_TXFE))
   END ReadDevInEPInterrupts;
 
   (**
@@ -1924,10 +1952,7 @@ MODULE LLUSB;
   * @param  flags  interrupts to clear
   *)
   PROCEDURE ClearOutEPInterrupts*(USBx: OTGCore; epnum: BYTE; flags: SET);
-    VAR USBx_DEVICE!: OTGDeviceMode; USBx_OUTEPi!: OTGOUTEndpoint;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    USBx_OUTEPi := SYSTEM.VAL(OTGOUTEndpoint, ORD(USBx) + OUT_ENDPOINT_BASE + epnum*EP_REG_SIZE);
-    USBx_OUTEPi.DOEPINT := flags
+  BEGIN USBx.OUTEP[epnum].DOEPINT := flags
   END ClearOutEPInterrupts;
 
   (**
@@ -1938,10 +1963,7 @@ MODULE LLUSB;
   * @param  flags  interrupts to clear
   *)
   PROCEDURE ClearInEPInterrupts*(USBx: OTGCore; epnum: BYTE; flags: SET);
-    VAR USBx_DEVICE!: OTGDeviceMode; USBx_INEPi!: OTGINEndpoint;
-  BEGIN USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + epnum*EP_REG_SIZE);
-    USBx_INEPi.DIEPINT := flags
+  BEGIN USBx.INEP[epnum].DIEPINT := flags
   END ClearInEPInterrupts;
 
   (**
@@ -1962,11 +1984,8 @@ MODULE LLUSB;
   * @retval HAL status
   *)
   PROCEDURE ActivateSetup*(USBx: OTGCore);
-    VAR USBx_INEPi!: OTGINEndpoint; USBx_DEVICE!: OTGDeviceMode;
-  BEGIN USBx_INEPi := SYSTEM.VAL(OTGINEndpoint, ORD(USBx) + IN_ENDPOINT_BASE + 0*EP_REG_SIZE);
-    USBx_DEVICE := SYSTEM.VAL(OTGDeviceMode, ORD(USBx) + DEVICE_BASE);
-    USBx_INEPi.DIEPCTL := USBx_INEPi.DIEPCTL - DIEPCTL_MPSIZ_Msk; (* Set the MPS of the IN EP0 to 64 bytes *)
-    INCL(USBx_DEVICE.DCTL, DCTL_CGINAK)
+  BEGIN USBx.INEP[0].DIEPCTL := USBx.INEP[0].DIEPCTL - DIEPCTL_MPSIZ_Msk; (* Set the MPS of the IN EP0 to 64 bytes *)
+    INCL(USBx.DCTL, DCTL_CGINAK)
   END ActivateSetup;
 
   (**

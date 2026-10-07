@@ -179,13 +179,13 @@ MODULE USBDMTP;
           ELSIF hmtp.ResponsePhase = MTPS.PHASE_IDLE THEN
             hmtp.dev_status.length := 4; hmtp.dev_status.val := LSL(RESPONSE_OK, 16) + 4
           END;
-          IoReq.CtlSendData(dev, hmtp.dev_status)
+          IoReq.CtlSendData(dev, hmtp.dev_status, hmtp.dev_status.length)
         ELSE CtlReq.CtlError(dev, req); ret := Def.FAIL
         END
       ELSIF type = Def.REQ_TYPE_STANDARD THEN (* Interface & Endpoint request *)
         IF req.bRequest = Def.REQ_GET_INTERFACE THEN
           IF dev.state = DDef.STATE_CONFIGURED THEN
-            hmtp.alt_setting.length := 1; hmtp.alt_setting.val := 0; IoReq.CtlSendData(dev, hmtp.alt_setting)
+            hmtp.alt_setting.length := 1; hmtp.alt_setting.val := 0; IoReq.CtlSendData(dev, hmtp.alt_setting, hmtp.alt_setting.length)
           END
         ELSIF req.bRequest = Def.REQ_SET_INTERFACE THEN
           IF dev.state # DDef.STATE_CONFIGURED THEN CtlReq.CtlError(dev, req); ret := Def.FAIL END

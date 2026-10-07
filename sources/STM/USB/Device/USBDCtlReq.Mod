@@ -25,6 +25,9 @@ MODULE USBDCtlReq;
     ResHW = POINTER TO ResHWDesc;
     ResHWDesc = RECORD(Def.BufferDesc) value: HALFSET END;
 
+  VAR setupInError*: Def.Setup;
+    resByte: ResByte; resHW, status: ResHW;
+
   (**
   * @brief  USBD_CtlError
   *         Handle USB low level Error
@@ -33,7 +36,8 @@ MODULE USBDCtlReq;
   * @retval None
   *)
   PROCEDURE CtlError*(dev: DDef.Handle; req: Def.Setup);
-  BEGIN dev.StallEP(dev, 80H); dev.StallEP(dev, 0)
+  BEGIN setupInError := req;
+    dev.StallEP(dev, 80H); dev.StallEP(dev, 0)
   END CtlError;
 
   (**
@@ -210,7 +214,7 @@ MODULE USBDCtlReq;
 
     IF err = 0 THEN
       IF req.wLength # 0 THEN
-        IF buf.length # 0 THEN buf.length := Def.MIN(buf.length, req.wLength); IoReq.CtlSendData(dev, buf)
+        IF buf.length # 0 THEN IoReq.CtlSendData(dev, buf, Def.MIN(buf.length, req.wLength))
         ELSE CtlError(dev, req)
         END
       ELSE IoReq.CtlSendStatus(dev)
@@ -283,14 +287,13 @@ MODULE USBDCtlReq;
   * @retval None
   *)
   PROCEDURE GetConfig(dev: DDef.Handle; req: Def.Setup);
-    VAR res!: ResByte;
-  BEGIN NEW(res); res.size := 1; res.length := 1;
+  BEGIN
     IF req.wLength # 1 THEN CtlError(dev, req)
     ELSIF dev.state IN {DDef.STATE_DEFAULT, DDef.STATE_ADDRESSED} THEN
       dev.default_config := 0;
-      res.value := 0; IoReq.CtlSendData(dev, res)
+      resByte.value := 0; IoReq.CtlSendData(dev, resByte, 1)
     ELSIF dev.state = DDef.STATE_CONFIGURED THEN
-      res.value := dev.config; IoReq.CtlSendData(dev, res)
+      resByte.value := dev.config; IoReq.CtlSendData(dev, resByte, 1)
     ELSE CtlError(dev, req)
     END
   END GetConfig;
@@ -303,14 +306,13 @@ MODULE USBDCtlReq;
   * @retval None
   *)
   PROCEDURE GetStatus(dev: DDef.Handle; req: Def.Setup);
-    VAR res!: ResHW;
-  BEGIN NEW(res); res.size := 2; res.length := 2;
+  BEGIN
     IF dev.state IN {DDef.STATE_DEFAULT, DDef.STATE_ADDRESSED, DDef.STATE_CONFIGURED} THEN
       IF req.wLength # 2 THEN CtlError(dev, req)
       ELSE
         IF DConf.SELF_POWERED THEN dev.config_status := {Def.CONFIG_SELF_POWERED} ELSE dev.config_status := {} END;
         IF dev.remote_wakeup THEN INCL(dev.config_status, Def.CONFIG_REMOTE_WAKEUP) END;
-        res.value := dev.config_status; IoReq.CtlSendData(dev, res)
+        resHW.value := dev.config_status; IoReq.CtlSendData(dev, resHW, 2)
       END
     ELSE CtlError(dev, req)
     END
@@ -418,18 +420,18 @@ MODULE USBDCtlReq;
   * @retval status
   *)
   PROCEDURE StdEPReq*(dev: DDef.Handle; req: Def.Setup): BYTE;
-    VAR ret, ep_addr, idx: BYTE; type: SET; res!: ResByte;
+    VAR ret, ep_addr, idx: BYTE; type: SET;
 
-    PROCEDURE SetStatus(dev: DDef.Handle; ep_addr: BYTE; VAR ep: DDef.Endpoint; VAR res: ResByte);
+    PROCEDURE SetStatus(dev: DDef.Handle; ep_addr: BYTE; VAR ep: DDef.Endpoint; status: ResHW);
     BEGIN
-      IF (ep_addr = 0) OR (ep_addr = 80H) THEN ep.status := 0
-      ELSIF dev.IsStallEP(dev, ep_addr) THEN ep.status := 1
-      ELSE ep.status := 0
+      IF (ep_addr = 0) OR (ep_addr = 80H) THEN ep.status := {}
+      ELSIF dev.IsStallEP(dev, ep_addr) THEN ep.status := {0}
+      ELSE ep.status := {}
       END;
-      res.value := ep.status
+      status.value := ep.status
     END SetStatus;
 
-  BEGIN NEW(res); res.size := 1; res.length := 1;
+  BEGIN
     ret := Def.OK; type := req.bmRequestType*Def.REQ_TYPE_MASK; ep_addr := req.wIndex; 
     IF (type = Def.REQ_TYPE_CLASS) OR (type = Def.REQ_TYPE_VENDOR) THEN
       idx := dev.CoreFindEP(dev, ep_addr); (* Get the class index relative to this endpoint *)
@@ -471,21 +473,21 @@ MODULE USBDCtlReq;
       ELSIF req.bRequest = Def.REQ_GET_STATUS THEN
         IF dev.state = DDef.STATE_ADDRESSED THEN
           IF (ep_addr # 0) & (ep_addr # 80H) THEN CtlError(dev, req)
-          ELSE res.value := 0;
-            IF 7 IN TOSET(ep_addr) THEN dev.ep_in[ep_addr MOD 80H].status := 0
-            ELSE dev.ep_out[ep_addr MOD 80H].status := 0
+          ELSE status.value := {};
+            IF 7 IN TOSET(ep_addr) THEN dev.ep_in[ep_addr MOD 80H].status := {}
+            ELSE dev.ep_out[ep_addr MOD 80H].status := {}
             END;
-            IoReq.CtlSendData(dev, res);
+            IoReq.CtlSendData(dev, status, status.length);
           END
         ELSIF dev.state = DDef.STATE_CONFIGURED THEN
           IF  7 IN TOSET(ep_addr) THEN IF ~dev.ep_in[ep_addr MOD 10H].is_used THEN CtlError(dev, req); ret := Def.FAIL END
           ELSE IF~ dev.ep_out[ep_addr MOD 10H].is_used THEN CtlError(dev, req); ret := Def.FAIL END
           END;
           IF ret = Def.OK THEN
-            IF 7 IN TOSET(ep_addr) THEN SetStatus(dev, ep_addr, dev.ep_in[ep_addr MOD 80H], res)
-            ELSE SetStatus(dev, ep_addr, dev.ep_out[ep_addr MOD 80H], res)
+            IF 7 IN TOSET(ep_addr) THEN SetStatus(dev, ep_addr, dev.ep_in[ep_addr MOD 80H], status)
+            ELSE SetStatus(dev, ep_addr, dev.ep_out[ep_addr MOD 80H], status)
             END;
-            IoReq.CtlSendData(dev, res)
+            IoReq.CtlSendData(dev, status, status.length)
           END
         ELSE CtlError(dev, req)
         END
@@ -510,5 +512,12 @@ MODULE USBDCtlReq;
     req.wLength := Def.LE16(data, 6)
   END ParseSetupRequest;
 
+  PROCEDURE ClearError*;
+  BEGIN CLEAR(setupInError)
+  END ClearError;
 
+BEGIN
+  NEW(resByte); resByte.size := 1; resByte.length := 1;
+  NEW(resHW); resHW.size := 2; resHW.length := 2;
+  NEW(status); status.size := 2; status.length := 2
 END USBDCtlReq.

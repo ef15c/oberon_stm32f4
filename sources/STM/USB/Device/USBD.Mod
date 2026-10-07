@@ -10,7 +10,12 @@ MODULE USBD;
   VAR processTask: Def.Task;
 
   PROCEDURE ProcessDevice(dev: Def.Handle);
-    (*TODO*)
+  BEGIN
+    CASE dev OF DDef.Handle:
+      DH.ProcessDeferredIRQWork(dev); (*handle deferred work triggered by interrupts*)
+      DH.ReportError;
+      Log.Flush
+    END
   END ProcessDevice;
   
   PROCEDURE Process;

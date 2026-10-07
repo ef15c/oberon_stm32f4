@@ -525,6 +525,11 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     REPEAT SYSTEM.GET(DWTBase + CYCCNT, now) UNTIL now - beg >= HCLKFreq*d
   END  Delayus;
 
+  PROCEDURE TimeStamp*(): INTEGER;
+    VAR now: INTEGER;
+  BEGIN SYSTEM.GET(DWTBase + CYCCNT, now)
+    RETURN now
+  END  TimeStamp;
 
   PROCEDURE led*(n: INTEGER);
     VAR i: INTEGER;

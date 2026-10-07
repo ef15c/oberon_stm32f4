@@ -16,7 +16,7 @@ MODULE USBDIoReq;
   *
   ******************************************************************************
   *)
-  IMPORT Def := USBDef, DDef := USBDDef;
+  IMPORT Def := USBDef, DDef := USBDDef, Log := USBLog;
 
   (**
   * @brief  USBD_CtlSendData
@@ -25,24 +25,22 @@ MODULE USBDIoReq;
   * @param  buff: pointer to data buffer
   * @retval status
   *)
-  PROCEDURE CtlSendData*(dev: DDef.Handle; buf: Def.Buffer);
+  PROCEDURE CtlSendData*(dev: DDef.Handle; buf: Def.Buffer; len: HALFWORD);
   BEGIN
     dev.ep0_state := DDef.EP0_DATA_IN; (* Set EP0 State *)
-    buf.pktidx := 0; (*reset index to beginning of buffer*)
-    buf.pktlen := buf.length; (*to be confirmed*)
     dev.ep_in[0].buffer := buf;
 (*
 #ifdef USBD_AVOID_PACKET_SPLIT_MPS
   pdev->ep_in[0].rem_length = 0U;
 #else
 *)
-    dev.ep_in[0].rem_length := buf.length;
 (*
 #endif /* USBD_AVOID_PACKET_SPLIT_MPS */
 *)
-    dev.Transmit(dev, 0, buf); (* Start the transfer *)
+    dev.Transmit(dev, 0, buf^, len); (* Start the transfer *)
   END CtlSendData;
 
+(*
   (**
   * @brief  USBD_CtlContinueSendData
   *         continue sending data on the ctl pipe
@@ -53,6 +51,7 @@ MODULE USBDIoReq;
   PROCEDURE CtlContinueSendData*(dev: DDef.Handle; buf: Def.Buffer);
   BEGIN dev.Transmit(dev, 0, buf) (* Start the next transfer *)
   END CtlContinueSendData;
+*)
 
   (**
   * @brief  USBD_CtlPrepareRx
@@ -64,21 +63,19 @@ MODULE USBDIoReq;
   PROCEDURE CtlPrepareRx*(dev: DDef.Handle; buf: Def.Buffer);
   BEGIN
     dev.ep0_state := DDef.EP0_DATA_OUT; (* Set EP0 State *)
-    buf.pktidx := 0; (*reset index to beginning of buffer*)
-    buf.pktlen := buf.length; (*to be confirmed*)
     dev.ep_out[0].buffer := buf;
 (*
 #ifdef USBD_AVOID_PACKET_SPLIT_MPS
   pdev->ep_out[0].rem_length = 0U;
 #else
 *)
-    dev.ep_out[0].rem_length := buf.length;
 (*
 #endif /* USBD_AVOID_PACKET_SPLIT_MPS */
 *)
     dev.PrepareReceive(dev, 0, buf); (* Start the transfer *)
   END CtlPrepareRx;
 
+(*
   (**
   * @brief  USBD_CtlContinueRx
   *         continue receive data on the ctl pipe
@@ -89,17 +86,19 @@ MODULE USBDIoReq;
   PROCEDURE CtlContinueRx*(dev: DDef.Handle; buf: Def.Buffer);
   BEGIN dev.PrepareReceive(dev, 0, buf)
   END CtlContinueRx;
+*)
 
   (**
   * @brief  USBD_CtlSendStatus
-  *         send zero lzngth packet on the ctl pipe
+  *         send zero length packet on the ctl pipe
   * @param  pdev: device instance
   * @retval status
   *)
   PROCEDURE CtlSendStatus*(dev: DDef.Handle);
-  BEGIN
+    VAR dummy: Def.BufferDesc;
+  BEGIN CLEAR(dummy); 
     dev.ep0_state := DDef.EP0_STATUS_IN; (* Set EP0 State *)
-    dev.Transmit(dev, 0, NIL); (* Start the transfer *)
+    dev.Transmit(dev, 0, dummy, 0); (* Start the transfer *)
   END CtlSendStatus;
 
   (**

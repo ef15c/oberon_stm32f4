@@ -44,12 +44,10 @@ MODULE USBDDef;
   TYPE
   (* USB Device handle structure *)
     Endpoint* = RECORD
-      rem_length*,
-      maxpacket*: HALFWORD;
-      bInterval*: INTEGER;
-      status*: BYTE;
       is_used*: BOOLEAN;
-      buffer*: Def.Buffer
+      bInterval*: BYTE;
+      status*: HALFSET;
+      buffer*: Def.Buffer;
     END;
 
   (* USB Device descriptors structure *)
@@ -120,7 +118,7 @@ MODULE USBDDef;
       StallEP*, ClearStallEP*,
       SetUSBAddress*: PROCEDURE(dev: Handle; address: BYTE);
       IsStallEP*: PROCEDURE(dev: Handle; address: BYTE): BOOLEAN;
-      Transmit*: PROCEDURE(dev: Handle; address: BYTE; buf: Def.Buffer);
+      Transmit*: PROCEDURE(dev: Handle; address: BYTE; buf: Def.BufferDesc; len: HALFWORD);
       SetClassConfig*: PROCEDURE(dev: Handle; config: BYTE): BYTE;
       ClrClassConfig*: PROCEDURE(dev: Handle; config: BYTE);
       CoreFindIF*: PROCEDURE(dev: Handle; itfidx: BYTE): BYTE;

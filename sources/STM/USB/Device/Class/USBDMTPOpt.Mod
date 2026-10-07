@@ -849,7 +849,7 @@ MODULE USBDMTPOpt;
     uif := dev.UserData[dev.classId](UserIf);
     IF hmtp.RECEIVE_DATA_STATUS = RECEIVE_IDLE_STATE THEN
       hmtp.RECEIVE_DATA_STATUS := RECEIVE_COMMAND_DATA
-    ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_COMMAND_DATA THEN
+    ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_COMMAND_DATA THEN buff.offset := 0;
       hmtp.RECEIVE_DATA_STATUS := RECEIVE_FIRST_DATA
     ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_FIRST_DATA THEN
       IF buff.length >= buff.CLen THEN (*all data is sent in the first packet*)
@@ -860,12 +860,11 @@ MODULE USBDMTPOpt;
         hmtp.GenericContainer.length :=  hmtp.GenericContainer.CLen;
         hmtp.RECEIVE_DATA_STATUS := RECEIVE_IDLE_STATE;
       ELSE hmtp.RECEIVE_DATA_STATUS := RECEIVE_REST_OF_DATA;
-        buff.pktidx := CONT_HEADER_SIZE (*next packet doesn't have container header*)
+        buff.offset := CONT_HEADER_SIZE (*next packet doesn't have container header*)
       END;
       DEC(hmtp.GenericContainer.length, CONT_HEADER_SIZE); (*subtract header size from data length*)
       hmtp.cur_len := 0; uif.WriteData(buff^)
-    ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_REST_OF_DATA THEN
-      uif.WriteData(buff^); buff.pktidx := CONT_HEADER_SIZE
+    ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_REST_OF_DATA THEN uif.WriteData(buff^)
     ELSIF hmtp.RECEIVE_DATA_STATUS = SEND_RESPONSE THEN
       buff.length := 0; uif.WriteData(buff^); (* send 0 length to stop write process *)
       hmtp.GenericContainer.code :=  RESPONSE_OK;
