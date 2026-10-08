@@ -322,7 +322,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     WHILE (Par.res = 0) & ~S.eot & ((S.class # Texts.Char) OR (S.c # "~")) DO
       IF S.class = Texts.Name THEN cmdl := 0; add(cmd, cmdl, S.s); pos := Texts.Pos(S); Texts.Scan(S);
         REPEAT Texts.Scan(S) UNTIL S.eot OR (S.class = Texts.Char) & (S.c = "~");
-        Par.pos := pos; Call(cmd, res); IF res # 0 THEN Par.res := res END; ActCnt := 0; GC
+        Par.pos := pos; Call(cmd, res); IF res # 0 THEN Par.res := res END; ActCnt := 0; GC; BSP.ledsOnOff({6}, {})
       END;
       Texts.Scan(S)
     END
