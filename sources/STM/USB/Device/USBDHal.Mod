@@ -208,6 +208,17 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   END Transmit;
 
   (**
+  * @brief  Prepares an endpoint for reception.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @param  pbuf: Pointer to data to be received
+  * @retval USBD Status
+  *)
+  PROCEDURE PrepareReceive(dev: DDef.Handle; ep_addr: BYTE; buf: Def.BufferDesc);
+  BEGIN PCD.EP_Receive(dev(PCD.Handle), ep_addr, buf)
+  END PrepareReceive;
+
+  (**
   * @brief  Initializes the Low Level portion of the Device driver.
   * @param  core: Core handle
   * @retval Device handle
@@ -241,7 +252,7 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
     dev.ClrClassConfig := NIL;
     dev.CoreFindIF := NIL;
     dev.CoreFindEP := NIL;
-    dev.PrepareReceive := NIL;
+    dev.PrepareReceive := PrepareReceive;
     dev.OpenEP := OpenEP;
     dev.GetRxDataSize := NIL;
 
@@ -258,9 +269,8 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   END ReportError;
 
   PROCEDURE IRQLog(msg: PCD.DebugMsg);
-  BEGIN Log.Debug("["); Log.DebugInt(msg.ts, 10); Log.DebugString("] ");
+  BEGIN Log.Debug("["); Log.DebugInt(msg.time, 12); Log.DebugInt(msg.ts, 12); Log.DebugString("] ");
     Log.DebugString("IRQ gintsts: ");  Log.DebugSet(msg.gintsts);
-    Log.DebugString(", diepmsk: ");  Log.DebugSet(msg.diepmsk);
     IF msg.epnum # 255 THEN Log.DebugString(", ep "); Log.DebugInt(msg.epnum, 3);
       IF msg.is_in THEN Log.DebugString(", diepint: ") ELSE Log.DebugString(", doepint: ") END;
       Log.DebugSet(msg.dxepint)
@@ -279,19 +289,16 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
         msg := PCD.TakeMsg(dev);
         WHILE msg # NIL DO (*Process the message*)
           CASE msg OF
-            PCD.DataOutStageMsg: ASSERT(FALSE)
-          | PCD.DataInStageMsg: ASSERT(FALSE)
-          | PCD.SetupStageMsg: SetupStageCallback(dev); Log.Debug("SetupStage"); Log.DebugLn
+            PCD.DataOutStageMsg: Log.Debug("DataOutStage"); Log.DebugLn; DataOutStageCallback(dev, msg.epnum)
+          | PCD.DataInStageMsg: Log.Debug("DataInStage"); Log.DebugLn; DataInStageCallback(dev, msg.epnum)
+          | PCD.SetupStageMsg: Log.Debug("SetupStage"); Log.DebugLn; Log.Flush; SetupStageCallback(dev)
           | PCD.ISOOUTIncompleteMsg: ASSERT(FALSE)
           | PCD.ISOINIncompleteMsg: ASSERT(FALSE)
           | PCD.LPMMsg: ASSERT(FALSE)
           | PCD.ResumeMsg: ASSERT(FALSE)
-          | PCD.SuspendMsg: SuspendCallback(dev); Log.Debug("Suspend"); Log.DebugLn
-          | PCD.ResetMsg: ResetCallback(dev); Log.Debug("Reset");
-             Log.DebugString(", GUSBCFG: "); Log.DebugSet(dev.Instance.GUSBCFG);
-             Log.DebugString(", DIEPMSK: "); Log.DebugSet(dev.Instance.DIEPMSK);
-             Log.DebugLn
-          | PCD.ConnectMsg: ConnectCallback(dev); Log.Debug("Connect"); Log.DebugLn
+          | PCD.SuspendMsg: Log.Debug("Suspend"); Log.DebugLn; SuspendCallback(dev)
+          | PCD.ResetMsg: Log.Debug("Reset"); Log.DebugLn; ResetCallback(dev)
+          | PCD.ConnectMsg: Log.Debug("Connect"); Log.DebugLn; ConnectCallback(dev)
           | PCD.DisconnectMsg: ASSERT(FALSE)
           | PCD.DebugMsg: IRQLog(msg)
           | Q.Msg: ASSERT(FALSE) (*unknown message*)

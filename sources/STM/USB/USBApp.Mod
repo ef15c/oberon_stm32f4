@@ -69,26 +69,141 @@ DEBUG: Core  D053B888 registered
 DEBUG: Initialize Peripheral controller
 DEBUG: Id 0 updated to  D051AC08
 DEBUG: Connect
-DEBUG: [1678860351] IRQ gintsts: {30}, diepmsk: {}
+DEBUG: [        8192  1378672996] IRQ gintsts: {30}
 DEBUG: Suspend
-DEBUG: [1680229527] IRQ gintsts: {11}, diepmsk: {}
-DEBUG: [1703961921] IRQ gintsts: {12}, diepmsk: {0..1, 3}
-DEBUG: Reset, GUSBCFG: {6, 11..12}, DIEPMSK: {0..1, 3}
-DEBUG: [1705810099] IRQ gintsts: {13}, diepmsk: {}
-
-  pos 8508  TRAP   7 in USBDHal at 000004FE
-DEBUG: [1716194785] IRQ gintsts: {4}, diepmsk: {}
-DEBUG: [1716205756] IRQ gintsts: {4}, diepmsk: {}
+DEBUG: [        8200  1380049790] IRQ gintsts: {11}
+DEBUG: [        8506  1431562867] IRQ gintsts: {12}
+DEBUG: Reset
+DEBUG: [        8517  1433409892] IRQ gintsts: {13}
+DEBUG: [        8579  1443792747] IRQ gintsts: {4}
+DEBUG: [        8579  1443801518] IRQ gintsts: {4}
 DEBUG: SetupStage
-DEBUG: [1716213720] IRQ gintsts: {19}, diepmsk: {}, ep   0, doepint: {3}
-DEBUG: [1717253019] IRQ gintsts: {18}, diepmsk: {}, ep   0, diepint: {7}
+DEBUG: GetDescriptor: descriptor type 1, length 64
+DEBUG: [        8579  1443814272] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8588  1445347345] IRQ gintsts: {18}, ep   0, diepint: {7}
+DEBUG: DataInStage
+DEBUG: [        8589  1445359544] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8595  1446390353] IRQ gintsts: {4}
+DEBUG: [        8595  1446398942] IRQ gintsts: {4}
+DEBUG: DataOutStage
+DEBUG: [        8595  1446412164] IRQ gintsts: {19}, ep   0, doepint: {0}
+DEBUG: [        8595  1446431212] IRQ gintsts: {12}
+DEBUG: Reset
+DEBUG: [        8606  1448278576] IRQ gintsts: {13}
+DEBUG: [        8667  1458574987] IRQ gintsts: {4}
+DEBUG: [        8667  1458583278] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: SetAddress
+DEBUG: [        8667  1458596440] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: DataInStage
+DEBUG: [        8672  1459439542] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8685  1461594119] IRQ gintsts: {4}
+DEBUG: [        8685  1461602920] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 1, length 18
+DEBUG: [        8685  1461615634] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8688  1462015327] IRQ gintsts: {18}, ep   0, diepint: {7}
+DEBUG: DataInStage
+DEBUG: [        8688  1462027120] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8693  1462996367] IRQ gintsts: {4}
+DEBUG: [        8694  1463005412] IRQ gintsts: {4}
+DEBUG: DataOutStage
+DEBUG: [        8694  1463018908] IRQ gintsts: {19}, ep   0, doepint: {0}
+DEBUG: [        8694  1463029060] IRQ gintsts: {4}
+DEBUG: [        8694  1463038160] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 6, length 10
+DEBUG: [        8694  1463052476] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8699  1463939273] IRQ gintsts: {4}
+DEBUG: [        8699  1463947372] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 6, length 10
+DEBUG: [        8699  1463960554] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8702  1464483151] IRQ gintsts: {4}
+DEBUG: [        8702  1464491792] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 6, length 10
+DEBUG: [        8702  1464504624] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8705  1465008251] IRQ gintsts: {4}
+DEBUG: [        8706  1465017310] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 2, length 9
+DEBUG: [        8706  1465029882] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8712  1466098083] IRQ gintsts: {18}, ep   0, diepint: {7}
+DEBUG: DataInStage
+DEBUG: [        8712  1466105390] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8714  1466416525] IRQ gintsts: {4}
+DEBUG: [        8714  1466425032] IRQ gintsts: {4}
+DEBUG: DataOutStage
+DEBUG: [        8714  1466438992] IRQ gintsts: {19}, ep   0, doepint: {0}
+DEBUG: [        8714  1466448800] IRQ gintsts: {4}
+DEBUG: [        8714  1466458176] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 2, length 39
+DEBUG: [        8714  1466472576] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8720  1467412415] IRQ gintsts: {18}, ep   0, diepint: {7}
+DEBUG: DataInStage
+DEBUG: [        8720  1467424096] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8722  1467778765] IRQ gintsts: {4}
+DEBUG: [        8722  1467787248] IRQ gintsts: {4}
+DEBUG: DataOutStage
+DEBUG: [        8722  1467801212] IRQ gintsts: {19}, ep   0, doepint: {0}
+DEBUG: [        8722  1467811256] IRQ gintsts: {4}
+DEBUG: [        8722  1467820498] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 3, length 255
+DEBUG: string descriptor idx: 768
+DEBUG: [        8722  1467834744] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8731  1469343003] IRQ gintsts: {18}, ep   0, diepint: {7}
+DEBUG: DataInStage
+DEBUG: [        8731  1469355120] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8733  1469709415] IRQ gintsts: {4}
+DEBUG: [        8733  1469718118] IRQ gintsts: {4}
+DEBUG: DataOutStage
+DEBUG: [        8734  1469731810] IRQ gintsts: {19}, ep   0, doepint: {0}
+DEBUG: [        8734  1469746404] IRQ gintsts: {4}
+DEBUG: [        8734  1469755334] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 3, length 255
+DEBUG: string descriptor idx: 770
+DEBUG: [        8734  1469769636] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8744  1471447093] IRQ gintsts: {18}, ep   0, diepint: {7}
+DEBUG: DataInStage
+DEBUG: [        8744  1471461506] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8746  1471816421] IRQ gintsts: {4}
+DEBUG: [        8746  1471825336] IRQ gintsts: {4}
+DEBUG: DataOutStage
+DEBUG: [        8746  1471838966] IRQ gintsts: {19}, ep   0, doepint: {0}
+DEBUG: [        8746  1471849024] IRQ gintsts: {4}
+DEBUG: [        8746  1471858486] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 3, length 255
+DEBUG: string descriptor idx: 769
+DEBUG: [        8746  1471872826] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8752  1472798463] IRQ gintsts: {18}, ep   0, diepint: {7}
+DEBUG: DataInStage
+DEBUG: [        8752  1472810188] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8754  1473165375] IRQ gintsts: {4}
+DEBUG: [        8754  1473173406] IRQ gintsts: {4}
+DEBUG: DataOutStage
+DEBUG: [        8754  1473187484] IRQ gintsts: {19}, ep   0, doepint: {0}
+DEBUG: [        8754  1473204708] IRQ gintsts: {4}
+DEBUG: [        8754  1473213674] IRQ gintsts: {4}
+DEBUG: SetupStage
+DEBUG: GetDescriptor: descriptor type 3, length 255
+DEBUG: string descriptor idx: 771
+DEBUG: [        8754  1473227916] IRQ gintsts: {19}, ep   0, doepint: {3}
+DEBUG: [        8764  1474812137] IRQ gintsts: {18}, ep   0, diepint: {7}
+DEBUG: DataInStage
+DEBUG: [        8764  1474824832] IRQ gintsts: {18}, ep   0, diepint: {0}
+DEBUG: [        8766  1475107563] IRQ gintsts: {4}
+DEBUG: [        8766  1475115608] IRQ gintsts: {4}
+DEBUG: DataOutStage
+DEBUG: [        8766  1475129682] IRQ gintsts: {19}, ep   0, doepint: {0}
+DEBUG: [        8766  1475199557] IRQ gintsts: {4}
+DEBUG: [        8766  1475208398] IRQ gintsts: {4}
+DEBUG: SetupStage
+  TRAP   5 in USBDCtlReq at 00000683
+DEBUG: SetConfig
 DEBUG: Core  D051AC08 unregistered
 DEBUG: USB system stopped.
-
-Stack trace utility CS 16.05.24
-  pos  8482 in USBDHal at  D021143E
-  pos   512 in USBD at  D0211734
-  pos   788 in USBD at  D0211794
-  pos 12742 in Oberon at  08011DA0
-  pos 15761 in Oberon at  0801223A
-  unknown PC:  08034C6E

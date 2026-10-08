@@ -97,7 +97,7 @@ MODULE HALPCD;
     (*!< USB debug message *)
     DebugMsg* = POINTER TO DebugMsgDesc;
     DebugMsgDesc* = RECORD(Q.MsgDesc)
-      is_in*: BOOLEAN; ts*: INTEGER; epnum*: BYTE; gintsts*, dxepint*, diepmsk*: SET
+      is_in*: BOOLEAN; epnum*: BYTE; gintsts*, dxepint*: SET
     END;
 
     PROCEDURE newDataOutStageMsg(): Q.Msg;
@@ -330,8 +330,7 @@ MODULE HALPCD;
       Handle:
         flags := ll.ReadInterrupts(USBx);
         IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(hpcd.DebugMP);
-          IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^); dbm.epnum := 0FFH;
-            dbm.ts := BSP.TimeStamp(); dbm.gintsts := flags
+          IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^); dbm.epnum := 0FFH; dbm.gintsts := flags
           END
         END;
         IF ~ll.IsHost(USBx) & (flags # {}) THEN (* ensure that we are in device mode and avoid spurious interrupt *)
@@ -459,8 +458,7 @@ MODULE HALPCD;
                 USBx.DOEPMSK := USBx.DOEPMSK +
                   {ll.DOEPMSK_STUPM, ll.DOEPMSK_XFRCM, ll.DOEPMSK_EPDM + ll.DOEPMSK_OTEPSPRM + ll.DOEPMSK_NAKM};
                 USBx.DIEPMSK := USBx.DIEPMSK +
-                  {ll.DIEPMSK_TOM, ll.DIEPMSK_XFRCM, ll.DIEPMSK_EPDM};
-                IF dbm # NIL THEN dbm.diepmsk := USBx.DIEPMSK END;
+                  {ll.DIEPMSK_TOM, ll.DIEPMSK_XFRCM, ll.DIEPMSK_EPDM}
               END;
               (* Set Default Address to 0 *)
               USBx.DCFG := USBx.DCFG - ll.DCFG_DAD_Msk;
@@ -640,16 +638,39 @@ MODULE HALPCD;
   * @retval HAL status
   *)
   PROCEDURE EP_Close*(hpcd: Handle; ep_addr: BYTE);
+
     PROCEDURE CloseEP(hpcd: Handle; VAR ep: ll.EPDesc; isIn: BOOLEAN; ep_addr: BYTE);
     BEGIN ep.is_in := isIn;
       ep.num := ep_addr MOD 10H;
       ll.DeactivateEndpoint(hpcd.Instance, ep);
     END CloseEP;
+
   BEGIN
     IF 7 IN TOSET(ep_addr) THEN CloseEP(hpcd, hpcd.IN_ep[ep_addr MOD 10H], TRUE, ep_addr)
     ELSE CloseEP(hpcd, hpcd.OUT_ep[ep_addr MOD 10H], FALSE, ep_addr)
     END
   END EP_Close;
+
+  (**
+  * @brief  Receive an amount of data.
+  * @param  hpcd PCD handle
+  * @param  ep_addr endpoint address
+  * @param  pBuf pointer to the reception buffer
+  * @retval HAL status
+  *)
+  PROCEDURE EP_Receive*(hpcd: Handle; ep_addr: BYTE; buf: Def.BufferDesc);
+
+    PROCEDURE ReceiveEP(hpcd: Handle; VAR ep: ll.EPDesc; buf: Def.BufferDesc; ep_addr: BYTE);
+    BEGIN (*setup and start the Xfer *)
+      ep.xfer_buff := SYSTEM.ADR(buf) + SYSTEM.SIZE(Def.BufferDesc) + buf.offset;
+      ep.xfer_len := buf.length; ep.xfer_count := 0; ep.is_in := FALSE;
+      ep.num := ep_addr MOD 10H;
+      IF hpcd.Init.dma_enable THEN ep.dma_addr := ep.xfer_buff END;
+      ll.EPStartXfer(hpcd.Instance, ep, hpcd.Init.dma_enable);
+    END ReceiveEP;
+
+  BEGIN ReceiveEP(hpcd, hpcd.OUT_ep[ep_addr MOD 10H], buf, ep_addr)
+  END EP_Receive;
 
   (**
   * @brief  Send an amount of data
@@ -659,15 +680,17 @@ MODULE HALPCD;
   * @param  len amount of data to be sent
   * @retval HAL status
   *)
-  PROCEDURE EP_Transmit*(hpcd: Handle; ep_addr: BYTE; buff: Def.BufferDesc; len: HALFWORD);
-    PROCEDURE TransmitEP(hpcd: Handle; VAR ep: ll.EPDesc; ep_addr: BYTE; buff: Def.BufferDesc; len: HALFWORD);
+  PROCEDURE EP_Transmit*(hpcd: Handle; ep_addr: BYTE; buf: Def.BufferDesc; len: HALFWORD);
+
+    PROCEDURE TransmitEP(hpcd: Handle; VAR ep: ll.EPDesc; ep_addr: BYTE; buf: Def.BufferDesc; len: HALFWORD);
     BEGIN (*setup and start the Xfer *)
-      ep.xfer_buff := SYSTEM.ADR(buff) + SYSTEM.SIZE(Def.BufferDesc) + buff.offset; ep.xfer_len := len;
+      ep.xfer_buff := SYSTEM.ADR(buf) + SYSTEM.SIZE(Def.BufferDesc) + buf.offset; ep.xfer_len := len;
       ep.xfer_count := 0; ep.is_in := TRUE; ep.num := ep_addr MOD 10H;
       IF hpcd.Init.dma_enable THEN ep.dma_addr := ep.xfer_buff END;
       ll.EPStartXfer(hpcd.Instance, ep, hpcd.Init.dma_enable);
     END TransmitEP;
-  BEGIN TransmitEP(hpcd, hpcd.IN_ep[ep_addr MOD 10H], ep_addr, buff, len)
+
+  BEGIN TransmitEP(hpcd, hpcd.IN_ep[ep_addr MOD 10H], ep_addr, buf, len)
   END EP_Transmit;
 
   (**
@@ -758,8 +781,20 @@ MODULE HALPCD;
   PROCEDURE TakeMsg*(hpcd: Handle): Q.Msg;
     VAR msg!: Q.Msg;
   BEGIN msg := NIL;
-    IF Q.IsExhausted() THEN Log.Error("Interrupt queue too small"); Log.ErrorLn;
-      Log.Flush; ASSERT(FALSE)
+    IF Q.HaveExhaustedPools() THEN Log.Error("Interrupt queue(s) too small:");
+      IF Q.IsExhausted(hpcd.DataOutStageMP) THEN Log.ErrorString(" DataOutStage") END;
+      IF Q.IsExhausted(hpcd.DataInStageMP) THEN Log.ErrorString(" DataInStage") END;
+      IF Q.IsExhausted(hpcd.SetupStageMP) THEN Log.ErrorString(" SetupStage") END;
+      IF Q.IsExhausted(hpcd.ISOOUTIncompleteMP) THEN Log.ErrorString(" ISOOUTIncomplete") END;
+      IF Q.IsExhausted(hpcd.ISOINIncompleteMP) THEN Log.ErrorString(" ISOINIncomplete") END;
+      IF Q.IsExhausted(hpcd.LPMMP) THEN Log.ErrorString(" LPM") END;
+      IF Q.IsExhausted(hpcd.ResumeMP) THEN Log.ErrorString(" Resume") END;
+      IF Q.IsExhausted(hpcd.SuspendMP) THEN Log.ErrorString(" Suspend") END;
+      IF Q.IsExhausted(hpcd.ResetMP) THEN Log.ErrorString(" Reset") END;
+      IF Q.IsExhausted(hpcd.ConnectMP) THEN Log.ErrorString(" Connect") END;
+      IF Q.IsExhausted(hpcd.DisconnectMP) THEN Log.ErrorString(" Disconnect") END;
+      IF Q.IsExhausted(hpcd.DebugMP) THEN Log.ErrorString(" Debug") END;
+      Log.ErrorLn; Log.Flush(*; ASSERT(FALSE)*)
     END;
     IF hpcd.MsgPendQ # NIL THEN
       ll.DisableGlobalInt(hpcd.Instance); msg := Q.Get(hpcd.MsgPendQ); ll.EnableGlobalInt(hpcd.Instance)
@@ -772,7 +807,7 @@ MODULE HALPCD;
   BEGIN ll.DisableGlobalInt(hpcd.Instance);
     CASE msg OF (*return item to pool*)
       DataOutStageMsg: Q.PostFirst(hpcd.DataOutStageMP, msg)
-    | DataInStageMsg: Q.PostFirst(hpcd.DataOutStageMP, msg)
+    | DataInStageMsg: Q.PostFirst(hpcd.DataInStageMP, msg)
     | SetupStageMsg: Q.PostFirst(hpcd.SetupStageMP, msg)
     | ISOOUTIncompleteMsg: Q.PostFirst(hpcd.ISOOUTIncompleteMP, msg)
     | ISOINIncompleteMsg: Q.PostFirst(hpcd.ISOINIncompleteMP, msg)

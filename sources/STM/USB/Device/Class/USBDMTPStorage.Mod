@@ -99,7 +99,7 @@ MODULE USBDMTPStorage;
     (* Initialize the HW layyer of the file system *)
     dev.UserData[dev.classId](Opt.UserIf).Init;
     (* Prepare EP to Receive First Operation *)
-    hmtp.rx_buff.length := hmtp.rx_buff.size; dev.PrepareReceive(dev, OutEpAdd, hmtp.rx_buff)
+    hmtp.rx_buff.length := hmtp.rx_buff.size; dev.PrepareReceive(dev, OutEpAdd, hmtp.rx_buff^)
   END Init;
 
   (**

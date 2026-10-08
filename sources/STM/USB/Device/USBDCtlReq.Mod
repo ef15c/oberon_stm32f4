@@ -16,7 +16,7 @@ MODULE USBDCtlReq;
   *
   ******************************************************************************
   *)
-  IMPORT Conf := USBConf, DConf := USBDConf, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq;
+  IMPORT Log := USBLog, Conf := USBConf, DConf := USBDConf, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq;
 
   TYPE
     ResByte = POINTER TO ResByteDesc;
@@ -85,6 +85,8 @@ MODULE USBDCtlReq;
       buf!: Def.Buffer; err: BYTE;
       idx: INTEGER;
   BEGIN buf := NIL; err := 0; value := LSR(req.wValue, 8);
+    Log.Debug("GetDescriptor: descriptor type "); Log.DebugInt(value, 1);
+    Log.DebugString(", length "); Log.DebugInt(req.wLength, 1); Log.DebugLn;
     IF value = 
 (*
 #if ((USBD_LPM_ENABLED == 1U) || (USBD_CLASS_BOS_ENABLED == 1U))
@@ -128,28 +130,29 @@ MODULE USBDCtlReq;
         buf := dev.Class[0].GetFSConfigDescriptor()
 (*        pbuf[1] = USB_DESC_TYPE_CONFIGURATION;*)
       END
-    ELSIF value = Def.DESC_TYPE_STRING THEN
-      IF req.wValue = DDef.IDX_LANGID_STR THEN
+    ELSIF value = Def.DESC_TYPE_STRING THEN idx := req.wValue MOD 100H;
+      Log.Debug("string descriptor idx: "); Log.DebugInt(req.wValue, 1); Log.DebugLn; Log.Flush;
+      IF idx = DDef.IDX_LANGID_STR THEN
         IF dev.Desc.GetLangIDStrDescriptor # NIL THEN buf := dev.Desc.GetLangIDStrDescriptor(dev.speed)
         ELSE CtlError(dev, req); INC(err)
         END
-      ELSIF req.wValue = DDef.IDX_MFC_STR THEN
+      ELSIF idx = DDef.IDX_MFC_STR THEN
         IF dev.Desc.GetManufacturerStrDescriptor # NIL THEN buf := dev.Desc.GetManufacturerStrDescriptor(dev.speed)
         ELSE CtlError(dev, req); INC(err)
         END
-      ELSIF req.wValue = DDef.IDX_PRODUCT_STR THEN
+      ELSIF idx = DDef.IDX_PRODUCT_STR THEN
         IF dev.Desc.GetProductStrDescriptor # NIL THEN buf := dev.Desc.GetProductStrDescriptor(dev.speed)
         ELSE CtlError(dev, req); INC(err)
         END
-      ELSIF req.wValue = DDef.IDX_SERIAL_STR THEN
+      ELSIF idx = DDef.IDX_SERIAL_STR THEN
         IF dev.Desc.GetSerialStrDescriptor # NIL THEN buf := dev.Desc.GetSerialStrDescriptor(dev.speed)
         ELSE CtlError(dev, req); INC(err)
         END
-      ELSIF req.wValue = DDef.IDX_CONFIG_STR THEN
+      ELSIF idx = DDef.IDX_CONFIG_STR THEN
         IF dev.Desc.GetConfigurationStrDescriptor # NIL THEN buf := dev.Desc.GetConfigurationStrDescriptor(dev.speed)
         ELSE CtlError(dev, req); INC(err)
         END
-      ELSIF req.wValue = DDef.IDX_INTERFACE_STR THEN
+      ELSIF idx = DDef.IDX_INTERFACE_STR THEN
         IF dev.Desc.GetInterfaceStrDescriptor # NIL THEN buf := dev.Desc.GetInterfaceStrDescriptor(dev.speed)
         ELSE CtlError(dev, req); INC(err)
         END
@@ -160,7 +163,8 @@ MODULE USBDCtlReq;
             buf := dev.Class[idx].GetUsrStrDescriptor(dev, req.wValue MOD 100H);
           END;
           INC(idx)
-        END
+        END;
+        IF buf = NIL THEN CtlError(dev, req); INC(err) END
 (*
 #if (USBD_CLASS_USER_STRING_DESC == 1U)
           if (pdev->pDesc->GetUserStrDescriptor != NULL)
@@ -231,6 +235,7 @@ MODULE USBDCtlReq;
   *)
   PROCEDURE SetAddress(dev: DDef.Handle; req: Def.Setup);
   BEGIN
+    Log.Debug("SetAddress"); Log.DebugLn;
     IF (req.wIndex = 0) & (req.wLength = 0) & (req.wValue < 128) THEN
       IF dev.state = DDef.STATE_CONFIGURED THEN CtlError(dev, req)
       ELSE dev.address := req.wValue; dev.SetUSBAddress(dev, req.wValue); IoReq.CtlSendStatus(dev);
@@ -252,6 +257,7 @@ MODULE USBDCtlReq;
   PROCEDURE SetConfig(dev: DDef.Handle; req: Def.Setup);
     VAR ret: BYTE; cfgidx: BYTE;
   BEGIN cfgidx := req.wValue;
+    Log.Debug("SetConfig"); Log.DebugLn;
     IF cfgidx > DConf.MAX_NUM_CONFIGURATION THEN CtlError(dev, req)
     ELSIF dev.state = DDef.STATE_ADDRESSED THEN
       IF cfgidx # 0 THEN dev.config := cfgidx;
@@ -288,6 +294,7 @@ MODULE USBDCtlReq;
   *)
   PROCEDURE GetConfig(dev: DDef.Handle; req: Def.Setup);
   BEGIN
+    Log.Debug("GetConfig"); Log.DebugLn;
     IF req.wLength # 1 THEN CtlError(dev, req)
     ELSIF dev.state IN {DDef.STATE_DEFAULT, DDef.STATE_ADDRESSED} THEN
       dev.default_config := 0;
@@ -307,6 +314,7 @@ MODULE USBDCtlReq;
   *)
   PROCEDURE GetStatus(dev: DDef.Handle; req: Def.Setup);
   BEGIN
+    Log.Debug("GetStatus"); Log.DebugLn;
     IF dev.state IN {DDef.STATE_DEFAULT, DDef.STATE_ADDRESSED, DDef.STATE_CONFIGURED} THEN
       IF req.wLength # 2 THEN CtlError(dev, req)
       ELSE
@@ -327,6 +335,7 @@ MODULE USBDCtlReq;
   *)
   PROCEDURE SetFeature(dev: DDef.Handle; req: Def.Setup);
   BEGIN
+    Log.Debug("SetFeature"); Log.DebugLn;
     IF req.wValue = Def.FEATURE_REMOTE_WAKEUP THEN
       dev.remote_wakeup := TRUE; IoReq.CtlSendStatus(dev)
     ELSIF req.wValue = Def.FEATURE_TEST_MODE THEN
@@ -344,6 +353,7 @@ MODULE USBDCtlReq;
   *)
   PROCEDURE ClrFeature(dev: DDef.Handle; req: Def.Setup);
   BEGIN
+    Log.Debug("ClrFeature"); Log.DebugLn;
     IF dev.state IN {DDef.STATE_DEFAULT, DDef.STATE_ADDRESSED, DDef.STATE_CONFIGURED} THEN
       IF req.wValue = Def.FEATURE_REMOTE_WAKEUP THEN
         dev.remote_wakeup := FALSE; IoReq.CtlSendStatus(dev)

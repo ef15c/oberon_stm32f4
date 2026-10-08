@@ -170,7 +170,7 @@ MODULE USBDMTP;
         ELSIF req.bRequest = REQ_RESET THEN
           (* Stop low layer file system operations if any *)
           MTPS.Cancel(dev, MTPS.PHASE_IDLE);
-          hmtp.rx_buff.length := hmtp.rx_buff.size; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff)
+          hmtp.rx_buff.length := hmtp.rx_buff.size; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
         ELSIF req.bRequest = REQ_GET_DEVICE_STATUS THEN hmtp.dev_status.length := 0;
           IF hmtp.ResponsePhase = MTPS.READ_DATA THEN
             hmtp.dev_status.length := 4; hmtp.dev_status.val := LSL(RESPONSE_DEVICE_BUSY, 16) + 4
@@ -223,17 +223,17 @@ MODULE USBDMTP;
         MTPS.SendContainer(dev, MTPS.REP_TYPE);
         (* prepare to receive next operation *)
         hmtp.rx_buff.length := Def.MIN(hmtp.rx_buff.size, dev.request.wLength);
-        dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff);
+        dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^);
         hmtp.ResponsePhase := MTPS.PHASE_IDLE
       ELSIF hmtp.ResponsePhase = MTPS.READ_DATA THEN
         MTPS.ReadData(dev);
         (* prepare to receive next operation *)
         hmtp.rx_buff.length := Def.MIN(hmtp.rx_buff.size, dev.request.wLength);
-        dev.PrepareReceive(dev, MTPS.InEpAdd, hmtp.rx_buff)
+        dev.PrepareReceive(dev, MTPS.InEpAdd, hmtp.rx_buff^)
       ELSIF hmtp.ResponsePhase = MTPS.PHASE_IDLE THEN
         (* prepare to receive next operation *)
         hmtp.rx_buff.length := Def.MIN(hmtp.rx_buff.size, dev.request.wLength);
-        dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff)
+        dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
       END
     END
   END DataIn;
@@ -263,10 +263,10 @@ MODULE USBDMTP;
     ELSIF hmtp.ResponsePhase = MTPS.READ_DATA THEN MTPS.ReadData(dev)
     ELSIF hmtp.ResponsePhase = MTPS.RECEIVE_DATA THEN MTPS.ReceiveData(dev);
       (* prepare endpoint to receive operations *)
-      hmtp.rx_buff.length := dev.request.wLength; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff)
+      hmtp.rx_buff.length := dev.request.wLength; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
     ELSIF hmtp.ResponsePhase = MTPS.PHASE_IDLE THEN
       (* prepare to receive next operation *)
-      hmtp.rx_buff.length := dev.request.wLength; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff)
+      hmtp.rx_buff.length := dev.request.wLength; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
     END
   END DataOut;
 

@@ -2,17 +2,17 @@ MODULE Queue;
   (* Christan Schoffit 06.06.26
       This module implements a message queue that is used in the USB stack
       to defer the heavy work outside the IRQ context*)
-  IMPORT Kernel;
+  IMPORT BSP, Kernel;
 
   TYPE
     Msg* = POINTER TO MsgDesc;
-    MsgDesc* = RECORD time*: INTEGER; next: Msg END;
+    MsgDesc* = RECORD time*, ts*: INTEGER; guard: BOOLEAN; next: Msg END;
 
   VAR exhausted: BOOLEAN;
 
   PROCEDURE CreatePool*(size: INTEGER; new: PROCEDURE(): Msg): Msg;
     VAR i: INTEGER; head!, item!: Msg;
-  BEGIN head := NIL;
+  BEGIN head := new(); head.guard := TRUE;
     FOR i := 1 TO size DO item := new(); item.next := head; head := item END
 
     RETURN head
@@ -20,9 +20,12 @@ MODULE Queue;
 
   PROCEDURE Get*(VAR queue: Msg): Msg;
     VAR item!: Msg;
-  BEGIN item := queue;
-    IF item # NIL THEN queue := item.next; item.next := NIL
-    ELSE exhausted := TRUE END
+  BEGIN item := NIL;
+    IF queue # NIL THEN
+      IF queue.guard THEN exhausted := TRUE
+      ELSE item := queue; queue := item.next; item.next := NIL
+      END
+    END
 
     RETURN item
   END Get;
@@ -35,7 +38,7 @@ MODULE Queue;
     VAR t!: Msg;
   BEGIN
     IF item # NIL THEN
-      item.time := Kernel.Time(); item.next := NIL;
+      item.time := Kernel.Time(); item.ts := BSP.TimeStamp(); item.next := NIL;
       IF queue = NIL THEN queue := item
       ELSE t := queue; WHILE t.next # NIL DO t := t.next END;
         t.next := item
@@ -43,11 +46,15 @@ MODULE Queue;
     END
   END Post;
 
-  PROCEDURE IsExhausted*(): BOOLEAN;
+  PROCEDURE HaveExhaustedPools*(): BOOLEAN;
     VAR res: BOOLEAN;
   BEGIN res := exhausted; exhausted := FALSE
 
     RETURN res
+  END HaveExhaustedPools;
+
+  PROCEDURE IsExhausted*(queue: Msg): BOOLEAN;
+    RETURN queue.guard
   END IsExhausted;
 
 END Queue.

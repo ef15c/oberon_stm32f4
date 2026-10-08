@@ -16,7 +16,7 @@ MODULE USBDIoReq;
   *
   ******************************************************************************
   *)
-  IMPORT Def := USBDef, DDef := USBDDef, Log := USBLog;
+  IMPORT Def := USBDef, DDef := USBDDef;
 
   (**
   * @brief  USBD_CtlSendData
@@ -37,7 +37,7 @@ MODULE USBDIoReq;
 (*
 #endif /* USBD_AVOID_PACKET_SPLIT_MPS */
 *)
-    dev.Transmit(dev, 0, buf^, len); (* Start the transfer *)
+    dev.Transmit(dev, 0, buf^, len) (* Start the transfer *)
   END CtlSendData;
 
 (*
@@ -72,7 +72,7 @@ MODULE USBDIoReq;
 (*
 #endif /* USBD_AVOID_PACKET_SPLIT_MPS */
 *)
-    dev.PrepareReceive(dev, 0, buf); (* Start the transfer *)
+    dev.PrepareReceive(dev, 0, buf^); (* Start the transfer *)
   END CtlPrepareRx;
 
 (*
@@ -108,8 +108,9 @@ MODULE USBDIoReq;
   * @retval status
   *)
   PROCEDURE CtlReceiveStatus*(dev: DDef.Handle);
-  BEGIN dev.ep0_state := DDef.EP0_STATUS_OUT; (* Set EP0 State *)
-    dev.PrepareReceive(dev, 0, NIL) (* Start the transfer *)
+    VAR dummy: Def.BufferDesc;
+  BEGIN CLEAR(dummy); dev.ep0_state := DDef.EP0_STATUS_OUT; (* Set EP0 State *)
+    dev.PrepareReceive(dev, 0, dummy) (* Start the transfer *)
   END CtlReceiveStatus;
 
   (**

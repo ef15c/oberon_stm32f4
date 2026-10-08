@@ -1366,7 +1366,7 @@ MODULE LLUSB;
   PROCEDURE EPStartXfer*(USBx: OTGCore; VAR ep: EPDesc; dma: BOOLEAN);
     VAR pktcnt: HALFWORD;
   BEGIN
-    IF ep.is_in THEN (* IN endpoint *)
+    IF ep.is_in THEN (* IN endpoint *) ASSERT(~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL));
       IF ep.xfer_len = 0 THEN (* Zero Length Packet? *)
         USBx.INEP[ep.num].DIEPTSIZ := USBx.INEP[ep.num].DIEPTSIZ - (DIEPTSIZ_PKTCNT_Msk + DIEPTSIZ_XFRSIZ_Msk) +
           TOSET(LSL(1, DIEPTSIZ_PKTCNT_Pos))
@@ -1453,7 +1453,7 @@ MODULE LLUSB;
     IF ep.is_in THEN (* IN endpoint *)
       IF DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL THEN (* EP enabled, IN data in FIFO *)
         USBx.INEP[ep.num].DIEPCTL := USBx.INEP[ep.num].DIEPCTL + {DIEPCTL_SNAK, DIEPCTL_EPDIS};
-        REPEAT INC(count) UNTIL  (count > 10000) OR ~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL)
+        REPEAT INC(count) UNTIL (count > 10000) OR ~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL)
       END
     ELSE (* OUT endpoint *)
       IF DOEPCTL_EPENA IN USBx.OUTEP[ep.num].DOEPCTL THEN

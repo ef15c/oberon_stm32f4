@@ -796,8 +796,14 @@ MODULE HALHCD;
   PROCEDURE TakeMsg*(hcdh: Handle): Q.Msg;
     VAR msg!: Q.Msg;
   BEGIN msg := NIL;
-    IF Q.IsExhausted() THEN Log.Error("Interrupt queue too small"); Log.ErrorLn;
-      Log.Flush; ASSERT(FALSE)
+    IF Q.HaveExhaustedPools() THEN Log.Error("Interrupt queue(s) too small:");
+      IF Q.IsExhausted(hcdh.ConnectMP) THEN Log.ErrorString(" Connect") END;
+      IF Q.IsExhausted(hcdh.DisconnectMP) THEN Log.ErrorString(" Disconnect") END;
+      IF Q.IsExhausted(hcdh.PortEnabledMP) THEN Log.ErrorString(" PortEnabled") END;
+      IF Q.IsExhausted(hcdh.PortDisabledMP) THEN Log.ErrorString(" PortDisabled") END;
+      IF Q.IsExhausted(hcdh.URBChangeMP) THEN Log.ErrorString(" URBChange") END;
+      IF Q.IsExhausted(hcdh.DebugMP) THEN Log.ErrorString(" Debug") END;
+      Log.ErrorLn; Log.Flush; ASSERT(FALSE)
     END;
     IF hcdh.MsgPendQ # NIL THEN
       ll.DisableGlobalInt(hcdh.Instance); msg := Q.Get(hcdh.MsgPendQ); ll.EnableGlobalInt(hcdh.Instance)

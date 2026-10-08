@@ -123,7 +123,7 @@ MODULE USBDDef;
       ClrClassConfig*: PROCEDURE(dev: Handle; config: BYTE);
       CoreFindIF*: PROCEDURE(dev: Handle; itfidx: BYTE): BYTE;
       CoreFindEP*: PROCEDURE(dev: Handle; ep_addr: BYTE): BYTE;
-      PrepareReceive*: PROCEDURE(dev: Handle; ep_addr: BYTE; buf: Def.Buffer);
+      PrepareReceive*: PROCEDURE(dev: Handle; ep_addr: BYTE; buf: Def.BufferDesc);
       OpenEP*: PROCEDURE(dev: Handle; ep_addr, ep_type: BYTE; ep_mps: HALFWORD);
       GetRxDataSize*: PROCEDURE(dev: Handle; ep_addr: BYTE): INTEGER
     END;

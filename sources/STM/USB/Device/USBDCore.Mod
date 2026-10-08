@@ -69,42 +69,41 @@ MODULE USBDCore;
 (*
     PROCEDURE dosEP0(dev: DDef.Handle; VAR pep: DDef.Endpoint);
     BEGIN
-      IF pep.rem_length > pep.maxpacket THEN
-        DEC(pep.rem_length, pep.maxpacket); INC(pep.buffer.pktidx, pep.maxpacket);
-        pep.buffer.pktlen := Def.MAX(pep.rem_length, pep.maxpacket); IoReq.CtlContinueRx(dev, pep.buffer)
-      END
+      DEC(pep.rem_length, pep.maxpacket); INC(pep.buffer.pktidx, pep.maxpacket);
+      pep.buffer.pktlen := Def.MAX(pep.rem_length, pep.maxpacket); IoReq.CtlContinueRx(dev, pep.buffer)
     END dosEP0;
 *)
   BEGIN
     IF epnum = 0 THEN
-(*
-      IF dev.ep0_state = DDef.EP0_DATA_OUT THEN dosEP0(dev, dev.ep_out[0])
-      ELSE (* Find the class ID relative to the current request *)
+      IF dev.ep0_state = DDef.EP0_DATA_OUT THEN
+(*        IF pep.rem_length > pep.maxpacket THEN dosEP0(dev, dev.ep_out[0])
+        ELSE (* Find the class ID relative to the current request *)
 *)
-        recipient := dev.request.bmRequestType*Def.REQ_RECIPIENT_MASK;
-        IF recipient = Def.REQ_RECIPIENT_DEVICE THEN
-          (* Device requests must be managed by the first instantiated class
-             (or duplicated by all classes for simplicity) *)
-          idx := 0
-        ELSIF recipient = Def.REQ_RECIPIENT_INTERFACE THEN
-          idx := dev.CoreFindIF(dev, dev.request.wIndex MOD 100H)
-        ELSIF recipient = Def.REQ_RECIPIENT_ENDPOINT THEN
-          idx := dev.CoreFindEP(dev, dev.request.wIndex MOD 100H)
-        ELSE (* Back to the first class in case of doubt *)
-          idx := 0
-        END;
-        IF idx < DDef.MAX_SUPPORTED_CLASS THEN
-          (* Setup the class ID and route the request to the relative class function *)
-          IF dev.state = DDef.STATE_CONFIGURED THEN
-            IF dev.Class[idx].EP0_RxReady # NIL THEN
-              dev.classId := idx;  dev.Class[idx].EP0_RxReady(dev)
+          recipient := dev.request.bmRequestType*Def.REQ_RECIPIENT_MASK;
+          IF recipient = Def.REQ_RECIPIENT_DEVICE THEN
+            (* Device requests must be managed by the first instantiated class
+               (or duplicated by all classes for simplicity) *)
+            idx := 0
+          ELSIF recipient = Def.REQ_RECIPIENT_INTERFACE THEN
+            idx := dev.CoreFindIF(dev, dev.request.wIndex MOD 100H)
+          ELSIF recipient = Def.REQ_RECIPIENT_ENDPOINT THEN
+            idx := dev.CoreFindEP(dev, dev.request.wIndex MOD 100H)
+          ELSE (* Back to the first class in case of doubt *)
+            idx := 0
+          END;
+          IF idx < DDef.MAX_SUPPORTED_CLASS THEN
+            (* Setup the class ID and route the request to the relative class function *)
+            IF dev.state = DDef.STATE_CONFIGURED THEN
+              IF dev.Class[idx].EP0_RxReady # NIL THEN
+                dev.classId := idx;  dev.Class[idx].EP0_RxReady(dev)
+              END
             END
-          END
-        END;
-        IoReq.CtlSendStatus(dev)
+          END;
+          IoReq.CtlSendStatus(dev)
 (*
-      END
+        END
 *)
+      END
     ELSE (* Get the class index relative to this interface *)
       idx := dev.CoreFindEP(dev, epnum MOD 80H);
       IF (idx # 0FFH) & (idx < DDef.MAX_SUPPORTED_CLASS) THEN
