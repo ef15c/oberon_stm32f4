@@ -360,7 +360,7 @@ BEGIN initCLASS;
   Def.PutHalfword(CfgDesc, 0); (* wTotalLength: Total size of the Config descriptor computed below*)
   Def.PutByte(CfgDesc, 1); (* bNumInterfaces: 1 interface *)
   Def.PutByte(CfgDesc, 1); (* bConfigurationValue: Configuration value *)
-  Def.PutByte(CfgDesc, 0); (* iConfiguration: Index of string descriptor describing the configuration *)
+  Def.PutByte(CfgDesc, DDef.IDX_CONFIG_STR); (* iConfiguration: Index of string descriptor describing the configuration *)
   IF DConf.SELF_POWERED THEN Def.PutByteSet(CfgDesc, {6, 7}) (* bmAttributes: Self Powered according to user configuration *)
   ELSE Def.PutByteSet(CfgDesc, {7}) (* bmAttributes: Bus Powered according to user configuration *)
   END;
@@ -374,7 +374,7 @@ BEGIN initCLASS;
   Def.PutByte(CfgDesc, INTERFACE_CLASS); (* bInterfaceClass: bInterfaceClass: MTP uses Still Imaging class*)
   Def.PutByte(CfgDesc, INTERFACE_SUB_CLASS); (* bInterfaceSubClass: still image *)
   Def.PutByte(CfgDesc, INTERFACE_PROTOCOL); (* bInterfaceProtocol: PTP over USB *)
-  Def.PutByte(CfgDesc, 0); (* iInterface: no string descriptor*)
+  Def.PutByte(CfgDesc, DDef.IDX_INTERFACE_STR); (* iInterface: no string descriptor*)
   (********************  MTP   Endpoints ********************)
     (*in data*)
   Def.PutByte(CfgDesc, Def.LEN_EP_DESC); (* Endpoint descriptor length = 7 *)

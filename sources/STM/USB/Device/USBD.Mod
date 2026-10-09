@@ -13,7 +13,6 @@ MODULE USBD;
   BEGIN
     CASE dev OF DDef.Handle:
       DH.ProcessDeferredIRQWork(dev); (*handle deferred work triggered by interrupts*)
-      DH.ReportError;
       Log.Flush
     END
   END ProcessDevice;

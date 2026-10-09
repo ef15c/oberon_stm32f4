@@ -25,8 +25,7 @@ MODULE USBDCtlReq;
     ResHW = POINTER TO ResHWDesc;
     ResHWDesc = RECORD(Def.BufferDesc) value: HALFSET END;
 
-  VAR setupInError*: Def.Setup;
-    resByte: ResByte; resHW, status: ResHW;
+  VAR resByte: ResByte; resHW, status: ResHW;
 
   (**
   * @brief  USBD_CtlError
@@ -36,8 +35,7 @@ MODULE USBDCtlReq;
   * @retval None
   *)
   PROCEDURE CtlError*(dev: DDef.Handle; req: Def.Setup);
-  BEGIN setupInError := req;
-    dev.StallEP(dev, 80H); dev.StallEP(dev, 0)
+  BEGIN dev.StallEP(dev, 80H); dev.StallEP(dev, 0)
   END CtlError;
 
   (**
@@ -85,8 +83,7 @@ MODULE USBDCtlReq;
       buf!: Def.Buffer; err: BYTE;
       idx: INTEGER;
   BEGIN buf := NIL; err := 0; value := LSR(req.wValue, 8);
-    Log.Debug("GetDescriptor: descriptor type "); Log.DebugInt(value, 1);
-    Log.DebugString(", length "); Log.DebugInt(req.wLength, 1); Log.DebugLn;
+    Log.Debug("GetDescriptor"); Log.DebugLn;
     IF value = 
 (*
 #if ((USBD_LPM_ENABLED == 1U) || (USBD_CLASS_BOS_ENABLED == 1U))
@@ -131,7 +128,6 @@ MODULE USBDCtlReq;
 (*        pbuf[1] = USB_DESC_TYPE_CONFIGURATION;*)
       END
     ELSIF value = Def.DESC_TYPE_STRING THEN idx := req.wValue MOD 100H;
-      Log.Debug("string descriptor idx: "); Log.DebugInt(req.wValue, 1); Log.DebugLn; Log.Flush;
       IF idx = DDef.IDX_LANGID_STR THEN
         IF dev.Desc.GetLangIDStrDescriptor # NIL THEN buf := dev.Desc.GetLangIDStrDescriptor(dev.speed)
         ELSE CtlError(dev, req); INC(err)
@@ -521,10 +517,6 @@ MODULE USBDCtlReq;
     req.wValue := Def.LE16(data, 2); req.wIndex := Def.LE16(data, 4);
     req.wLength := Def.LE16(data, 6)
   END ParseSetupRequest;
-
-  PROCEDURE ClearError*;
-  BEGIN CLEAR(setupInError)
-  END ClearError;
 
 BEGIN
   NEW(resByte); resByte.size := 1; resByte.length := 1;

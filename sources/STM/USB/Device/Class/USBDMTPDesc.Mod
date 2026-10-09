@@ -24,7 +24,7 @@ MODULE USBDMTPDesc;
     CONFIGURATION_HS_STRING = "MTP Config";
     INTERFACE_HS_STRING = "MTP Interface";
     CONFIGURATION_FS_STRING = "MTP Config";
-    INTERFACE_FS_STRING = "DFU Interface";
+    INTERFACE_FS_STRING = "MTP Interface";
 
   VAR Descriptors*: Def.DescriptorGetters;
     DevDsc, LangIDDesc: Def.RawDescriptor;

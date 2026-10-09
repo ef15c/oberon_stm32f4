@@ -207,6 +207,10 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   BEGIN PCD.EP_Transmit(dev(PCD.Handle), ep_addr, buf, len)
   END Transmit;
 
+  PROCEDURE SetClassConfig(dev: DDef.Handle; cfgidx: BYTE): BYTE; (* Set Class config callback*)
+    RETURN DCore.SetClassConfig(dev, cfgidx)
+  END SetClassConfig;
+
   (**
   * @brief  Prepares an endpoint for reception.
   * @param  pdev: Device handle
@@ -248,7 +252,7 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
     dev.SetUSBAddress := SetUSBAddress;
     dev.IsStallEP := NIL;
     dev.Transmit := Transmit;
-    dev.SetClassConfig := NIL;
+    dev.SetClassConfig := SetClassConfig;
     dev.ClrClassConfig := NIL;
     dev.CoreFindIF := NIL;
     dev.CoreFindEP := NIL;
@@ -263,10 +267,6 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
 
     RETURN dev
   END Init;
-
-  PROCEDURE ReportError*;
-  BEGIN DCore.ReportError
-  END ReportError;
 
   PROCEDURE IRQLog(msg: PCD.DebugMsg);
   BEGIN Log.Debug("["); Log.DebugInt(msg.time, 12); Log.DebugInt(msg.ts, 12); Log.DebugString("] ");

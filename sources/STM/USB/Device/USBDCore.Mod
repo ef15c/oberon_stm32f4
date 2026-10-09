@@ -16,7 +16,7 @@ MODULE USBDCore;
   *
   ******************************************************************************
   *)
-  IMPORT Log := USBLog, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq;
+  IMPORT Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq;
 
   (**
   * @brief  USBD_RunTestMode
@@ -37,6 +37,45 @@ MODULE USBDCore;
 #endif /* USBD_HS_TESTMODE_ENABLE */
 *)
   END RunTestMode;
+
+  (**
+  * @brief  USBD_SetClassConfig
+  *        Configure device and start the interface
+  * @param  pdev: device instance
+  * @param  cfgidx: configuration index
+  * @retval status
+  *)
+  PROCEDURE SetClassConfig*(dev: DDef.Handle; cfgidx: BYTE): BYTE;
+    VAR ret: BYTE;
+  BEGIN ret := Def.OK;
+(*
+#ifdef USE_USBD_COMPOSITE
+  /* Parse the table of classes in use */
+  for (uint32_t i = 0U; i < USBD_MAX_SUPPORTED_CLASS; i++)
+  {
+    /* Check if current class is in use */
+    if ((pdev->tclasslist[i].Active) == 1U)
+    {
+      if (pdev->pClass[i] != NULL)
+      {
+        pdev->classId = i;
+        /* Set configuration  and Start the Class*/
+        if (pdev->pClass[i]->Init(pdev, cfgidx) != 0U)
+        {
+          ret = USBD_FAIL;
+        }
+      }
+    }
+  }
+#else
+*)
+    (* Set configuration and Start the Class *)
+    IF dev.Class[0] # NIL THEN ret := dev.Class[0].Init(dev, cfgidx) END
+(*
+#endif /* USE_USBD_COMPOSITE */
+*)
+    RETURN ret
+  END SetClassConfig;
 
   (**
   * @brief  USBD_LL_SetupStage
@@ -375,16 +414,5 @@ MODULE USBDCore;
   PROCEDURE SetSpeed*(dev: DDef.Handle; speed: BYTE);
   BEGIN dev.speed := speed
   END SetSpeed;
-
-  PROCEDURE ReportError*;
-  BEGIN
-    IF (CtlReq.setupInError.bRequest # 0) OR (CtlReq.setupInError.bmRequestType # {}) THEN
-      Log.Error("CtlReq error, setup packet: "); Log.ErrorSet(CtlReq.setupInError.bmRequestType);
-      Log.ErrorInt(CtlReq.setupInError.bRequest, 4); Log.ErrorInt(CtlReq.setupInError.wValue, 6);
-      Log.ErrorInt(CtlReq.setupInError.wIndex, 6);  Log.ErrorInt(CtlReq.setupInError.wLength, 6);
-      Log.ErrorLn;
-      CtlReq.ClearError
-    END
-  END ReportError;
 
 END USBDCore.
