@@ -436,15 +436,11 @@ MODULE HALPCD;
           IF ll.GINTSTS_USBRST IN flags THEN
             IF ~(ll.DCTL_SDIS IN USBx.DCTL) (*avoid spurious USBRST triggered by DCTL_SDIS*) THEN
               EXCL(USBx.DCTL, ll.DCTL_RWUSIG);
-              ret := ll.FlushTxFifo(USBx, ll.ALL_FIFOS);
+              ret := ll.FlushTxFifo(USBx, ll.ALL_FIFOs);
               FOR i := 0 TO hpcd.Init.dev_endpoints - 1 DO
-                USBx.INEP[i].DIEPINT := {ll.DIEPINT_XFRC, ll.DIEPINT_EPDISD, ll.DIEPINT_AHBERR, ll.DIEPINT_TOC,
-                  ll.DIEPINT_ITTXFE, ll.DIEPINT_INEPNM, ll.DIEPINT_INEPNE, ll.DIEPINT_TXFIFOUDRN, ll.DIEPINT_BNA,
-                  ll.DIEPINT_PKTDRPSTS, ll.DIEPINT_BERR, ll.DIEPINT_NAK};
+                USBx.INEP[i].DIEPINT := ll.DIEPINT_Reset;
                 EXCL(USBx.INEP[i].DIEPCTL, ll.DIEPCTL_STALL);
-                USBx.OUTEP[i].DOEPINT := {ll.DOEPINT_XFRC, ll.DOEPINT_EPDISD, ll.DOEPINT_AHBERR, ll.DOEPINT_STUP,
-                  ll.DOEPINT_OTEPDIS, ll.DOEPINT_OTEPSPR, ll.DOEPINT_B2BSTUP, ll.DOEPINT_OUTPKTERR, ll.DOEPINT_BERR,
-                  ll.DOEPINT_NAK, ll.DOEPINT_NYET, ll.DOEPINT_STPKTRX};
+                USBx.OUTEP[i].DOEPINT := ll.DOEPINT_Reset;
                 EXCL(USBx.OUTEP[i].DOEPCTL, ll.DOEPCTL_STALL);
                 INCL(USBx.OUTEP[i].DOEPCTL, ll.DOEPCTL_SNAK)
               END;
@@ -554,7 +550,6 @@ MODULE HALPCD;
         (* Init ep structure *)
         pcd.IN_ep[i].is_in := TRUE;
         pcd.IN_ep[i].num := i;
-        pcd.IN_ep[i].tx_fifo_num := i;
         (* Control until ep is activated *)
         pcd.IN_ep[i].type := Def.EP_TYPE_CTRL;
         pcd.IN_ep[i].maxpacket := 0;
@@ -584,18 +579,46 @@ MODULE HALPCD;
   END Init;
 
   (**
+  * @brief  DeInitializes the PCD peripheral.
+  * @param  hpcd PCD handle
+  * @retval HAL status
+  *)
+  PROCEDURE DeInit*(hpcd: Handle);
+    VAR ret: BYTE;
+  BEGIN
+    IF (hpcd # NIL) & (ll.StopDevice(hpcd.Instance) = Def.OK) THEN
+      hpcd.State := Def.STATE_RESET;
+    END
+  END DeInit;
+
+  (**
   * @brief  Start the USB device
   * @param  hpcd PCD handle
   * @retval HAL status
   *)
   PROCEDURE Start*(hpcd: Handle);
-  BEGIN
-    IF (ll.GUSBCFG_PHYSEL IN hpcd.Instance.GUSBCFG) & (hpcd.Init.battery_charging_enable) THEN
-      INCL(hpcd.Instance.GCCFG, ll.GCCFG_PWRDWN) (* Enable USB Transceiver *)
+    VAR USBx!: ll.OTGCore;
+  BEGIN USBx := hpcd.Instance;
+    IF (ll.GUSBCFG_PHYSEL IN USBx.GUSBCFG) & (hpcd.Init.battery_charging_enable) THEN
+      INCL(USBx.GCCFG, ll.GCCFG_PWRDWN) (* Enable USB Transceiver *)
     END;
-(*  __HAL_PCD_ENABLE(hpcd); enable global usb interrupt*)
-    ll.DevConnect(hpcd.Instance)
+    ll.DevConnect(USBx)
   END Start;
+
+  (**
+  * @brief  Stop the USB device.
+  * @param  hpcd PCD handle
+  * @retval HAL status
+  *)
+  PROCEDURE Stop*(hpcd: Handle);
+    VAR res: BYTE; USBx!: ll.OTGCore;
+  BEGIN USBx := hpcd.Instance;
+    ll.DevDisconnect(USBx);
+    res := ll.FlushTxFifo(USBx, ll.ALL_FIFOs);
+    IF (ll.GUSBCFG_PHYSEL IN USBx.GUSBCFG) & (hpcd.Init.battery_charging_enable) THEN
+      EXCL(USBx.GCCFG, ll.GCCFG_PWRDWN) (* Disable USB Transceiver *)
+    END
+  END Stop;
 
   (**
   * @brief  Set the USB Device address.
@@ -621,7 +644,6 @@ MODULE HALPCD;
     BEGIN ep.is_in := isIn;
       ep.num := ep_addr MOD 10H; ep.maxpacket := ep_mps MOD 800H;
       ep.type := ep_type;
-      IF isIn THEN ep.tx_fifo_num := ep.num (* Assign a Tx FIFO *) END;
       IF ep_type = Def.EP_TYPE_BULK THEN ep.data_pid_start := 0 (* Set initial data PID. *) END;
       ll.ActivateEndpoint(hpcd.Instance, ep)
     END OpenEP;

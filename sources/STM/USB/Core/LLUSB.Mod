@@ -198,7 +198,7 @@ MODULE LLUSB;
     GRSTCTL_TXFFLSH* = 5; (*!< TxFIFO flush             *)
     GRSTCTL_TXFFLSH_Msk* = {GRSTCTL_TXFFLSH};
     GRSTCTL_TXFNUM_Msk* = {6..10}; (*!< TxFIFO number *)
-    ALL_FIFOS* = 10H;
+    ALL_FIFOs* = 10H;
     GRSTCTL_DMAREQ* = 30; (*!< DMA request signal *)
     GRSTCTL_DMAREQ_Msk* = {GRSTCTL_DMAREQ};
     GRSTCTL_AHBIDL* = 31; (*!< AHB master idle *)
@@ -555,6 +555,9 @@ MODULE LLUSB;
     DIEPINT_BERR_Msk* = {DIEPINT_BERR};
     DIEPINT_NAK* = 13; (*!< NAK interrupt *)
     DIEPINT_NAK_Msk* = {DIEPINT_NAK};
+    DIEPINT_Reset* = {DIEPINT_XFRC, DIEPINT_EPDISD, DIEPINT_AHBERR, DIEPINT_TOC,
+                  DIEPINT_ITTXFE, DIEPINT_INEPNM, DIEPINT_INEPNE, DIEPINT_TXFIFOUDRN, DIEPINT_BNA,
+                  DIEPINT_PKTDRPSTS, DIEPINT_BERR, DIEPINT_NAK};
 
   (********************  Bit definition for USB_OTG_DIEPTSIZ register  ********************)
     DIEPTSIZ_XFRSIZ_Pos* = 0;
@@ -635,6 +638,9 @@ MODULE LLUSB;
     DOEPINT_NYET_Msk* = {DOEPINT_NYET};
     DOEPINT_STPKTRX* = 15; (*!< Setup Packet Received *)
     DOEPINT_STPKTRX_Msk* = {DOEPINT_STPKTRX};
+    DOEPINT_Reset* = {DOEPINT_XFRC, DOEPINT_EPDISD, DOEPINT_AHBERR, DOEPINT_STUP,
+                  DOEPINT_OTEPDIS, DOEPINT_OTEPSPR, DOEPINT_B2BSTUP, DOEPINT_OUTPKTERR, DOEPINT_BERR,
+                  DOEPINT_NAK, DOEPINT_NYET, DOEPINT_STPKTRX};
 
   (********************  Bit definition for USB_OTG_DOEPTSIZ register  ********************)
     DOEPTSIZ_XFRSIZ_Pos* = 0; (*!< Transfer size *)
@@ -899,7 +905,7 @@ MODULE LLUSB;
 
     EPDesc* = RECORD
       num*: BYTE;       (*!< Endpoint number
-                                This parameter must be a number between Min_Data = 1 and Max_Data = 15   *)
+                                This parameter must be a number between Min_Data = 0 and Max_Data = 15   *)
       is_in*,                (*!< Endpoint direction
                                        This parameter must be a number between Min_Data = 0 and Max_Data = 1    *)
       is_stall*,             (*!< Endpoint stall condition
@@ -917,8 +923,6 @@ MODULE LLUSB;
       xfer_count*: INTEGER;           (*!< Partial transfer length in case of multi packet transfer                 *)
       is_odd_frame*: BOOLEAN;       (*!< IFrame parity
                                        This parameter must be a number between Min_Data = 0 and Max_Data = 1    *)
-      tx_fifo_num*: HALFWORD;          (*!< Transmission FIFO number
-                                       This parameter must be a number between Min_Data = 1 and Max_Data = 15   *)
       dma_addr*,             (*!< 32 bits aligned transfer buffer address                                  *)
       xfer_size*: INTEGER            (*!< requested transfer size                                                  *)
     END;
@@ -1264,6 +1268,25 @@ MODULE LLUSB;
   END EPSetStall;
 
   (**
+  * @brief  USB_StopDevice : Stop the usb device mode
+  * @param  USBx  Selected device
+  * @retval HAL status
+  *)
+  PROCEDURE StopDevice*(USBx: OTGCore): BYTE;
+    VAR ret: BYTE; i: INTEGER;
+  BEGIN
+    (* Clear Pending interrupt *)
+    FOR i := 0 TO 5 DO
+      USBx.INEP[i].DIEPINT := DIEPINT_Reset; USBx.OUTEP[i].DOEPINT := DOEPINT_Reset
+    END;
+    USBx.DIEPMSK := {}; USBx.DOEPMSK := {}; USBx.DAINTMSK := {}; (* Clear interrupt masks *)
+    ret := FlushRxFifo(USBx);
+    IF ret = Def.OK THEN ret := FlushTxFifo(USBx, ALL_FIFOs) END
+
+    RETURN ret
+  END StopDevice;
+
+  (**
   * @brief  USB_SetDevSpeed  Initializes the DevSpd field of DCFG register
   *         depending the PHY type and the enumeration speed of the device.
   * @param  USBx  Selected device
@@ -1314,13 +1337,13 @@ MODULE LLUSB;
     IF ep.is_in THEN INCL(USBx.DAINTMSK, ep.num MOD 10H);
       IF ~(DIEPCTL_USBAEP IN USBx.INEP[ep.num].DIEPCTL) THEN
         USBx.INEP[ep.num].DIEPCTL := USBx.INEP[ep.num].DIEPCTL +
-          TOSET(mpsiz)*DIEPCTL_MPSIZ_Msk + LSL(TOSET(ep.type)*DIEPCTL_EPTYP_Msk, DIEPCTL_EPTYP_Pos) +
-            LSL(TOSET(ep.tx_fifo_num)*DIEPCTL_TXFNUM_Msk, DIEPCTL_TXFNUM_Pos) + {DIEPCTL_SD0PID_SEVNFRM, DIEPCTL_USBAEP}
+          TOSET(mpsiz)*DIEPCTL_MPSIZ_Msk + LSL(TOSET(ep.type), DIEPCTL_EPTYP_Pos)*DIEPCTL_EPTYP_Msk +
+            LSL(TOSET(ep.num), DIEPCTL_TXFNUM_Pos)*DIEPCTL_TXFNUM_Msk + {DIEPCTL_SD0PID_SEVNFRM, DIEPCTL_USBAEP}
       END
     ELSE INCL(USBx.DAINTMSK, ep.num MOD 10H + 16);
       IF ~(DOEPCTL_USBAEP IN USBx.OUTEP[ep.num].DOEPCTL) THEN
         USBx.OUTEP[ep.num].DOEPCTL := USBx.OUTEP[ep.num].DOEPCTL +
-          TOSET(mpsiz)*DOEPCTL_MPSIZ_Msk + LSL(TOSET(ep.type)*DIEPCTL_EPTYP_Msk, DOEPCTL_EPTYP_Pos) +
+          TOSET(mpsiz)*DOEPCTL_MPSIZ_Msk + LSL(TOSET(ep.type), DOEPCTL_EPTYP_Pos)*DIEPCTL_EPTYP_Msk +
             {DIEPCTL_SD0PID_SEVNFRM, DOEPCTL_USBAEP}
       END
     END
@@ -1505,7 +1528,7 @@ MODULE LLUSB;
       SetDevSpeed(USBx, DCFG_FULL_SPEED_INTERNAL_PHY)
     END;
     (* Flush the FIFOs *)
-    IF FlushTxFifo(USBx, ALL_FIFOS) # HAL_OK THEN ret := HAL_ERROR END;
+    IF FlushTxFifo(USBx, ALL_FIFOs) # HAL_OK THEN ret := HAL_ERROR END;
     IF FlushRxFifo(USBx) # HAL_OK THEN ret := HAL_ERROR END;
     (* Clear all pending Device Interrupts *)
     USBx.DIEPMSK := {};
@@ -1612,7 +1635,7 @@ MODULE LLUSB;
     ELSE EXCL(USBx_HOST.HCFG, HCFG_FSLSS) (* Set default Max speed support *)
     END;
     (* Make sure the FIFOs are flushed. *)
-    IF FlushTxFifo(USBx, ALL_FIFOS) # HAL_OK THEN ret := HAL_ERROR END;
+    IF FlushTxFifo(USBx, ALL_FIFOs) # HAL_OK THEN ret := HAL_ERROR END;
     IF FlushRxFifo(USBx) # HAL_OK THEN ret := HAL_ERROR END;
     (* Clear all pending HC Interrupts *) ASSERT(cfg.Host_channels <= 12);
     FOR i := 0 TO cfg.Host_channels - 1 DO
@@ -2093,7 +2116,7 @@ MODULE LLUSB;
     ret := HAL_OK; count := 0; USBx_HOST := SYSTEM.VAL(OTGHostMode, ORD(USBx) + HOST_BASE);
     DisableGlobalInt(USBx);
     (* Flush USB FIFO *)
-    IF (FlushTxFifo(USBx, ALL_FIFOS) # HAL_OK) OR
+    IF (FlushTxFifo(USBx, ALL_FIFOs) # HAL_OK) OR
       (FlushRxFifo(USBx) # HAL_OK) THEN ret := HAL_ERROR
     ELSE
       (* Flush out any leftover queued requests. *)

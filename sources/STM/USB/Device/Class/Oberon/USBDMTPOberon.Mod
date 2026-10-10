@@ -11,12 +11,31 @@ MODULE USBDMTPOberon;
   PROCEDURE Init;
   END Init;
 
+  (**
+  * @brief  USBD_MTP_Itf_DeInit
+  *         Uninitialize the file system Layer
+  * @param  None
+  *)
+  PROCEDURE DeInit;
+  END DeInit;
+
+  (**
+  * @brief  USBD_MTP_Itf_Cancel
+  *         Close opened folder/file while cancelling transaction
+  * @param  MTP_ResponsePhase: MTP current state
+  * @retval None
+  *)
+  PROCEDURE Cancel(Phase: INTEGER);
+  BEGIN
+    (* Make sure to close open file while canceling transaction *)
+  END Cancel;
+
   PROCEDURE initFops(): Def.UserData;
     VAR u!: O.UserIf;
   BEGIN NEW(u);
     (*todo: develop fops.* procedures*)
     u.Init := Init;
-    u.DeInit := NIL;
+    u.DeInit := DeInit;
     u.ReadData := NIL;
     u.Create_NewObject := NIL;
     u.GetIdx := NIL;
@@ -31,7 +50,7 @@ MODULE USBDMTPOberon;
     u.WriteData := NIL;
     u.GetContainerLength := NIL;
     u.DeleteObject := NIL;
-    u.Cancel := NIL;
+    u.Cancel := Cancel;
     u.CopyBuffer := NIL;
     u.PutVendorExtension := NIL;
     u.PutManufacturer := NIL;

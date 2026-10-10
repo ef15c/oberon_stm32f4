@@ -542,7 +542,7 @@ MODULE HALHCD;
             hhcd.Instance.GINTSTS := {ll.GINTSTS_DISCINT};
             SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, reg);
             IF ~(ll.HPRT_PCSTS IN reg) THEN
-              res := ll.FlushTxFifo(hhcd.Instance, ll.ALL_FIFOS); res := ll.FlushRxFifo(hhcd.Instance); (* Flush USB Fifo *)
+              res := ll.FlushTxFifo(hhcd.Instance, ll.ALL_FIFOs); res := ll.FlushRxFifo(hhcd.Instance); (* Flush USB Fifo *)
               IF hhcd.Init.phy_itface = ll.EMBEDDED_PHY THEN
                 res := ll.InitFSLSPClkSel(hhcd.Instance, ll.HCFG_48_MHZ) (* Restore FS Clock *)
               END;

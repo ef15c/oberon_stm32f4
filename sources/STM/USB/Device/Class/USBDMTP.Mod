@@ -12,7 +12,7 @@ MODULE USBDMTP;
   *           - Error management
   *
   ******************************************************************************)
-  IMPORT SYSTEM, Def := USBDef, DConf := USBDConf, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq,
+  IMPORT SYSTEM, Log := USBLog, Def := USBDef, DConf := USBDConf, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq,
     DH := USBDHal, Opt := USBDMTPOpt, MTPS := USBDMTPStorage;
 
   CONST
@@ -102,6 +102,17 @@ MODULE USBDMTP;
       dev.ep_in[MTPS.CmdEpAdd MOD 10H].is_used := TRUE;
       (* Init the MTP  layer *)
        MTPS.Init(dev);
+      Log.Debug("GINTMSK: "); Log.DebugSet(dev.Instance.GINTMSK); 
+      Log.DebugString(", DIEPMSK: "); Log.DebugSet(dev.Instance.DIEPMSK);
+      Log.DebugString(", DOEPMSK: "); Log.DebugSet(dev.Instance.DOEPMSK);
+      Log.DebugLn;
+      Log.Debug("DAINTMSK: "); Log.DebugSet(dev.Instance.DAINTMSK);
+      Log.DebugString(", DIEPEMPMSK: "); Log.DebugSet(dev.Instance.DIEPEMPMSK);
+      Log.DebugString(", DIEPCTL1: "); Log.DebugSet(dev.Instance.INEP[1].DIEPCTL);
+      Log.DebugLn;
+      Log.Debug("DIEPCTL2: "); Log.DebugSet(dev.Instance.INEP[2].DIEPCTL);
+      Log.DebugString(", DOEPCTL1: "); Log.DebugSet(dev.Instance.OUTEP[1].DOEPCTL);
+      Log.DebugLn;
       ret := Def.OK
     END
 

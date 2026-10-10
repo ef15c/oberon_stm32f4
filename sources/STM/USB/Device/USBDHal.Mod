@@ -153,6 +153,15 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   END Start;
 
   (**
+  * @brief  Stops the Low Level portion of the Device driver.
+  * @param  pdev: Device handle
+  * @retval USBD Status
+  *)
+  PROCEDURE Stop*(dev: Def.Handle);
+  BEGIN PCD.Stop(dev(PCD.Handle))
+  END Stop;
+
+  (**
   * @brief  Opens an endpoint of the Low Level Driver.
   * @param  pdev: Device handle
   * @param  ep_addr: Endpoint Number
@@ -194,6 +203,25 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   PROCEDURE SetUSBAddress(dev: DDef.Handle; dev_addr: BYTE);
   BEGIN PCD.SetAddress(dev(PCD.Handle), dev_addr)
   END SetUSBAddress;
+
+  (**
+  * @brief  Returns Stall condition.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @retval TRUE: EP stalled, FALSE: EP not stalled
+  *)
+  PROCEDURE IsStallEP(hpcd: DDef.Handle; ep_addr: BYTE): BOOLEAN;
+    VAR ret: BOOLEAN;
+  BEGIN
+    CASE hpcd OF
+      PCD.Handle:
+        IF 7 IN TOSET(ep_addr) THEN  ret := hpcd.IN_ep[ep_addr MOD 10H].is_stall
+        ELSE ret := hpcd.OUT_ep[ep_addr MOD 10].is_stall
+        END
+      | DDef.Handle: ASSERT(FALSE)
+    END
+    RETURN ret
+  END IsStallEP;
 
   (**
   * @brief  Transmits data over an endpoint.
@@ -250,7 +278,7 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
 (*TODO*)
     dev.ClearStallEP := NIL;
     dev.SetUSBAddress := SetUSBAddress;
-    dev.IsStallEP := NIL;
+    dev.IsStallEP := IsStallEP;
     dev.Transmit := Transmit;
     dev.SetClassConfig := SetClassConfig;
     dev.ClrClassConfig := NIL;
@@ -262,20 +290,33 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
 
     (* Initialize LL Driver *)
     IF PCD.Init(dev) # ll.HAL_OK THEN dev := NIL
-    ELSE PCD.SetRxFiFo(dev, 0A0H); PCD.SetTxFiFo(dev, 0, 0A0H)
+    ELSE PCD.SetRxFiFo(dev, 80H); PCD.SetTxFiFo(dev, 0, 40H);
+      PCD.SetTxFiFo(dev, 1, 80H); PCD.SetTxFiFo(dev, 2, 40H)
     END
 
     RETURN dev
   END Init;
 
+  (**
+  * @brief  De-Initializes the Low Level portion of the Device driver.
+  * @param  pdev: Device handle
+  * @retval USBD Status
+  *)
+  PROCEDURE DeInit*(dev: DDef.Handle);
+  BEGIN PCD.DeInit(dev(PCD.Handle))
+  END DeInit;
+
   PROCEDURE IRQLog(msg: PCD.DebugMsg);
-  BEGIN Log.Debug("["); Log.DebugInt(msg.time, 12); Log.DebugInt(msg.ts, 12); Log.DebugString("] ");
-    Log.DebugString("IRQ gintsts: ");  Log.DebugSet(msg.gintsts);
-    IF msg.epnum # 255 THEN Log.DebugString(", ep "); Log.DebugInt(msg.epnum, 3);
-      IF msg.is_in THEN Log.DebugString(", diepint: ") ELSE Log.DebugString(", doepint: ") END;
-      Log.DebugSet(msg.dxepint)
-    END;
-    Log.DebugLn
+  BEGIN
+    IF msg.epnum # 0 THEN (*discard EP0 messages since EP0 seems working well now*)
+      Log.Debug("["); Log.DebugInt(msg.time, 12); Log.DebugInt(msg.ts, 12); Log.DebugString("] ");
+      Log.DebugString("IRQ gintsts: ");  Log.DebugSet(msg.gintsts);
+      IF msg.epnum # 255 THEN Log.DebugString(", ep "); Log.DebugInt(msg.epnum, 3);
+        IF msg.is_in THEN Log.DebugString(", diepint: ") ELSE Log.DebugString(", doepint: ") END;
+        Log.DebugSet(msg.dxepint)
+      END;
+      Log.DebugLn
+    END
   END IRQLog;
 
   (**
@@ -289,9 +330,9 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
         msg := PCD.TakeMsg(dev);
         WHILE msg # NIL DO (*Process the message*)
           CASE msg OF
-            PCD.DataOutStageMsg: Log.Debug("DataOutStage"); Log.DebugLn; DataOutStageCallback(dev, msg.epnum)
-          | PCD.DataInStageMsg: Log.Debug("DataInStage"); Log.DebugLn; DataInStageCallback(dev, msg.epnum)
-          | PCD.SetupStageMsg: Log.Debug("SetupStage"); Log.DebugLn; Log.Flush; SetupStageCallback(dev)
+            PCD.DataOutStageMsg: IF msg.epnum # 0 THEN Log.Debug("DataOutStage"); Log.DebugLn END; DataOutStageCallback(dev, msg.epnum)
+          | PCD.DataInStageMsg: IF msg.epnum # 0 THEN Log.Debug("DataInStage"); Log.DebugLn END; DataInStageCallback(dev, msg.epnum)
+          | PCD.SetupStageMsg: SetupStageCallback(dev)
           | PCD.ISOOUTIncompleteMsg: ASSERT(FALSE)
           | PCD.ISOINIncompleteMsg: ASSERT(FALSE)
           | PCD.LPMMsg: ASSERT(FALSE)

@@ -25,6 +25,67 @@ MODULE USBD;
     END
   END Process;
 
+  (**
+  * @brief  USBD_Start
+  *         Start the USB Device Core.
+  * @param  pdev: Device Handle
+  * @retval USBD Status
+  *)
+  PROCEDURE Start*(dev: Def.Handle);
+  BEGIN
+(*
+#ifdef USE_USBD_COMPOSITE
+  pdev->classId = 0U;
+#endif /* USE_USBD_COMPOSITE */
+*)
+    CASE dev OF
+      DDef.Handle: DH.Start(dev); (* Start the low level driver  *)
+        Log.Flush
+    | Def.Handle: ASSERT(FALSE)
+    END
+  END Start;
+
+  (**
+  * @brief  USBD_Stop
+  *         Stop the USB Device Core.
+  * @param  pdev: Device Handle
+  * @retval USBD Status
+  *)
+  PROCEDURE Stop*(dev: Def.Handle);
+  BEGIN
+    CASE dev OF
+      DDef.Handle: 
+        DH.Stop(dev); (* Disconnect USB Device *)
+        (* Free Class Resources *)
+(*
+#ifdef USE_USBD_COMPOSITE
+  /* Parse the table of classes in use */
+  for (uint32_t i = 0U; i < USBD_MAX_SUPPORTED_CLASS; i++)
+  {
+    /* Check if current class is in use */
+    if ((pdev->tclasslist[i].Active) == 1U)
+    {
+      if (pdev->pClass[i] != NULL)
+      {
+        pdev->classId = i;
+        /* Free Class Resources */
+        (void)pdev->pClass[i]->DeInit(pdev, (uint8_t)pdev->dev_config);
+      }
+    }
+  }
+
+  /* Reset the class ID */
+  pdev->classId = 0U;
+#else
+*)
+        IF dev.Class[0] # NIL THEN dev.Class[0].DeInit(dev, dev.config) END
+(*
+#endif /* USE_USBD_COMPOSITE */
+*)
+    | Def.Handle: ASSERT(FALSE)
+    END
+  END Stop;
+
  (**
   * @brief  USBD_Init
   *         Initialize the Device portion of the driver.
@@ -72,24 +133,26 @@ MODULE USBD;
   END Init;
 
   (**
-  * @brief  USBD_Start
-  *         Start the USB Device Core.
-  * @param  pdev: Device Handle
-  * @retval USBD Status
+  * @brief  USBD_DeInit
+  *         De-Initialize the device library
+  * @param  pdev: device instance
+  * @retval status: USBD Status
   *)
-  PROCEDURE Start*(dev: Def.Handle);
+  PROCEDURE DeInit*(dev: Def.Handle);
   BEGIN
-(*
-#ifdef USE_USBD_COMPOSITE
-  pdev->classId = 0U;
-#endif /* USE_USBD_COMPOSITE */
-*)
     CASE dev OF
-      DDef.Handle: DH.Start(dev); (* Start the low level driver  *)
+      DDef.Handle:
+        IF dev.state = DDef.STATE_CONFIGURED THEN Stop(dev) END;
+        dev.state := DDef.STATE_DEFAULT;
+        dev.UserData[0] := NIL; (* Free Class Resources *)
+        (* Free Device descriptors resources *)
+        dev.Desc := NIL; dev.ConfDesc := NIL;
+        DH.DeInit(dev); (* DeInitialize low level driver *)
+        IF processTask # NIL THEN Def.Remove(processTask); processTask := NIL END;
         Log.Flush
     | Def.Handle: ASSERT(FALSE)
     END
-  END Start;
+  END DeInit;
 
   PROCEDURE RegisterDescriptors*(dev: Def.Handle; descriptors: Def.DescriptorGetters);
   BEGIN dev(DDef.Handle).Desc := descriptors(DDef.DescriptorGetters)

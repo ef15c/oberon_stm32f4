@@ -90,6 +90,7 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
     IF core # NIL THEN
       CASE core OF
         HDef.Handle: USBH.Stop(core); USBH.DeInit(core)
+      | DDef.Handle: USBD.Stop(core); USBD.DeInit(core)
       END;
       H.DeInit(core(UC.Handle)); Def.UnRegister(core);
       IF (processTask # NIL) & (Def.nofRegisteredCores = 0) THEN Def.Remove(processTask); processTask := NIL END;
