@@ -68,6 +68,7 @@ MODULE BSP; (*CS 06.03.24 STM32F429I-DISCO Oberon base board abstraction*)
     MemManageExcNum* = 4; BusFaultExcNum* = 5; UsageFaultExcNum* = 6; SVCallExcNum* = 11; PendSVExcNum* = 14; SysTickExcNum* = 15;
 
     (*STM32F429*)
+    UID_BASE* = 1FFF7A10H;
     PERIPH_BASE* = 40000000H; (*!< Peripheral base address in the alias region                                *)
     AHB1PERIPH_BASE* = PERIPH_BASE + 20000H;
 
