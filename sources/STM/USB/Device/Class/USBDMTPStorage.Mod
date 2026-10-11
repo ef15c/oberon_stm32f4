@@ -8,7 +8,7 @@ MODULE USBDMTPStorage;
   *
   ******************************************************************************
   *)
-  IMPORT SYSTEM, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, DH := USBDHal,
+  IMPORT SYSTEM, Log := USBLog, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, DH := USBDHal,
     Opt := USBDMTPOpt;
 
   CONST
@@ -57,10 +57,10 @@ MODULE USBDMTPStorage;
   * @param  len: length of data to copy
   * @retval status value
   *)
-  PROCEDURE ReceiveContainer(dev: DDef.Handle; Dst: Opt.Container);
+  PROCEDURE ReceiveContainer(dev: DDef.Handle; Dst: Opt.Op);
     VAR hmtp!: Opt.Handle;
   BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
-    IF Dst # NIL THEN Dst^ := hmtp.rx_buff^ END
+    SYSTEM.COPY(ORD(hmtp.rx_buff), ORD(Dst), SYSTEM.SIZE(Opt.OpDesc) DIV 4)
   END ReceiveContainer;
 
  (**
@@ -195,6 +195,7 @@ MODULE USBDMTPStorage;
     IF op = Opt.OP_GET_DEVICE_INFO THEN
       Opt.GetDeviceInfo(dev); hmtp.ResponsePhase := RESPONSE_PHASE
     ELSIF op = Opt.OP_OPEN_SESSION THEN
+      Log.Debug("Open session"); Log.DebugLn;
       Opt.CreateObjectHandle(dev); hmtp.ResponsePhase := RESPONSE_PHASE
     ELSIF (op = Opt.OP_GET_STORAGE_IDS) OR (op = Opt.OP_GET_STORAGE_INFO) OR
       (op = Opt.OP_GET_OBJECT_HANDLES) OR (op = Opt.OP_GET_OBJECT_INFO) OR

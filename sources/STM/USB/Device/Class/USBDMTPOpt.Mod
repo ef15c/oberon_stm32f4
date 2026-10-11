@@ -493,12 +493,41 @@ MODULE USBDMTPOpt;
       ScratchBuff*: Generic
     END;
 
-  PROCEDURE NewContainer*(): Container;
-    VAR c!: Container;
-  BEGIN NEW(c); c.size := SYSTEM.SIZE(ContainerDesc) - SYSTEM.SIZE(Def.BufferDesc)
 
+  PROCEDURE ReadByte(b: Def.Buffer): BYTE;
+    VAR r: BYTE;
+  BEGIN
+    CASE b OF
+      Dataset: r := b.data[b.index]; INC(b.index)
+    | Generic: r := b.data[b.index]; INC(b.index)
+    | Def.Buffer: ASSERT(FALSE)
+    END
+
+    RETURN r
+  END ReadByte;
+
+  PROCEDURE WriteByte(b: Def.Buffer; v: BYTE);
+  BEGIN
+    CASE b OF
+      Dataset: b.data[b.length] := v; INC(b.length)
+    | Generic: b.data[b.length] := v; INC(b.length)
+    | Def.Buffer: ASSERT(FALSE)
+    END
+  END WriteByte;
+
+  PROCEDURE NewGeneric*(): Generic;
+    VAR c!: Generic;
+  BEGIN NEW(c); c.size := SYSTEM.SIZE(GenericDesc) - SYSTEM.SIZE(ContainerDesc); (*size of container payload*)
+    c.ReadByte := ReadByte; c.WriteByte := WriteByte
     RETURN c
-  END NewContainer;
+  END NewGeneric;
+
+  PROCEDURE NewDataset*(): Dataset;
+    VAR d!: Dataset;
+  BEGIN NEW(d); d.size := SYSTEM.SIZE(DatasetDesc) - SYSTEM.SIZE(Def.BufferDesc); (*size of container payload*)
+    d.ReadByte := ReadByte; d.WriteByte := WriteByte
+    RETURN d
+  END NewDataset;
 
   PROCEDURE NewHandle*(): Handle;
     VAR h!: Handle;
@@ -506,12 +535,33 @@ MODULE USBDMTPOpt;
       NEW(h.rx_buff);
       NEW(h.dev_status); h.dev_status.size := SYSTEM.SIZE(Def.IntegerBufferDesc) - SYSTEM.SIZE(Def.BufferDesc);
       NEW(h.alt_setting); h.alt_setting.size := SYSTEM.SIZE(Def.ByteBufferDesc) - SYSTEM.SIZE(Def.BufferDesc);
-      NEW(h.GenericContainer); h.GenericContainer.size := SYSTEM.SIZE(GenericDesc) - SYSTEM.SIZE(Def.BufferDesc);
+      h.GenericContainer := NewGeneric();
       NEW(h.OperationsContainer); h.OperationsContainer.size := SYSTEM.SIZE(OpDesc) - SYSTEM.SIZE(Def.BufferDesc);
-      NEW(h.objectInfo); h.objectInfo.size := SYSTEM.SIZE(DatasetDesc) - SYSTEM.SIZE(Def.BufferDesc)
-
+      h.objectInfo := NewDataset()
     RETURN h
   END NewHandle;
+
+  PROCEDURE PutString*(d: Def.Buffer; s: ARRAY OF CHAR);
+    VAR i, l: INTEGER;
+  BEGIN l := 0; WHILE s[l] # 0X DO INC(l) END;
+    ASSERT(l <= 255);
+    IF l = 0 THEN Def.PutByte(d, l)
+    ELSE Def.PutByte(d, l+1); i := 0;
+      REPEAT ASSERT(ORD(s[i]) < 80H); Def.PutHalfword(d, ORD(s[i])); INC(i) UNTIL i > l
+    END
+  END PutString;
+
+  PROCEDURE PutHexByte*(d: Def.Buffer; b: BYTE);
+  BEGIN
+    IF b < 10 THEN Def.PutHalfword(d, b + ORD("0"))
+    ELSE  Def.PutHalfword(d, b + (ORD("A") - 10))
+    END
+  END PutHexByte;
+
+  PROCEDURE PutHexInteger*(d: Def.Buffer; x: INTEGER);
+    VAR i: INTEGER;
+  BEGIN FOR i := 1 TO 8 DO x := ROR(x, 28); PutHexByte(d, x MOD 10H) END
+  END PutHexInteger;
 
   PROCEDURE GetRxBuffSize*(): INTEGER;
     RETURN SYSTEM.SIZE(GenericDesc) - SYSTEM.SIZE(Def.BufferDesc)

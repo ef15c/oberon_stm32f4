@@ -235,10 +235,6 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   BEGIN PCD.EP_Transmit(dev(PCD.Handle), ep_addr, buf, len)
   END Transmit;
 
-  PROCEDURE SetClassConfig(dev: DDef.Handle; cfgidx: BYTE): BYTE; (* Set Class config callback*)
-    RETURN DCore.SetClassConfig(dev, cfgidx)
-  END SetClassConfig;
-
   (**
   * @brief  Prepares an endpoint for reception.
   * @param  pdev: Device handle
@@ -249,6 +245,16 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   PROCEDURE PrepareReceive(dev: DDef.Handle; ep_addr: BYTE; buf: Def.BufferDesc);
   BEGIN PCD.EP_Receive(dev(PCD.Handle), ep_addr, buf)
   END PrepareReceive;
+
+  (**
+  * @brief  Returns the last transferred packet size.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @retval Received Data Size
+  *)
+  PROCEDURE GetRxDataSize*(dev: DDef.Handle; ep_addr: BYTE): INTEGER;
+    RETURN PCD.EP_GetRxCount(dev(PCD.Handle), ep_addr)
+  END GetRxDataSize;
 
   (**
   * @brief  Initializes the Low Level portion of the Device driver.
@@ -280,13 +286,13 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
     dev.SetUSBAddress := SetUSBAddress;
     dev.IsStallEP := IsStallEP;
     dev.Transmit := Transmit;
-    dev.SetClassConfig := SetClassConfig;
+    dev.SetClassConfig := DCore.SetClassConfig;
     dev.ClrClassConfig := NIL;
-    dev.CoreFindIF := NIL;
-    dev.CoreFindEP := NIL;
+    dev.CoreFindIF := DCore.CoreFindIF;
+    dev.CoreFindEP := DCore.CoreFindEP;
     dev.PrepareReceive := PrepareReceive;
     dev.OpenEP := OpenEP;
-    dev.GetRxDataSize := NIL;
+    dev.GetRxDataSize := GetRxDataSize;
 
     (* Initialize LL Driver *)
     IF PCD.Init(dev) # ll.HAL_OK THEN dev := NIL

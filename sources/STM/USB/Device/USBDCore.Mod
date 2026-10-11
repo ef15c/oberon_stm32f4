@@ -97,6 +97,82 @@ MODULE USBDCore;
   END SetupStage;
 
   (**
+  * @brief  USBD_CoreFindIF
+  *         return the class index relative to the selected interface
+  * @param  pdev: device instance
+  * @param  index : selected interface number
+  * @retval index of the class using the selected interface number. OxFF if no class found.
+  *)
+  PROCEDURE CoreFindIF*(dev: DDef.Handle; index: BYTE): BYTE;
+  BEGIN
+(*
+#ifdef USE_USBD_COMPOSITE
+  /* Parse the table of classes in use */
+  for (uint32_t i = 0U; i < USBD_MAX_SUPPORTED_CLASS; i++)
+  {
+    /* Check if current class is in use */
+    if ((pdev->tclasslist[i].Active) == 1U)
+    {
+      /* Parse all interfaces listed in the current class */
+      for (uint32_t j = 0U; j < pdev->tclasslist[i].NumIf; j++)
+      {
+        /* Check if requested Interface matches the current class interface */
+        if (pdev->tclasslist[i].Ifs[j] == index)
+        {
+          if (pdev->pClass[i]->Setup != NULL)
+          {
+            return (uint8_t)i;
+          }
+        }
+      }
+    }
+  }
+
+  return 0xFFU;
+#else
+*)
+    RETURN 0S
+  END CoreFindIF;
+
+  (**
+  * @brief  USBD_CoreFindEP
+  *         return the class index relative to the selected endpoint
+  * @param  pdev: device instance
+  * @param  index : selected endpoint number
+  * @retval index of the class using the selected endpoint number. 0xFF if no class found.
+  *)
+  PROCEDURE CoreFindEP*(dev: DDef.Handle; index: BYTE): BYTE;
+  BEGIN
+(*
+#ifdef USE_USBD_COMPOSITE
+  /* Parse the table of classes in use */
+  for (uint32_t i = 0U; i < USBD_MAX_SUPPORTED_CLASS; i++)
+  {
+    /* Check if current class is in use */
+    if ((pdev->tclasslist[i].Active) == 1U)
+    {
+      /* Parse all endpoints listed in the current class */
+      for (uint32_t j = 0U; j < pdev->tclasslist[i].NumEps; j++)
+      {
+        /* Check if requested endpoint matches the current class endpoint */
+        if (pdev->tclasslist[i].Eps[j].add == index)
+        {
+          if (pdev->pClass[i]->Setup != NULL)
+          {
+            return (uint8_t)i;
+          }
+        }
+      }
+    }
+  }
+
+  return 0xFFU;
+#else
+*)
+    RETURN 0S
+  END CoreFindEP;
+
+  (**
   * @brief  USBD_LL_DataOutStage
   *         Handle data OUT stage
   * @param  pdev: device instance
@@ -124,9 +200,9 @@ MODULE USBDCore;
                (or duplicated by all classes for simplicity) *)
             idx := 0
           ELSIF recipient = Def.REQ_RECIPIENT_INTERFACE THEN
-            idx := dev.CoreFindIF(dev, dev.request.wIndex MOD 100H)
+            idx := CoreFindIF(dev, dev.request.wIndex MOD 100H)
           ELSIF recipient = Def.REQ_RECIPIENT_ENDPOINT THEN
-            idx := dev.CoreFindEP(dev, dev.request.wIndex MOD 100H)
+            idx := CoreFindEP(dev, dev.request.wIndex MOD 100H)
           ELSE (* Back to the first class in case of doubt *)
             idx := 0
           END;
@@ -144,7 +220,7 @@ MODULE USBDCore;
 *)
       END
     ELSE (* Get the class index relative to this interface *)
-      idx := dev.CoreFindEP(dev, epnum MOD 80H);
+      idx := CoreFindEP(dev, epnum MOD 80H);
       IF (idx # 0FFH) & (idx < DDef.MAX_SUPPORTED_CLASS) THEN
         (* Call the class data out function to manage the request *)
         IF dev.state = DDef.STATE_CONFIGURED THEN
@@ -198,7 +274,7 @@ MODULE USBDCore;
       IF dev.test_mode # 0 THEN RunTestMode(dev); dev.test_mode := 0 END
     ELSE
       (* Get the class index relative to this interface *)
-      idx := dev.CoreFindEP(dev, ORD(TOSET(epnum)+Def.D2H));
+      idx := CoreFindEP(dev, ORD(TOSET(epnum)+Def.D2H));
       IF (idx # 0FFH) & (idx < DDef.MAX_SUPPORTED_CLASS) THEN
         (* Call the class data out function to manage the request *)
         IF dev.state = DDef.STATE_CONFIGURED THEN

@@ -1,5 +1,5 @@
 MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
-  IMPORT SYSTEM, Kernel, BSP, Log := USBLog, Def := USBDef, ll := LLUSB, Q := Queue, UC := HALUC;
+  IMPORT SYSTEM, Kernel, BSP, Log := USBLog, Def := USBDef, ll := LLUSB, UC := HALUC;
 
   CONST
     (*private constants*)
@@ -131,37 +131,6 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
 
     RETURN ll.IsHost(core.Instance)
   END IsHost;
-
-  PROCEDURE IRQLog(msg: UC.DebugMsg);
-  BEGIN Log.Debug("["); Log.DebugInt(msg.time, 10); Log.DebugString("] IRQ ");
-    Log.DebugString(", gintsts: ");  Log.DebugSet(msg.gintsts);
-    Log.DebugLn
-  END IRQLog;
-
-  (**
-  * @brief  Do the work offloaded by IRQs in the process loop.
-  *)
-  PROCEDURE ProcessMsg(msg: Q.Msg; core: UC.Handle);
-  BEGIN
-  END ProcessMsg;
-
-(*
-  (**
-  * @brief  Retrieve and process IRQ messages.
-  *)
-  PROCEDURE ProcessDeferredIRQWork*(core: UC.Handle);
-    VAR msg!: Q.Msg;
-  BEGIN
-    msg := UC.TakeMsg(core);
-    WHILE msg # NIL DO
-      CASE msg OF
-        UC.DebugMsg: IRQLog(msg)
-      | Q.Msg: ASSERT(FALSE) (*unknown message type*)
-      END; UC.GiveMsg(core, msg);
-      msg := UC.TakeMsg(core)
-    END
-  END ProcessDeferredIRQWork;
-*)
 
 BEGIN hsid := 0FFH
 END USBHal.

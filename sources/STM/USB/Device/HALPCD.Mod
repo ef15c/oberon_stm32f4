@@ -325,14 +325,16 @@ MODULE HALPCD;
       END
     END HandleRXFLVL;
 
-  BEGIN BSP.ledsOnOff({2}, {}); USBx := hpcd.Instance;
+  BEGIN dbm := NIL; BSP.ledsOnOff({2}, {}); USBx := hpcd.Instance;
     CASE hpcd OF
       Handle:
         flags := ll.ReadInterrupts(USBx);
+(*
         IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(hpcd.DebugMP);
           IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^); dbm.epnum := 0FFH; dbm.gintsts := flags
           END
         END;
+*)
         IF ~ll.IsHost(USBx) & (flags # {}) THEN (* ensure that we are in device mode and avoid spurious interrupt *)
           hpcd.FrameNumber := LSR(ORD(USBx.DSTS*ll.DSTS_FNSOF_Msk), ll.DSTS_FNSOF_Pos); (* store current frame number *)
           (* Handle RxQLevel Interrupt *)
@@ -693,6 +695,16 @@ MODULE HALPCD;
 
   BEGIN ReceiveEP(hpcd, hpcd.OUT_ep[ep_addr MOD 10H], buf, ep_addr)
   END EP_Receive;
+
+  (**
+  * @brief  Get Received Data Size
+  * @param  hpcd PCD handle
+  * @param  ep_addr endpoint address
+  * @retval Data Size
+  *)
+  PROCEDURE EP_GetRxCount*(hpcd: Handle; ep_addr: BYTE): INTEGER;
+    RETURN hpcd.OUT_ep[ep_addr MOD 10H].xfer_count
+  END EP_GetRxCount;
 
   (**
   * @brief  Send an amount of data

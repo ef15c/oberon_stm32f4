@@ -305,8 +305,7 @@ MODULE USBDef; (*USB OTG common definitions. C.S 29.06.26*)
     VAR r: BYTE;
   BEGIN
     CASE b OF
-      RawDescriptor:
-        r := b.buf[b.index]; INC(b.index)
+      RawDescriptor: r := b.buf[b.index]; INC(b.index)
     | Buffer: ASSERT(FALSE)
     END
 
@@ -316,8 +315,7 @@ MODULE USBDef; (*USB OTG common definitions. C.S 29.06.26*)
   PROCEDURE RawWriteByte(b: Buffer; v: BYTE);
   BEGIN
     CASE b OF
-      RawDescriptor:
-        b.buf[b.length] := v; INC(b.length)
+      RawDescriptor: b.buf[b.length] := v; INC(b.length)
     | Buffer: ASSERT(FALSE)
     END
   END RawWriteByte;

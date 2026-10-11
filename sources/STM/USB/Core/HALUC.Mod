@@ -1,5 +1,5 @@
 MODULE HALUC; (*The USB Core driver*)
-  IMPORT BSP, Kernel, Def := USBDef, Log := USBLog, ll := LLUSB, Q := Queue;
+  IMPORT BSP, Kernel, Def := USBDef, ll := LLUSB;
 
   CONST
   (** @defgroup HCD_Exported_Types_Group1 HCD State Structure definition
@@ -11,10 +11,6 @@ MODULE HALUC; (*The USB Core driver*)
     STATE_ERROR* = 4;
 
   TYPE
-    (*!< USB debug message *)
-    DebugMsg* = POINTER TO DebugMsgDesc;
-    DebugMsgDesc* = RECORD(Q.MsgDesc) gintsts*: SET END;
-
     Handle* = POINTER TO HandleDesc;
     IRQHandlerProc* = PROCEDURE^5(core: Handle);
     HandleDesc* = RECORD(Def.HandleDesc)
@@ -23,16 +19,7 @@ MODULE HALUC; (*The USB Core driver*)
       cState*: BYTE;                (*!< CD initialization state  *)
       Timer*: INTEGER;         (*!< CD timer for OTG mode stabilization*)
       ControllerIRQHandler*: IRQHandlerProc;
-(*      DebugMP: Q.Msg; (*the pools of available IRQ messages*)
-      MsgPendQ: Q.Msg (*the deferred work message queue*)*)
     END;
-
-    PROCEDURE newDebugMsg(): Q.Msg; (*create a debug message object*)
-      VAR item!: DebugMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newDebugMsg;
 
 (*todo: implement host negociation and session request
   (**
@@ -54,17 +41,8 @@ MODULE HALUC; (*The USB Core driver*)
   *)
   PROCEDURE IRQHandler*(core: Handle);
     VAR flags: SET;
-      msg!: Q.Msg; dbm!: DebugMsg;
   BEGIN BSP.ledsOnOff({3}, {});
     IF core # NIL THEN flags := ll.ReadInterrupts(core.Instance);
-      dbm := NIL;
-(*
-      IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(core.DebugMP);
-        IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^);
-          dbm.gintsts := core.Instance.GINTSTS; Q.Post(core.MsgPendQ, dbm)
-        END
-      END;
-*)
       IF ll.GINTSTS_MMIS IN flags THEN (* Mode mismatch, acknowledge the interrupt *)
         core.Instance.GINTSTS := {ll.GINTSTS_MMIS}
       END;
@@ -112,54 +90,6 @@ MODULE HALUC; (*The USB Core driver*)
   PROCEDURE DeInit*(pcd: Handle);
   BEGIN ll.DisableGlobalInt(pcd.Instance)
   END DeInit;
-
-  (**
-  * @brief  Initialize the pool of messages for each type of deferred work.
-  * @param core handle
-  *)
-(*
-  PROCEDURE InitPools*(core: Handle);
-  BEGIN
-    Log.Debug("create 100 debug message objects"); Log.DebugLn;
-    core.DebugMP := Q.CreatePool(100, newDebugMsg)
-  END InitPools;
-
-  PROCEDURE TakeMsg*(core: Handle): Q.Msg;
-    VAR msg!: Q.Msg;
-  BEGIN msg := NIL;
-    IF Q.IsExhausted() THEN Log.Error("Interrupt queue too small"); Log.ErrorLn;
-      Log.Flush; ASSERT(FALSE)
-    END;
-    IF core.MsgPendQ # NIL THEN
-      ll.DisableGlobalInt(core.Instance); msg := Q.Get(core.MsgPendQ); ll.EnableGlobalInt(core.Instance)
-    END
-
-    RETURN msg
-  END TakeMsg;
-
-  PROCEDURE GiveMsg*(core: Handle; msg: Q.Msg); (*return message object to the appropriate pool*)
-  BEGIN ll.DisableGlobalInt(core.Instance);
-    CASE msg OF
-      DebugMsg: Q.PostFirst(core.DebugMP, msg)
-    | Q.Msg: ASSERT(FALSE) (*unknown message type*)
-    END;
-    ll.EnableGlobalInt(core.Instance)
-  END GiveMsg;
-*)
-
-(*
-  PROCEDURE debug*;
-    VAR core!: Def.Handle;
-  BEGIN core := Def.usbCores[0];
-    IF core # NIL THEN
-      CASE core OF Handle:
-        Log.Debug("GAHBCFG: "); Log.DebugSet(core.Instance.GAHBCFG); Log.DebugLn;
-        Log.Debug("GINTSTS: "); Log.DebugSet(core.Instance.GINTSTS); Log.DebugLn;
-        Log.Debug("GINTMSK: "); Log.DebugSet(core.Instance.GINTMSK); Log.DebugLn
-      END
-    END
-  END debug;
-*)
 
 END HALUC.
 

@@ -1,5 +1,5 @@
 MODULE USBDMTPOberon;
-  IMPORT Def := USBDef, USBDMTPDesc, O := USBDMTPOpt, USBDMTP;
+  IMPORT SYSTEM, BSP, Def := USBDef, USBDMTPDesc, O := USBDMTPOpt, USBDMTP;
 
   VAR fops*: Def.UserData; Descriptors*: Def.DescriptorGetters; CLASS*: Def.Class;
 
@@ -30,6 +30,32 @@ MODULE USBDMTPOberon;
     (* Make sure to close open file while canceling transaction *)
   END Cancel;
 
+  PROCEDURE PutVendorExtension(d: Def.Buffer);
+  BEGIN O.PutString(d, "microsoft.com: 1.0; ")
+  END PutVendorExtension;
+
+  PROCEDURE PutManufacturer(d: Def.Buffer);
+  BEGIN O.PutString(d, "Christian Schoffit")
+  END PutManufacturer;
+
+  PROCEDURE PutModel(d: Def.Buffer);
+  BEGIN O.PutString(d, "Oberon Station STM32F4")
+  END PutModel;
+
+  PROCEDURE PutDeviceVersion(d: Def.Buffer);
+  BEGIN O.PutString(d, "1.0")
+  END PutDeviceVersion;
+
+  PROCEDURE PutSerialNumber(d: Def.Buffer);
+    VAR t: INTEGER;
+  BEGIN Def.PutByte(d, 33); (*must be excatly 32 hexadecimal characters for legacy compatibility reasons*)
+    O.PutHexInteger(d, 0);
+    SYSTEM.GET(BSP.UID_BASE + 8, t); O.PutHexInteger(d, t);
+    SYSTEM.GET(BSP.UID_BASE + 4, t); O.PutHexInteger(d, t);
+    SYSTEM.GET(BSP.UID_BASE, t); O.PutHexInteger(d, t);
+    Def.PutHalfword(d, 0); (*string null terminator*)
+  END PutSerialNumber;
+
   PROCEDURE initFops(): Def.UserData;
     VAR u!: O.UserIf;
   BEGIN NEW(u);
@@ -52,11 +78,11 @@ MODULE USBDMTPOberon;
     u.DeleteObject := NIL;
     u.Cancel := Cancel;
     u.CopyBuffer := NIL;
-    u.PutVendorExtension := NIL;
-    u.PutManufacturer := NIL;
-    u.PutModel := NIL;
-    u.PutDeviceVersion := NIL;
-    u.PutSerialNumber := NIL;
+    u.PutVendorExtension := PutVendorExtension;
+    u.PutManufacturer := PutManufacturer;
+    u.PutModel := PutModel;
+    u.PutDeviceVersion := PutDeviceVersion;
+    u.PutSerialNumber := PutSerialNumber;
     u.PutStorageIDs := NIL;
     u.PutStorageType := NIL;
     u.PutFilesystemType := NIL;
