@@ -112,7 +112,7 @@ MODULE USBDMTPStorage;
     VAR hmtp!: Opt.Handle;
   BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
     (* DeInit  physical Interface components *)
-    hmtp.SessionState := Opt.SESSION_NOT_OPENED;
+    hmtp.SessionState := Opt.SESSION_NOT_OPEN;
     (* Stop low layer file system operations if any *)
     Cancel(dev, PHASE_IDLE);
     (* Free low layer file system resources *)
@@ -192,25 +192,14 @@ MODULE USBDMTPStorage;
     VAR hmtp!: Opt.Handle; op: INTEGER;
   BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
     op := hmtp.OperationsContainer.code;
-    IF op = Opt.OP_GET_DEVICE_INFO THEN
-      Opt.GetDeviceInfo(dev); hmtp.ResponsePhase := RESPONSE_PHASE
-    ELSIF op = Opt.OP_OPEN_SESSION THEN
-      Log.Debug("Open session"); Log.DebugLn;
-      Opt.CreateObjectHandle(dev); hmtp.ResponsePhase := RESPONSE_PHASE
-    ELSIF (op = Opt.OP_GET_STORAGE_IDS) OR (op = Opt.OP_GET_STORAGE_INFO) OR
-      (op = Opt.OP_GET_OBJECT_HANDLES) OR (op = Opt.OP_GET_OBJECT_INFO) OR
-      (op = Opt.OP_GET_OBJECT_REFERENCES) OR (op = Opt.OP_GET_OBJECT_PROPS_SUPPORTED) OR 
-      (op = Opt.OP_GET_OBJECT_PROP_DESC) OR (op = Opt.OP_GET_OBJECT_PROPLIST) OR
-      (op = Opt.OP_GET_OBJECT_PROP_VALUE) OR (op = Opt.OP_GET_DEVICE_PROP_DESC) THEN
-        Opt.ProcessOp(dev); hmtp.ResponsePhase := RESPONSE_PHASE
-    ELSIF op = Opt.OP_GET_OBJECT THEN
-      Opt.GetObject(dev); hmtp.ResponsePhase := READ_DATA
-    ELSIF op = Opt.OP_SEND_OBJECT_INFO THEN
-      Opt.SendObjectInfo(dev, hmtp.rx_buff); hmtp.ResponsePhase := RECEIVE_DATA
-    ELSIF op = Opt.OP_SEND_OBJECT THEN
-      Opt.SendObject(dev, hmtp.rx_buff); hmtp.ResponsePhase := RECEIVE_DATA
-    ELSIF op = Opt.OP_DELETE_OBJECT THEN
-      Opt.DeleteObject(dev); hmtp.ResponsePhase := RESPONSE_PHASE
+    IF op = Opt.OP_GET_DEVICE_INFO THEN Opt.GetDeviceInfo(dev); hmtp.ResponsePhase := RESPONSE_PHASE
+    ELSIF op = Opt.OP_OPEN_SESSION THEN Opt.OpenSession(dev); hmtp.ResponsePhase := RESPONSE_PHASE
+    ELSIF op = Opt.OP_CLOSE_SESSION THEN Opt.CloseSession(dev); hmtp.ResponsePhase := RESPONSE_PHASE
+    ELSIF op = Opt.OP_GET_OBJECT THEN Opt.GetObject(dev); hmtp.ResponsePhase := READ_DATA
+    ELSIF op = Opt.OP_SEND_OBJECT_INFO THEN Opt.SendObjectInfo(dev, hmtp.rx_buff); hmtp.ResponsePhase := RECEIVE_DATA
+    ELSIF op = Opt.OP_SEND_OBJECT THEN Opt.SendObject(dev, hmtp.rx_buff); hmtp.ResponsePhase := RECEIVE_DATA
+    ELSIF op = Opt.OP_DELETE_OBJECT THEN Opt.DeleteObject(dev); hmtp.ResponsePhase := RESPONSE_PHASE
+    ELSE Opt.ProcessOp(dev); hmtp.ResponsePhase := RESPONSE_PHASE
     END
   END DecodeOperations;
 

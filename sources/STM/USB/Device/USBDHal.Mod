@@ -336,8 +336,8 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
         msg := PCD.TakeMsg(dev);
         WHILE msg # NIL DO (*Process the message*)
           CASE msg OF
-            PCD.DataOutStageMsg: IF msg.epnum # 0 THEN Log.Debug("DataOutStage"); Log.DebugLn END; DataOutStageCallback(dev, msg.epnum)
-          | PCD.DataInStageMsg: IF msg.epnum # 0 THEN Log.Debug("DataInStage"); Log.DebugLn END; DataInStageCallback(dev, msg.epnum)
+            PCD.DataOutStageMsg: DataOutStageCallback(dev, msg.epnum)
+          | PCD.DataInStageMsg: DataInStageCallback(dev, msg.epnum)
           | PCD.SetupStageMsg: SetupStageCallback(dev)
           | PCD.ISOOUTIncompleteMsg: ASSERT(FALSE)
           | PCD.ISOINIncompleteMsg: ASSERT(FALSE)

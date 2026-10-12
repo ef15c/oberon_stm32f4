@@ -53,23 +53,20 @@ Net.SendFiles CS USBD.Mod USB.Mod USBDMTPDesc.Mod USBDMTPOpt.Mod USBDMTPOberon.M
 System.Free USBApp USBDMTPOberon USB USBHHID USBHHIDMouse USBHHIDKeybd USBHHIDParser USBHHIDClass USBH USBHCtlReq USBHIoReq USBHHal
  USBHCore USBHPipes HALHCD USBHal USBHDef USBHConf HALUC Queue LLUSB USBDef USBLog~
 
-
-USBApp.Run USBApp.Stop
-USBApp.mode
-HALUC.debug
+USBApp.Run USBApp.Stop USBApp.mode
 
 OM4Tool.DecObj USBApp.m4c
 
 DEBUG: Core version:  4F54281A
-DEBUG: Core  D073F208 registered
+DEBUG: Core  D054F1C8 registered
 DEBUG: Initialize Peripheral controller
-DEBUG: Id 0 updated to  D0722D08
+DEBUG: Id 0 updated to  D051AE08
 DEBUG: Connect
 DEBUG: Suspend
 DEBUG: Reset
 DEBUG: Get Descriptor device, length 64
 DEBUG: Reset
-DEBUG: Set Address 17
+DEBUG: Set Address 51
 DEBUG: Get Descriptor device, length 18
 DEBUG: Get Descriptor device qualifier, length 10
 DEBUG: Get Descriptor device qualifier, length 10
@@ -89,24 +86,31 @@ DEBUG: Get Descriptor string, 0 language 0, length 4
 DEBUG: Get Descriptor string, 5 language 1033, length 255
 DEBUG: Get Descriptor string, 0 language 0, length 4
 DEBUG: Get Descriptor string, 5 language 1033, length 255
-DEBUG: DataOutStage
 DEBUG: Open session
-DEBUG: DataInStage
-DEBUG: DataOutStage
-  TRAP   5 in USBDMTPOpt at 000007F3
-DEBUG: DataInStage
-DEBUG: DataInStage
-DEBUG: DataOutStage
-DEBUG: Core  D0722D08 unregistered
+DEBUG: GetDeviceInfo
+DEBUG: GetStorageIDs
+DEBUG: GetStorageInfo
+DEBUG: Get Descriptor string, 0 language 0, length 4
+DEBUG: Get Descriptor string, 5 language 1033, length 255
+DEBUG: GetObjectPropsSupp( 3000)      8 elements returned
+DEBUG: GetObjectPropsSupp( 3003)      8 elements returned
+DEBUG: GetObjectPropsSupp( 3004)      8 elements returned
+DEBUG: GetObjectPropsSupp( 3804)      8 elements returned
+DEBUG: GetDevicePropValue
+DEBUG: GetObjectHandle   2215 elements returned
+DEBUG: GetObjectInfo
+  TRAP   5 in USBDMTPOpt at 000009EB
+DEBUG: Core  D051AE08 unregistered
 DEBUG: USB system stopped.
 
-  pos 26562 in USBDMTPOpt at  D0214643
-  pos 29649 in USBDMTPOpt at  D0214956
-  pos 32108 in USBDMTPOpt at  D0214B62
-  pos  8318 in USBDMTPStorage at  D0215704
-  pos 10045 in USBDMTPStorage at  D0215816
-  pos 10466 in USBDMTP at  D0215FEE
-  pos  7340 in USBDCore at  D0212126
-  pos  1731 in USBDHal at  D0212660
-  pos 10321 in USBDHal at  D0212C76
-  pos   512 in USBD at  D0212F60
+Stack trace utility CS 16.05.24
+  pos 29554 in USBDMTPOpt at  D0213B83
+  pos 31018 in USBDMTPOpt at  D0213DAC
+  pos 34066 in USBDMTPOpt at  D0214096
+  pos  8363 in USBDMTPStorage at  D0214C86
+  pos  9648 in USBDMTPStorage at  D0214D20
+  pos 10466 in USBDMTP at  D02154FA
+  pos  7340 in USBDCore at  D02113DE
+  pos  1731 in USBDHal at  D02118FC
+  pos 10255 in USBDHal at  D0211EF6
+  pos   512 in USBD at  D02121C4
