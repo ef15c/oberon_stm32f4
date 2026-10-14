@@ -1015,7 +1015,8 @@ MODULE LLUSB;
   * @param  USBx  Selected device
   *)
   PROCEDURE DisableGlobalInt*(USBx: OTGCore);
-  BEGIN EXCL(USBx.GAHBCFG, GAHBCFG_GINT)
+  BEGIN EXCL(USBx.GAHBCFG, GAHBCFG_GINT);
+    REPEAT UNTIL ~(GAHBCFG_GINT IN USBx.GAHBCFG)
   END DisableGlobalInt;
 
   (**
@@ -1038,6 +1039,7 @@ MODULE LLUSB;
   BEGIN
     IF ~isIn THEN INC(epnum, 10H) END;
     EXCL(USBx.DAINTMSK, epnum);
+    REPEAT UNTIL ~(epnum IN USBx.DAINTMSK)
   END DisableEPInt;
 
   (**
@@ -1389,7 +1391,9 @@ MODULE LLUSB;
   PROCEDURE EPStartXfer*(USBx: OTGCore; VAR ep: EPDesc; dma: BOOLEAN);
     VAR pktcnt: HALFWORD;
   BEGIN
-    IF ep.is_in THEN (* IN endpoint *) ASSERT(~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL));
+    IF ep.is_in THEN (* IN endpoint *) 
+      (*ASSERT(~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL));*)
+      REPEAT UNTIL ~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL);
       IF ep.xfer_len = 0 THEN (* Zero Length Packet? *)
         USBx.INEP[ep.num].DIEPTSIZ := USBx.INEP[ep.num].DIEPTSIZ - (DIEPTSIZ_PKTCNT_Msk + DIEPTSIZ_XFRSIZ_Msk) +
           TOSET(LSL(1, DIEPTSIZ_PKTCNT_Pos))

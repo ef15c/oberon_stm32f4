@@ -5,7 +5,7 @@ MODULE USBD;
   * @brief   USB host library
   ******************************************************************************
   *)
-  IMPORT Log := USBLog, Def := USBDef, DDef := USBDDef, DH := USBDHal;
+  IMPORT Kernel, Oberon, Log := USBLog, Def := USBDef, DDef := USBDDef, DH := USBDHal;
 
   VAR processTask: Def.Task;
 
@@ -22,7 +22,8 @@ MODULE USBD;
   BEGIN
     FOR i := 0 TO Def.NB_OTG_CORES - 1 DO
       IF Def.usbCores[i] # NIL THEN ProcessDevice(Def.usbCores[i]) END
-    END
+    END;
+    IF Kernel.allocated > 1500000 THEN Oberon.Collect(0) END
   END Process;
 
   (**

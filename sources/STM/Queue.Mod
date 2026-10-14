@@ -2,13 +2,13 @@ MODULE Queue;
   (* Christan Schoffit 06.06.26
       This module implements a message queue that is used in the USB stack
       to defer the heavy work outside the IRQ context*)
-  IMPORT BSP, Kernel;
+  IMPORT SYSTEM, BSP, Kernel;
 
   TYPE
     Msg* = POINTER TO MsgDesc;
-    MsgDesc* = RECORD time*, ts*: INTEGER; guard: BOOLEAN; next: Msg END;
+    MsgDesc* = RECORD type*, time*, ts*: INTEGER; guard: BOOLEAN; next: Msg END;
 
-  VAR exhausted: BOOLEAN;
+  VAR exhausted: Msg;
 
   PROCEDURE CreatePool*(size: INTEGER; new: PROCEDURE(): Msg): Msg;
     VAR i: INTEGER; head!, item!: Msg;
@@ -18,11 +18,21 @@ MODULE Queue;
     RETURN head
   END CreatePool;
 
+  PROCEDURE CreateSPool*(type, adr, len, size: INTEGER): Msg;
+    VAR i: INTEGER; head!, item!: Msg;
+  BEGIN head := SYSTEM.VAL(Msg, adr); head.guard := TRUE; head.type := type;
+    FOR i := 1 TO len - 1 DO INC(adr, size); item := SYSTEM.VAL(Msg, adr);
+      item.type := type; item.next := head; head := item
+    END
+
+    RETURN head
+  END CreateSPool;
+
   PROCEDURE Get*(VAR queue: Msg): Msg;
     VAR item!: Msg;
   BEGIN item := NIL;
     IF queue # NIL THEN
-      IF queue.guard THEN exhausted := TRUE
+      IF queue.guard THEN exhausted := queue
       ELSE item := queue; queue := item.next; item.next := NIL
       END
     END
@@ -46,17 +56,13 @@ MODULE Queue;
     END
   END Post;
 
-  PROCEDURE HaveExhaustedPools*(): BOOLEAN;
-    VAR res: BOOLEAN;
-  BEGIN res := exhausted; exhausted := FALSE
-
-    RETURN res
-  END HaveExhaustedPools;
-
-  PROCEDURE IsExhausted*(queue: Msg): BOOLEAN;
-    RETURN queue.guard
-  END IsExhausted;
+  PROCEDURE ExhaustedPool*(): Msg;
+    VAR msg!: Msg;
+  BEGIN msg := exhausted; exhausted := NIL
+    RETURN msg
+  END ExhaustedPool;
 
 END Queue.
 
 OM4P.Compile Queue.Mod/s~
+OM4Tool.DecObj Queue.m4c

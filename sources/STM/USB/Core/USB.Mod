@@ -40,7 +40,7 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
       IF ctrl # NIL THEN
         CASE ctrl OF
           DDef.Handle: ctrl.User(id, Def.USER_REGISTER_DETAILS); (*register device classes and interfaces*)
-            USBD.Start(ctrl); ctrl.cState := UC.STATE_READY
+            USBD.Start(ctrl); ctrl.cState := UC.STATE_READY; Log.User("USB system started")
           | Def.Handle: ASSERT(FALSE)
         END
       ELSE Log.Error("Peripheral mode initialization failed"); Log.ErrorLn
@@ -95,7 +95,7 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
       H.DeInit(core(UC.Handle)); Def.UnRegister(core);
       IF (processTask # NIL) & (Def.nofRegisteredCores = 0) THEN Def.Remove(processTask); processTask := NIL END;
       IF core.User # NIL THEN core.User(id, Def.USER_USB_RESET) END;
-      Log.Debug("USB system stopped."); Log.DebugLn;
+      Log.User("USB system stopped.");
       Log.Flush
     END
   END DeInit;

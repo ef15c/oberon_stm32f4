@@ -16,7 +16,7 @@ MODULE USBDCore;
   *
   ******************************************************************************
   *)
-  IMPORT Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq;
+  IMPORT Log := USBLog, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq;
 
   (**
   * @brief  USBD_RunTestMode
@@ -239,8 +239,9 @@ MODULE USBDCore;
   * @param  epnum: endpoint index
   * @retval status
   *)
-  PROCEDURE DataInStage*(dev: DDef.Handle; epnum: BYTE);
-    VAR idx: BYTE;
+  PROCEDURE DataInStage*(dev: DDef.Handle; epnum: BYTE; zlpRequired: BOOLEAN);
+    VAR idx: BYTE; dummy: Def.BufferDesc;
+
     PROCEDURE disEP0(dev: DDef.Handle; VAR pep: DDef.Endpoint);
       VAR  ret: BYTE;
     BEGIN
@@ -268,11 +269,15 @@ MODULE USBDCore;
       END
 *)
     END disEP0;
+
   BEGIN
     IF epnum = 0 THEN
       IF dev.ep0_state = DDef.EP0_DATA_IN THEN disEP0(dev, dev.ep_in[0]) END;
       IF dev.test_mode # 0 THEN RunTestMode(dev); dev.test_mode := 0 END
     ELSE
+      IF zlpRequired THEN CLEAR(dummy); dev.Transmit(dev, epnum, dummy, 0);
+        Log.Debug("DataInStage: Zero Length Packet is needed"); Log.DebugLn; Log.Flush
+      END;
       (* Get the class index relative to this interface *)
       idx := CoreFindEP(dev, ORD(TOSET(epnum)+Def.D2H));
       IF (idx # 0FFH) & (idx < DDef.MAX_SUPPORTED_CLASS) THEN

@@ -46,6 +46,7 @@ MODULE USBDMTPStorage;
   MTPInEpAdd = USBD_CoreGetEPAdd(pdev, USBD_EP_IN, USBD_EP_TYPE_BULK, (uint8_t)pdev->classId);
 #endif /* USE_USBD_COMPOSITE */
 *)
+    IF buf.length MOD 64 = 0 THEN Log.Debug("buf lentgth is multiple of 64"); Log.DebugLn; Log.Flush END;
     DH.Transmit(dev, InEpAdd, buf^, buf.length)
   END SendData;
 

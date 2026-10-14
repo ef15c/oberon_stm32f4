@@ -6,7 +6,7 @@ MODULE HALPCD;
   * @brief   HCD HAL module.
   ******************************************************************************
   *)
-  IMPORT SYSTEM, BSP, Log := USBLog, Def := USBDef, Q := Queue, ll := LLUSB, UC := HALUC, DDef := USBDDef;
+  IMPORT SYSTEM, BSP, Log := USBLog, Def := USBDef, Q := Queue, ll := LLUSB, UC := HALUC, UH := USBHal, DDef := USBDDef;
 
   CONST
     SPEED_HIGH* = ll.USBD_HS_SPEED;
@@ -47,131 +47,35 @@ MODULE HALPCD;
       LPMMP*, ResumeMP*, SuspendMP*, ResetMP*,
       ConnectMP*, DisconnectMP*, (*the pools of available IRQ messages*)
       DebugMP*, (*the interrupt trace message pool*)
-      MsgPendQ: Q.Msg (*the deferred work message queue*)
+      MsgPendQ*: Q.Msg (*the deferred work message queue*)
     END;
 
-    (*!< USB OTG PCD Data Out stage message*)
-    DataOutStageMsg* = POINTER TO DataOutStageMsgDesc;
-    DataOutStageMsgDesc* = RECORD(Q.MsgDesc) epnum*: BYTE END;
- 
-    (*!< USB OTG PCD Data In stage message*)
-    DataInStageMsg* = POINTER TO DataInStageMsgDesc;
-    DataInStageMsgDesc* = RECORD(Q.MsgDesc) epnum*: BYTE END;
- 
-    (*!< USB OTG PCD Setup stage message*)
-    SetupStageMsg* = POINTER TO SetupStageMsgDesc;
-    SetupStageMsgDesc* = RECORD(Q.MsgDesc) END;
- 
-    (*!< USB OTG PCD Isochronous Out incomplete message*)
-    ISOOUTIncompleteMsg* = POINTER TO ISOOUTIncompleteMsgDesc;
-    ISOOUTIncompleteMsgDesc* = RECORD(Q.MsgDesc) epnum*: BYTE END;
- 
-    (*!< USB OTG PCD Isochronous In incomplete message*)
-    ISOINIncompleteMsg* = POINTER TO ISOINIncompleteMsgDesc;
-    ISOINIncompleteMsgDesc* = RECORD(Q.MsgDesc) epnum*: BYTE END;
- 
-    (*!< USB OTG LPM change message*)
-    LPMMsg* = POINTER TO LPMMsgDesc;
-    LPMMsgDesc* = RECORD(Q.MsgDesc) msg*: BYTE END;
- 
-    (*!< USB OTG Resume message*)
-    ResumeMsg* = POINTER TO ResumeMsgDesc;
-    ResumeMsgDesc* = RECORD(Q.MsgDesc) END;
- 
-    (*!< USB OTG Suspend message*)
-    SuspendMsg* = POINTER TO SuspendMsgDesc;
-    SuspendMsgDesc* = RECORD(Q.MsgDesc) END;
- 
-    (*!< USB OTG Reset message*)
-    ResetMsg* = POINTER TO ResetMsgDesc;
-    ResetMsgDesc* = RECORD(Q.MsgDesc) END;
- 
-    (*!< USB OTG Connect message*)
-    ConnectMsg* = POINTER TO ConnectMsgDesc;
-    ConnectMsgDesc* = RECORD(Q.MsgDesc) END;
- 
-    (*!< USB OTG Disconnect message*)
-    DisconnectMsg* = POINTER TO DisconnectMsgDesc;
-    DisconnectMsgDesc* = RECORD(Q.MsgDesc) END;
- 
-    (*!< USB debug message *)
-    DebugMsg* = POINTER TO DebugMsgDesc;
-    DebugMsgDesc* = RECORD(Q.MsgDesc)
-      is_in*: BOOLEAN; epnum*: BYTE; gintsts*, dxepint*: SET
+    Msg* = POINTER TO MsgDesc;
+    MsgDesc* = RECORD(Q.MsgDesc) epnum*, msg*: BYTE; zlpRequired*: BOOLEAN;
+      is_in*: BOOLEAN; gintsts*, dxepint*: SET
     END;
+ 
+  VAR
+    (*the message pools cannot be dynamically allocated because the garbage collector
+      can be corrupted if dynamic allocated objects are modified in an ISE while the
+      Kernel.Mark procedure is running.
+      Since it is not acceptable to disable interrupt during Kernel.Mark process, we must
+      switch to static allocation of the messgage objects
+      *)
 
-    PROCEDURE newDataOutStageMsg(): Q.Msg;
-      VAR item!: DataOutStageMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newDataOutStageMsg;
+    DOS: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Data Out stage message*)
+    DIS: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Data In stage message*)
+    SS: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Setup stage message*)
+    IOUTI: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Isochronous Out incomplete message*)
+    IINI: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Isochronous In incomplete message*)
+    LPM: ARRAY 1+1 OF MsgDesc;    (*!< USB OTG LPM change message*)
+    RSM: ARRAY 1+1 OF MsgDesc;    (*!< USB OTG Resume message*)
+    S: ARRAY 1+1 OF MsgDesc;    (*!< USB OTG Suspend message*)
+    RST: ARRAY 1+1 OF MsgDesc;    (*!< USB OTG Reset message*)
+    C: ARRAY 1+1 OF MsgDesc;    (*!< USB OTG Connect message*)
+    D: ARRAY 1+1 OF MsgDesc;    (*!< USB OTG Disconnect message*)
+    DBG: ARRAY 100+1 OF MsgDesc;    (*!< USB debug message *)
 
-    PROCEDURE newDataInStageMsg(): Q.Msg;
-      VAR item!: DataInStageMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newDataInStageMsg;
-
-  PROCEDURE newSetupStageMsg(): Q.Msg;
-      VAR item!: SetupStageMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newSetupStageMsg;
-
-    PROCEDURE newISOOUTIncompleteMsg(): Q.Msg;
-      VAR item!: ISOOUTIncompleteMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newISOOUTIncompleteMsg;
-
-    PROCEDURE newISOINIncompleteMsg(): Q.Msg;
-      VAR item!: ISOINIncompleteMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newISOINIncompleteMsg;
-
-    PROCEDURE newLPMMsg(): Q.Msg;
-      VAR item!: LPMMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newLPMMsg;
-
-    PROCEDURE newResumeMsg(): Q.Msg;
-      VAR item!: ResumeMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newResumeMsg;
-
-    PROCEDURE newSuspendMsg(): Q.Msg;
-      VAR item!: SuspendMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newSuspendMsg;
-
-    PROCEDURE newResetMsg(): Q.Msg;
-      VAR item!: ResetMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newResetMsg;
-
-    PROCEDURE newConnectMsg(): Q.Msg;
-      VAR item!: ConnectMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newConnectMsg;
-
-    PROCEDURE newDisconnectMsg(): Q.Msg;
-      VAR item!: DisconnectMsg;
-    BEGIN NEW(item)
-      RETURN item
-    END newDisconnectMsg;
-
-    PROCEDURE newDebugMsg(): Q.Msg; (*create a debug message object*)
-      VAR item!: DebugMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newDebugMsg;
 
   (**
   * @brief  process EP OUT transfer complete interrupt.
@@ -180,9 +84,9 @@ MODULE HALPCD;
   * @retval HAL status
   *)
   PROCEDURE OutXfrComplete_int(hpcd: Handle; epnum: BYTE);
-    VAR DoepintReg: SET; USBx!: ll.OTGCore; msg!: Q.Msg;
+    VAR DoepintReg: SET; USBx!: ll.OTGCore; msg!: Q.Msg; hmsg!: Msg;
     PROCEDURE HandlePacketReceived(hpcd: Handle; VAR ep: ll.EPDesc; epnum: BYTE);
-      VAR msg!: Q.Msg;
+      VAR msg!: Q.Msg; hmsg!: Msg;
     BEGIN (* out data packet received over EP *)
       ep.xfer_count := ep.xfer_size - ORD(hpcd.Instance.OUTEP[epnum].DOEPTSIZ*ll.DOEPTSIZ_XFRSIZ_Msk);
       IF epnum = 0 THEN
@@ -191,8 +95,8 @@ MODULE HALPCD;
         ELSE INC(ep.xfer_buff, ep.xfer_count)
         END
       END;
-      msg := Q.Get(hpcd.DataOutStageMP);
-      IF msg # NIL THEN msg(DataOutStageMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END
+      msg := Q.Get(hpcd.DataOutStageMP); hmsg := SYSTEM.VAL(Msg, msg);
+      IF hmsg # NIL THEN hmsg.epnum := epnum; Q.Post(hpcd.MsgPendQ, hmsg) END
     END HandlePacketReceived;
 
   BEGIN USBx := hpcd.Instance;
@@ -215,16 +119,16 @@ MODULE HALPCD;
         (* StupPktRcvd = 1 this is a setup packet *)
         IF ll.DOEPINT_STPKTRX IN DoepintReg THEN ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_STPKTRX})
         ELSE IF ll.DOEPINT_OTEPSPR IN DoepintReg THEN ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_OTEPSPR}) END;
-          msg := Q.Get(hpcd.DataOutStageMP);
-          IF msg # NIL THEN msg(DataOutStageMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END
+          msg := Q.Get(hpcd.DataOutStageMP); hmsg := SYSTEM.VAL(Msg, msg);
+          IF hmsg # NIL THEN hmsg.epnum := epnum; Q.Post(hpcd.MsgPendQ, hmsg) END
         END
       ELSE
         IF (epnum = 0) & (hpcd.OUT_ep[epnum].xfer_len = 0) THEN
           (* this is ZLP, so prepare EP0 for next setup *)
           ll.EP0_OutStart(USBx, FALSE, SYSTEM.ADR(hpcd.Setup))
         END;
-        msg := Q.Get(hpcd.DataOutStageMP);
-        IF msg # NIL THEN msg(DataOutStageMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END
+        msg := Q.Get(hpcd.DataOutStageMP); hmsg := SYSTEM.VAL(Msg, msg);
+        IF hmsg # NIL THEN hmsg.epnum := epnum; Q.Post(hpcd.MsgPendQ, hmsg) END
       END
     END
   END OutXfrComplete_int;
@@ -311,7 +215,7 @@ MODULE HALPCD;
   PROCEDURE IRQHandler*(hpcd: UC.Handle);
     VAR flags, RegVal, ep_intr, epint: SET; USBx!: ll.OTGCore;
       epnum: BYTE; msg!: Q.Msg; ret: BYTE; i: INTEGER;
-      dbm!: DebugMsg;
+      dbm!, hmsg!: Msg;
 
     PROCEDURE HandleRXFLVL(RegVal: SET; VAR ep: ll.EPDesc; hpcd: Handle);
       VAR bytecnt: INTEGER;
@@ -367,8 +271,8 @@ MODULE HALPCD;
                   IF ll.GINTSTS_GOUTNAKEFF IN USBx.GINTSTS THEN INCL(USBx.DCTL, ll.DCTL_CGONAK) END;
                   IF hpcd.OUT_ep[epnum].is_iso_incomplete THEN
                     hpcd.OUT_ep[epnum].is_iso_incomplete := FALSE;
-                    msg := Q.Get(hpcd.ISOOUTIncompleteMP);
-                    IF msg # NIL THEN msg(ISOOUTIncompleteMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END;
+                    msg := Q.Get(hpcd.ISOOUTIncompleteMP); hmsg := SYSTEM.VAL(Msg, msg);
+                    IF hmsg # NIL THEN hmsg.epnum := epnum; Q.Post(hpcd.MsgPendQ, hmsg) END;
                   END;
                   ll.ClearOutEPInterrupts(USBx, epnum, {ll.DOEPINT_EPDISD})
                 END;
@@ -394,16 +298,20 @@ MODULE HALPCD;
                       ll.EP0_OutStart(USBx, TRUE, SYSTEM.ADR(hpcd.Setup)) (* prepare to rx more setup packets *)
                     END
                   END;
-                  msg := Q.Get(hpcd.DataInStageMP);
-                  IF msg # NIL THEN msg(DataInStageMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END
+                  IF hpcd.IN_ep[epnum].xfer_len # 0 THEN msg := Q.Get(hpcd.DataInStageMP); hmsg := SYSTEM.VAL(Msg, msg);
+                    IF hmsg # NIL THEN hmsg.epnum := epnum;
+                      hmsg.zlpRequired := hpcd.IN_ep[epnum].xfer_len MOD hpcd.IN_ep[epnum].maxpacket = 0;
+                      Q.Post(hpcd.MsgPendQ, hmsg)
+                    END
+                  END
                 END;
                 IF ll.DIEPINT_TOC IN epint THEN ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_TOC}) END;
                 IF ll.DIEPINT_ITTXFE IN epint THEN ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_ITTXFE}) END;
                 IF ll.DIEPINT_INEPNE IN epint THEN ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_INEPNE}) END;
                 IF ll.DIEPINT_EPDISD IN epint THEN ret := ll.FlushTxFifo(USBx, epnum);
                   IF hpcd.IN_ep[epnum].is_iso_incomplete THEN hpcd.IN_ep[epnum].is_iso_incomplete := FALSE;
-                    msg := Q.Get(hpcd.ISOINIncompleteMP);
-                    IF msg # NIL THEN msg(ISOINIncompleteMsg).epnum := epnum; Q.Post(hpcd.MsgPendQ, msg) END;
+                    msg := Q.Get(hpcd.ISOINIncompleteMP); hmsg := SYSTEM.VAL(Msg, msg);
+                    IF hmsg # NIL THEN hmsg.epnum := epnum; Q.Post(hpcd.MsgPendQ, hmsg) END;
                   END;
                   ll.ClearInEPInterrupts(USBx, epnum, {ll.DIEPINT_EPDISD})
                 END;
@@ -418,8 +326,8 @@ MODULE HALPCD;
             EXCL(USBx.DCTL, ll.DCTL_RWUSIG); (* Clear the Remote Wake-up Signaling *)
             IF hpcd.LPM_State = LPM_L1 THEN
               hpcd.LPM_State := LPM_L0;
-              msg := Q.Get(hpcd.LPMMP);
-              IF msg # NIL THEN msg(LPMMsg).msg := LPM_L0_ACTIVE; Q.Post(hpcd.MsgPendQ, msg) END;
+              msg := Q.Get(hpcd.LPMMP); hmsg := SYSTEM.VAL(Msg, msg);
+              IF hmsg # NIL THEN hmsg.msg := LPM_L0_ACTIVE; Q.Post(hpcd.MsgPendQ, hmsg) END;
             ELSE
               msg := Q.Get(hpcd.ResumeMP);
               IF msg # NIL THEN Q.Post(hpcd.MsgPendQ, msg) END
@@ -798,63 +706,64 @@ MODULE HALPCD;
   *)
   PROCEDURE InitPools*(hpcd: Handle);
   BEGIN
-    hpcd.DataOutStageMP := Q.CreatePool(2, newDataOutStageMsg);
-    hpcd.DataInStageMP := Q.CreatePool(2, newDataInStageMsg);
-    hpcd.SetupStageMP := Q.CreatePool(1, newSetupStageMsg);
-    hpcd.ISOOUTIncompleteMP := Q.CreatePool(2, newISOOUTIncompleteMsg);
-    hpcd.ISOINIncompleteMP := Q.CreatePool(2, newISOINIncompleteMsg);
-    hpcd.LPMMP := Q.CreatePool(1, newLPMMsg);
-    hpcd.ResumeMP := Q.CreatePool(1, newResumeMsg);
-    hpcd.SuspendMP := Q.CreatePool(1, newSuspendMsg);
-    hpcd.ResetMP := Q.CreatePool(1, newResetMsg);
-    hpcd.ConnectMP := Q.CreatePool(1, newConnectMsg);
-    hpcd.DisconnectMP := Q.CreatePool(1, newDisconnectMsg);
-    hpcd.DebugMP := Q.CreatePool(100, newDebugMsg)
+    hpcd.DataOutStageMP := Q.CreateSPool(1, SYSTEM.ADR(DOS), LEN(DOS), SYSTEM.SIZE(MsgDesc));
+    hpcd.DataInStageMP := Q.CreateSPool(2, SYSTEM.ADR(DIS), LEN(DIS), SYSTEM.SIZE(MsgDesc));
+    hpcd.SetupStageMP := Q.CreateSPool(3, SYSTEM.ADR(SS), LEN(SS), SYSTEM.SIZE(MsgDesc));
+    hpcd.ISOOUTIncompleteMP := Q.CreateSPool(4, SYSTEM.ADR(IOUTI), LEN(IOUTI), SYSTEM.SIZE(MsgDesc));
+    hpcd.ISOINIncompleteMP := Q.CreateSPool(5, SYSTEM.ADR(IINI), LEN(IINI), SYSTEM.SIZE(MsgDesc));
+    hpcd.LPMMP := Q.CreateSPool(6, SYSTEM.ADR(LPM), LEN(LPM), SYSTEM.SIZE(MsgDesc));
+    hpcd.ResumeMP := Q.CreateSPool(7, SYSTEM.ADR(RSM), LEN(RSM), SYSTEM.SIZE(MsgDesc));
+    hpcd.SuspendMP := Q.CreateSPool(8, SYSTEM.ADR(S), LEN(S), SYSTEM.SIZE(MsgDesc));
+    hpcd.ResetMP := Q.CreateSPool(9, SYSTEM.ADR(RST), LEN(RST), SYSTEM.SIZE(MsgDesc));
+    hpcd.ConnectMP := Q.CreateSPool(10, SYSTEM.ADR(C), LEN(C), SYSTEM.SIZE(MsgDesc));
+    hpcd.DisconnectMP := Q.CreateSPool(11, SYSTEM.ADR(D), LEN(D), SYSTEM.SIZE(MsgDesc));
+    hpcd.DebugMP := Q.CreateSPool(12, SYSTEM.ADR(DBG), LEN(DBG), SYSTEM.SIZE(MsgDesc));
   END InitPools;
 
   PROCEDURE TakeMsg*(hpcd: Handle): Q.Msg;
     VAR msg!: Q.Msg;
-  BEGIN msg := NIL;
-    IF Q.HaveExhaustedPools() THEN Log.Error("Interrupt queue(s) too small:");
-      IF Q.IsExhausted(hpcd.DataOutStageMP) THEN Log.ErrorString(" DataOutStage") END;
-      IF Q.IsExhausted(hpcd.DataInStageMP) THEN Log.ErrorString(" DataInStage") END;
-      IF Q.IsExhausted(hpcd.SetupStageMP) THEN Log.ErrorString(" SetupStage") END;
-      IF Q.IsExhausted(hpcd.ISOOUTIncompleteMP) THEN Log.ErrorString(" ISOOUTIncomplete") END;
-      IF Q.IsExhausted(hpcd.ISOINIncompleteMP) THEN Log.ErrorString(" ISOINIncomplete") END;
-      IF Q.IsExhausted(hpcd.LPMMP) THEN Log.ErrorString(" LPM") END;
-      IF Q.IsExhausted(hpcd.ResumeMP) THEN Log.ErrorString(" Resume") END;
-      IF Q.IsExhausted(hpcd.SuspendMP) THEN Log.ErrorString(" Suspend") END;
-      IF Q.IsExhausted(hpcd.ResetMP) THEN Log.ErrorString(" Reset") END;
-      IF Q.IsExhausted(hpcd.ConnectMP) THEN Log.ErrorString(" Connect") END;
-      IF Q.IsExhausted(hpcd.DisconnectMP) THEN Log.ErrorString(" Disconnect") END;
-      IF Q.IsExhausted(hpcd.DebugMP) THEN Log.ErrorString(" Debug") END;
-      Log.ErrorLn; Log.Flush(*; ASSERT(FALSE)*)
+  BEGIN msg := Q.ExhaustedPool();
+    IF msg # NIL THEN Log.Error("Interrupt queue too small:");
+      IF msg.type = 1 THEN Log.ErrorString(" DataOutStage")
+      ELSIF  msg.type = 2 THEN Log.ErrorString(" DataInStage")
+      ELSIF  msg.type = 3 THEN Log.ErrorString(" SetupStage")
+      ELSIF  msg.type = 4 THEN Log.ErrorString(" ISOOUTIncomplete")
+      ELSIF  msg.type = 5 THEN Log.ErrorString(" ISOINIncomplete")
+      ELSIF  msg.type = 6 THEN Log.ErrorString(" LPM")
+      ELSIF  msg.type = 7 THEN Log.ErrorString(" Resume")
+      ELSIF  msg.type = 8 THEN Log.ErrorString(" Suspend")
+      ELSIF  msg.type = 9 THEN Log.ErrorString(" Reset")
+      ELSIF  msg.type = 10 THEN Log.ErrorString(" Connect")
+      ELSIF  msg.type = 11 THEN Log.ErrorString(" Disconnect")
+      ELSIF  msg.type = 22 THEN Log.ErrorString(" Debug")
+      ELSE Log.ErrorString(" unknown message type")
+      END; Log.ErrorLn; Log.Flush; ASSERT(FALSE)
     END;
-    IF hpcd.MsgPendQ # NIL THEN
-      ll.DisableGlobalInt(hpcd.Instance); msg := Q.Get(hpcd.MsgPendQ); ll.EnableGlobalInt(hpcd.Instance)
-    END
+    UH.DisableGlobalInt;
+    IF hpcd.MsgPendQ # NIL THEN msg := Q.Get(hpcd.MsgPendQ) ELSE msg := NIL END;
+    UH.EnableGlobalInt
 
     RETURN msg
   END TakeMsg;
 
   PROCEDURE GiveMsg*(hpcd: Handle; msg: Q.Msg);
-  BEGIN ll.DisableGlobalInt(hpcd.Instance);
-    CASE msg OF (*return item to pool*)
-      DataOutStageMsg: Q.PostFirst(hpcd.DataOutStageMP, msg)
-    | DataInStageMsg: Q.PostFirst(hpcd.DataInStageMP, msg)
-    | SetupStageMsg: Q.PostFirst(hpcd.SetupStageMP, msg)
-    | ISOOUTIncompleteMsg: Q.PostFirst(hpcd.ISOOUTIncompleteMP, msg)
-    | ISOINIncompleteMsg: Q.PostFirst(hpcd.ISOINIncompleteMP, msg)
-    | LPMMsg: Q.PostFirst(hpcd.LPMMP, msg)
-    | ResumeMsg: Q.PostFirst(hpcd.ResumeMP, msg)
-    | SuspendMsg: Q.PostFirst(hpcd.SuspendMP, msg)
-    | ResetMsg: Q.PostFirst(hpcd.ResetMP, msg)
-    | ConnectMsg: Q.PostFirst(hpcd.ConnectMP, msg)
-    | DisconnectMsg: Q.PostFirst(hpcd.DisconnectMP, msg)
-    | DebugMsg: Q.PostFirst(hpcd.DebugMP, msg)
-    | Q.Msg: ASSERT(FALSE) (*unsupported message type*)
+  BEGIN UH.DisableGlobalInt;
+    (*return item to pool*)
+    IF msg.type = 1 THEN Q.PostFirst(hpcd.DataOutStageMP, msg)
+    ELSIF msg.type = 2 THEN Q.PostFirst(hpcd.DataInStageMP, msg)
+    ELSIF msg.type = 3 THEN Q.PostFirst(hpcd.SetupStageMP, msg)
+    ELSIF msg.type = 4 THEN Q.PostFirst(hpcd.ISOOUTIncompleteMP, msg)
+    ELSIF msg.type = 5 THEN Q.PostFirst(hpcd.ISOINIncompleteMP, msg)
+    ELSIF msg.type = 6 THEN Q.PostFirst(hpcd.LPMMP, msg)
+    ELSIF msg.type = 7 THEN Q.PostFirst(hpcd.ResumeMP, msg)
+    ELSIF msg.type = 8 THEN Q.PostFirst(hpcd.SuspendMP, msg)
+    ELSIF msg.type = 9 THEN Q.PostFirst(hpcd.ResetMP, msg)
+    ELSIF msg.type = 10 THEN Q.PostFirst(hpcd.ConnectMP, msg)
+    ELSIF msg.type = 11 THEN Q.PostFirst(hpcd.DisconnectMP, msg)
+    ELSIF msg.type = 12 THEN Q.PostFirst(hpcd.DebugMP, msg)
+    ELSE ASSERT(FALSE) (*unsupported message type*)
     END;
-    ll.EnableGlobalInt(hpcd.Instance)
+    UH.EnableGlobalInt
   END GiveMsg;
 
   PROCEDURE New*(): Handle;

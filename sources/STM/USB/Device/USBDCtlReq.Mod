@@ -259,7 +259,6 @@ MODULE USBDCtlReq;
   PROCEDURE SetConfig(dev: DDef.Handle; req: Def.Setup);
     VAR ret: BYTE; cfgidx: BYTE;
   BEGIN cfgidx := req.wValue;
-    Log.Debug("Set Configuration "); Log.DebugInt(cfgidx, 1); Log.DebugLn;
     IF cfgidx > DConf.MAX_NUM_CONFIGURATION THEN CtlError(dev, req)
     ELSIF dev.state = DDef.STATE_ADDRESSED THEN
       IF cfgidx # 0 THEN dev.config := cfgidx;
@@ -284,7 +283,8 @@ MODULE USBDCtlReq;
       ELSE IoReq.CtlSendStatus(dev)
       END
     ELSE CtlError(dev, req); dev.ClrClassConfig(dev, cfgidx)
-    END
+    END;
+    Log.User("Device configured")
   END SetConfig;
 
   (**

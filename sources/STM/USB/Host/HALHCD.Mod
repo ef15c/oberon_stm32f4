@@ -795,19 +795,21 @@ MODULE HALHCD;
 
   PROCEDURE TakeMsg*(hcdh: Handle): Q.Msg;
     VAR msg!: Q.Msg;
-  BEGIN msg := NIL;
-    IF Q.HaveExhaustedPools() THEN Log.Error("Interrupt queue(s) too small:");
-      IF Q.IsExhausted(hcdh.ConnectMP) THEN Log.ErrorString(" Connect") END;
-      IF Q.IsExhausted(hcdh.DisconnectMP) THEN Log.ErrorString(" Disconnect") END;
-      IF Q.IsExhausted(hcdh.PortEnabledMP) THEN Log.ErrorString(" PortEnabled") END;
-      IF Q.IsExhausted(hcdh.PortDisabledMP) THEN Log.ErrorString(" PortDisabled") END;
-      IF Q.IsExhausted(hcdh.URBChangeMP) THEN Log.ErrorString(" URBChange") END;
-      IF Q.IsExhausted(hcdh.DebugMP) THEN Log.ErrorString(" Debug") END;
-      Log.ErrorLn; Log.Flush; ASSERT(FALSE)
+  BEGIN msg := Q.ExhaustedPool();
+    IF msg # NIL THEN Log.Error("Interrupt queue too small:");
+      CASE msg OF
+        ConnectMsg:  Log.ErrorString(" Connect")
+      | DisconnectMsg: Log.ErrorString(" Disconnect")
+      | PortEnabledMsg: Log.ErrorString(" PortEnabled")
+      | PortDisabledMsg: Log.ErrorString(" PortDisabled")
+      | URBChangeMsg: Log.ErrorString(" URBChange")
+      | DebugMsg: Log.ErrorString(" Debug")
+      | Q.Msg: Log.ErrorString(" Unknown message type")
+      END; Log.ErrorLn; Log.Flush
     END;
-    IF hcdh.MsgPendQ # NIL THEN
-      ll.DisableGlobalInt(hcdh.Instance); msg := Q.Get(hcdh.MsgPendQ); ll.EnableGlobalInt(hcdh.Instance)
-    END
+    ll.DisableGlobalInt(hcdh.Instance);
+    IF hcdh.MsgPendQ # NIL THEN msg := Q.Get(hcdh.MsgPendQ) ELSE msg := NIL END;
+    ll.EnableGlobalInt(hcdh.Instance)
 
     RETURN msg
   END TakeMsg;

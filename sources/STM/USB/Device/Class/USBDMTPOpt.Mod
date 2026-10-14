@@ -23,6 +23,16 @@ MODULE USBDMTPOpt;
     CONT_TYPE_RESPONSE* = 3;
     CONT_TYPE_EVENT* = 4;
 
+  (* Form flags *)
+    FORM_NONE* = 0;
+    FORM_RANGE* = 1;
+    FORM_ENUMERATION* = 2;
+    FORM_DATETIME* = 3;
+    FORM_FIXED_LENGTH_ARRAY* = 4;
+    FORM_REGULAR_EXPRESSION* = 5;
+    FORM_BYTE_ARRAY* = 6;
+    FORM_LONG_STRING* = 0FFH;
+
   (* Operations code *)
     OP_GET_DEVICE_INFO* = 1001H;
     OP_OPEN_SESSION* = 1002H;
@@ -485,28 +495,39 @@ MODULE USBDMTPOpt;
       DeleteObject*: PROCEDURE(Param1: INTEGER): HALFWORD;
       Cancel*: PROCEDURE(Phase: INTEGER);
       CopyBuffer*: PROCEDURE(s, d: Def.Buffer; idx: INTEGER);
-      PutVendorExtension*, PutManufacturer*, PutModel*, PutDeviceVersion*, PutSerialNumber*, (*DeviceInfo callbacks*)
-      PutStorageIDs*,
-      PutStorageType*, PutFilesystemType*, PutAccessCapability*, PutMaxCapacity*,
+      PutVendorExtension*, PutDeviceOpsSupported*, PutDeviceEventsSupported*,
+      PutDevicePropsSupported*, PutDeviceCaptureFormatsSupported*, PutDevicePlaybackFormatsSupported*,
+      PutManufacturer*, PutModel*, PutDeviceVersion*, PutSerialNumber*, (*DeviceInfo callbacks*)
+      PutStorageIDs*, PutStorageType*, PutFilesystemType*, PutAccessCapability*, PutMaxCapacity*,
       PutFreeSpaceInBytes*, PutFreeSpaceInObjects*, PutStorageDescription*,
       PutVolumeIdentifier*: PROCEDURE(b: Def.Buffer); (*StorageInfo callbacks*)
       PutObjectHandles*: PROCEDURE(b: Def.Buffer; sid, ofc, f: INTEGER): HALFWORD;
       PutObjectStorageId*, PutObjectFormat*, PutProtectionStatus*, PutObjectCompressedSize*,
       PutThumbFormat*, PutThumbCompressedSize*, PutThumbPixWidth*, PutThumbPixHeight*,
-      PutImagePixWidth*, PutImagePixHeight*, PutImageBitDepth*, PutParentObject*,
+      PutImageInfo*, PutParentObject*,
       PutAssociationType*, PutAssociationDesc*, PutSequenceNumber*, PutFilename*,
       PutDateCreated*, PutDateModified*, PutKeywords*: PROCEDURE(b: Def.Buffer; oh: INTEGER); (*ObjectInfo callbacks*)
       PutObjectPropsSupported*: PROCEDURE(b: Def.Buffer; ofc: INTEGER);
       PutObjectPropDefValue*, PutObjectPropGroupCode*, PutObjectPropFormFlag*,
       PutObjectPropGetSet*: PROCEDURE(b: Def.Buffer; opc, of, dt: INTEGER); (*ObjectPropDesc callbacks*)
-      PutObjectReferences*: PROCEDURE(b: Def.Buffer; oh: INTEGER);
-      PutObjectPropList*: PROCEDURE(b: Def.Buffer; oh, ofc, opc, opgc, depth: INTEGER);
+      PutObjectPropList*: PROCEDURE(b: Def.Buffer; oh, ofc, opc, opgc, depth: INTEGER): HALFWORD;
       PutObjectPropValue*: PROCEDURE(b: Def.Buffer; oh, opc: INTEGER);
       PutDeviceFriendlyName*: PROCEDURE(b: Def.Buffer);
       PutDevicePropValue*: PROCEDURE(b: Def.Buffer; dpc: INTEGER);
       ScratchBuff*: Generic
     END;
 
+  PROCEDURE BeginArray*(d: Def.Buffer; VAR beg: INTEGER);
+  BEGIN Def.PutInteger(d, 0); (*placeholder for the number of elements of the array*)
+    beg := d.length
+  END BeginArray;
+
+  PROCEDURE EndArray*(d: Def.Buffer; beg, elementSize: INTEGER);
+    VAR length, count: INTEGER;
+  BEGIN length := d.length; d.length := beg - 4; count := (length - beg) DIV elementSize;
+    Def.PutInteger(d, count); d.length := length;
+    Log.DebugInt(count, 7); Log.DebugString(" elements added"); Log.DebugLn
+  END EndArray;
 
   PROCEDURE ReadByte(b: Def.Buffer): BYTE;
     VAR r: BYTE;
@@ -594,7 +615,7 @@ MODULE USBDMTPOpt;
   *)
   PROCEDURE OpenSession*(dev: DDef.Handle);
     VAR hmtp!: Handle;
-  BEGIN Log.Debug("Open session"); Log.DebugLn; Log.Flush;
+  BEGIN
     hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     (* Param1 == Session ID*)
     IF hmtp.OperationsContainer.Param1 = 0 THEN hmtp.ResponseCode := RESPONSE_INVALID_PARAMETER
@@ -605,7 +626,8 @@ MODULE USBDMTPOpt;
     hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
     hmtp.GenericContainer.type := CONT_TYPE_RESPONSE;
     hmtp.GenericContainer.length := CONT_HEADER_SIZE;
-    hmtp.GenericContainer.CLen :=  hmtp.GenericContainer.length
+    hmtp.GenericContainer.CLen :=  hmtp.GenericContainer.length;
+    Log.User("MTP session open")
   END OpenSession;
 
   (**
@@ -616,7 +638,7 @@ MODULE USBDMTPOpt;
   *)
   PROCEDURE CloseSession*(dev: DDef.Handle);
     VAR hmtp!: Handle;
-  BEGIN Log.Debug("Close session"); Log.DebugLn; Log.Flush;
+  BEGIN
     hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     IF hmtp.SessionState = SESSION_NOT_OPEN THEN hmtp.ResponseCode := RESPONSE_SESSION_NOT_OPEN
     ELSE hmtp.ResponseCode := RESPONSE_OK; hmtp.SessionState := SESSION_NOT_OPEN
@@ -624,7 +646,8 @@ MODULE USBDMTPOpt;
     hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
     hmtp.GenericContainer.type := CONT_TYPE_RESPONSE;
     hmtp.GenericContainer.length := CONT_HEADER_SIZE;
-    hmtp.GenericContainer.CLen :=  hmtp.GenericContainer.length
+    hmtp.GenericContainer.CLen :=  hmtp.GenericContainer.length;
+    Log.User("MTP session closed")
   END CloseSession;
 
   (**
@@ -641,28 +664,11 @@ MODULE USBDMTPOpt;
     uif.PutVendorExtension(d); 
     Def.PutHalfword(d, FUNCTIONAL_MODE); (* device supports one mode , standard mode *)
     (* All supported operation *)
-    Def.PutInteger(d, 20); (*NumElements (operations)*)
-    Def.PutHalfword(d, OP_GET_DEVICE_INFO); Def.PutHalfword(d, OP_OPEN_SESSION); Def.PutHalfword(d, OP_CLOSE_SESSION);
-    Def.PutHalfword(d, OP_GET_STORAGE_IDS); Def.PutHalfword(d, OP_GET_STORAGE_INFO); Def.PutHalfword(d, OP_GET_NUM_OBJECTS);
-    Def.PutHalfword(d, OP_GET_OBJECT_HANDLES); Def.PutHalfword(d, OP_GET_OBJECT_INFO); Def.PutHalfword(d, OP_GET_OBJECT);
-    Def.PutHalfword(d, OP_DELETE_OBJECT); Def.PutHalfword(d, OP_SEND_OBJECT_INFO); Def.PutHalfword(d, OP_SEND_OBJECT);
-    Def.PutHalfword(d, OP_GET_DEVICE_PROP_DESC); Def.PutHalfword(d, OP_GET_DEVICE_PROP_VALUE); Def.PutHalfword(d, OP_SET_OBJECT_PROP_VALUE);
-    Def.PutHalfword(d, OP_GET_OBJECT_PROP_VALUE); Def.PutHalfword(d, OP_GET_OBJECT_PROPS_SUPPORTED); Def.PutHalfword(d, OP_GET_OBJECT_PROPLIST);
-    Def.PutHalfword(d, OP_GET_OBJECT_PROP_DESC); Def.PutHalfword(d, OP_GET_OBJECT_REFERENCES);
-    Def.PutInteger(d, 1); (*NumElements (events)*)
-    Def.PutHalfword(d, EVENT_OBJECTADDED);
-    Def.PutInteger(d, 1); (*NumElements (properties)*)
-    Def.PutHalfword(d, DEV_PROP_DEVICE_FRIENDLY_NAME);
-    Def.PutInteger(d, 4); (*NumElements (capture formats)*)
-    Def.PutHalfword(d, OBJ_FORMAT_UNDEFINED);
-    Def.PutHalfword(d, OBJ_FORMAT_EXECUTABLE);
-    Def.PutHalfword(d, OBJ_FORMAT_TEXT);
-    Def.PutHalfword(d, OBJ_FORMAT_BMP);
-    Def.PutInteger(d, 4); (*NumElements (playback formats)*)
-    Def.PutHalfword(d, OBJ_FORMAT_UNDEFINED);
-    Def.PutHalfword(d, OBJ_FORMAT_EXECUTABLE);
-    Def.PutHalfword(d, OBJ_FORMAT_TEXT);
-    Def.PutHalfword(d, OBJ_FORMAT_BMP);
+    uif.PutDeviceOpsSupported(d);
+    uif.PutDeviceEventsSupported(d);
+    uif.PutDevicePropsSupported(d);
+    uif.PutDeviceCaptureFormatsSupported(d);
+    uif.PutDevicePlaybackFormatsSupported(d);
     uif.PutManufacturer(d);
     uif.PutModel(d);
     uif.PutDeviceVersion(d);
@@ -719,6 +725,25 @@ MODULE USBDMTPOpt;
   BEGIN uif.PutObjectPropsSupported(hmtp.GenericContainer, hmtp.OperationsContainer.Param1)
   END Get_ObjectPropsSupp;
 
+  PROCEDURE Get_ObjectPropDatatype*(opc: HALFWORD): HALFWORD;
+    VAR dt: HALFWORD;
+  BEGIN
+    IF opc = OB_PROP_OBJECT_FORMAT THEN dt := DATATYPE_UINT16
+    ELSIF opc = OB_PROP_STORAGE_ID THEN dt := DATATYPE_UINT32
+    ELSIF opc = OB_PROP_OBJ_FILE_NAME THEN dt := DATATYPE_STR
+    ELSIF opc = OB_PROP_OBJECT_SIZE THEN dt := DATATYPE_UINT64
+    ELSIF opc = OB_PROP_NAME THEN dt := DATATYPE_STR
+    ELSIF opc = OB_PROP_PERS_UNIQ_OBJ_IDEN THEN dt := DATATYPE_UINT128
+    ELSIF opc = OB_PROP_DATE_MODIFIED THEN dt := DATATYPE_STR
+    ELSIF opc = OB_PROP_WIDTH THEN dt := DATATYPE_UINT32
+    ELSIF opc = OB_PROP_HEIGHT THEN dt := DATATYPE_UINT32
+    ELSIF opc = OB_PROP_IMAGE_BIT_DEPTH THEN dt := DATATYPE_UINT32
+    ELSE dt := 0; Log.Error("Get_ObjectPropDatatype: ObjectPropCode ");
+      Log.ErrorHexVLen(opc, 4, FALSE); Log.ErrorString(" not handled"); Log.ErrorLn
+    END
+    RETURN dt
+  END Get_ObjectPropDatatype;
+
   (**
   * @brief  MTP_Get_ObjectPropDesc
   *         Fill the MTP_ObjectPropDesc struct
@@ -729,17 +754,8 @@ MODULE USBDMTPOpt;
     VAR ret: HALFWORD; opc, of, dt: INTEGER; d!: Generic;
   BEGIN ret := RESPONSE_OK;
     opc := hmtp.OperationsContainer.Param1; of := hmtp.OperationsContainer.Param2;
-    IF opc = OB_PROP_OBJECT_FORMAT THEN dt := DATATYPE_UINT16
-    ELSIF opc = OB_PROP_STORAGE_ID THEN dt := DATATYPE_UINT32
-    ELSIF opc = OB_PROP_OBJ_FILE_NAME THEN dt := DATATYPE_STR
-    ELSIF opc = OB_PROP_PARENT_OBJECT THEN dt := DATATYPE_UINT32
-    ELSIF opc = OB_PROP_OBJECT_SIZE THEN dt := DATATYPE_UINT64
-    ELSIF opc = OB_PROP_NAME THEN dt := DATATYPE_STR
-    ELSIF opc = OB_PROP_PERS_UNIQ_OBJ_IDEN THEN dt := DATATYPE_UINT128
-    ELSIF opc = OB_PROP_PROTECTION_STATUS THEN dt := DATATYPE_UINT16
-    ELSE ret := RESPONSE_INVALID_PARAMETER
-    END;
-    IF ret = RESPONSE_OK THEN
+    dt := Get_ObjectPropDatatype(opc);
+    IF dt # 0 THEN
       d := hmtp.GenericContainer;
       Def.PutHalfword(d, opc); (*first field is always the property code*)
       Def.PutHalfword(d, dt);
@@ -747,6 +763,7 @@ MODULE USBDMTPOpt;
       uif.PutObjectPropDefValue(d, opc, of, dt);
       uif.PutObjectPropGroupCode(d, opc, of, dt);
       uif.PutObjectPropFormFlag(d, opc, of, dt)
+    ELSE ret := RESPONSE_OBJECT_PROP_NOT_SUPPORTED (*todo: implement this in backend callback*)
     END
     RETURN ret
   END Get_ObjectPropDesc;
@@ -769,9 +786,9 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_ObjectPropList(uif: UserIf; hmtp: Handle);
+  PROCEDURE Get_ObjectPropList(uif: UserIf; hmtp: Handle): HALFWORD;
   BEGIN Log.Debug("GetObjectPropsList"); Log.DebugLn; Log.Flush;
-      uif.PutObjectPropList(hmtp.GenericContainer, hmtp.OperationsContainer.Param1,
+    RETURN uif.PutObjectPropList(hmtp.GenericContainer, hmtp.OperationsContainer.Param1,
       hmtp.OperationsContainer.Param2, hmtp.OperationsContainer.Param3,
       hmtp.OperationsContainer.Param4, hmtp.OperationsContainer.Param5)
   END Get_ObjectPropList;
@@ -805,9 +822,7 @@ MODULE USBDMTPOpt;
     uif.PutThumbCompressedSize(d, oh);
     uif.PutThumbPixWidth(d, oh);
     uif.PutThumbPixHeight(d, oh);
-    uif.PutImagePixWidth(d, oh);
-    uif.PutImagePixHeight(d, oh);
-    uif.PutImageBitDepth(d, oh);
+    uif.PutImageInfo(d, oh);
     uif.PutParentObject(d, oh);
     uif.PutAssociationType(d, oh);
     uif.PutAssociationDesc(d, oh);
@@ -837,9 +852,7 @@ MODULE USBDMTPOpt;
     ELSIF op = OP_GET_OBJECT_INFO THEN Get_ObjectInfo(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROPS_SUPPORTED THEN Get_ObjectPropsSupp(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROP_DESC THEN ret := Get_ObjectPropDesc(uif, hmtp)
-    ELSIF op = OP_GET_OBJECT_REFERENCES THEN Log.Debug("GetObjectReferences"); Log.DebugLn; Log.Flush;
-      uif.PutObjectReferences(d, hmtp.OperationsContainer.Param1)
-    ELSIF op = OP_GET_OBJECT_PROPLIST THEN Get_ObjectPropList(uif, hmtp)
+    ELSIF op = OP_GET_OBJECT_PROPLIST THEN ret := Get_ObjectPropList(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROP_VALUE THEN Get_ObjectPropValue(uif, hmtp)
     ELSIF op = OP_GET_DEVICE_PROP_DESC THEN Get_DevicePropDesc(uif, d)
     ELSIF op = OP_SEND_OBJECT_INFO THEN Log.Debug("SendObjectInfo"); Log.DebugLn; Log.Flush;
