@@ -87,7 +87,7 @@ MODULE FileSystem; (*CS 17.10.26*)
       fill:  ARRAY SectorSize - SYSTEM.SIZE(DirPageData) OF BYTE;
     END ;
 
-    DirPg* = POINTER TO DirPage;
+(*    DirPg* = POINTER TO DirPage;*)
 
 (* ---------- Disk storage management ----------*)
 
@@ -171,9 +171,9 @@ MODULE FileSystem; (*CS 17.10.26*)
     END MarkSectors;
 
     PROCEDURE TraverseDir(VAR fshd: FSHeader; VAR A: ARRAY OF DiskAdr; VAR k: INTEGER; dpg: DiskAdr);
-      VAR i: INTEGER; a!: DirPg;
-    BEGIN IF dpg # 0 THEN NEW(a);
-        GetSector(fshd, dpg, a^); ASSERT(a.mark = DirMark); MarkSector(fshd, dpg); i := 0;
+      VAR i: INTEGER; a: DirPage;
+    BEGIN IF dpg # 0 THEN
+        GetSector(fshd, dpg, a); ASSERT(a.mark = DirMark); MarkSector(fshd, dpg); i := 0;
         WHILE i < a.m DO
           A[k] := a.e[i].adr; INC(k); INC(i);
           IF k = 2000 THEN MarkSectors(fshd, A, k); k := 0 END

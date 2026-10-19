@@ -43,16 +43,16 @@ MODULE FileDir2;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
       i, j, L, R: INTEGER;
       dpg1: FileSystem.DiskAdr;
       u: FileSystem.DirEntry;
-      a!: FileSystem.DirPg;
+      a: FileSystem.DirPage;
 
-  BEGIN NEW(a); (*~h*) FileSystem.GetSector(fshd, dpg0, a^); ASSERT(a.mark = FileSystem.DirMark);
+  BEGIN (*~h*) FileSystem.GetSector(fshd, dpg0, a); ASSERT(a.mark = FileSystem.DirMark);
     L := 0; R := a.m; (*binary search*)
     WHILE L < R DO
       i := (L+R) DIV 2;
       IF name <= a.e[i].name THEN R := i ELSE L := i+1 END
     END ;
     IF (R < a.m) & (name = a.e[R].name) THEN
-      a.e[R].adr := fad; a.e[R].date := date; a.e[R].size := size; FileSystem.PutSector(fshd, dpg0, a^)  (*replace*)
+      a.e[R].adr := fad; a.e[R].date := date; a.e[R].size := size; FileSystem.PutSector(fshd, dpg0, a)  (*replace*)
     ELSE (*not on this page*)
       IF R = 0 THEN dpg1 := a.p0 ELSE dpg1 := a.e[R-1].p END ;
       IF dpg1 = 0 THEN (*not in tree, insert*)
@@ -73,11 +73,11 @@ MODULE FileDir2;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
           IF R < N THEN (*insert in left half*)
             v := a.e[N-1]; i := N-1;
             WHILE i > R DO DEC(i); a.e[i+1] := a.e[i] END ;
-            a.e[R] := u; FileSystem.PutSector(fshd, dpg0, a^);
+            a.e[R] := u; FileSystem.PutSector(fshd, dpg0, a);
             FileSystem.AllocSector(fshd, dpg0, dpg0); i := 0;
             WHILE i < N DO a.e[i] := a.e[i+N]; INC(i) END
           ELSE (*insert in right half*)
-            FileSystem.PutSector(fshd, dpg0, a^);
+            FileSystem.PutSector(fshd, dpg0, a);
             FileSystem.AllocSector(fshd, dpg0, dpg0); DEC(R, N); i := 0;
             IF R = 0 THEN v := u
             ELSE v := a.e[N];
@@ -88,7 +88,7 @@ MODULE FileDir2;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
           END ;
           a.p0 := v.p; v.p := dpg0
         END ;
-        FileSystem.PutSector(fshd, dpg0, a^)
+        FileSystem.PutSector(fshd, dpg0, a)
       END
     END
   END insert;
@@ -166,21 +166,21 @@ MODULE FileDir2;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
 
     VAR i, L, R: INTEGER;
       dpg1: FileSystem.DiskAdr;
-      a!: FileSystem.DirPg;
+      a: FileSystem.DirPage;
 
     PROCEDURE del(VAR fshd: FileSystem.FSHeader; VAR a: FileSystem.DirPage; R: INTEGER; dpg1: FileSystem.DiskAdr; VAR h: BOOLEAN);
       VAR dpg2: FileSystem.DiskAdr;  (*global: a, R*)
-          b!: FileSystem.DirPg;
-    BEGIN NEW(b); FileSystem.GetSector(fshd, dpg1, b^); ASSERT(b.mark = FileSystem.DirMark); dpg2 := b.e[b.m-1].p;
+          b: FileSystem.DirPage;
+    BEGIN FileSystem.GetSector(fshd, dpg1, b); ASSERT(b.mark = FileSystem.DirMark); dpg2 := b.e[b.m-1].p;
       IF dpg2 # 0 THEN del(fshd, a, R, dpg2, h);
-        IF h THEN underflow(fshd, b^, dpg2, b.m, h); FileSystem.PutSector(fshd, dpg1, b^) END
+        IF h THEN underflow(fshd, b, dpg2, b.m, h); FileSystem.PutSector(fshd, dpg1, b) END
       ELSE
         b.e[b.m-1].p := a.e[R].p; a.e[R] := b.e[b.m-1];
-        DEC(b.m); h := b.m < N; FileSystem.PutSector(fshd, dpg1, b^)
+        DEC(b.m); h := b.m < N; FileSystem.PutSector(fshd, dpg1, b)
       END
     END del;
 
-  BEGIN NEW(a); (*~h*) FileSystem.GetSector(fshd, dpg0, a^); ASSERT(a.mark = FileSystem.DirMark);
+  BEGIN (*~h*) FileSystem.GetSector(fshd, dpg0, a); ASSERT(a.mark = FileSystem.DirMark);
     L := 0; R := a.m; (*binary search*)
     WHILE L < R DO
       i := (L+R) DIV 2;
@@ -192,13 +192,13 @@ MODULE FileDir2;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
       IF dpg1 = 0 THEN  (*a is a leaf page*)
         DEC(a.m); h := a.m < N; i := R;
         WHILE i < a.m DO a.e[i] := a.e[i+1]; INC(i) END
-      ELSE del(fshd, a^, R, dpg1, h);
-        IF h THEN underflow(fshd, a^, dpg1, R, h) END
+      ELSE del(fshd, a, R, dpg1, h);
+        IF h THEN underflow(fshd, a, dpg1, R, h) END
       END ;
-      FileSystem.PutSector(fshd, dpg0, a^)
+      FileSystem.PutSector(fshd, dpg0, a)
     ELSIF dpg1 # 0 THEN
       delete(fshd, name, dpg1, h, fad);
-      IF h THEN underflow(fshd, a^, dpg1, R, h); FileSystem.PutSector(fshd, dpg0, a^) END
+      IF h THEN underflow(fshd, a, dpg1, R, h); FileSystem.PutSector(fshd, dpg0, a) END
     ELSE (*not in tree*) fad := 0
     END
   END delete;
@@ -223,8 +223,8 @@ MODULE FileDir2;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
                       proc:         EntryHandler;
                       VAR continue: BOOLEAN);
     VAR i, j: INTEGER; pfx, nmx: CHAR;
-      dpg1: FileSystem.DiskAdr; a!: FileSystem.DirPg;
-  BEGIN NEW(a); FileSystem.GetSector(fshd, dpg, a^); ASSERT(a.mark = FileSystem.DirMark); i := 0;
+      dpg1: FileSystem.DiskAdr; a: FileSystem.DirPage;
+  BEGIN FileSystem.GetSector(fshd, dpg, a); ASSERT(a.mark = FileSystem.DirMark); i := 0;
     WHILE (i < a.m) & continue DO
       j := 0;
       REPEAT pfx := prefix[j]; nmx := a.e[i].name[j]; INC(j)

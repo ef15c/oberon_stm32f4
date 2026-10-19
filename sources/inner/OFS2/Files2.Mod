@@ -207,8 +207,8 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
     VAR i, k: INTEGER;
       buf!: Buffer;
       inx!: Index;
-      head!: FileSystem.FileHd;
-  BEGIN NEW(head); buf := f.firstbuf;
+      head: FileSystem.FileHeaderPage;
+  BEGIN buf := f.firstbuf;
     REPEAT
       IF buf.mod THEN WriteBuf(f, buf) END ;
       buf := buf.next
@@ -224,8 +224,8 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
       END
     END ;
     IF f.modH THEN
-      FileSystem.GetSector(fshd, f.sec[0], head^); UpdateHeader(f, head^);
-      FileSystem.PutSector(fshd, f.sec[0], head^); f.modH := FALSE
+      FileSystem.GetSector(fshd, f.sec[0], head); UpdateHeader(f, head);
+      FileSystem.PutSector(fshd, f.sec[0], head); f.modH := FALSE
     END
   END Unbuffer;
 
@@ -275,15 +275,15 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
   PROCEDURE Rename*(old, new: ARRAY OF CHAR; VAR res: INTEGER);
     VAR adr: DiskAdr;
         oldbuf, newbuf: FileSystem.FileName;
-        head!: FileSystem.FileHd;
-  BEGIN NEW(head); Check(old, oldbuf, res);
+        head: FileSystem.FileHeaderPage;
+  BEGIN Check(old, oldbuf, res);
     IF res = 0 THEN
       Check(new, newbuf, res);
       IF res = 0 THEN
         FileDir.Delete(fshd, oldbuf, adr);
-        IF adr # 0 THEN FileSystem.GetSector(fshd, adr, head^); 
+        IF adr # 0 THEN FileSystem.GetSector(fshd, adr, head); 
           FileDir.Insert(fshd, newbuf, adr, head.date, head.aleng * SS + head.bleng - HS);
-          head.name := newbuf; FileSystem.PutSector(fshd, adr, head^)
+          head.name := newbuf; FileSystem.PutSector(fshd, adr, head)
         ELSE res := 2
         END
       END
