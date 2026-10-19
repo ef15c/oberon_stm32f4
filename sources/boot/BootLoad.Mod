@@ -13,8 +13,8 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
     (*Peripherals*)
     PeriphBase = 40000000H; PeriphBBAlias = 42000000H;
 
-    BLOCKSIZE = 512;
-    FSoffset = 80000H; (*block offset*) SectorSize = 1024; bps = SectorSize DIV BLOCKSIZE;
+    BLOCKSIZE = 512; SectorSize = 1024;
+    FSoffset = 80000H; (*block offset*) bps = SectorSize DIV BLOCKSIZE;
 
     (*common error flag*) NONE = {}; 
 
@@ -244,7 +244,7 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
       SYSTEM.PUT(s3En, 1); (*don't use TRUE because this register must be accessed by words (32 bits)*)
       (*Start SDIO DMA transfer*)
       SYSTEM.PUT(BSP.sdioDmaEn, 1);
-      IF hsd.SdCard.CardType # CARD_SDHC_SDXC THEN blockAdd := blockAdd*512 (*convert block to byte*) END;
+      IF hsd.SdCard.CardType # CARD_SDHC_SDXC THEN blockAdd := blockAdd*BLOCKSIZE (*convert block to byte*) END;
       (*Configure the SD DPSM (Data Path State Machine*)
       SYSTEM.PUT(DTIMER, 0FFFFFFFFH); SYSTEM.PUT(DLEN, BLOCKSIZE*nofBlocks);
       SYSTEM.GET(DCTRL, reg); (*bs 512, card to host, block mode, enable data transfer*)
@@ -290,7 +290,7 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
       WHILE GetCardState(hsd) #CARD_TRANSFER DO Delayus(1000) END
     END;
 
-    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(hsd.buf, dst, nofblocks*(512 DIV 4)) END
+    IF hsd.ErrorCode = NONE THEN SYSTEM.COPY(hsd.buf, dst, nofblocks*(BLOCKSIZE DIV 4)) END
   END ReadSD;
 
   PROCEDURE SDPowerOn(VAR hsd: SDHandleDesc): SET;
@@ -353,13 +353,13 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
         hsd.SdCard.BlockNbr := (csd.DeviceSize + 1)*(LSL(1, csd.DeviceSizeMul + 2));
         hsd.SdCard.BlockSize := LSL(1, csd.RdBlockLen);
 
-        hsd.SdCard.LogBlockNbr := hsd.SdCard.BlockNbr*hsd.SdCard.BlockSize DIV 512;
-        hsd.SdCard.LogBlockSize := 512
+        hsd.SdCard.LogBlockNbr := hsd.SdCard.BlockNbr*hsd.SdCard.BlockSize DIV BLOCKSIZE;
+        hsd.SdCard.LogBlockSize := BLOCKSIZE
       ELSIF hsd.SdCard.CardType = CARD_SDHC_SDXC THEN
         csd.DeviceSize := hsd.CSD[1] MOD 40H*10000H + LSR(hsd.CSD[2], 16) MOD 10000H;
 
         hsd.SdCard.BlockNbr := (csd.DeviceSize + 1)*1024;
-        hsd.SdCard.BlockSize := 512;
+        hsd.SdCard.BlockSize := BLOCKSIZE;
 
         hsd.SdCard.LogBlockNbr := hsd.SdCard.BlockNbr;
         hsd.SdCard.LogBlockSize := hsd.SdCard.BlockSize
@@ -562,7 +562,7 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
       IF hsd.ErrorCode = NONE THEN (*switch to transfer frequency*)
         SYSTEM.GET(BSP.SDIO_BASE + BSP.CLKCR, reg);
         SYSTEM.PUT(BSP.SDIO_BASE + BSP.CLKCR, reg - BSP.CLKDIVm + SYSTEM.VAL(SET, BSP.TRANSFER_CLK_DIV));
-        SYSTEM.PUT(ARG, 512); (*set block size to 512 bytes (for SDSC only*)
+        SYSTEM.PUT(ARG, BLOCKSIZE); (*set block size to 512 bytes (for SDSC only*)
         SYSTEM.PUT(CMD, reg - CMD_CLEAR_MASK + (CMD_SET_BLOCKLEN + BSP.RESPONSE_SHORT + BSP.CPSMENm));
         hsd.ErrorCode := hsd.ErrorCode + GetCmdResp1(CMD_SET_BLOCKLEN) (*check response*)
       END;
@@ -581,10 +581,10 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
     VAR lim, r: INTEGER; hsd!: SDHandle;
   BEGIN initSDCard(hsd);
     (*start at boot block*)
-    ReadSD(hsd^, FSoffset + 2*bps, VarORG0, bps);
+    ReadSD(hsd^, FSoffset + 2*bps, VarORG0, bps); (*skip the 2 first sectors, reserved to the filesystem*)
     SYSTEM.GET(VarORG0 + 16, lim);
     (*read remaining blocks*)
-    r := (lim + (511- VarORG0)) DIV 512 - bps;
+    r := (lim + (BLOCKSIZE - 1 -  VarORG0)) DIV BLOCKSIZE - bps;
     IF r > 0 THEN ReadSD(hsd^, FSoffset + 2*(bps+1), VarORG0+SectorSize, r) END
   END LoadFromDisk;
 

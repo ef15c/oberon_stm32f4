@@ -49,6 +49,12 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
       handle: Handler
     END;
 
+    Hook = POINTER TO HookDesc;
+    HookDesc = RECORD
+      cbk: PROCEDURE;
+      next: Hook
+    END;
+
   VAR User*: ARRAY 8 OF CHAR; Password*: INTEGER;
     Star*: Marker;
     Pointer: Cursor;
@@ -76,7 +82,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
 
     prevZ: INTEGER;
 
-    S: Texts.Scanner;
+    PostMaskCbk: Hook;
 
   (*user identification*)
 
@@ -292,7 +298,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END GetSelection;
 
   PROCEDURE GC;
-    VAR mod!: Modules.Module;
+    VAR mod!: Modules.Module; c!: Hook;
   BEGIN
     IF (ActCnt <= 0) OR (Kernel.allocated >= Kernel.heapLim - Kernel.heapOrg - 10000H) THEN
       Kernel.DisableAbortHandler;
@@ -303,6 +309,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
       END ;
       LED(23H);
       Files.RestoreList; LED(27H);
+      c := PostMaskCbk.next; WHILE c # NIL DO c.cbk; c := c.next END;
       Kernel.Scan; LED(20H);
       ActCnt := BasicCycle;
       Kernel.EnableAbortHandler
@@ -317,7 +324,8 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   END add;
 
   PROCEDURE Batch*;
-    VAR cmd: ARRAY 80 OF CHAR; cmdl: INTEGER; pos, res: INTEGER;
+    VAR S!: Texts.Scanner;
+     cmd: ARRAY 80 OF CHAR; cmdl: INTEGER; pos, res: INTEGER;
   BEGIN Texts.OpenScanner(S, Par.text, Par.pos); Par.res := 0; Texts.Scan(S);
     WHILE (Par.res = 0) & ~S.eot & ((S.class # Texts.Char) OR (S.c # "~")) DO
       IF S.class = Texts.Name THEN cmdl := 0; add(cmd, cmdl, S.s); pos := Texts.Pos(S); Texts.Scan(S);
@@ -467,6 +475,17 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
     END
   END initModules;
 
+  PROCEDURE AddPostMarkCallback*(c: PROCEDURE);
+    VAR h!: Hook;
+  BEGIN NEW(h); h.cbk := c; h.next := PostMaskCbk.next; PostMaskCbk.next := h
+  END AddPostMarkCallback;
+
+  PROCEDURE DelPostMarkCallback*(c: PROCEDURE);
+    VAR h!: Hook;
+  BEGIN h := PostMaskCbk; WHILE (h.next # NIL) & (h.next.cbk # c) DO h := h.next END;
+    IF h.next # NIL THEN h.next := h.next.next END
+  END DelPostMarkCallback;
+
 BEGIN User[0] := 0X; prevZ := 0;
   Star.Fade := FlipStar; Star.Draw := FlipStar;
   OpenCursor(Pointer);
@@ -499,8 +518,8 @@ BEGIN User[0] := 0X; prevZ := 0;
      the initilization of the remaining resident modules*)
   initModules(Modules.root);
   Modules.Load("System", Mod);   Modules.Load("OnStartup", Mod); Mod := NIL;
+  NEW(PostMaskCbk);
   Loop
-
 END Oberon.
 
 OM4Tool.DecSym Oberon.sm4

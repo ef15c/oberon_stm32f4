@@ -3,14 +3,6 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
   IMPORT SYSTEM, Kernel, Files;
   CONST DescSize = 80;
 
-    (*Powers of two*)
-    C31=80000000H; C30=40000000H; C28=10000000H; C27=8000000H; C26=4000000H;
-    C25=2000000H; C24=1000000H; C23=800000H; C22=400000H; 
-    C21=200000H; C20=100000H; C19=80000H; C18=40000H; C17=20000H;
-    C16=10000H; C15= 8000H; C13=2000H; C12=1000H; C11=800H; 
-    C10=400H; C9=200H;C8=100H; C7=80H; C6=40H; C5=20H; 
-    C4=10H; C3=8; C2=4; C1=2; C0=1;
-
     BL = 0F000D000H;
     (*|1111/0S  /im10/    /11J1/J   /im11/    |
                              1  2
@@ -49,23 +41,23 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
     S, J1, J2: BYTE;
     imm10, imm11: INTEGER;
   BEGIN
-    disp := disp DIV C1;
-    S := disp DIV C23 MOD C1;
-    disp := disp MOD C23;
+    disp := disp DIV 2;
+    S := LSR(disp, 23) MOD 2;
+    disp := disp MOD ORD({23});
     (*J1 = NOT(I1) EOR S
-     J2 = NOT(I2) EOR S*)
-    J1 := disp DIV C22 MOD C1;
-    disp := disp MOD C22;
-    J2 := disp DIV C21 MOD C1;
-    disp := disp MOD C21;
+       J2 = NOT(I2) EOR S*)
+    J1 := LSR(disp, 22) MOD 2;
+    disp := disp MOD ORD({22});
+    J2 := LSR(disp, 21) MOD 2;
+    disp := disp MOD ORD({21});
     IF S=0 THEN
       J1 := 1-J1;
       J2 := 1-J2;
     END;
-    imm10 := disp DIV C11 MOD C10;
-    imm11 := disp MOD C11;
+    imm10 := LSR(disp, 11) MOD ORD({10});
+    imm11 := disp MOD ORD({11});
  
-    RETURN imm11 + S*C26 + imm10*C16+J1*C13+J2*C11
+    RETURN imm11 + LSL(S, 26) + LSL(imm10, 16)+LSL(J1, 13)+LSL(J2,11)
   END formatEvenImm25;
   
   PROCEDURE formatImm16(reg: BYTE; val: INTEGER): INTEGER;
@@ -73,8 +65,8 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
     |                   3            |
     val = imm4:i:imm3:imm8*)
   BEGIN
-    RETURN val DIV C12 MOD C4*C16 + val DIV C11 MOD C1*C26 + 
-           val DIV C8 MOD C3*C12 + reg*C8 + val MOD C8
+    RETURN LSL(LSR(val, 12) MOD ORD({4}), 16) + LSL(LSR(val, 11) MOD 2, 26) + 
+           LSL(LSR(val, 8) MOD ORD({3}), 12) + LSL(reg, 8) + val MOD ORD({8})
   END formatImm16;
 
   PROCEDURE thumbSwap(w: INTEGER): INTEGER;
@@ -342,4 +334,5 @@ BEGIN Init; Load("Oberon", M);
     IF M.refcnt >= 0 THEN LED(res); REPEAT UNTIL FALSE  (*only if load fails*) END
 END Modules.
 
+OM4P.Compile Modules.Mod~
 OM4Tool.DecObj Modules.m4c

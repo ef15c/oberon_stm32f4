@@ -95,8 +95,8 @@ D020 1000H (2FF000H) Espace de chargement des modules avec desc. types, variable
 D000 0000H (201000H) Mémoire écran, copie post mortem de la pile, ...
 
 2002 FF00H (   100H) Pile principale utilisées par les traitements d'exceptions et d'interruptions
-2000 0600H ( 2F900H) Variables statiques des modules résidant en mémoire Flash
-2000 0200H (   400H) Tampon SD Card
+2000 0A00H ( 2F500H) Variables statiques des modules résidant en mémoire Flash
+2000 0200H (   800H) Tampon SD Card
 2000 01ACH (    54H) SD Card handle
 2000 0000H (   1A8H) Oberon system vector table
 
@@ -112,6 +112,25 @@ D000 0000H (201000H) Mémoire écran, copie post mortem de la pile, ...
 
 Il n'y aura pas de table des modules, je vais reprendre l'idée développée dans Extended Oberon.
 
+Organisation de la émoire Flash:
+1/ Offset par rapport au début de la mémoire flash, exprimée en blocs SD
+   localisé dans les modules BootLoad et Kernel.
+   Valeur:
+     80000H, soit 256MB pour OFS1 (Oberon filesystem v1, identique à Project Oberon 2013).
+    100000H, soit 512MB pour OFS2 (Oberon filesystem v2).
+2/ Secteurs (comptés à partir de l'offset
+  0:
+    inutilisé par OFS1
+    mappé sur FilesDir.FSHeader pour OFS2. FSHeader contiendra l'offset et la version OFS
+  1: Racine du filesystem
+  2-63: inner core (BSP, SDCard, LongDiv, Kernel, FileDir, Files, Module)
+ 64-65535: secteurs alloués au filesystem
+
+Oberon filesystem v2
+  Cet projet de système de fichier est basé sur le système de fichiers du projet Oberon 2013
+  avec deux changements:
+    1/ La taille des secteurs passe à 2048 octets au lieur de 1024
+    2/ Les métadonnées date de modification et tailles sont recopiées dans FileDir.
 Le STM32F429 contient une mémoire attachée au coeur offrant 64ko. C'est le candidat idéal pour contenir la pile.
 Ses limitations : utilisable uniquement par le coeur (pas de DMA) et pas de bit-banding.
 Localisation CCM : 1000 0000H - 1000 FFFFH

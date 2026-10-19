@@ -1,9 +1,9 @@
 MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   IMPORT SYSTEM, BSP, SDCard, LongDiv;
-  CONST SectorLength* = 1024; SDBlockSize = 512;
+  CONST SectorLength* = 1024; (*SDBlockSize = 512;*)
     FS_OFFSET = 80000H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*64K sectors, 64*1024*SectorLength bytes*)
-    BootReservedSize = 63488;
+    BootReservedSize* = 63488;
     CS = 2; (*Carry set Greater than, equal, or unordered*)
     CC = 3; (* Carry clear Less than*)
 
@@ -218,16 +218,15 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   PROCEDURE GetSector*(src29: INTEGER; VAR dst: Sector);
     VAR src: INTEGER;
   BEGIN src := src29 DIV 29; ASSERT(src29 = src*29);
-    src := src * (SectorLength DIV SDBlockSize) + FS_OFFSET;
-    SDCard.Read(src, SYSTEM.ADR(dst), SectorLength DIV SDBlockSize)
+    src := src * (SectorLength DIV SDCard.BLOCKSIZE) + FS_OFFSET;
+    SDCard.Read(src, SYSTEM.ADR(dst), SectorLength DIV SDCard.BLOCKSIZE)
   END GetSector;
 
   PROCEDURE PutSector*(dst29: INTEGER; VAR src: Sector);
     VAR dst: INTEGER;
   BEGIN dst := dst29 DIV 29; ASSERT(dst29 = dst*29);
-    dst := dst * (SectorLength DIV SDBlockSize) + FS_OFFSET;
-    SDCard.Write(dst, SYSTEM.ADR(src), SectorLength DIV SDBlockSize);
-(*    WriteSD(dst+(mapsize*(SectorLength DIV SDBlockSize)), SYSTEM.ADR(src), SectorLength DIV SDBlockSize) (*backup*)*)
+    dst := dst * (SectorLength DIV SDCard.BLOCKSIZE) + FS_OFFSET;
+    SDCard.Write(dst, SYSTEM.ADR(src), SectorLength DIV SDCard.BLOCKSIZE);
   END PutSector;
 
 (*-------- Miscellaneous procedures----------*)
