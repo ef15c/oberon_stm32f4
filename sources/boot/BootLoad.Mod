@@ -486,9 +486,11 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
     IF SYSTEM.BIT(BSP.CARD_DETECTPort + BSP.IDR, BSP.CARD_DETECTPin) THEN
       SYSTEM.PUT(BSP.LED1Out, TRUE); REPEAT UNTIL FALSE (*card missing*)
     END;
+(*removed because write protect switch is not reliable on my base board
     IF SYSTEM.BIT(BSP.WRITE_PROTECTPort + BSP.IDR, BSP.WRITE_PROTECTPin) THEN
       SYSTEM.PUT(BSP.LED2Out, TRUE); REPEAT UNTIL FALSE (*card read only*)
     END;
+*)
     SYSTEM.GET(BSP.GPIOD + BSP.PUPDR, reg); (*remove PD4 and PD5 pull up to reduce consumption*)
     SYSTEM.PUT(BSP.GPIOD + BSP.PUPDR, reg - (LSL(BSP.MASK2, BSP.WRITE_PROTECTPin*2) + LSL(BSP.MASK2, BSP.CARD_DETECTPin*2)));
     SYSTEM.PUT(BSP.LED1Out, TRUE); SYSTEM.PUT(BSP.LED2Out, TRUE);
