@@ -732,8 +732,10 @@ MODULE USBDMTPOpt;
     ELSIF opc = OB_PROP_STORAGE_ID THEN dt := DATATYPE_UINT32
     ELSIF opc = OB_PROP_OBJ_FILE_NAME THEN dt := DATATYPE_STR
     ELSIF opc = OB_PROP_OBJECT_SIZE THEN dt := DATATYPE_UINT64
+(*
     ELSIF opc = OB_PROP_NAME THEN dt := DATATYPE_STR
     ELSIF opc = OB_PROP_PERS_UNIQ_OBJ_IDEN THEN dt := DATATYPE_UINT128
+*)
     ELSIF opc = OB_PROP_DATE_MODIFIED THEN dt := DATATYPE_STR
     ELSIF opc = OB_PROP_WIDTH THEN dt := DATATYPE_UINT32
     ELSIF opc = OB_PROP_HEIGHT THEN dt := DATATYPE_UINT32
@@ -787,7 +789,6 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropList(uif: UserIf; hmtp: Handle): HALFWORD;
-  BEGIN Log.Debug("GetObjectPropsList"); Log.DebugLn; Log.Flush;
     RETURN uif.PutObjectPropList(hmtp.GenericContainer, hmtp.OperationsContainer.Param1,
       hmtp.OperationsContainer.Param2, hmtp.OperationsContainer.Param3,
       hmtp.OperationsContainer.Param4, hmtp.OperationsContainer.Param5)

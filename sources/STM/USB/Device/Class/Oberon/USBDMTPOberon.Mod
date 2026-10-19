@@ -108,8 +108,9 @@ MODULE USBDMTPOberon;
     Def.PutHalfword(d, O.OP_SEND_OBJECT_INFO); Def.PutHalfword(d, O.OP_SEND_OBJECT);
     Def.PutHalfword(d, O.OP_GET_DEVICE_PROP_DESC); Def.PutHalfword(d, O.OP_GET_DEVICE_PROP_VALUE);
     Def.PutHalfword(d, O.OP_SET_OBJECT_PROP_VALUE); Def.PutHalfword(d, O.OP_GET_OBJECT_PROP_VALUE);
-    Def.PutHalfword(d, O.OP_GET_OBJECT_PROPS_SUPPORTED); Def.PutHalfword(d, O.OP_GET_OBJECT_PROPLIST);
+    Def.PutHalfword(d, O.OP_GET_OBJECT_PROPS_SUPPORTED);
     Def.PutHalfword(d, O.OP_GET_OBJECT_PROP_DESC);
+    Def.PutHalfword(d, O.OP_GET_OBJECT_PROPLIST);
     O.EndArray(d, w, SYSTEM.SIZE(HALFWORD))
   END PutDeviceOpsSupported;
 
@@ -133,8 +134,12 @@ MODULE USBDMTPOberon;
     VAR w: INTEGER;
   BEGIN Log.Debug("DeviceFormatsSupported");
     O.BeginArray(d, w);
-    Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED); Def.PutHalfword(d, O.OBJ_FORMAT_EXECUTABLE);
-    Def.PutHalfword(d, O.OBJ_FORMAT_TEXT); Def.PutHalfword(d, O.OBJ_FORMAT_BMP);
+    Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED);
+(*
+    Def.PutHalfword(d, O.OBJ_FORMAT_EXECUTABLE);
+    Def.PutHalfword(d, O.OBJ_FORMAT_TEXT);*
+*)
+    Def.PutHalfword(d, O.OBJ_FORMAT_BMP);
     O.EndArray(d, w, SYSTEM.SIZE(HALFWORD))
   END PutDeviceFormatsSupported;
 
@@ -204,8 +209,11 @@ MODULE USBDMTPOberon;
     O.BeginArray(d, w);
     Def.PutHalfword(d, O.OB_PROP_STORAGE_ID); Def.PutHalfword(d, O.OB_PROP_OBJECT_FORMAT);
     Def.PutHalfword(d, O.OB_PROP_OBJECT_SIZE); Def.PutHalfword(d, O.OB_PROP_OBJ_FILE_NAME);
-    Def.PutHalfword(d, O.OB_PROP_DATE_MODIFIED); Def.PutHalfword(d, O.OB_PROP_NAME);
+    Def.PutHalfword(d, O.OB_PROP_DATE_MODIFIED);
+(*
+    Def.PutHalfword(d, O.OB_PROP_NAME);
     Def.PutHalfword(d, O.OB_PROP_PERS_UNIQ_OBJ_IDEN);
+*)
     IF ofc = O.OBJ_FORMAT_BMP THEN
       Def.PutHalfword(d, O.OB_PROP_WIDTH); Def.PutHalfword(d, O.OB_PROP_HEIGHT);
       Def.PutHalfword(d, O.OB_PROP_IMAGE_BIT_DEPTH);
@@ -235,9 +243,10 @@ MODULE USBDMTPOberon;
   PROCEDURE PutObjectPropGroupCode(d: Def.Buffer; opc, of, dt: INTEGER);
   BEGIN 
     IF (opc = O.OB_PROP_STORAGE_ID) OR (opc = O.OB_PROP_OBJECT_FORMAT) OR
-      (opc = O.OB_PROP_OBJECT_SIZE) OR (opc = O.OB_PROP_OBJ_FILE_NAME) OR
-      (opc = O.OB_PROP_DATE_MODIFIED) OR (opc = O.OB_PROP_NAME) OR
-      (opc = O.OB_PROP_PERS_UNIQ_OBJ_IDEN) THEN Def.PutInteger(d, GROUP_FILE)
+      (opc = O.OB_PROP_OBJ_FILE_NAME)
+ (*  OR
+      (opc = O.OB_PROP_OBJECT_SIZE) OR (opc = O.OB_PROP_DATE_MODIFIED) OR
+       (opc = O.OB_PROP_NAME) OR (opc = O.OB_PROP_PERS_UNIQ_OBJ_IDEN) *) THEN Def.PutInteger(d, GROUP_FILE)
     ELSIF (opc = O.OB_PROP_WIDTH) OR (opc = O.OB_PROP_HEIGHT)
       OR (opc = O.OB_PROP_IMAGE_BIT_DEPTH) THEN Def.PutInteger(d, GROUP_BMP)
     ELSE Def.PutInteger(d, GROUP_NONE)
@@ -354,13 +363,14 @@ MODULE USBDMTPOberon;
   BEGIN Def.PutInteger(dest, oh); Def.PutHalfword(dest, opc);
     Def.PutHalfword(dest, O.Get_ObjectPropDatatype(opc));
     IF opc = O.OB_PROP_STORAGE_ID THEN Def.PutInteger(dest, STORAGE_ID)
-    ELSIF opc = O.OB_PROP_OBJECT_FORMAT THEN Def.PutInteger(dest, val)
+    ELSIF opc = O.OB_PROP_OBJECT_FORMAT THEN Def.PutHalfword(dest, val)
     ELSIF opc = O.OB_PROP_OBJECT_SIZE THEN Def.PutInteger(dest, FileSize(fh))
-    ELSIF opc = O.OB_PROP_OBJ_FILE_NAME THEN O.PutString(dest, fh.name)
+(*    ELSIF opc = O.OB_PROP_OBJ_FILE_NAME THEN O.PutString(dest, fh.name)*)
     ELSIF opc = O.OB_PROP_DATE_MODIFIED THEN DateToString(fh.date, date); O.PutString(dest, date)
-    ELSIF opc = O.OB_PROP_NAME THEN O.PutString(dest, fh.name)
-    ELSIF opc = O.OB_PROP_PERS_UNIQ_OBJ_IDEN THEN 
+    ELSIF opc = O.OB_PROP_NAME THEN O.PutString(dest, fh.name);
+(*    ELSIF opc = O.OB_PROP_PERS_UNIQ_OBJ_IDEN THEN
       Def.PutInteger(dest, oh); Def.PutInteger(dest, 0); Def.PutInteger(dest, 0); Def.PutInteger(dest, 0)
+*)
     END; INC(count)
   END PutFilePropListElement;
 
@@ -376,12 +386,14 @@ MODULE USBDMTPOberon;
   PROCEDURE PutOPL(adr: INTEGER; ofc: HALFWORD);
     VAR fh: FileDir.FileHeader; dh: BMP.DIBHeader;
   BEGIN Kernel.GetSector(adr, fh);
-    Log.Debug("PutOPL: file name: "); Log.DebugString(fh.name); Log.DebugLn;
     IF oPc = 0FFFFFFFFH THEN (*all properties except those with group code = 0FFFFFFFFH*)
       PutFilePropListElement(adr, fh, O.OB_PROP_STORAGE_ID, 0); PutFilePropListElement(adr, fh, O.OB_PROP_OBJECT_FORMAT, ofc);
       PutFilePropListElement(adr, fh, O.OB_PROP_OBJECT_SIZE, 0); PutFilePropListElement(adr, fh, O.OB_PROP_OBJ_FILE_NAME, 0);
-      PutFilePropListElement(adr, fh, O.OB_PROP_DATE_MODIFIED, 0); PutFilePropListElement(adr, fh, O.OB_PROP_NAME, 0);
+      PutFilePropListElement(adr, fh, O.OB_PROP_DATE_MODIFIED, 0);
+(*
+      PutFilePropListElement(adr, fh, O.OB_PROP_NAME, 0);
       PutFilePropListElement(adr, fh, O.OB_PROP_PERS_UNIQ_OBJ_IDEN, 0);
+*)
       IF oFc = O.OBJ_FORMAT_BMP THEN GetBMPHeaders(fh.name, dh);
         PutBMPPropListElement(adr, dh, O.OB_PROP_WIDTH); PutBMPPropListElement(adr, dh, O.OB_PROP_HEIGHT);
         PutBMPPropListElement(adr, dh, O.OB_PROP_IMAGE_BIT_DEPTH)
@@ -390,8 +402,9 @@ MODULE USBDMTPOberon;
       IF opGc = GROUP_FILE THEN (*file group*)
         PutFilePropListElement(adr, fh, O.OB_PROP_STORAGE_ID, 0); PutFilePropListElement(adr, fh, O.OB_PROP_OBJECT_FORMAT, ofc);
         PutFilePropListElement(adr, fh, O.OB_PROP_OBJECT_SIZE, 0); PutFilePropListElement(adr, fh, O.OB_PROP_OBJ_FILE_NAME, 0);
-        PutFilePropListElement(adr, fh, O.OB_PROP_DATE_MODIFIED, 0); PutFilePropListElement(adr, fh, O.OB_PROP_NAME, 0);
-        PutFilePropListElement(adr, fh, O.OB_PROP_PERS_UNIQ_OBJ_IDEN, 0);
+        PutFilePropListElement(adr, fh, O.OB_PROP_DATE_MODIFIED, 0);
+(*        PutFilePropListElement(adr, fh, O.OB_PROP_NAME, 0);
+        PutFilePropListElement(adr, fh, O.OB_PROP_PERS_UNIQ_OBJ_IDEN, 0);*)
       ELSIF (opGc = GROUP_BMP) & (ofc =  O.OBJ_FORMAT_BMP) THEN (*bmp group*) GetBMPHeaders(fh.name, dh);
         PutBMPPropListElement(adr, dh, O.OB_PROP_WIDTH); PutBMPPropListElement(adr, dh, O.OB_PROP_HEIGHT);
         PutBMPPropListElement(adr, dh, O.OB_PROP_IMAGE_BIT_DEPTH)
@@ -411,7 +424,13 @@ MODULE USBDMTPOberon;
 
   PROCEDURE PutObjectPropList(d: Def.Buffer; oh, ofc, opc, opgc, depth: INTEGER): HALFWORD;
     VAR ret: HALFWORD; len: INTEGER;
-  BEGIN ret := O.RESPONSE_OK; count := 0; Def.PutInteger(d, 0); (*placeholder*)
+  BEGIN Log.Debug("GetObjectPropsList("); Log.DebugHexVLen(oh, 8, FALSE);
+    Log.DebugString(", "); Log.DebugHexVLen(ofc, 4, FALSE);
+    Log.DebugString(", "); Log.DebugHexVLen(opc, 4, FALSE);
+    Log.DebugString(", "); Log.DebugHexVLen(opgc, 4, FALSE);
+    Log.DebugString(", "); Log.DebugInt(depth, 1);
+    Log.DebugString(")"); Log.DebugLn; Log.Flush;
+    ret := O.RESPONSE_OK; count := 0; Def.PutInteger(d, 0); (*placeholder*)
     IF (opc = 0) & (opgc = 0) THEN ret := O.RESPONSE_PARAMETER_NOT_SUPPORTED
     ELSIF (oh # 0) OR (depth # 0) THEN (*if (oh = 0) & (depth = 0) return empty set*)
       dest := d; oFc := ofc; oPc := opc; opGc := opgc;
@@ -422,6 +441,23 @@ MODULE USBDMTPOberon;
     len := d.length; d.length := 0; Def.PutInteger(d, count); d.length := len
     RETURN ret
   END PutObjectPropList;
+
+  PROCEDURE PutObjectPropValue(d: Def.Buffer; oh, opc: INTEGER);
+    VAR fh: FileDir.FileHeader; ext: FileDir.FileName; date: ARRAY 16 OF CHAR;
+  BEGIN
+    IF opc = O.OB_PROP_STORAGE_ID THEN Def.PutInteger(d, STORAGE_ID)
+    ELSE Kernel.GetSector(oh, fh);
+      IF opc = O.OB_PROP_OBJECT_FORMAT THEN GetExt(fh.name, ext); Def.PutHalfword(d, OFByExt(ext))
+      ELSIF opc = O.OB_PROP_OBJECT_SIZE THEN Def.PutInteger(d, FileSize(fh))
+(*    ELSIF opc = O.OB_PROP_OBJ_FILE_NAME THEN O.PutString(d, fh.name)*)
+      ELSIF opc = O.OB_PROP_DATE_MODIFIED THEN DateToString(fh.date, date); O.PutString(d, date)
+      ELSIF opc = O.OB_PROP_NAME THEN O.PutString(d, fh.name);
+(*    ELSIF opc = O.OB_PROP_PERS_UNIQ_OBJ_IDEN THEN
+      Def.PutInteger(d, oh); Def.PutInteger(d, 0); Def.PutInteger(d, 0); Def.PutInteger(d, 0)
+*)
+      END
+    END
+  END PutObjectPropValue;
 
   PROCEDURE initFops(): Def.UserData;
     VAR u!: O.UserIf;
@@ -488,7 +524,7 @@ MODULE USBDMTPOberon;
     u.PutObjectPropFormFlag := PutObjectPropFormFlag;
     u.PutObjectPropGetSet := PutObjectPropGetSet;
     u.PutObjectPropList := PutObjectPropList;
-    u.PutObjectPropValue := NIL;
+    u.PutObjectPropValue := PutObjectPropValue;
     u.PutDeviceFriendlyName := NIL;
     u.PutDevicePropValue := PutDevicePropValue;
 
