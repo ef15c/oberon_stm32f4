@@ -1,5 +1,5 @@
-MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
-  IMPORT SYSTEM, Kernel, FileDir;
+MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10.26*)
+  IMPORT SYSTEM, BSP, Kernel, FileSystem, FileDir;
 
   (*A file consists of a sequence of pages. The first page
     contains the header. Part of the header is the page table, an array
@@ -12,7 +12,7 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
       STS       = FileDir.SecTabSize;
       XS        = FileDir.IndexSize;
 
-  TYPE  DiskAdr = INTEGER;
+  TYPE  DiskAdr = FileDir.DiskAdr;
       File*    = POINTER TO FileDesc;
       Buffer  = POINTER TO BufferRecord;
       Index   = POINTER TO IndexRecord;
@@ -57,6 +57,7 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
       (apos < aleng) & (lim = SS) OR (apos = aleng) *)
 
   VAR root: INTEGER (*File*);  (*list of open files*)
+    fshd*: FileSystem.FSHeader; (*pointer to filesystem instance*)
 
   PROCEDURE Check(s: ARRAY OF CHAR;
         VAR name: FileDir.FileName; VAR res: INTEGER);
@@ -86,14 +87,14 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
       inxpg!: Index;
   BEGIN f := NIL; Check(name, namebuf, res);
     IF res = 0 THEN
-      FileDir.Search(namebuf, header);
+      FileDir.Search(fshd, namebuf, header);
       IF header # 0 THEN
         f := SYSTEM.VAL(File, root);
         WHILE (f # NIL) & (f.sec[0] # header) DO f := SYSTEM.VAL(File, f.next) END ;
         IF f = NIL THEN (*file not yet present*)
           NEW(buf); buf.apos := 0; buf.next := buf; buf.mod := FALSE;
           F := SYSTEM.VAL(FileDir.FileHd, SYSTEM.ADR(buf.data));
-          Kernel.GetSector(header, buf.data); ASSERT(F.mark = FileDir.HeaderMark);
+          FileSystem.GetSector(fshd, header, buf.data); ASSERT(F.mark = FileDir.HeaderMark);
           NEW(f); f.aleng := F.aleng; f.bleng := F.bleng; f.date := F.date;
           IF f.aleng = 0 THEN buf.lim := f.bleng ELSE buf.lim := SS END ;
           f.firstbuf := buf; f.nofbufs := 1; f.name := namebuf; f.registered := TRUE;
@@ -101,7 +102,7 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
           k := (f.aleng + (XS-STS)) DIV XS; i := 0;
           WHILE i < k DO
             NEW(inxpg); inxpg.adr := F.ext[i]; inxpg.mod := FALSE;
-            Kernel.GetSector(inxpg.adr, inxpg.sec); f.ext[i] := inxpg; INC(i)
+            FileSystem.GetSector(fshd, inxpg.adr, inxpg.sec); f.ext[i] := inxpg; INC(i)
           END ;
           WHILE i < FileDir.ExTabSize DO f.ext[i] := NIL; INC(i) END ;
           f.sechint := header; f.modH := FALSE; f.next := root; root := SYSTEM.VAL(INTEGER, f)
@@ -148,7 +149,7 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
     IF pos < STS THEN sec := f.sec[pos]
     ELSE sec := f.ext[(pos-STS) DIV XS].sec[(pos-STS) MOD XS]
     END ;
-    Kernel.GetSector(sec, buf.data);
+    FileSystem.GetSector(fshd, sec, buf.data);
     IF pos < f.aleng THEN buf.lim := SS ELSE buf.lim := f.bleng END ;
     buf.apos := pos; buf.mod := FALSE
   END ReadBuf;
@@ -160,7 +161,7 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
     IF buf.apos < STS THEN
       secadr := f.sec[buf.apos];
       IF secadr = 0 THEN
-        Kernel.AllocSector(f.sechint, secadr);
+        FileSystem.AllocSector(fshd, f.sechint, secadr);
         f.modH := TRUE; f.sec[buf.apos] := secadr; f.sechint := secadr
       END ;
       IF buf.apos = 0 THEN
@@ -172,11 +173,11 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
       END ;
       k := (buf.apos - STS) MOD XS; secadr := inx.sec[k];
       IF secadr = 0 THEN
-        Kernel.AllocSector(f.sechint, secadr);
+        FileSystem.AllocSector(fshd, f.sechint, secadr);
         f.modH := TRUE; inx.mod := TRUE; inx.sec[k] := secadr; f.sechint := secadr
       END
     END ;
-    Kernel.PutSector(secadr, buf.data); buf.mod := FALSE
+    FileSystem.PutSector(fshd, secadr, buf.data); buf.mod := FALSE
   END WriteBuf;
 
   PROCEDURE Buf(f: File; pos: INTEGER): Buffer;
@@ -206,8 +207,8 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
     VAR i, k: INTEGER;
       buf!: Buffer;
       inx!: Index;
-      head!: FileDir.FileHd;
-  BEGIN NEW(head); buf := f.firstbuf;
+      head: FileDir.FileHeader;
+  BEGIN buf := f.firstbuf;
     REPEAT
       IF buf.mod THEN WriteBuf(f, buf) END ;
       buf := buf.next
@@ -217,14 +218,14 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
       inx := f.ext[i]; INC(i);
       IF inx.mod THEN
         IF inx.adr = 0 THEN
-          Kernel.AllocSector(f.sechint, inx.adr); f.sechint := inx.adr; f.modH := TRUE
+          FileSystem.AllocSector(fshd, f.sechint, inx.adr); f.sechint := inx.adr; f.modH := TRUE
         END ;
-        Kernel.PutSector(inx.adr, inx.sec); inx.mod := FALSE
+        FileSystem.PutSector(fshd, inx.adr, inx.sec); inx.mod := FALSE
       END
     END ;
     IF f.modH THEN
-      Kernel.GetSector(f.sec[0], head^); UpdateHeader(f, head^);
-      Kernel.PutSector(f.sec[0], head^); f.modH := FALSE
+      FileSystem.GetSector(fshd, f.sec[0], head); UpdateHeader(f, head);
+      FileSystem.PutSector(fshd, f.sec[0], head); f.modH := FALSE
     END
   END Unbuffer;
 
@@ -233,7 +234,8 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
     IF (f # NIL) & (f.name[0] # 0X) THEN
       Unbuffer(f);
       IF ~f.registered THEN
-        FileDir.Insert(f.name, f.sec[0]); f.registered := TRUE; f.next := root; root := SYSTEM.VAL(INTEGER, f)
+        FileDir.Insert(fshd, f.name, f.sec[0], f.date, f.aleng * SS + f.bleng - HS);
+        f.registered := TRUE; f.next := root; root := SYSTEM.VAL(INTEGER, f)
       END
     END
   END Register;
@@ -251,12 +253,12 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
       IF a <= STS THEN i := a;
       ELSE i := STS; DEC(a, i); j := (a-1) MOD XS; k := (a-1) DIV XS;
         WHILE k >= 0 DO
-          Kernel.GetSector(f.ext[k].adr, ind);
-          REPEAT DEC(j); Kernel.FreeSector(ind[j]) UNTIL j = 0;
-          Kernel.FreeSector(f.ext[k].adr); j := XS; DEC(k)
+          FileSystem.GetSector(fshd, f.ext[k].adr, ind);
+          REPEAT DEC(j); FileSystem.FreeSector(fshd, ind[j]) UNTIL j = 0;
+          FileSystem.FreeSector(fshd, f.ext[k].adr); j := XS; DEC(k)
         END
       END ;
-      REPEAT DEC(i); Kernel.FreeSector(f.sec[i]) UNTIL i = 0
+      REPEAT DEC(i); FileSystem.FreeSector(fshd, f.sec[i]) UNTIL i = 0
     END
   END Purge;
 
@@ -265,7 +267,7 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
         namebuf: FileDir.FileName;
   BEGIN Check(name, namebuf, res);
     IF res = 0 THEN
-      FileDir.Delete(namebuf, adr);
+      FileDir.Delete(fshd, namebuf, adr);
       IF adr = 0 THEN res := 2 END
     END
   END Delete;
@@ -273,15 +275,15 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
   PROCEDURE Rename*(old, new: ARRAY OF CHAR; VAR res: INTEGER);
     VAR adr: DiskAdr;
         oldbuf, newbuf: FileDir.FileName;
-        head!: FileDir.FileHd;
-  BEGIN NEW(head); Check(old, oldbuf, res);
+        head: FileDir.FileHeader;
+  BEGIN Check(old, oldbuf, res);
     IF res = 0 THEN
       Check(new, newbuf, res);
       IF res = 0 THEN
-        FileDir.Delete(oldbuf, adr);
-        IF adr # 0 THEN
-          FileDir.Insert(newbuf, adr);
-          Kernel.GetSector(adr, head^); head.name := newbuf; Kernel.PutSector(adr, head^)
+        FileDir.Delete(fshd, oldbuf, adr);
+        IF adr # 0 THEN FileSystem.GetSector(fshd, adr, head); 
+          FileDir.Insert(fshd, newbuf, adr, head.date, head.aleng * SS + head.bleng - HS);
+          head.name := newbuf; FileSystem.PutSector(fshd, adr, head)
         ELSE res := 2
         END
       END
@@ -525,6 +527,7 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
     END mark;
 
   BEGIN (*field "next" has offset 0*)
+    BSP.ledsOnOff({4}, {});
     WHILE mark(root) = 0 DO SYSTEM.GET(root, root) END ;
     f := root;
     WHILE f # 0 DO
@@ -534,7 +537,11 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013*)
     END
   END RestoreList;
 
-BEGIN root := 0;
+  PROCEDURE Init*(fssec: INTEGER);
+  BEGIN FileDir.Init(fshd, fssec)
+  END Init;
+
+BEGIN root := 0
 END Files.
 
 OM4Tool.DecObj Files.m4c

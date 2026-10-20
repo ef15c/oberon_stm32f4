@@ -201,8 +201,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
 
   (* ------------- Toolbox of file system ---------------*)
 
-  PROCEDURE List(name: FileDir.FileName; adr: INTEGER; VAR cont: BOOLEAN);
-    VAR i0, i, j0, j: INTEGER; hp: FileDir.FileHeader;
+  PROCEDURE List(name: FileDir.FileName; adr, date, size: INTEGER; VAR cont: BOOLEAN);
+    VAR i0, i, j0, j: INTEGER;
   BEGIN
     i := 0;
     WHILE (pat[i] > "*") & (pat[i] = name[i]) DO INC(i) END ;
@@ -222,9 +222,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     IF (name[i0] = 0X) & (pat[j0] = 0X) THEN (*found*)
       Texts.WriteString(W, name);
       IF pat[j0+1] = "!" THEN (*option*)
-        Kernel.GetSector(adr, hp);
-        Texts.Write(W, 9X); Texts.WriteClock(W, hp.date);
-        Texts.WriteInt(W, hp.aleng*FileDir.SectorSize + hp.bleng - FileDir.HeaderSize, 8); (*length*)
+        Texts.Write(W, 9X); Texts.WriteClock(W, date);
+        Texts.WriteInt(W, size, 8); (*length*)
         (*Texts.WriteHex(W, adr)*)
       END ;
       Texts.WriteLn(W)
@@ -258,7 +257,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     V := MenuViewers.New(
       TextFrames.NewMenu("System.Directory", StandardMenu),
       TextFrames.NewText(t, 0), TextFrames.menuH, X, Y);
-    FileDir.Enumerate(pre, List); Texts.Append(t, W.buf)
+    FileDir.Enumerate(Files.fshd, pre, List); Texts.Append(t, W.buf)
   END Directory;
 
   PROCEDURE CopyFiles*;
@@ -365,8 +364,8 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     Texts.WriteString(W, "  Heap space"); Texts.WriteInt(W, Kernel.allocated, 8);
     size := Kernel.heapLim - Kernel.heapOrg;
     Texts.WriteInt(W, (Kernel.allocated * 100 + size DIV 2) DIV size, 4); Texts.Write(W, "%"); EndLine;
-    Texts.WriteString(W, "  Disk sectors "); Texts.WriteInt(W, Kernel.NofSectors, 4);
-    Texts.WriteInt(W, Kernel.NofSectors * 100 DIV 10000H, 4); Texts.WriteString(W, "%, read errors "); Texts.WriteInt(W, SDCard.hsd.readErrors, 1);
+    Texts.WriteString(W, "  Disk sectors "); Texts.WriteInt(W, Files.fshd.NofSectors, 4);
+    Texts.WriteInt(W, Files.fshd.NofSectors * 100 DIV 10000H, 4); Texts.WriteString(W, "%, read errors "); Texts.WriteInt(W, SDCard.hsd.readErrors, 1);
     Texts.WriteString(W, ", write errors "); Texts.WriteInt(W, SDCard.hsd.writeErrors, 1); Texts.WriteString(W, ", unrecoverable ");
     Texts.WriteInt(W, SDCard.hsd.unrecoverableErrors, 1); EndLine;
     Texts.WriteString(W, "  Tasks"); Texts.WriteInt(W, Oberon.NofTasks, 4); EndLine;

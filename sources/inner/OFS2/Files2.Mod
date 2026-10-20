@@ -8,11 +8,11 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
 
   CONST MaxBufs    = 4;
       HS        = FileDir.HeaderSize;
-      SS        = FileSystem.SectorSize;
-      STS       = FileSystem.SecTabSize;
-      XS        = FileSystem.IndexSize;
+      SS        = FileDir.SectorSize;
+      STS       = FileDir.SecTabSize;
+      XS        = FileDir.IndexSize;
 
-  TYPE  DiskAdr = INTEGER;
+  TYPE  DiskAdr = FileDir.DiskAdr;
       File*    = POINTER TO FileDesc;
       Buffer  = POINTER TO BufferRecord;
       Index   = POINTER TO IndexRecord;
@@ -31,23 +31,23 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
         modH, registered: BOOLEAN;
         firstbuf: Buffer;
         sechint: DiskAdr;
-        name: FileSystem.FileName;
+        name: FileDir.FileName;
         date: INTEGER;
-        ext:  ARRAY FileSystem.ExTabSize OF Index;
-        sec: FileSystem.SectorTable
+        ext:  ARRAY FileDir.ExTabSize OF Index;
+        sec: FileDir.SectorTable
       END ;
 
     BufferRecord =
       RECORD apos, lim: INTEGER;
         mod: BOOLEAN;
         next: Buffer;
-        data: FileSystem.DataSector
+        data: FileDir.DataSector
       END ;
 
     IndexRecord =
       RECORD adr: DiskAdr;
         mod: BOOLEAN;
-        sec: FileSystem.IndexSector
+        sec: FileDir.IndexSector
       END ;
 
     (*aleng * SS + bleng = length (including header)
@@ -60,16 +60,16 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
     fshd*: FileSystem.FSHeader; (*pointer to filesystem instance*)
 
   PROCEDURE Check(s: ARRAY OF CHAR;
-        VAR name: FileSystem.FileName; VAR res: INTEGER);
+        VAR name: FileDir.FileName; VAR res: INTEGER);
     VAR i: INTEGER; ch: CHAR;
   BEGIN ch := s[0]; i := 0;
     IF (ch >= "A") & (ch <= "Z") OR (ch >= "a") & (ch <= "z") THEN
       REPEAT name[i] := ch; INC(i); ch := s[i]
       UNTIL ~((ch >= "0") & (ch <= "9") OR (ch >= "A") & (ch <= "Z")
-        OR (ch >= "a") & (ch <= "z") OR (ch = ".")) OR (i = FileSystem.FnLength);
-      IF i = FileSystem.FnLength THEN res := 4
+        OR (ch >= "a") & (ch <= "z") OR (ch = ".")) OR (i = FileDir.FnLength);
+      IF i = FileDir.FnLength THEN res := 4
       ELSIF ch = 0X THEN res := 0;
-        WHILE i < FileSystem.FnLength DO name[i] := 0X; INC(i) END
+        WHILE i < FileDir.FnLength DO name[i] := 0X; INC(i) END
       ELSE res := 5
       END
     ELSIF ch = 0X THEN name[0] := 0X; res := -1
@@ -82,8 +82,8 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
       f!: File;
       header: DiskAdr;
       buf!: Buffer;
-      F!: FileSystem.FileHd;
-      namebuf: FileSystem.FileName;
+      F!: FileDir.FileHd;
+      namebuf: FileDir.FileName;
       inxpg!: Index;
   BEGIN f := NIL; Check(name, namebuf, res);
     IF res = 0 THEN
@@ -93,8 +93,8 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
         WHILE (f # NIL) & (f.sec[0] # header) DO f := SYSTEM.VAL(File, f.next) END ;
         IF f = NIL THEN (*file not yet present*)
           NEW(buf); buf.apos := 0; buf.next := buf; buf.mod := FALSE;
-          F := SYSTEM.VAL(FileSystem.FileHd, SYSTEM.ADR(buf.data));
-          FileSystem.GetSector(fshd, header, buf.data); ASSERT(F.mark = FileSystem.HeaderMark);
+          F := SYSTEM.VAL(FileDir.FileHd, SYSTEM.ADR(buf.data));
+          FileSystem.GetSector(fshd, header, buf.data); ASSERT(F.mark = FileDir.HeaderMark);
           NEW(f); f.aleng := F.aleng; f.bleng := F.bleng; f.date := F.date;
           IF f.aleng = 0 THEN buf.lim := f.bleng ELSE buf.lim := SS END ;
           f.firstbuf := buf; f.nofbufs := 1; f.name := namebuf; f.registered := TRUE;
@@ -104,7 +104,7 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
             NEW(inxpg); inxpg.adr := F.ext[i]; inxpg.mod := FALSE;
             FileSystem.GetSector(fshd, inxpg.adr, inxpg.sec); f.ext[i] := inxpg; INC(i)
           END ;
-          WHILE i < FileSystem.ExTabSize DO f.ext[i] := NIL; INC(i) END ;
+          WHILE i < FileDir.ExTabSize DO f.ext[i] := NIL; INC(i) END ;
           f.sechint := header; f.modH := FALSE; f.next := root; root := SYSTEM.VAL(INTEGER, f)
         END
       END
@@ -116,27 +116,27 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
     VAR i, res: INTEGER;
       f!: File;
       buf!: Buffer;
-      F!: FileSystem.FileHd;
-      namebuf: FileSystem.FileName;
+      F!: FileDir.FileHd;
+      namebuf: FileDir.FileName;
   BEGIN f := NIL; Check(name, namebuf, res);
     IF res <= 0 THEN
       NEW(buf); buf.apos := 0; buf.mod := TRUE; buf.lim := HS; buf.next := buf;
-      F := SYSTEM.VAL(FileSystem.FileHd, SYSTEM.ADR(buf.data));
-      F.mark := FileSystem.HeaderMark;
+      F := SYSTEM.VAL(FileDir.FileHd, SYSTEM.ADR(buf.data));
+      F.mark := FileDir.HeaderMark;
       F.aleng := 0; F.bleng := HS; F.name := namebuf;
       F.date := Kernel.Clock();
       NEW(f); f.aleng := 0; f.bleng := HS; f.modH := TRUE;
       f.registered := FALSE; f.date := F.date;
       f.firstbuf := buf; f.nofbufs := 1; f.name := namebuf; f.sechint := 0;
       i := 0;
-      REPEAT f.ext[i] := NIL; F.ext[i] := 0; INC(i) UNTIL i = FileSystem.ExTabSize;
+      REPEAT f.ext[i] := NIL; F.ext[i] := 0; INC(i) UNTIL i = FileDir.ExTabSize;
       i := 0;
       REPEAT f.sec[i] := 0; F.sec[i] := 0; INC(i) UNTIL i = STS
     END ;
     RETURN f
   END New;
 
-  PROCEDURE UpdateHeader(f: File; VAR F: FileSystem.FileHeader);
+  PROCEDURE UpdateHeader(f: File; VAR F: FileDir.FileHeader);
     VAR k: INTEGER;
   BEGIN F.aleng := f.aleng; F.bleng := f.bleng;
     F.sec := f.sec; k := (f.aleng + (XS-STS)) DIV XS;
@@ -165,7 +165,7 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
         f.modH := TRUE; f.sec[buf.apos] := secadr; f.sechint := secadr
       END ;
       IF buf.apos = 0 THEN
-        UpdateHeader(f, SYSTEM.VAL(FileSystem.FileHeader, buf.data)); f.modH := FALSE
+        UpdateHeader(f, SYSTEM.VAL(FileDir.FileHeader, buf.data)); f.modH := FALSE
       END
     ELSE i := (buf.apos - STS) DIV XS; inx := f.ext[i];
       IF inx = NIL THEN
@@ -207,7 +207,7 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
     VAR i, k: INTEGER;
       buf!: Buffer;
       inx!: Index;
-      head: FileSystem.FileHeaderPage;
+      head: FileDir.FileHeader;
   BEGIN buf := f.firstbuf;
     REPEAT
       IF buf.mod THEN WriteBuf(f, buf) END ;
@@ -247,7 +247,7 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
 
   PROCEDURE Purge*(f: File);
     VAR a, i, j, k: INTEGER;
-      ind: FileSystem.IndexSector;
+      ind: FileDir.IndexSector;
   BEGIN
     IF f # NIL THEN a := f.aleng + 1; f.aleng := 0; f.bleng := HS;
       IF a <= STS THEN i := a;
@@ -264,7 +264,7 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
 
   PROCEDURE Delete*(name: ARRAY OF CHAR; VAR res: INTEGER);
     VAR adr: DiskAdr;
-        namebuf: FileSystem.FileName;
+        namebuf: FileDir.FileName;
   BEGIN Check(name, namebuf, res);
     IF res = 0 THEN
       FileDir.Delete(fshd, namebuf, adr);
@@ -274,8 +274,8 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
 
   PROCEDURE Rename*(old, new: ARRAY OF CHAR; VAR res: INTEGER);
     VAR adr: DiskAdr;
-        oldbuf, newbuf: FileSystem.FileName;
-        head: FileSystem.FileHeaderPage;
+        oldbuf, newbuf: FileDir.FileName;
+        head: FileDir.FileHeader;
   BEGIN Check(old, oldbuf, res);
     IF res = 0 THEN
       Check(new, newbuf, res);
@@ -538,7 +538,7 @@ MODULE Files2;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.1
   END RestoreList;
 
   PROCEDURE Init*(fssec: INTEGER);
-  BEGIN FileSystem.Init(fshd, fssec)
+  BEGIN FileDir.Init(fshd, fssec)
   END Init;
 
 BEGIN root := 0

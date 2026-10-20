@@ -1,8 +1,6 @@
 MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   IMPORT SYSTEM, BSP, SDCard, LongDiv;
-  CONST SectorLength* = 1024; (*SDBlockSize = 512;*)
-    FS_OFFSET = 80000H; (*256MB in 512-byte blocks*)
-    mapsize = 10000H; (*64K sectors, 64*1024*SectorLength bytes*)
+  CONST
     BootReservedSize* = 63488;
     CS = 2; (*Carry set Greater than, equal, or unordered*)
     CC = 3; (* Carry clear Less than*)
@@ -13,26 +11,20 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     ISR = BSP.RTC_BASE + BSP.RTC_ISR;
     INITF = BSP.INITF;
 
-  TYPE Sector* = ARRAY SectorLength OF BYTE;
-    StorageInfo = POINTER TO StorageInfoDesc;
-    StorageInfoDesc = RECORD
-      map: ARRAY mapsize DIV 32 OF SET
-    END;
-  
+  TYPE
     ExceptionFrame* = POINTER TO ExceptionFrameDesc;
     ExceptionFrameDesc* = RECORD
       r0*, r1*, r2*, r3*, r12*, lr*: INTEGER;
       returnAddress*, xpsr*: INTEGER
     END;
 
-  VAR allocated*, NofSectors*: INTEGER;
+  VAR allocated*: INTEGER;
     heapOrg*, heapLim*: INTEGER;
     stackOrg* ,  stackSize*, MemLim*: INTEGER;
     SVCReturnAddress*, bootParams*: INTEGER;
     tick: INTEGER;
 
     list0*, list1*, list2*, list3*: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
-    sector: StorageInfo;
 
 (* ---------- New: heap allocation ----------*)
 
@@ -181,54 +173,6 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     UNTIL SYSTEM.CMP(p, heapLim, CS)
   END Coalesce;
 
-(* ---------- Disk storage management ----------*)
-
-  PROCEDURE InitSecMap;
-    CONST NofReservedSectors = (BootReservedSize + SectorLength - 1) DIV SectorLength + 2;
-    VAR i, r: INTEGER;
-  BEGIN NEW(sector); NofSectors := 0; i := 0;
-    WHILE i < NofReservedSectors DIV 32 DO sector.map[i] := {0 .. 31}; INC(i) END;
-    r := NofReservedSectors MOD 32; IF r > 0 THEN sector.map[i] := {0 .. r}; INC(i) END;
-    WHILE i < mapsize DIV 32 DO sector.map[i] := {}; INC(i) END
-  END InitSecMap;
-
-  PROCEDURE MarkSector*(sec29: INTEGER);
-    VAR sec: INTEGER;
-  BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
-    INCL(sector.map[sec DIV 32], sec MOD 32); INC(NofSectors);
-  END MarkSector;
-
-  PROCEDURE FreeSector*(sec29: INTEGER);
-    VAR sec: INTEGER;
-  BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
-    EXCL(sector.map[sec DIV 32], sec MOD 32); DEC(NofSectors)
-  END FreeSector;
-
-  PROCEDURE AllocSector*(hint29: INTEGER; VAR sec29: INTEGER);
-    VAR hint, s: INTEGER;
-  BEGIN (*find free sector, starting after hint*)
-    hint := hint29 DIV 29; ASSERT(hint29 = hint*29); s := hint;
-    REPEAT INC(s);
-      IF s >= mapsize THEN s := 1 END ;
-    UNTIL ~(s MOD 32 IN sector.map[s DIV 32]) OR (s = hint);
-    ASSERT (~(s MOD 32 IN sector.map[s DIV 32]));
-    INCL(sector.map[s DIV 32], s MOD 32); INC(NofSectors); sec29 := s * 29
-  END AllocSector;
-
-  PROCEDURE GetSector*(src29: INTEGER; VAR dst: Sector);
-    VAR src: INTEGER;
-  BEGIN src := src29 DIV 29; ASSERT(src29 = src*29);
-    src := src * (SectorLength DIV SDCard.BLOCKSIZE) + FS_OFFSET;
-    SDCard.Read(src, SYSTEM.ADR(dst), SectorLength DIV SDCard.BLOCKSIZE)
-  END GetSector;
-
-  PROCEDURE PutSector*(dst29: INTEGER; VAR src: Sector);
-    VAR dst: INTEGER;
-  BEGIN dst := dst29 DIV 29; ASSERT(dst29 = dst*29);
-    dst := dst * (SectorLength DIV SDCard.BLOCKSIZE) + FS_OFFSET;
-    SDCard.Write(dst, SYSTEM.ADR(src), SectorLength DIV SDCard.BLOCKSIZE);
-  END PutSector;
-
 (*-------- Miscellaneous procedures----------*)
 
   PROCEDURE Time*(): INTEGER;
@@ -356,7 +300,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
     SYSTEM.GET(bootParams+28, heapOrg); stackSize := 10000H; heapLim := MemLim;
     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
     SYSTEM.PUT(list0, heapLim - heapOrg); SYSTEM.PUT(list0+4, -1); SYSTEM.PUT(list0+8, 0);
-    allocated := 0; InitSecMap; BSP.InitDisplay
+    allocated := 0; BSP.InitDisplay
   END Init;
 
 BEGIN Init

@@ -65,7 +65,7 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
     |                   3            |
     val = imm4:i:imm3:imm8*)
   BEGIN
-    RETURN LSL(LSR(val, 12) MOD ORD({4}), 16) + LSL(LSR(val, 11) MOD 2, 26) + 
+    RETURN LSL(LSR(val, 12) MOD ORD({4}), 16) + LSL(LSR(val, 11) MOD 2, 26) +
            LSL(LSR(val, 8) MOD ORD({3}), 12) + LSL(reg, 8) + val MOD ORD({8})
   END formatImm16;
 
@@ -325,13 +325,13 @@ MODULE Modules;  (*Link and load; NW 20.10.2013 / 8.1.2019
   END Free;
 
   PROCEDURE Init;
-  BEGIN
+  BEGIN Files.Init(100000H); (*initialize OFS2*)
     SYSTEM.GET(Kernel.bootParams+16, AllocPtr); SYSTEM.GET(Kernel.bootParams+20, root); 
     SYSTEM.GET(Kernel.bootParams+28, limit) (*The end of the module space is the beginning of the heap*)
   END Init;
 
 BEGIN Init; Load("Oberon", M);
-    IF M.refcnt >= 0 THEN LED(res); REPEAT UNTIL FALSE  (*only if load fails*) END
+    IF (M = NIL) OR (M.refcnt >= 0) THEN LED(res); REPEAT UNTIL FALSE  (*only if load fails*) END
 END Modules.
 
 OM4P.Compile Modules.Mod~

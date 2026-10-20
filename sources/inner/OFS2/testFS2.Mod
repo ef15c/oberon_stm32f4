@@ -2,7 +2,7 @@ MODULE testFS2; (*test of filesystem v2*)
   IMPORT SYSTEM, BSP, Kernel, FileSystem, FileDir2, Files2, FileDir, Files, Texts, Oberon, Log := SystemLog;
 
   CONST
-    SectorSize*   = 2048;
+    SectorSize*   = FileDir2.SectorSize;
 
   TYPE
     Sector* = ARRAY SectorSize OF BYTE;
@@ -10,16 +10,16 @@ MODULE testFS2; (*test of filesystem v2*)
   VAR W: Texts.Writer; nof: INTEGER;
 
   PROCEDURE p*;
-    VAR dp: FileSystem.DirPage;
+    VAR dp: FileDir2.DirPage;
   BEGIN
-    Log.DebugInt("FileHeaderPage size", SYSTEM.SIZE(FileSystem.FileHeaderPage), 1);
-    Log.DebugInt("File header size", SYSTEM.SIZE(FileSystem.FileHeader), 1);
+    Log.DebugInt("FileHeaderPage size", SYSTEM.SIZE(FileDir2.FileHeader), 1);
+    Log.DebugInt("File header size", SYSTEM.SIZE(FileDir2.FileHeader), 1);
     Log.DebugInt("LEN(e)", LEN(dp.e), 1);
-    Log.DebugInt("DirPgSize", FileDir.DirPgSize, 1);
+    Log.DebugInt("DirPgSize", FileDir2.DirPgSize, 1);
   END p;
 
   PROCEDURE CreateFS100000H*;
-  BEGIN FileSystem.CreateFS(100000H)
+  BEGIN FileDir2.CreateFS(100000H)
   END CreateFS100000H;
 
   PROCEDURE InitFS100000H*;
@@ -56,7 +56,7 @@ MODULE testFS2; (*test of filesystem v2*)
   END DeleteFile;
 
   PROCEDURE RenameFile*;
-    VAR S!: Texts.Scanner; res: INTEGER; from: FileSystem.FileName;
+    VAR S!: Texts.Scanner; res: INTEGER; from: FileDir2.FileName;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN from := S.s; Texts.Scan(S);
       IF S.class = Texts.Name THEN
@@ -102,7 +102,9 @@ MODULE testFS2; (*test of filesystem v2*)
         Files.Read(R, v); Files2.Read(R2, v2);
         WHILE ~R.eof & ~R2.eof & (v = v2) DO Files2.Read(R2, v2); Files.Read(R, v) END;
         IF (ORD(R.eof ) # ORD(R2.eof)) OR (v # v2) THEN Log.DebugString("different", S.s) END
-      ELSE Log.DebugString("must delete", S.s)
+      ELSE
+        Texts.WriteString(W, "testFS2.DeleteFile "); Texts.WriteString(W, S.s);
+        Texts.Write(W, "~"); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
       END
     END;
   END CompareFile;
@@ -111,19 +113,23 @@ MODULE testFS2; (*test of filesystem v2*)
     VAR max: INTEGER;
 
     PROCEDURE ml(dpg0, cur: INTEGER; VAR max: INTEGER);
-      VAR a: FileSystem.DirPage; fshd!: FileSystem.FSHeader; i: INTEGER;
+      VAR a: FileDir2.DirPage; fshd!: FileSystem.FSHeader; i: INTEGER;
     BEGIN
-      IF dpg0 # 0 THEN
-        fshd := Files2.fshd; INC(cur); IF cur > max THEN max := cur END;
-        FileSystem.GetSector(fshd, dpg0, a); ASSERT(a.mark = FileSystem.DirMark);
+      fshd := Files2.fshd; IF cur > max THEN max := cur END;
+      FileSystem.GetSector(fshd, dpg0, a); ASSERT(a.mark = FileDir2.DirMark);
+      IF a.p0 # 0 THEN
         ml(a.p0, cur + 1, max); (*visit left descendant*)
-        FOR i := 0 TO FileDir2.DirPgSize - 1 DO ml(a.e[i].p, cur + 1, max) END (*visit all right descendants*)
+        FOR i := 0 TO a.m - 1 DO ml(a.e[i].p, cur + 1, max) END (*visit all right descendants*)
      END
-    END ml;
+   END ml;
 
-  BEGIN max := 0; ml(FileSystem.DirRootAdr, 0, max); Log.DebugInt("max level", max, 1)
+  BEGIN max := 0; ml(FileDir2.DirRootAdr, 1, max); Log.DebugInt("max level", max, 1)
   END MaxLevel;
-  
+
+  PROCEDURE Usage*;
+  BEGIN Log.DebugInt("Nb of allocated sectors", Files2.fshd.NofSectors, 1)
+  END Usage;
+
 BEGIN Texts.OpenWriter(W);
 END testFS2.
 
@@ -131,6 +137,10 @@ OM4P.Compile FileSystem.Mod/s FileDir2.Mod/s Files2.Mod/s testFS2.Mod/s~
 testFS2.DeInitFS100000H~
 System.Free testFS2 Files2 FileDir2 FileSystem~
 testFS2.p
+FileHeaderPage size = 2048
+File header size = 352
+LEN(e) = 40
+DirPgSize = 40
 testFS2.InitFS100000H
 testFS2.CopyAllList
 testFS2.CopyFile OM4P.efb~
@@ -138,6 +148,8 @@ testFS2.CompareFile OM4P.efb~
 testFS2.MaxLevel~
 testFS2.DeleteFile usbhpipes.c.Bak~
 testFS2.RenameFile usbhpipes.c.Bak usbhpipes.c.Bak.Bak
+testFS2.RenameFile usbhpipes.c.Bak.Bak usbhpipes.c.Bak
+testFS2.Usage
 
 Oberon.Batch
 testFS2.InitFS100000H

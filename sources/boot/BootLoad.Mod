@@ -13,8 +13,8 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
     (*Peripherals*)
     PeriphBase = 40000000H; PeriphBBAlias = 42000000H;
 
-    BLOCKSIZE = 512; SectorSize = 1024;
-    FSoffset = 80000H; (*block offset*) bps = SectorSize DIV BLOCKSIZE;
+    BLOCKSIZE = 512; SectorSize = 2048(*1024*);
+    FSoffset = 100000H(*80000H*); (*block offset*) bps = SectorSize DIV BLOCKSIZE;
 
     (*common error flag*) NONE = {}; 
 
@@ -587,7 +587,7 @@ MODULE* BootLoad;  (*NW 20.10.2013 / PR 4.2.2014 / CS 09/12/2023; boot from SDHC
     SYSTEM.GET(VarORG0 + 16, lim);
     (*read remaining blocks*)
     r := (lim + (BLOCKSIZE - 1 -  VarORG0)) DIV BLOCKSIZE - bps;
-    IF r > 0 THEN ReadSD(hsd^, FSoffset + 2*(bps+1), VarORG0+SectorSize, r) END
+    IF r > 0 THEN ReadSD(hsd^, FSoffset + 3*bps, VarORG0+SectorSize, r) END
   END LoadFromDisk;
 
   PROCEDURE InitSD;

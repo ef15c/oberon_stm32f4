@@ -1,5 +1,5 @@
 MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20 / CS 25.02.25*)
-  IMPORT SYSTEM, Kernel, A := OM4A, Files, Modules, Texts, Oberon, FLASH;
+  IMPORT SYSTEM, FileSystem, Kernel, A := OM4A, Files, Modules, Texts, Oberon, FLASH;
   CONST DescSize = 80; BootSec = 2;
     noerr = 0; nofile = 1; badversion = 2; badkey = 3; badfile = 4; nospace = 5; nofit = 6; different = 7;
     MemLim = 0D0800000H; stackOrg = 10010000H; SDCard = 200001ACH;
@@ -410,19 +410,19 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
     VAR i, secno: INTEGER; b: BYTE;
       F!: Files.File; R!: Files.Rider;
       S!: Texts.Scanner;
-      buf: ARRAY Kernel.SectorLength OF BYTE;
+      buf: ARRAY FileSystem.SectorSize OF BYTE;
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "  loading "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
       IF (F # NIL) & (Files.Length(F) <= 63488) THEN Texts.WriteString(W, " onto boot area"); Texts.WriteInt(W, Files.Length(F), 7);
         secno := BootSec; i := 0; Files.Set(R, F, 0); Files.ReadByte(R, b); res := noerr;
         WHILE ~R.eof DO buf[i] := b; INC(i);
-          IF i = Kernel.SectorLength THEN Kernel.PutSector(secno*29, buf); INC(secno); i := 0 END ;
+          IF i = FileSystem.SectorSize THEN FileSystem.PutSector(Files.fshd, secno*29, buf); INC(secno); i := 0 END ;
           Files.ReadByte(R, b)
         END ;
         IF i > 0 THEN
-          WHILE i < Kernel.SectorLength DO buf[i] := 0; INC(i) END ;
-          Kernel.PutSector(secno*29, buf)
+          WHILE i < FileSystem.SectorSize DO buf[i] := 0; INC(i) END ;
+          FileSystem.PutSector(Files.fshd, secno*29, buf)
         END
       ELSE Texts.WriteString(W, " not found or too big")
       END
