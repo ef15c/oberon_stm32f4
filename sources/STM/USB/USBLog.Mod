@@ -15,7 +15,7 @@ MODULE USBLog;
     BufCallback = PROCEDURE^5(buf: ARRAY OF BYTE; len: INTEGER);
     LnCallback = PROCEDURE^5;
 
-  VAR W: Texts.Writer; wrnum, rdnum: INTEGER;
+  VAR W: Texts.Writer; wrnum, rdnum: BYTE;
     UserCbk, ErrorCbk, DebugCbk,
     UserStringCbk, ErrorStringCbk, DebugStringCbk: MsgCallback;
     UserIntCbk, ErrorIntCbk, DebugIntCbk: IntCallback;
