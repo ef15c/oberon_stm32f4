@@ -12,7 +12,7 @@ MODULE USBDMTP;
   *           - Error management
   *
   ******************************************************************************)
-  IMPORT SYSTEM, Def := USBDef, DConf := USBDConf, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq,
+  IMPORT SYSTEM, Log := USBLog, Def := USBDef, DConf := USBDConf, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq,
     DH := USBDHal, Opt := USBDMTPOpt, MTPS := USBDMTPStorage;
 
   CONST
@@ -165,27 +165,27 @@ MODULE USBDMTP;
       IF type = Def.REQ_TYPE_CLASS THEN (* Class request *)
         IF req.bRequest = REQ_CANCEL THEN
           hmtp.rx_buff.length := Def.MIN(hmtp.rx_buff.size, req.wLength);
-          IoReq.CtlPrepareRx(dev, hmtp.rx_buff)
+          IoReq.CtlPrepareRx(dev, hmtp.rx_buff^)
         ELSIF req.bRequest = REQ_GET_EXT_EVENT_DATA THEN (*do nothing*)
         ELSIF req.bRequest = REQ_RESET THEN
           (* Stop low layer file system operations if any *)
-          MTPS.Cancel(dev, MTPS.PHASE_IDLE);
-          hmtp.rx_buff.length := hmtp.rx_buff.size; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
+          MTPS.Cancel(dev, Opt.PHASE_IDLE);
+          dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
         ELSIF req.bRequest = REQ_GET_DEVICE_STATUS THEN hmtp.dev_status.length := 0;
-          IF hmtp.ResponsePhase = MTPS.READ_DATA THEN
+          IF hmtp.TransactionPhase = Opt.DATA_OUT_PHASE THEN
             hmtp.dev_status.length := 4; hmtp.dev_status.val := LSL(RESPONSE_DEVICE_BUSY, 16) + 4
-          ELSIF hmtp.ResponsePhase = MTPS.RECEIVE_DATA THEN
+          ELSIF hmtp.TransactionPhase = Opt.DATA_IN_PHASE THEN
             hmtp.dev_status.length := 4; hmtp.dev_status.val := LSL(RESPONSE_TRANSACTION_CANCELLED, 16) + 4
-          ELSIF hmtp.ResponsePhase = MTPS.PHASE_IDLE THEN
+          ELSIF hmtp.TransactionPhase = Opt.PHASE_IDLE THEN
             hmtp.dev_status.length := 4; hmtp.dev_status.val := LSL(RESPONSE_OK, 16) + 4
           END;
-          IoReq.CtlSendData(dev, hmtp.dev_status, hmtp.dev_status.length)
+          IoReq.CtlSendData(dev, hmtp.dev_status^, hmtp.dev_status.length)
         ELSE CtlReq.CtlError(dev, req); ret := Def.FAIL
         END
       ELSIF type = Def.REQ_TYPE_STANDARD THEN (* Interface & Endpoint request *)
         IF req.bRequest = Def.REQ_GET_INTERFACE THEN
           IF dev.state = DDef.STATE_CONFIGURED THEN
-            hmtp.alt_setting.length := 1; hmtp.alt_setting.val := 0; IoReq.CtlSendData(dev, hmtp.alt_setting, hmtp.alt_setting.length)
+            hmtp.alt_setting.length := 1; hmtp.alt_setting.val := 0; IoReq.CtlSendData(dev, hmtp.alt_setting^, hmtp.alt_setting.length)
           END
         ELSIF req.bRequest = Def.REQ_SET_INTERFACE THEN
           IF dev.state # DDef.STATE_CONFIGURED THEN CtlReq.CtlError(dev, req); ret := Def.FAIL END
@@ -219,20 +219,19 @@ MODULE USBDMTP;
 #endif /* USE_USBD_COMPOSITE */
 *)
     IF epnum = MTPS.InEpAdd MOD 80H THEN
-      IF hmtp.ResponsePhase = MTPS.RESPONSE_PHASE THEN
-        MTPS.SendContainer(dev, MTPS.REP_TYPE);
+      IF hmtp.TransactionPhase = Opt.RESPONSE_PHASE THEN
+        MTPS.SendContainer(dev);
         (* prepare to receive next operation *)
-        hmtp.rx_buff.length := Def.MIN(hmtp.rx_buff.size, dev.request.wLength);
         dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^);
-        hmtp.ResponsePhase := MTPS.PHASE_IDLE
-      ELSIF hmtp.ResponsePhase = MTPS.READ_DATA THEN
-        MTPS.ReadData(dev);
+        hmtp.TransactionPhase := Opt.PHASE_IDLE
+      ELSIF hmtp.TransactionPhase = Opt.DATA_IN_PHASE THEN
+        MTPS.ReadData(dev); MTPS.SendContainer(dev);
+(*
         (* prepare to receive next operation *)
-        hmtp.rx_buff.length := Def.MIN(hmtp.rx_buff.size, dev.request.wLength);
-        dev.PrepareReceive(dev, MTPS.InEpAdd, hmtp.rx_buff^)
-      ELSIF hmtp.ResponsePhase = MTPS.PHASE_IDLE THEN
+        dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
+*)
+      ELSIF hmtp.TransactionPhase = Opt.PHASE_IDLE THEN
         (* prepare to receive next operation *)
-        hmtp.rx_buff.length := Def.MIN(hmtp.rx_buff.size, dev.request.wLength);
         dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
       END
     END
@@ -254,19 +253,17 @@ MODULE USBDMTP;
   MTPOutEpAdd = USBD_CoreGetEPAdd(pdev, USBD_EP_OUT, USBD_EP_TYPE_BULK, (uint8_t)pdev->classId);
 #endif /* USE_USBD_COMPOSITE */
 *)
-    MTPS.ReceiveOpt(dev);
-    IF hmtp.ResponsePhase = MTPS.RESPONSE_PHASE THEN
-      IF hmtp.GenericContainer.CLen = Opt.CONT_HEADER_SIZE THEN MTPS.SendContainer(dev, MTPS.REP_TYPE);
-        hmtp.ResponsePhase := MTPS.PHASE_IDLE
-      ELSE MTPS.SendContainer(dev, MTPS.DATA_TYPE)
-      END
-    ELSIF hmtp.ResponsePhase = MTPS.READ_DATA THEN MTPS.ReadData(dev)
-    ELSIF hmtp.ResponsePhase = MTPS.RECEIVE_DATA THEN MTPS.ReceiveData(dev);
-      (* prepare endpoint to receive operations *)
-      hmtp.rx_buff.length := dev.request.wLength; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
-    ELSIF hmtp.ResponsePhase = MTPS.PHASE_IDLE THEN
+    IF hmtp.TransactionPhase = Opt.PHASE_IDLE THEN hmtp.TransactionPhase := Opt.OPERATION_REQUEST_PHASE;
+      MTPS.ReceiveOpt(dev);
+      IF hmtp.TransactionPhase # Opt.DATA_OUT_PHASE THEN MTPS.SendContainer(dev) END
+    ELSIF hmtp.TransactionPhase = Opt.RESPONSE_PHASE THEN hmtp.TransactionPhase := Opt.PHASE_IDLE
+    ELSIF hmtp.TransactionPhase = Opt.DATA_IN_PHASE THEN MTPS.SendContainer(dev)
+    ELSIF hmtp.TransactionPhase = Opt.DATA_OUT_PHASE THEN MTPS.ReceiveData(dev);
+      (* prepare endpoint to receive next data *)
+      dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
+    ELSIF hmtp.TransactionPhase = Opt.PHASE_IDLE THEN
       (* prepare to receive next operation *)
-      hmtp.rx_buff.length := dev.request.wLength; dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
+      dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
     END
   END DataOut;
 

@@ -19,11 +19,9 @@ MODULE USBDCtlReq;
   IMPORT Log := USBLog, Conf := USBConf, DConf := USBDConf, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq;
 
   TYPE
-    ResByte = POINTER TO ResByteDesc;
-    ResByteDesc = RECORD(Def.BufferDesc) value: BYTE END;
+    ResByte = RECORD(Def.BufferDesc) value: BYTE END;
 
-    ResHW = POINTER TO ResHWDesc;
-    ResHWDesc = RECORD(Def.BufferDesc) value: HALFSET END;
+    ResHW = RECORD(Def.BufferDesc) value: HALFSET END;
 
   VAR resByte: ResByte; resHW, status: ResHW;
 
@@ -220,7 +218,7 @@ MODULE USBDCtlReq;
     Log.DebugString(", length "); Log.DebugInt(req.wLength, 1); Log.DebugLn;
     IF err = 0 THEN
       IF req.wLength # 0 THEN
-        IF buf.length # 0 THEN IoReq.CtlSendData(dev, buf, Def.MIN(buf.length, req.wLength))
+        IF buf.length # 0 THEN IoReq.CtlSendData(dev, buf^, Def.MIN(buf.length, req.wLength))
         ELSE CtlError(dev, req)
         END
       ELSE IoReq.CtlSendStatus(dev)
@@ -439,7 +437,7 @@ MODULE USBDCtlReq;
   PROCEDURE StdEPReq*(dev: DDef.Handle; req: Def.Setup): BYTE;
     VAR ret, ep_addr, idx: BYTE; type: SET;
 
-    PROCEDURE SetStatus(dev: DDef.Handle; ep_addr: BYTE; VAR ep: DDef.Endpoint; status: ResHW);
+    PROCEDURE SetStatus(dev: DDef.Handle; ep_addr: BYTE; VAR ep: DDef.Endpoint; VAR status: ResHW);
     BEGIN
       IF (ep_addr = 0) OR (ep_addr = 80H) THEN ep.status := {}
       ELSIF dev.IsStallEP(dev, ep_addr) THEN ep.status := {0}
@@ -530,7 +528,7 @@ MODULE USBDCtlReq;
   END ParseSetupRequest;
 
 BEGIN
-  NEW(resByte); resByte.size := 1; resByte.length := 1;
-  NEW(resHW); resHW.size := 2; resHW.length := 2;
-  NEW(status); status.size := 2; status.length := 2
+  resByte.size := 1; resByte.length := 1;
+  resHW.size := 2; resHW.length := 2;
+  status.size := 2; status.length := 2
 END USBDCtlReq.

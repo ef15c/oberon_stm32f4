@@ -12,6 +12,18 @@ MODULE USBDMTPOpt;
     MEDIA_PACKET* = 4000H;
     CONT_HEADER_SIZE* = 12;
    
+  (* MTP response phases    *)
+    PHASE_IDLE* = 0;
+    OPERATION_REQUEST_PHASE* = 1; (*OUT*)
+    DATA_IN_PHASE* = 2; (*R->I*)
+    DATA_OUT_PHASE* = 3; (*I->R*)
+    RESPONSE_PHASE* = 4; (*IN*)
+  (*state diagram:
+    {PHASE_IDLE OPERATION_REQUEST_PHASE [DATA_IN_PHASE | DATA_OUT_PHASE] RESPONSE_PHASE}
+    note: the presence and the direction of the data phases depend on the operation specified
+    in the operation request phase
+  *)
+
   (* MTP Session state    *)
     SESSION_NOT_OPEN* = 0;
     SESSION_OPEN* = 1;
@@ -429,12 +441,14 @@ MODULE USBDMTPOpt;
     VEND_EXT_ID = 6;
     VEND_EXT_VERSION = 100;
 
+(*
   (*receive state machine states*)
     RECEIVE_IDLE_STATE* = 0;
     RECEIVE_COMMAND_DATA* = 1;
     RECEIVE_FIRST_DATA* = 2;
     RECEIVE_REST_OF_DATA* = 3;
     SEND_RESPONSE* = 4;
+*)
 
   TYPE
     Dataset = POINTER TO DatasetDesc;
@@ -463,9 +477,8 @@ MODULE USBDMTPOpt;
       dev_status*: Def.IntegerBuffer;
       ResponseCode*: INTEGER;
       rx_buff*: Generic; (* must be 32-bit aligned *)
-      ResponsePhase*, SessionState*, RECEIVE_DATA_STATUS*: BYTE;
+      TransactionPhase*, SessionState*(*, RECEIVE_DATA_STATUS**): BYTE;
       OperationsContainer*: Op;
-      ReadDataStatus*: BYTE;
       cur_len*, readbytes*: INTEGER;
       GenericContainer*: Generic;
       obj_format*: HALFWORD;
@@ -514,7 +527,8 @@ MODULE USBDMTPOpt;
       PutObjectPropValue*: PROCEDURE(b: Def.Buffer; oh, opc: INTEGER);
       PutDeviceFriendlyName*: PROCEDURE(b: Def.Buffer);
       PutDevicePropValue*: PROCEDURE(b: Def.Buffer; dpc: INTEGER);
-      ScratchBuff*: Generic
+      PutNextData*: PROCEDURE(b: Def.Buffer);
+(*      ScratchBuff*: Generic*)
     END;
 
   PROCEDURE BeginArray*(d: Def.Buffer; VAR beg: INTEGER);
@@ -841,11 +855,12 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_PayloadContent(dev: DDef.Handle): HALFWORD;
-    VAR ret: HALFWORD; hmtp!: Handle; uif!: UserIf; op, n_idx: INTEGER; d!: Generic;
+    VAR ret: HALFWORD; hmtp!: Handle; uif!: UserIf; op(*, n_idx*): INTEGER; d!: Generic;
   BEGIN ret := RESPONSE_OK;
     hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     uif := dev.UserData[dev.classId](UserIf);
     op := hmtp.OperationsContainer.code; d := hmtp.GenericContainer; d.length := 0;
+    hmtp.TransactionPhase := DATA_IN_PHASE;
     IF op = OP_GET_DEVICE_INFO THEN Get_DeviceInfo(uif, d)
     ELSIF op = OP_GET_STORAGE_IDS THEN Get_StorageIDs(uif, d)
     ELSIF op = OP_GET_STORAGE_INFO THEN Get_StorageInfo(uif, d)
@@ -857,13 +872,16 @@ MODULE USBDMTPOpt;
     ELSIF op = OP_GET_OBJECT_PROP_VALUE THEN Get_ObjectPropValue(uif, hmtp)
     ELSIF op = OP_GET_DEVICE_PROP_DESC THEN Get_DevicePropDesc(uif, d)
     ELSIF op = OP_SEND_OBJECT_INFO THEN Log.Debug("SendObjectInfo"); Log.DebugLn; Log.Flush;
+      hmtp.TransactionPhase := DATA_OUT_PHASE
+(*TODO: Move the following statements in the response phase
       n_idx := uif.GetNewIndex(hmtp.obj_format);
       Def.PutInteger(d, hmtp.storage_id);
       Def.PutInteger(d, hmtp.objhandle);
-      Def.PutInteger(d, n_idx)
+      Def.PutInteger(d, n_idx)*)
     ELSIF op = OP_GET_DEVICE_PROP_VALUE THEN Log.Debug("GetDevicePropValue"); Log.DebugLn; Log.Flush;
       uif.PutDevicePropValue(d, hmtp.OperationsContainer.Param1)
-    ELSE ret := RESPONSE_OPERATION_NOT_SUPPORTED; Log.Error("Unhandled op: "); Log.ErrorHexVLen(op, 8, FALSE); Log.ErrorLn; Log.Flush
+    ELSE ret := RESPONSE_OPERATION_NOT_SUPPORTED;
+      Log.Error("Unhandled op: "); Log.ErrorHexVLen(op, 8, FALSE); Log.ErrorLn; Log.Flush
     END
     RETURN ret
   END Get_PayloadContent;
@@ -953,6 +971,7 @@ MODULE USBDMTPOpt;
     VAR hmtp!: Handle; uif!: UserIf;
   BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
     uif := dev.UserData[dev.classId](UserIf);
+(* TODO replace following:
     IF hmtp.RECEIVE_DATA_STATUS = RECEIVE_IDLE_STATE THEN
       hmtp.RECEIVE_DATA_STATUS := RECEIVE_COMMAND_DATA
     ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_COMMAND_DATA THEN buff.offset := 0;
@@ -981,6 +1000,7 @@ MODULE USBDMTPOpt;
       hmtp.RECEIVE_DATA_STATUS := RECEIVE_IDLE_STATE
     END;
     hmtp.ResponseCode := RESPONSE_OK
+*)
   END SendObject;
 
   (**
@@ -993,6 +1013,7 @@ MODULE USBDMTPOpt;
     VAR hmtp!: Handle; uif!: UserIf;
   BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
     uif := dev.UserData[dev.classId](UserIf);
+(* TODO replace following:
     IF hmtp.RECEIVE_DATA_STATUS = RECEIVE_IDLE_STATE THEN
       hmtp.RECEIVE_DATA_STATUS := RECEIVE_COMMAND_DATA
     ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_COMMAND_DATA THEN
@@ -1021,6 +1042,7 @@ MODULE USBDMTPOpt;
       hmtp.GenericContainer.length := hmtp.GenericContainer.CLen;
       hmtp.RECEIVE_DATA_STATUS := RECEIVE_IDLE_STATE
     END
+*)
   END SendObjectInfo;
 
   (**

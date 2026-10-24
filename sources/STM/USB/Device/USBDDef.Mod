@@ -47,7 +47,7 @@ MODULE USBDDef;
       is_used*: BOOLEAN;
       bInterval*: BYTE;
       status*: HALFSET;
-      buffer*: Def.Buffer;
+(*      buffer*: Def.Buffer;*)
     END;
 
   (* USB Device descriptors structure *)

@@ -25,10 +25,10 @@ MODULE USBDIoReq;
   * @param  buff: pointer to data buffer
   * @retval status
   *)
-  PROCEDURE CtlSendData*(dev: DDef.Handle; buf: Def.Buffer; len: HALFWORD);
+  PROCEDURE CtlSendData*(dev: DDef.Handle; buf: Def.BufferDesc; len: HALFWORD);
   BEGIN
     dev.ep0_state := DDef.EP0_DATA_IN; (* Set EP0 State *)
-    dev.ep_in[0].buffer := buf;
+(*    dev.ep_in[0].buffer := buf;*)
 (*
 #ifdef USBD_AVOID_PACKET_SPLIT_MPS
   pdev->ep_in[0].rem_length = 0U;
@@ -37,7 +37,7 @@ MODULE USBDIoReq;
 (*
 #endif /* USBD_AVOID_PACKET_SPLIT_MPS */
 *)
-    dev.Transmit(dev, 0, buf^, len) (* Start the transfer *)
+    dev.Transmit(dev, 0, buf, len) (* Start the transfer *)
   END CtlSendData;
 
 (*
@@ -60,10 +60,10 @@ MODULE USBDIoReq;
   * @param  buff: pointer to data buffer
   * @retval status
   *)
-  PROCEDURE CtlPrepareRx*(dev: DDef.Handle; buf: Def.Buffer);
+  PROCEDURE CtlPrepareRx*(dev: DDef.Handle; buf: Def.BufferDesc);
   BEGIN
     dev.ep0_state := DDef.EP0_DATA_OUT; (* Set EP0 State *)
-    dev.ep_out[0].buffer := buf;
+(*    dev.ep_out[0].buffer := buf;*)
 (*
 #ifdef USBD_AVOID_PACKET_SPLIT_MPS
   pdev->ep_out[0].rem_length = 0U;
@@ -72,7 +72,7 @@ MODULE USBDIoReq;
 (*
 #endif /* USBD_AVOID_PACKET_SPLIT_MPS */
 *)
-    dev.PrepareReceive(dev, 0, buf^); (* Start the transfer *)
+    dev.PrepareReceive(dev, 0, buf); (* Start the transfer *)
   END CtlPrepareRx;
 
 (*
@@ -109,7 +109,8 @@ MODULE USBDIoReq;
   *)
   PROCEDURE CtlReceiveStatus*(dev: DDef.Handle);
     VAR dummy: Def.BufferDesc;
-  BEGIN CLEAR(dummy); dev.ep0_state := DDef.EP0_STATUS_OUT; (* Set EP0 State *)
+  BEGIN CLEAR(dummy); 
+    dev.ep0_state := DDef.EP0_STATUS_OUT; (* Set EP0 State *)
     dev.PrepareReceive(dev, 0, dummy) (* Start the transfer *)
   END CtlReceiveStatus;
 

@@ -141,9 +141,9 @@ MODULE USBDMTPOberon;
     Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED);
 (*
     Def.PutHalfword(d, O.OBJ_FORMAT_EXECUTABLE);
-    Def.PutHalfword(d, O.OBJ_FORMAT_TEXT);*
-*)
+    Def.PutHalfword(d, O.OBJ_FORMAT_TEXT);
     Def.PutHalfword(d, O.OBJ_FORMAT_BMP);
+*)
     O.EndArray(d, w, SYSTEM.SIZE(HALFWORD))
   END PutDeviceFormatsSupported;
 
@@ -411,6 +411,10 @@ MODULE USBDMTPOberon;
     END
   END PutObjectPropValue;
 
+  PROCEDURE PutNextDataNone(d: Def.Buffer);
+  BEGIN d.length := 0
+  END PutNextDataNone;
+
   PROCEDURE initFops(): Def.UserData;
     VAR u!: O.UserIf;
   BEGIN NEW(u);
@@ -479,6 +483,7 @@ MODULE USBDMTPOberon;
     u.PutObjectPropValue := PutObjectPropValue;
     u.PutDeviceFriendlyName := NIL;
     u.PutDevicePropValue := PutDevicePropValue;
+    u.PutNextData := PutNextDataNone;
 
     RETURN u
   END initFops;

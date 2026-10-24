@@ -592,16 +592,16 @@ MODULE HALPCD;
   *)
   PROCEDURE EP_Receive*(hpcd: Handle; ep_addr: BYTE; buf: Def.BufferDesc);
 
-    PROCEDURE ReceiveEP(hpcd: Handle; VAR ep: ll.EPDesc; buf: Def.BufferDesc; ep_addr: BYTE);
+    PROCEDURE ReceiveEP(hpcd: Handle; VAR ep: ll.EPDesc; buf: Def.BufferDesc; ep_num: BYTE);
     BEGIN (*setup and start the Xfer *)
       ep.xfer_buff := SYSTEM.ADR(buf) + SYSTEM.SIZE(Def.BufferDesc) + buf.offset;
-      ep.xfer_len := buf.length; ep.xfer_count := 0; ep.is_in := FALSE;
-      ep.num := ep_addr MOD 10H;
+      ep.xfer_len := buf.size; ep.xfer_count := 0; ep.is_in := FALSE;
+      ep.num := ep_num;
       IF hpcd.Init.dma_enable THEN ep.dma_addr := ep.xfer_buff END;
       ll.EPStartXfer(hpcd.Instance, ep, hpcd.Init.dma_enable);
     END ReceiveEP;
 
-  BEGIN ReceiveEP(hpcd, hpcd.OUT_ep[ep_addr MOD 10H], buf, ep_addr)
+  BEGIN ReceiveEP(hpcd, hpcd.OUT_ep[ep_addr MOD 10H], buf, ep_addr MOD 10H)
   END EP_Receive;
 
   (**
