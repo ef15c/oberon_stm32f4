@@ -47,7 +47,7 @@ MODULE HALPCD;
       LPMMP*, ResumeMP*, SuspendMP*, ResetMP*,
       ConnectMP*, DisconnectMP*, (*the pools of available IRQ messages*)
       DebugMP*, (*the interrupt trace message pool*)
-      MsgPendQ*: Q.Msg (*the deferred work message queue*)
+      MsgPendQ: Q.Msg (*the deferred work message queue*)
     END;
 
     Msg* = POINTER TO MsgDesc;
@@ -300,7 +300,8 @@ MODULE HALPCD;
                   END;
                   IF hpcd.IN_ep[epnum].xfer_len # 0 THEN msg := Q.Get(hpcd.DataInStageMP); hmsg := SYSTEM.VAL(Msg, msg);
                     IF hmsg # NIL THEN hmsg.epnum := epnum;
-                      hmsg.zlpRequired := hpcd.IN_ep[epnum].xfer_len MOD hpcd.IN_ep[epnum].maxpacket = 0;
+                      hmsg.zlpRequired := hpcd.IN_ep[epnum].autoZLP &
+                        (hpcd.IN_ep[epnum].xfer_len MOD hpcd.IN_ep[epnum].maxpacket = 0);
                       Q.Post(hpcd.MsgPendQ, hmsg)
                     END
                   END
@@ -562,6 +563,17 @@ MODULE HALPCD;
     ELSE OpenEP(hpcd, hpcd.OUT_ep[ep_addr MOD 10H], FALSE, ep_addr, ep_mps, ep_type)
     END;
   END EP_Open;
+
+  (**
+  * @brief  Enables or disables the automatic ZLP insertion feature.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @param  autoZLP: TRUE for enabling, FLASE for disabling
+  *)
+  PROCEDURE EP_SetAutoZLP*(hpcd: Handle; ep_addr: BYTE; autoZLP: BOOLEAN);
+  BEGIN ASSERT (7 IN TOSET(ep_addr));
+    hpcd.IN_ep[ep_addr MOD 10H].autoZLP := autoZLP
+  END EP_SetAutoZLP;
 
   (**
   * @brief  Deactivate an endpoint.

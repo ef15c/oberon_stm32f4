@@ -9,7 +9,7 @@ MODULE USBDMTPOpt;
   IMPORT SYSTEM, Log := USBLog, Def := USBDef, DDef := USBDDef;
 
   CONST
-    MEDIA_PACKET* = 4000H;
+    MEDIA_PACKET* = 512;
     CONT_HEADER_SIZE* = 12;
    
   (* MTP response phases    *)
@@ -451,39 +451,31 @@ MODULE USBDMTPOpt;
 *)
 
   TYPE
-    Dataset = POINTER TO DatasetDesc;
-    DatasetDesc = RECORD(Def.BufferDesc) data: ARRAY 1024 OF BYTE END;
+    BufferDesc* = RECORD(Def.BufferDesc) data*: ARRAY 2*MEDIA_PACKET OF BYTE END;
+    CircularBuffer* = RECORD(BufferDesc) circular*: BOOLEAN; wlen*: INTEGER END;
+    Buffer* = POINTER TO CircularBuffer;
 
-    Container* = POINTER TO ContainerDesc;
-    ContainerDesc* = RECORD(Def.BufferDesc)
+    ContainerHeader* = RECORD(Def.BufferDesc)
       CLen*: INTEGER;
       type*, code*: HALFWORD;
       trans_id*: INTEGER
     END;
 
-    Op* = POINTER TO OpDesc;
-    OpDesc* = RECORD(ContainerDesc)
+    ParamContainer* = RECORD(ContainerHeader)
       Param1*, Param2*, Param3*, Param4*, Param5*: INTEGER
-    END;
-
-    Generic* = POINTER TO GenericDesc;
-    GenericDesc* = RECORD(ContainerDesc)
-      data: ARRAY MEDIA_PACKET OF BYTE
     END;
 
     Handle* = POINTER TO HandleDesc;
     HandleDesc* = RECORD(Def.ClassHandleDesc)
       alt_setting*: Def.ByteBuffer;
       dev_status*: Def.IntegerBuffer;
-      ResponseCode*: INTEGER;
-      rx_buff*: Generic; (* must be 32-bit aligned *)
+      rx_buff*, tx_buff*: Buffer; (* must be 32-bit aligned *)
       TransactionPhase*, SessionState*(*, RECEIVE_DATA_STATUS**): BYTE;
-      OperationsContainer*: Op;
+      ReqOp*, Response*: ParamContainer;
       cur_len*, readbytes*: INTEGER;
-      GenericContainer*: Generic;
       obj_format*: HALFWORD;
-      storage_id, objhandle: INTEGER;
-      objectInfo: Dataset
+      session_id, storage_id, objhandle: INTEGER
+(*      objectInfo: Buffer*)
     END;
 
     String = ARRAY 256 OF CHAR;
@@ -493,7 +485,7 @@ MODULE USBDMTPOpt;
     UserIfDesc* = RECORD(DDef.UserDataDesc)
       Init*, DeInit*: PROCEDURE;
       ReadData*: PROCEDURE(Param1: INTEGER; VAR buff: Def.Buffer; hmtp: Handle);
-      Create_NewObject*: PROCEDURE(objInfo: DatasetDesc; objhandle: INTEGER): HALFWORD;
+      Create_NewObject*: PROCEDURE(objInfo: BufferDesc; objhandle: INTEGER): HALFWORD;
       GetIdx*: PROCEDURE(Param3, objhandle: INTEGER): INTEGER;
       GetParentObject*: PROCEDURE(Param: INTEGER): INTEGER;
       GetObjectFormat*: PROCEDURE(Param: INTEGER): HALFWORD;
@@ -503,7 +495,7 @@ MODULE USBDMTPOpt;
       GetMaxCapability*: PROCEDURE(): LONGINT;
       GetFreeSpaceInBytes*: PROCEDURE(): LONGINT;
       GetNewIndex*: PROCEDURE(objformat: HALFWORD): INTEGER;
-      WriteData*: PROCEDURE(buff: ContainerDesc);
+      WriteData*: PROCEDURE(buff: BufferDesc);
       GetContainerLength*: PROCEDURE(Param1: INTEGER): INTEGER;
       DeleteObject*: PROCEDURE(Param1: INTEGER): HALFWORD;
       Cancel*: PROCEDURE(Phase: INTEGER);
@@ -514,7 +506,7 @@ MODULE USBDMTPOpt;
       PutStorageIDs*, PutStorageType*, PutFilesystemType*, PutAccessCapability*, PutMaxCapacity*,
       PutFreeSpaceInBytes*, PutFreeSpaceInObjects*, PutStorageDescription*,
       PutVolumeIdentifier*: PROCEDURE(b: Def.Buffer); (*StorageInfo callbacks*)
-      PutObjectHandles*: PROCEDURE(b: Def.Buffer; sid, ofc, f: INTEGER): HALFWORD;
+      PutObjectHandles*: PROCEDURE(dev: Def.Handle; b: Def.Buffer; sid, ofc, f: INTEGER): HALFWORD;
       PutObjectStorageId*, PutObjectFormat*, PutProtectionStatus*, PutObjectCompressedSize*,
       PutThumbFormat*, PutThumbCompressedSize*, PutThumbPixWidth*, PutThumbPixHeight*,
       PutImageInfo*, PutParentObject*,
@@ -527,7 +519,7 @@ MODULE USBDMTPOpt;
       PutObjectPropValue*: PROCEDURE(b: Def.Buffer; oh, opc: INTEGER);
       PutDeviceFriendlyName*: PROCEDURE(b: Def.Buffer);
       PutDevicePropValue*: PROCEDURE(b: Def.Buffer; dpc: INTEGER);
-      PutNextData*: PROCEDURE(b: Def.Buffer);
+      PutNextData*: PROCEDURE(dev: Def.Handle; b: Def.Buffer);
 (*      ScratchBuff*: Generic*)
     END;
 
@@ -540,15 +532,13 @@ MODULE USBDMTPOpt;
     VAR length, count: INTEGER;
   BEGIN length := d.length; d.length := beg - 4; count := (length - beg) DIV elementSize;
     Def.PutInteger(d, count); d.length := length;
-    Log.DebugInt(count, 7); Log.DebugString(" elements added"); Log.DebugLn
   END EndArray;
 
   PROCEDURE ReadByte(b: Def.Buffer): BYTE;
     VAR r: BYTE;
   BEGIN
     CASE b OF
-      Dataset: r := b.data[b.index]; INC(b.index)
-    | Generic: r := b.data[b.index]; INC(b.index)
+      Buffer: r := b.data[b.index]; INC(b.index)
     | Def.Buffer: ASSERT(FALSE)
     END
 
@@ -558,35 +548,28 @@ MODULE USBDMTPOpt;
   PROCEDURE WriteByte(b: Def.Buffer; v: BYTE);
   BEGIN
     CASE b OF
-      Dataset: b.data[b.length] := v; INC(b.length)
-    | Generic: b.data[b.length] := v; INC(b.length)
+      Buffer: b.data[b.length] := v; INC(b.length);
+        IF b.circular & (b.length >= b.size) THEN (*circular mode buffer*) b.length := 0 END
     | Def.Buffer: ASSERT(FALSE)
     END
   END WriteByte;
 
-  PROCEDURE NewGeneric*(): Generic;
-    VAR c!: Generic;
-  BEGIN NEW(c); c.size := SYSTEM.SIZE(GenericDesc) - SYSTEM.SIZE(ContainerDesc); (*size of container payload*)
-    c.ReadByte := ReadByte; c.WriteByte := WriteByte
-    RETURN c
-  END NewGeneric;
-
-  PROCEDURE NewDataset*(): Dataset;
-    VAR d!: Dataset;
-  BEGIN NEW(d); d.size := SYSTEM.SIZE(DatasetDesc) - SYSTEM.SIZE(Def.BufferDesc); (*size of container payload*)
-    d.ReadByte := ReadByte; d.WriteByte := WriteByte
-    RETURN d
-  END NewDataset;
+  PROCEDURE NewBuffer*(): Buffer;
+    VAR b!: Buffer;
+  BEGIN NEW(b); b.size := SYSTEM.SIZE(BufferDesc) - SYSTEM.SIZE(Def.BufferDesc);
+    b.ReadByte := ReadByte; b.WriteByte := WriteByte
+    RETURN b
+  END NewBuffer;
 
   PROCEDURE NewHandle*(): Handle;
     VAR h!: Handle;
   BEGIN NEW(h);
-      NEW(h.rx_buff);
+      h.rx_buff := NewBuffer(); h.tx_buff := NewBuffer();
       NEW(h.dev_status); h.dev_status.size := SYSTEM.SIZE(Def.IntegerBufferDesc) - SYSTEM.SIZE(Def.BufferDesc);
       NEW(h.alt_setting); h.alt_setting.size := SYSTEM.SIZE(Def.ByteBufferDesc) - SYSTEM.SIZE(Def.BufferDesc);
-      h.GenericContainer := NewGeneric();
-      NEW(h.OperationsContainer); h.OperationsContainer.size := SYSTEM.SIZE(OpDesc) - SYSTEM.SIZE(Def.BufferDesc);
-      h.objectInfo := NewDataset()
+      h.ReqOp.size := SYSTEM.SIZE(ParamContainer) - SYSTEM.SIZE(Def.BufferDesc);
+      h.Response.size := SYSTEM.SIZE(ParamContainer) - SYSTEM.SIZE(Def.BufferDesc); h.Response.type := CONT_TYPE_RESPONSE
+(*      h.objectInfo := NewBuffer()*)
     RETURN h
   END NewHandle;
 
@@ -613,13 +596,15 @@ MODULE USBDMTPOpt;
   END PutHexInteger;
 
   PROCEDURE GetRxBuffSize*(): INTEGER;
-    RETURN SYSTEM.SIZE(GenericDesc) - SYSTEM.SIZE(Def.BufferDesc)
+    RETURN SYSTEM.SIZE(BufferDesc) - SYSTEM.SIZE(Def.BufferDesc)
   END GetRxBuffSize;
 
+(*
   PROCEDURE CopyContainerToDataset*(s: Generic; d: Dataset);
     VAR i: INTEGER;
   BEGIN FOR i := 0 TO s.length DO d.data[d.length] := s.data[i]; INC(d.length) END
   END CopyContainerToDataset;
+*)
 
   (**
   * @brief  USBD_MTP_OPT_OpenSession
@@ -632,15 +617,12 @@ MODULE USBDMTPOpt;
   BEGIN
     hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     (* Param1 == Session ID*)
-    IF hmtp.OperationsContainer.Param1 = 0 THEN hmtp.ResponseCode := RESPONSE_INVALID_PARAMETER
+    IF hmtp.ReqOp.Param1 = 0 THEN hmtp.Response.code := RESPONSE_INVALID_PARAMETER
     ELSIF hmtp.SessionState = SESSION_OPEN THEN (* driver supports single session *)
-      hmtp.ResponseCode := RESPONSE_SESSION_ALREADY_OPEN
-    ELSE hmtp.ResponseCode := RESPONSE_OK; hmtp.SessionState := SESSION_OPEN
+      hmtp.Response.code := RESPONSE_SESSION_ALREADY_OPEN; hmtp.Response.Param1 := hmtp.session_id;
+      hmtp.Response.CLen := CONT_HEADER_SIZE + 4;
+    ELSE hmtp.Response.code := RESPONSE_OK; hmtp.SessionState := SESSION_OPEN; hmtp.session_id := hmtp.ReqOp.Param1
     END;
-    hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
-    hmtp.GenericContainer.type := CONT_TYPE_RESPONSE;
-    hmtp.GenericContainer.length := CONT_HEADER_SIZE;
-    hmtp.GenericContainer.CLen :=  hmtp.GenericContainer.length;
     Log.User("MTP session open")
   END OpenSession;
 
@@ -654,13 +636,9 @@ MODULE USBDMTPOpt;
     VAR hmtp!: Handle;
   BEGIN
     hmtp := dev.ClassDataCmsit[dev.classId](Handle);
-    IF hmtp.SessionState = SESSION_NOT_OPEN THEN hmtp.ResponseCode := RESPONSE_SESSION_NOT_OPEN
-    ELSE hmtp.ResponseCode := RESPONSE_OK; hmtp.SessionState := SESSION_NOT_OPEN
+    IF hmtp.SessionState = SESSION_NOT_OPEN THEN hmtp.Response.code := RESPONSE_SESSION_NOT_OPEN
+    ELSE hmtp.Response.code := RESPONSE_OK; hmtp.SessionState := SESSION_NOT_OPEN
     END;
-    hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
-    hmtp.GenericContainer.type := CONT_TYPE_RESPONSE;
-    hmtp.GenericContainer.length := CONT_HEADER_SIZE;
-    hmtp.GenericContainer.CLen :=  hmtp.GenericContainer.length;
     Log.User("MTP session closed")
   END CloseSession;
 
@@ -670,8 +648,8 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_DeviceInfo(uif: UserIf; d: Generic);
-  BEGIN Log.Debug("GetDeviceInfo"); Log.DebugLn; Log.Flush;
+  PROCEDURE Get_DeviceInfo(uif: UserIf; d: Buffer);
+  BEGIN
     Def.PutHalfword(d, STANDARD_VERSION);
     Def.PutInteger(d, VEND_EXT_ID);
     Def.PutHalfword(d, VEND_EXT_VERSION);
@@ -695,9 +673,8 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_StorageIDs(uif: UserIf; d: Generic);
-  BEGIN Log.Debug("GetStorageIDs"); Log.DebugLn; Log.Flush;
-    uif.PutStorageIDs(d)
+  PROCEDURE Get_StorageIDs(uif: UserIf; d: Buffer);
+  BEGIN uif.PutStorageIDs(d)
   END Get_StorageIDs;
 
   (**
@@ -706,8 +683,8 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_StorageInfo(uif: UserIf; d: Generic);
-  BEGIN Log.Debug("GetStorageInfo"); Log.DebugLn; Log.Flush;
+  PROCEDURE Get_StorageInfo(uif: UserIf; d: Buffer);
+  BEGIN
     uif.PutStorageType(d);
     uif.PutFilesystemType(d); 
     uif.PutAccessCapability(d); 
@@ -724,9 +701,9 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_ObjectHandles(uif: UserIf; hmtp: Handle): HALFWORD;
-    RETURN uif.PutObjectHandles(hmtp.GenericContainer, hmtp.OperationsContainer.Param1,
-      hmtp.OperationsContainer.Param2, hmtp.OperationsContainer.Param3)
+  PROCEDURE Get_ObjectHandles(dev: Def.Handle; uif: UserIf; hmtp: Handle): HALFWORD;
+    RETURN uif.PutObjectHandles(dev, hmtp.tx_buff, hmtp.ReqOp.Param1,
+      hmtp.ReqOp.Param2, hmtp.ReqOp.Param3)
   END Get_ObjectHandles;
 
   (**
@@ -736,7 +713,7 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropsSupp(uif: UserIf; hmtp: Handle);
-  BEGIN uif.PutObjectPropsSupported(hmtp.GenericContainer, hmtp.OperationsContainer.Param1)
+  BEGIN uif.PutObjectPropsSupported(hmtp.tx_buff, hmtp.ReqOp.Param1)
   END Get_ObjectPropsSupp;
 
   PROCEDURE Get_ObjectPropDatatype*(opc: HALFWORD): HALFWORD;
@@ -767,12 +744,12 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropDesc(uif: UserIf; hmtp: Handle): HALFWORD;
-    VAR ret: HALFWORD; opc, of, dt: INTEGER; d!: Generic;
+    VAR ret: HALFWORD; opc, of, dt: INTEGER; d!: Buffer;
   BEGIN ret := RESPONSE_OK;
-    opc := hmtp.OperationsContainer.Param1; of := hmtp.OperationsContainer.Param2;
+    opc := hmtp.ReqOp.Param1; of := hmtp.ReqOp.Param2;
     dt := Get_ObjectPropDatatype(opc);
     IF dt # 0 THEN
-      d := hmtp.GenericContainer;
+      d := hmtp.tx_buff;
       Def.PutHalfword(d, opc); (*first field is always the property code*)
       Def.PutHalfword(d, dt);
       uif.PutObjectPropGetSet(d, opc, of, dt);
@@ -791,9 +768,7 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropValue(uif: UserIf; hmtp: Handle);
-  BEGIN Log.Debug("GetObjectPropValue"); Log.DebugLn; Log.Flush;
-    uif.PutObjectPropValue(hmtp.GenericContainer, hmtp.OperationsContainer.Param1,
-    hmtp.OperationsContainer.Param2)
+  BEGIN uif.PutObjectPropValue(hmtp.tx_buff, hmtp.ReqOp.Param1, hmtp.ReqOp.Param2)
   END Get_ObjectPropValue;
 
   (**
@@ -803,9 +778,8 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropList(uif: UserIf; hmtp: Handle): HALFWORD;
-    RETURN uif.PutObjectPropList(hmtp.GenericContainer, hmtp.OperationsContainer.Param1,
-      hmtp.OperationsContainer.Param2, hmtp.OperationsContainer.Param3,
-      hmtp.OperationsContainer.Param4, hmtp.OperationsContainer.Param5)
+    RETURN uif.PutObjectPropList(hmtp.tx_buff, hmtp.ReqOp.Param1,
+      hmtp.ReqOp.Param2, hmtp.ReqOp.Param3, hmtp.ReqOp.Param4, hmtp.ReqOp.Param5)
   END Get_ObjectPropList;
 
   (**
@@ -814,9 +788,8 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_DevicePropDesc(uif: UserIf; d: Generic);
-  BEGIN Log.Debug("GetDevicePropDesc"); Log.DebugLn; Log.Flush;
-    uif.PutDeviceFriendlyName(d)
+  PROCEDURE Get_DevicePropDesc(uif: UserIf; d: Buffer);
+  BEGIN uif.PutDeviceFriendlyName(d)
   END  Get_DevicePropDesc;
 
   (**
@@ -826,9 +799,9 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectInfo(uif: UserIf; hmtp: Handle);
-    VAR oh: INTEGER; d!: Container;
-  BEGIN Log.Debug("GetObjectInfo"); Log.DebugLn; Log.Flush;
-    oh := hmtp.OperationsContainer.Param1; d := hmtp.GenericContainer;
+    VAR oh: INTEGER; d!: Buffer;
+  BEGIN 
+    oh := hmtp.ReqOp.Param1; d := hmtp.tx_buff;
     uif.PutObjectStorageId(d, oh);
     uif.PutObjectFormat(d, oh);
     uif.PutProtectionStatus(d, oh);
@@ -848,44 +821,61 @@ MODULE USBDMTPOpt;
     uif.PutKeywords(d, oh);
   END Get_ObjectInfo;
 
+  PROCEDURE GetContainerLength*(c: Def.Buffer): INTEGER;
+    VAR index, len: INTEGER;
+  BEGIN index := c.index; c.index := 0;
+    len := Def.GetInteger(c); c.index := index
+    RETURN len
+  END GetContainerLength;
+
+  PROCEDURE UpdateContainerLength*(c: Def.Buffer; len: INTEGER);
+    VAR length: HALFWORD;
+  BEGIN length := c.length; c.length := 0;
+    Def.PutInteger(c, len); c.length := length
+  END UpdateContainerLength;
+
   (**
   * @brief  MTP_Get_PayloadContent
   *         Get the payload data of generic container
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_PayloadContent(dev: DDef.Handle): HALFWORD;
-    VAR ret: HALFWORD; hmtp!: Handle; uif!: UserIf; op(*, n_idx*): INTEGER; d!: Generic;
-  BEGIN ret := RESPONSE_OK;
-    hmtp := dev.ClassDataCmsit[dev.classId](Handle);
+  PROCEDURE Get_PayloadContent(dev: DDef.Handle);
+    VAR hmtp!: Handle; uif!: UserIf; op(*, n_idx*): INTEGER; d!: Buffer;
+  BEGIN
+    hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.Response.code := RESPONSE_OK;
     uif := dev.UserData[dev.classId](UserIf);
-    op := hmtp.OperationsContainer.code; d := hmtp.GenericContainer; d.length := 0;
+    op := hmtp.ReqOp.code; d := hmtp.tx_buff; d.length := 0;
+    (*prepare the container header*)
+    Def.PutInteger(d, -2); (*mark the container size as uninitialized*)
+    Def.PutHalfword(d, CONT_TYPE_DATA); Def.PutHalfword(d, op); Def.PutInteger(d, hmtp.ReqOp.trans_id);    
     hmtp.TransactionPhase := DATA_IN_PHASE;
     IF op = OP_GET_DEVICE_INFO THEN Get_DeviceInfo(uif, d)
     ELSIF op = OP_GET_STORAGE_IDS THEN Get_StorageIDs(uif, d)
     ELSIF op = OP_GET_STORAGE_INFO THEN Get_StorageInfo(uif, d)
-    ELSIF op = OP_GET_OBJECT_HANDLES THEN ret := Get_ObjectHandles(uif, hmtp)
+    ELSIF op = OP_GET_OBJECT_HANDLES THEN hmtp.Response.code := Get_ObjectHandles(dev, uif, hmtp)
     ELSIF op = OP_GET_OBJECT_INFO THEN Get_ObjectInfo(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROPS_SUPPORTED THEN Get_ObjectPropsSupp(uif, hmtp)
-    ELSIF op = OP_GET_OBJECT_PROP_DESC THEN ret := Get_ObjectPropDesc(uif, hmtp)
-    ELSIF op = OP_GET_OBJECT_PROPLIST THEN ret := Get_ObjectPropList(uif, hmtp)
+    ELSIF op = OP_GET_OBJECT_PROP_DESC THEN hmtp.Response.code := Get_ObjectPropDesc(uif, hmtp)
+    ELSIF op = OP_GET_OBJECT_PROPLIST THEN hmtp.Response.code := Get_ObjectPropList(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROP_VALUE THEN Get_ObjectPropValue(uif, hmtp)
     ELSIF op = OP_GET_DEVICE_PROP_DESC THEN Get_DevicePropDesc(uif, d)
-    ELSIF op = OP_SEND_OBJECT_INFO THEN Log.Debug("SendObjectInfo"); Log.DebugLn; Log.Flush;
-      hmtp.TransactionPhase := DATA_OUT_PHASE
+    ELSIF op = OP_SEND_OBJECT_INFO THEN hmtp.TransactionPhase := DATA_OUT_PHASE
 (*TODO: Move the following statements in the response phase
       n_idx := uif.GetNewIndex(hmtp.obj_format);
       Def.PutInteger(d, hmtp.storage_id);
       Def.PutInteger(d, hmtp.objhandle);
       Def.PutInteger(d, n_idx)*)
-    ELSIF op = OP_GET_DEVICE_PROP_VALUE THEN Log.Debug("GetDevicePropValue"); Log.DebugLn; Log.Flush;
-      uif.PutDevicePropValue(d, hmtp.OperationsContainer.Param1)
-    ELSE ret := RESPONSE_OPERATION_NOT_SUPPORTED;
+    ELSIF op = OP_GET_DEVICE_PROP_VALUE THEN uif.PutDevicePropValue(d, hmtp.ReqOp.Param1)
+    ELSE hmtp.Response.code := RESPONSE_OPERATION_NOT_SUPPORTED;
       Log.Error("Unhandled op: "); Log.ErrorHexVLen(op, 8, FALSE); Log.ErrorLn; Log.Flush
+    END;
+    IF GetContainerLength(d) = -2 THEN (*the getter does not set the size, assumed to be d.length*)
+      UpdateContainerLength(d, d.length)
     END
-    RETURN ret
   END Get_PayloadContent;
 
+(*
   PROCEDURE Respond(hmtp: Handle; code: INTEGER);
   BEGIN
     hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
@@ -893,6 +883,7 @@ MODULE USBDMTPOpt;
     hmtp.ResponseCode := code;
     hmtp.GenericContainer.CLen :=  CONT_HEADER_SIZE
   END Respond;
+*)
 
   (**
   * @brief  USBD_MTP_OPT_GetDeviceInfo
@@ -901,27 +892,18 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE GetDeviceInfo*(dev: DDef.Handle);
-    VAR ret: HALFWORD; hmtp!: Handle;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
+    VAR hmtp!: Handle;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     IF hmtp.SessionState = SESSION_NOT_OPEN THEN (* no session opened *)
       (* if GetDevice Info called outside a session then SessionID and Transaction_ID shall be 0x00000000*)
       (* Param1 == session ID*)
-      IF (hmtp.OperationsContainer.Param1 = 0) & (hmtp.OperationsContainer.trans_id = 0) THEN
-        hmtp.ResponseCode := RESPONSE_OK
-      ELSE Respond(hmtp, RESPONSE_INVALID_PARAMETER)
+      IF (hmtp.ReqOp.Param1 = 0) & (hmtp.ReqOp.trans_id = 0) THEN
+        hmtp.Response.code := RESPONSE_OK
+      ELSE hmtp.Response.code := RESPONSE_INVALID_PARAMETER
       END
-    ELSE hmtp.ResponseCode := RESPONSE_OK
+    ELSE hmtp.Response.code := RESPONSE_OK
     END;
-    IF hmtp.ResponseCode = RESPONSE_OK THEN ret := Get_PayloadContent(dev);
-      IF ret = RESPONSE_OK THEN
-        hmtp.GenericContainer.code :=  OP_GET_DEVICE_INFO;
-        hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
-        hmtp.GenericContainer.type := CONT_TYPE_DATA;
-        hmtp.GenericContainer.CLen :=  hmtp.GenericContainer.length + CONT_HEADER_SIZE
-      ELSE Respond(hmtp, ret)
-      END
-    END;
-    hmtp.GenericContainer.length := hmtp.GenericContainer.CLen
+    IF hmtp.Response.code = RESPONSE_OK THEN Get_PayloadContent(dev) END
   END GetDeviceInfo;
 
   (**
@@ -932,16 +914,8 @@ MODULE USBDMTPOpt;
   *)
   PROCEDURE ProcessOp*(dev: DDef.Handle);
     VAR hmtp!: Handle;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
-    IF Get_PayloadContent(dev) = RESPONSE_OK THEN
-      hmtp.ResponseCode := RESPONSE_OK;
-      hmtp.GenericContainer.code := hmtp.OperationsContainer.code;
-      hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
-      hmtp.GenericContainer.type := CONT_TYPE_DATA;
-      hmtp.GenericContainer.CLen :=  hmtp.GenericContainer.length + CONT_HEADER_SIZE
-    ELSE Respond(hmtp, RESPONSE_INVALID_PARAMETER)
-    END;
-    hmtp.GenericContainer.length := hmtp.GenericContainer.CLen
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle);
+    Get_PayloadContent(dev)
   END ProcessOp;
 
   (**
@@ -951,14 +925,17 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE GetObject*(dev: DDef.Handle);
-    VAR hmtp!: Handle; uif!: UserIf; d!: Generic;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
+    VAR hmtp!: Handle; uif!: UserIf; d!: Buffer;
+  BEGIN
+(*TODO
+    hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
     uif := dev.UserData[dev.classId](UserIf);
     hmtp.GenericContainer.code := 0;
     hmtp.GenericContainer.CLen := uif.GetObjectSize(hmtp.OperationsContainer.Param1) + CONT_HEADER_SIZE;
     hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
     hmtp.GenericContainer.type := CONT_TYPE_DATA;
     hmtp.ResponseCode := RESPONSE_OK
+*)
   END GetObject;
 
   (**
@@ -967,11 +944,12 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE SendObject*(dev: DDef.Handle; buff: Container);
+  PROCEDURE SendObject*(dev: DDef.Handle; buff: Buffer);
     VAR hmtp!: Handle; uif!: UserIf;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
-    uif := dev.UserData[dev.classId](UserIf);
+  BEGIN
 (* TODO replace following:
+    hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
+    uif := dev.UserData[dev.classId](UserIf);
     IF hmtp.RECEIVE_DATA_STATUS = RECEIVE_IDLE_STATE THEN
       hmtp.RECEIVE_DATA_STATUS := RECEIVE_COMMAND_DATA
     ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_COMMAND_DATA THEN buff.offset := 0;
@@ -1009,11 +987,12 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE SendObjectInfo*(dev: DDef.Handle; buff: Container);
+  PROCEDURE SendObjectInfo*(dev: DDef.Handle; buff: Buffer);
     VAR hmtp!: Handle; uif!: UserIf;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
-    uif := dev.UserData[dev.classId](UserIf);
+  BEGIN
 (* TODO replace following:
+    hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
+    uif := dev.UserData[dev.classId](UserIf);
     IF hmtp.RECEIVE_DATA_STATUS = RECEIVE_IDLE_STATE THEN
       hmtp.RECEIVE_DATA_STATUS := RECEIVE_COMMAND_DATA
     ELSIF hmtp.RECEIVE_DATA_STATUS = RECEIVE_COMMAND_DATA THEN
@@ -1053,13 +1032,16 @@ MODULE USBDMTPOpt;
   *)
   PROCEDURE DeleteObject*(dev: DDef.Handle);
     VAR hmtp!: Handle; uif!: UserIf;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
+  BEGIN
+(*TODO
+    hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
     uif := dev.UserData[dev.classId](UserIf);
     hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
     hmtp.GenericContainer.type := CONT_TYPE_RESPONSE;
     hmtp.GenericContainer.CLen :=  CONT_HEADER_SIZE + hmtp.GenericContainer.length;
     hmtp.GenericContainer.length := hmtp.GenericContainer.CLen;
     hmtp.ResponseCode := uif.DeleteObject(hmtp.OperationsContainer.Param1)
+*)
   END DeleteObject;
 
 END USBDMTPOpt.

@@ -70,7 +70,7 @@ MODULE USBDMTP;
   * @retval status
   *)
   PROCEDURE Init(dev: DDef.Handle; cfgidx: BYTE): BYTE;
-    VAR ret: BYTE; hmtp!: Opt.Handle;
+    VAR ret: BYTE; hmtp!: Opt.Handle; mps: INTEGER;
   BEGIN hmtp := Opt.NewHandle();
     IF hmtp = NIL THEN dev.ClassDataCmsit[dev.classId] := NIL;
       ret := Def.EMEM;
@@ -85,17 +85,22 @@ MODULE USBDMTP;
   MTPCmdEpAdd = USBD_CoreGetEPAdd(pdev, USBD_EP_IN, USBD_EP_TYPE_INTR, (uint8_t)pdev->classId);
 #endif /* USE_USBD_COMPOSITE */
 *)
+(*
       (* Setup the max packet size according to selected speed *)
       IF dev.speed = Def.SPEED_HIGH THEN
         ASSERT(Opt.GetRxBuffSize() >= DATA_MAX_HS_PACKET_SIZE); hmtp.rx_buff.size := DATA_MAX_HS_PACKET_SIZE
       ELSE 
         ASSERT(Opt.GetRxBuffSize() >= DATA_MAX_FS_PACKET_SIZE); hmtp.rx_buff.size := DATA_MAX_FS_PACKET_SIZE
       END;
+*)
+      IF dev.speed = Def.SPEED_HIGH THEN mps := DATA_MAX_HS_PACKET_SIZE
+      ELSE mps := DATA_MAX_FS_PACKET_SIZE
+      END;
       (* Open EP IN *)
-      DH.OpenEP(dev, MTPS.InEpAdd, Def.EP_TYPE_BULK, hmtp.rx_buff.size);
+      DH.OpenEP(dev, MTPS.InEpAdd, Def.EP_TYPE_BULK, mps); DH.SetEPAutoZLP(dev, MTPS.InEpAdd, TRUE);
       dev.ep_in[MTPS.InEpAdd MOD 10H].is_used := TRUE;
       (* Open EP OUT *)
-      DH.OpenEP(dev, MTPS.OutEpAdd, Def.EP_TYPE_BULK, hmtp.rx_buff.size);
+      DH.OpenEP(dev, MTPS.OutEpAdd, Def.EP_TYPE_BULK, mps);
       dev.ep_out[MTPS.OutEpAdd MOD 10H].is_used := TRUE;
       (* Open INTR EP IN *)
       DH.OpenEP(dev, MTPS.CmdEpAdd, Def.EP_TYPE_INTR, CMD_PACKET_SIZE);
@@ -329,6 +334,26 @@ MODULE USBDMTP;
 (*
 #endif /* USE_USBD_COMPOSITE  */
 *)
+
+  PROCEDURE EnterCircularMode*(dev: Def.Handle; d: Def.Buffer);
+  BEGIN
+    CASE d OF
+      Opt.Buffer:
+        d.wlen := d.length; d.offset := d.size DIV 2; d.circular := TRUE;
+        DH.SetEPAutoZLP(dev(DDef.Handle), MTPS.InEpAdd, FALSE)
+    | Def.Buffer: ASSERT(FALSE)
+    END
+  END EnterCircularMode;
+
+  PROCEDURE ExitCircularMode*(dev: Def.Handle; d: Def.Buffer);
+  BEGIN
+    CASE d OF
+      Opt.Buffer:
+        d.offset := 0; d.circular := FALSE;
+        DH.SetEPAutoZLP(dev(DDef.Handle), MTPS.InEpAdd, TRUE)
+    | Def.Buffer: ASSERT(FALSE)
+    END
+  END ExitCircularMode;
 
   PROCEDURE initCLASS;
     VAR c!: DDef.Class;

@@ -276,7 +276,6 @@ MODULE USBDCore;
       IF dev.test_mode # 0 THEN RunTestMode(dev); dev.test_mode := 0 END
     ELSE
       IF zlpRequired THEN CLEAR(dummy); dev.Transmit(dev, epnum, dummy, 0);
-        Log.Debug("DataInStage: Zero Length Packet is needed"); Log.DebugLn; Log.Flush
       END;
       (* Get the class index relative to this interface *)
       idx := CoreFindEP(dev, ORD(TOSET(epnum)+Def.D2H));

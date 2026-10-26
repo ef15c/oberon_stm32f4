@@ -136,6 +136,16 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   END OpenEP;  
 
   (**
+  * @brief  Enables or disables the automatic ZLP insertion feature.
+  * @param  pdev: Device handle
+  * @param  ep_addr: Endpoint Number
+  * @param  autoZLP: TRUE for enabling, FLASE for disabling
+  *)
+  PROCEDURE SetEPAutoZLP*(dev: DDef.Handle; ep_addr: BYTE; autoZLP: BOOLEAN);
+  BEGIN PCD.EP_SetAutoZLP(dev(PCD.Handle), ep_addr, autoZLP)
+  END SetEPAutoZLP;  
+
+  (**
   * @brief  Closes an endpoint of the Low Level Driver.
   * @param  pdev: Device handle
   * @param  ep_addr: Endpoint Number
@@ -304,7 +314,7 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
           ELSIF hmsg.type = 4 THEN ASSERT(FALSE)
           ELSIF hmsg.type = 5 THEN ASSERT(FALSE)
           ELSIF hmsg.type = 6 THEN ASSERT(FALSE)
-          ELSIF hmsg.type = 7 THEN ASSERT(FALSE)
+          ELSIF hmsg.type = 7 THEN Log.Debug("Resume"); Log.DebugLn; DCore.Resume(dev)
           ELSIF hmsg.type = 8 THEN Log.Debug("Suspend"); Log.DebugLn; DCore.Suspend(dev)
           ELSIF hmsg.type = 9 THEN Log.Debug("Reset"); Log.DebugLn; ResetCallback(dev)
           ELSIF hmsg.type = 10 THEN Log.Debug("Connect"); Log.DebugLn; DCore.DevConnected(dev)

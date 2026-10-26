@@ -921,8 +921,9 @@ MODULE LLUSB;
       xfer_buff*,           (*!< Pointer to transfer buffer                                               *)
       xfer_len*,             (*!< Current transfer length                                                  *)
       xfer_count*: INTEGER;           (*!< Partial transfer length in case of multi packet transfer                 *)
-      is_odd_frame*: BOOLEAN;       (*!< IFrame parity
+      is_odd_frame*,       (*!< IFrame parity
                                        This parameter must be a number between Min_Data = 0 and Max_Data = 1    *)
+      autoZLP*: BOOLEAN;          (*!< If TRUE, the driver will automatically add Zero Length Packets when necessary *)
       dma_addr*,             (*!< 32 bits aligned transfer buffer address                                  *)
       xfer_size*: INTEGER            (*!< requested transfer size                                                  *)
     END;
