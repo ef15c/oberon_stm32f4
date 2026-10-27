@@ -515,13 +515,43 @@ MODULE USBDMTPOpt;
       PutObjectPropsSupported*: PROCEDURE(b: Def.Buffer; ofc: INTEGER);
       PutObjectPropDefValue*, PutObjectPropGroupCode*, PutObjectPropFormFlag*,
       PutObjectPropGetSet*: PROCEDURE(b: Def.Buffer; opc, of, dt: INTEGER); (*ObjectPropDesc callbacks*)
-      PutObjectPropList*: PROCEDURE(b: Def.Buffer; oh, ofc, opc, opgc, depth: INTEGER): HALFWORD;
+      PutObjectPropList*: PROCEDURE(dev: Def.Handle; b: Def.Buffer; oh, ofc, opc, opgc, depth: INTEGER): HALFWORD;
       PutObjectPropValue*: PROCEDURE(b: Def.Buffer; oh, opc: INTEGER);
       PutDeviceFriendlyName*: PROCEDURE(b: Def.Buffer);
       PutDevicePropValue*: PROCEDURE(b: Def.Buffer; dpc: INTEGER);
       PutNextData*: PROCEDURE(dev: Def.Handle; b: Def.Buffer);
 (*      ScratchBuff*: Generic*)
     END;
+
+  PROCEDURE SwitchBuffer*(d: Def.Buffer);
+  BEGIN (*wlen contains the amount of excess data fetched at previous call*)
+    CASE d OF
+      Buffer: INC(d.offset, d.size DIV 2); IF d.offset >= d.size THEN d.offset := 0 END; (*switch buffer*)
+        d.length := d.wlen + d.offset (*set writing position*)
+    | Def.Buffer: ASSERT(FALSE)
+    END
+  END SwitchBuffer;
+
+  PROCEDURE Overflow*(d: Def.Buffer): BOOLEAN;
+    VAR o: BOOLEAN;
+  BEGIN
+    CASE d OF
+      Buffer: d.wlen := d.length - d.offset; IF d.wlen < 0 THEN INC(d.wlen, d.size) END;
+      o := d.wlen >= d.size DIV 2
+    | Def.Buffer: ASSERT(FALSE)
+    END
+    RETURN o
+  END Overflow;
+
+  PROCEDURE PrepareBuffer*(d: Def.Buffer);
+    (*prepare the buffer for next send*)
+  BEGIN
+    CASE d OF
+      Buffer: d.length := d.wlen; IF d.length >  d.size DIV 2 THEN d.length := d.size DIV 2 END;
+        DEC(d.wlen, d.length); (*wlen contains the amount of excess data to be sent at next call*)
+    | Def.Buffer: ASSERT(FALSE)
+    END
+  END PrepareBuffer;
 
   PROCEDURE BeginArray*(d: Def.Buffer; VAR beg: INTEGER);
   BEGIN Def.PutInteger(d, 0); (*placeholder for the number of elements of the array*)
@@ -777,8 +807,8 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_ObjectPropList(uif: UserIf; hmtp: Handle): HALFWORD;
-    RETURN uif.PutObjectPropList(hmtp.tx_buff, hmtp.ReqOp.Param1,
+  PROCEDURE Get_ObjectPropList(dev: Def.Handle; uif: UserIf; hmtp: Handle): HALFWORD;
+    RETURN uif.PutObjectPropList(dev, hmtp.tx_buff, hmtp.ReqOp.Param1,
       hmtp.ReqOp.Param2, hmtp.ReqOp.Param3, hmtp.ReqOp.Param4, hmtp.ReqOp.Param5)
   END Get_ObjectPropList;
 
@@ -857,7 +887,7 @@ MODULE USBDMTPOpt;
     ELSIF op = OP_GET_OBJECT_INFO THEN Get_ObjectInfo(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROPS_SUPPORTED THEN Get_ObjectPropsSupp(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROP_DESC THEN hmtp.Response.code := Get_ObjectPropDesc(uif, hmtp)
-    ELSIF op = OP_GET_OBJECT_PROPLIST THEN hmtp.Response.code := Get_ObjectPropList(uif, hmtp)
+    ELSIF op = OP_GET_OBJECT_PROPLIST THEN hmtp.Response.code := Get_ObjectPropList(dev, uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROP_VALUE THEN Get_ObjectPropValue(uif, hmtp)
     ELSIF op = OP_GET_DEVICE_PROP_DESC THEN Get_DevicePropDesc(uif, d)
     ELSIF op = OP_SEND_OBJECT_INFO THEN hmtp.TransactionPhase := DATA_OUT_PHASE
