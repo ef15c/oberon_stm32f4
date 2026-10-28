@@ -484,7 +484,6 @@ MODULE USBDMTPOpt;
     UserIf* = POINTER TO UserIfDesc;
     UserIfDesc* = RECORD(DDef.UserDataDesc)
       Init*, DeInit*: PROCEDURE;
-      ReadData*: PROCEDURE(Param1: INTEGER; VAR buff: Def.Buffer; hmtp: Handle);
       Create_NewObject*: PROCEDURE(objInfo: BufferDesc; objhandle: INTEGER): HALFWORD;
       GetIdx*: PROCEDURE(Param3, objhandle: INTEGER): INTEGER;
       GetParentObject*: PROCEDURE(Param: INTEGER): INTEGER;
@@ -495,11 +494,12 @@ MODULE USBDMTPOpt;
       GetMaxCapability*: PROCEDURE(): LONGINT;
       GetFreeSpaceInBytes*: PROCEDURE(): LONGINT;
       GetNewIndex*: PROCEDURE(objformat: HALFWORD): INTEGER;
-      WriteData*: PROCEDURE(buff: BufferDesc);
+(*      WriteData*: PROCEDURE(buff: BufferDesc);
       GetContainerLength*: PROCEDURE(Param1: INTEGER): INTEGER;
+*)
       DeleteObject*: PROCEDURE(Param1: INTEGER): HALFWORD;
       Cancel*: PROCEDURE(Phase: INTEGER);
-      CopyBuffer*: PROCEDURE(s, d: Def.Buffer; idx: INTEGER);
+(*      CopyBuffer*: PROCEDURE(s, d: Def.Buffer; idx: INTEGER);*)
       PutVendorExtension*, PutDeviceOpsSupported*, PutDeviceEventsSupported*,
       PutDevicePropsSupported*, PutDeviceCaptureFormatsSupported*, PutDevicePlaybackFormatsSupported*,
       PutManufacturer*, PutModel*, PutDeviceVersion*, PutSerialNumber*, (*DeviceInfo callbacks*)
@@ -517,6 +517,7 @@ MODULE USBDMTPOpt;
       PutObjectPropGetSet*: PROCEDURE(b: Def.Buffer; opc, of, dt: INTEGER); (*ObjectPropDesc callbacks*)
       PutObjectPropList*: PROCEDURE(dev: Def.Handle; b: Def.Buffer; oh, ofc, opc, opgc, depth: INTEGER): HALFWORD;
       PutObjectPropValue*: PROCEDURE(b: Def.Buffer; oh, opc: INTEGER);
+      PutObject*: PROCEDURE(dev: Def.Handle; b: Def.Buffer; oh: INTEGER): HALFWORD;
       PutDeviceFriendlyName*: PROCEDURE(b: Def.Buffer);
       PutDevicePropValue*: PROCEDURE(b: Def.Buffer; dpc: INTEGER);
       PutNextData*: PROCEDURE(dev: Def.Handle; b: Def.Buffer);
@@ -628,13 +629,6 @@ MODULE USBDMTPOpt;
   PROCEDURE GetRxBuffSize*(): INTEGER;
     RETURN SYSTEM.SIZE(BufferDesc) - SYSTEM.SIZE(Def.BufferDesc)
   END GetRxBuffSize;
-
-(*
-  PROCEDURE CopyContainerToDataset*(s: Generic; d: Dataset);
-    VAR i: INTEGER;
-  BEGIN FOR i := 0 TO s.length DO d.data[d.length] := s.data[i]; INC(d.length) END
-  END CopyContainerToDataset;
-*)
 
   (**
   * @brief  USBD_MTP_OPT_OpenSession
@@ -813,6 +807,18 @@ MODULE USBDMTPOpt;
   END Get_ObjectPropList;
 
   (**
+  * @brief  MTP_Get_Object
+  *         Get the object content
+  * @param  pdev: device instance
+  * @param  uif: backend procedures
+  * @param  hmtp: mtp handle
+  * @retval None
+  *)
+  PROCEDURE Get_Object(dev: Def.Handle; uif: UserIf; hmtp: Handle): HALFWORD;
+    RETURN uif.PutObject(dev, hmtp.tx_buff, hmtp.ReqOp.Param1)
+  END Get_Object;
+
+  (**
   * @brief  MTP_Get_DevicePropDesc
   *         Fill the MTP_DevicePropDesc struct
   * @param  pdev: device instance
@@ -881,6 +887,7 @@ MODULE USBDMTPOpt;
     Def.PutHalfword(d, CONT_TYPE_DATA); Def.PutHalfword(d, op); Def.PutInteger(d, hmtp.ReqOp.trans_id);    
     hmtp.TransactionPhase := DATA_IN_PHASE;
     IF op = OP_GET_DEVICE_INFO THEN Get_DeviceInfo(uif, d)
+    ELSIF op = OP_GET_DEVICE_PROP_DESC THEN Get_DevicePropDesc(uif, d)
     ELSIF op = OP_GET_STORAGE_IDS THEN Get_StorageIDs(uif, d)
     ELSIF op = OP_GET_STORAGE_INFO THEN Get_StorageInfo(uif, d)
     ELSIF op = OP_GET_OBJECT_HANDLES THEN hmtp.Response.code := Get_ObjectHandles(dev, uif, hmtp)
@@ -889,7 +896,7 @@ MODULE USBDMTPOpt;
     ELSIF op = OP_GET_OBJECT_PROP_DESC THEN hmtp.Response.code := Get_ObjectPropDesc(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROPLIST THEN hmtp.Response.code := Get_ObjectPropList(dev, uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROP_VALUE THEN Get_ObjectPropValue(uif, hmtp)
-    ELSIF op = OP_GET_DEVICE_PROP_DESC THEN Get_DevicePropDesc(uif, d)
+    ELSIF op = OP_GET_OBJECT THEN hmtp.Response.code := Get_Object(dev, uif, hmtp)
     ELSIF op = OP_SEND_OBJECT_INFO THEN hmtp.TransactionPhase := DATA_OUT_PHASE
 (*TODO: Move the following statements in the response phase
       n_idx := uif.GetNewIndex(hmtp.obj_format);

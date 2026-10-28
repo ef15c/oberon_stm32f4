@@ -130,40 +130,6 @@ MODULE USBDMTPStorage;
     IF hmtp.tx_buff.length = 0 THEN (*DATA phase complete*)
       hmtp.TransactionPhase := Opt.RESPONSE_PHASE
     END
-(* TODO: replace the following:
-    (* Get the data buffer pointer from the low layer interface *)
-    ops := dev.UserData[dev.classId](Opt.UserIf); data_buff := ops.ScratchBuff;
-    IF (data_buff # NIL) & (data_buff.size >= Opt.CONT_HEADER_SIZE) THEN
-      IF hmtp.ReadDataStatus = READ_FIRST_DATA THEN
-        ops.CopyBuffer(hmtp.GenericContainer, data_buff, 0); (* Add the container header to the data buffer *)
-        hmtp.cur_len := Opt.CONT_HEADER_SIZE; (* Set the data length *)
-        (* Perform the low layer read operation on the scratch buffer
-         * first packet expected data length: MPS - CONT_HEADER_SIZE *)
-        ops.ReadData(hmtp.OperationsContainer.Param1, data_buff, hmtp);
-        (* Start USB data transmission to the host *)
-        data_buff.length := hmtp.readbytes + Opt.CONT_HEADER_SIZE; SendData(dev, data_buff);
-        (* Check if this will be the last packet to send ? *)
-(*      if (MTP_DataLength.readbytes < ((uint32_t)hmtp->MaxPcktLen - MTP_CONT_HEADER_SIZE))*)
-        IF hmtp.cur_len >= hmtp.GenericContainer.CLen THEN hmtp.ResponsePhase := RESPONSE_PHASE
-        ELSE hmtp.ReadDataStatus := READ_REST_OF_DATA (* Continue to the next packets sending *)
-        END
-      ELSIF hmtp.ReadDataStatus = READ_REST_OF_DATA THEN
-        (* Perform the low layer read operation on the scratch buffer *)
-        ops.ReadData(hmtp.OperationsContainer.Param1, data_buff, hmtp);
-        (* Check if more data need to be sent *)
-        IF hmtp.cur_len >= hmtp.GenericContainer.CLen THEN
-          (* Start USB data transmission to the host *)
-          data_buff.length := hmtp.readbytes; SendData(dev, data_buff);
-          hmtp.ResponsePhase := RESPONSE_PHASE;
-          hmtp.ReadDataStatus := READ_FIRST_DATA (* Reset the state machine *)
-        ELSE
-          (* Start USB data transmission to the host *)
-          data_buff.length := hmtp.readbytes; SendData(dev, data_buff)
-          (* Keep the state machine into sending next packet of data *)
-        END
-      END
-    END
-*)
   END ReadData;
 
   (**
@@ -198,7 +164,7 @@ MODULE USBDMTPStorage;
     IF op = Opt.OP_GET_DEVICE_INFO THEN Opt.GetDeviceInfo(dev)
     ELSIF op = Opt.OP_OPEN_SESSION THEN Opt.OpenSession(dev)
     ELSIF op = Opt.OP_CLOSE_SESSION THEN Opt.CloseSession(dev)
-    ELSIF op = Opt.OP_GET_OBJECT THEN Opt.GetObject(dev); hmtp.TransactionPhase := Opt.DATA_IN_PHASE
+(*    ELSIF op = Opt.OP_GET_OBJECT THEN Opt.GetObject(dev); hmtp.TransactionPhase := Opt.DATA_IN_PHASE*)
     ELSIF op = Opt.OP_SEND_OBJECT_INFO THEN Opt.SendObjectInfo(dev, hmtp.rx_buff); hmtp.TransactionPhase := Opt.DATA_OUT_PHASE
     ELSIF op = Opt.OP_SEND_OBJECT THEN Opt.SendObject(dev, hmtp.rx_buff); hmtp.TransactionPhase := Opt.DATA_OUT_PHASE
     ELSIF op = Opt.OP_DELETE_OBJECT THEN Opt.DeleteObject(dev)

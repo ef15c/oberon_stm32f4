@@ -126,7 +126,7 @@ MODULE USBD;
       (* Set Device initial State *)
       dev.state := DDef.STATE_DEFAULT;
       IF processTask = NIL THEN (*install USB core process task*)
-        processTask := Def.NewTask(Process, 5); Def.Install(processTask)
+        processTask := Def.NewTask(Process, 1); Def.Install(processTask)
       END
     END
 

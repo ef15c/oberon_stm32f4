@@ -6,6 +6,10 @@ MODULE USBDMTPOberon;
     GROUP_FILE = 1;
     GROUP_BMP = 2;
 
+    NOF_RESERVED_SECTORS = (Kernel.BootReservedSize + FileSystem.SectorSize - 1) DIV FileSystem.SectorSize + 2;
+    MAX_SECTORS = FileSystem.NofSectors - NOF_RESERVED_SECTORS;
+    MAX_CAPACITY = MAX_SECTORS* FileSystem.SectorSize;
+
   TYPE
     HandleList = POINTER TO HandleListDesc;
     HandleListDesc = RECORD
@@ -18,6 +22,7 @@ MODULE USBDMTPOberon;
     count: INTEGER; oPc, opGc, nbo: INTEGER; (*working variables for Get Object Prop List procedures*)
     ohl: HandleList; (*the list of the address of all files in the Oberon filesystem*)
     lohl: HandleList; idx: INTEGER; (*working variables for the file addresses list procedure*)
+    F: Files.File; R: Files.Rider; (*for retrieving or storing object content*)
 
   PROCEDURE PutNextDataNone(dev: Def.Handle; d: Def.Buffer);
   BEGIN d.length := 0
@@ -86,6 +91,7 @@ MODULE USBDMTPOberon;
   * @param  None
   *)
   PROCEDURE DeInit;
+  BEGIN ohl := NIL; F := NIL; Files.Set(R, NIL, 0)
   END DeInit;
 
   (**
@@ -95,8 +101,7 @@ MODULE USBDMTPOberon;
   * @retval None
   *)
   PROCEDURE Cancel(Phase: INTEGER);
-  BEGIN
-    (* Make sure to close open file while canceling transaction *)
+  BEGIN F := NIL; Files.Set(R, NIL, 0) (* release file *)
   END Cancel;
 
   PROCEDURE Put0W1p(d: Def.Buffer; p1: INTEGER); (*generic procedure when putting 0W is required*)
@@ -206,11 +211,11 @@ MODULE USBDMTPOberon;
   END PutAccessCapability;
 
   PROCEDURE PutMaxCapacity(d: Def.Buffer);
-  BEGIN Def.PutInteger(d, (10000H - 64)*FileSystem.SectorSize); Def.PutInteger(d, 0)
+  BEGIN Def.PutInteger(d, MAX_CAPACITY); Def.PutInteger(d, 0)
   END PutMaxCapacity;
 
   PROCEDURE PutFreeSpaceInBytes(d: Def.Buffer);
-  BEGIN Def.PutInteger(d, (10000H - 64 - Files.fshd.NofSectors)*FileSystem.SectorSize); Def.PutInteger(d, 0)
+  BEGIN Def.PutInteger(d, (MAX_SECTORS - Files.fshd.NofSectors)*FileSystem.SectorSize); Def.PutInteger(d, 0)
   END PutFreeSpaceInBytes;
 
   PROCEDURE PutFreeSpaceInObjects(d: Def.Buffer);
@@ -436,7 +441,7 @@ MODULE USBDMTPOberon;
         IF nbo # 0 THEN (*fix array size*) len := d.length; d.length := O.CONT_HEADER_SIZE;
           Def.PutInteger(d, nbo*count); d.length := len; nbo := 0
         END
-      END;
+      END
     UNTIL O.Overflow(d) OR ~addvalid; (*the buffer is now filled with wlen bytes*)
     O.PrepareBuffer(d); (*prepare the buffer for next send*)
     IF d.length = 0 THEN (*this is the last call*)
@@ -446,8 +451,7 @@ MODULE USBDMTPOberon;
 
   PROCEDURE PutObjectPropList(dev: Def.Handle; d: Def.Buffer; oh, ofc, opc, opgc, depth: INTEGER): HALFWORD;
     VAR ret: HALFWORD; len, lenpos, nbf: INTEGER;
-  BEGIN 
-    ret := O.RESPONSE_OK; lenpos := d.length; count := 0; Def.PutInteger(d, 0); (*placeholder*)
+  BEGIN ret := O.RESPONSE_OK; lenpos := d.length; count := 0; Def.PutInteger(d, 0); (*placeholder*)
     IF (opc = 0) & (opgc = 0) THEN ret := O.RESPONSE_PARAMETER_NOT_SUPPORTED
     ELSIF ofc # 0 THEN ret := O.RESPONSE_SPECIFICATION_BY_FORMAT_NOT_SUPPORTED
     ELSIF (oh = 0) & (depth = 0) THEN Def.PutInteger(d, 0) (*return empty set*)
@@ -465,6 +469,28 @@ MODULE USBDMTPOberon;
     END
     RETURN ret
   END PutObjectPropList;
+
+  PROCEDURE PutNextObjectData(dev: Def.Handle; d: Def.Buffer);
+    VAR b: BYTE;
+  BEGIN O.SwitchBuffer(d);
+    REPEAT Files.ReadByte(R, b); IF ~R.eof THEN Def.PutByte(d, b) END
+    UNTIL O.Overflow(d) OR R.eof; (*the buffer is now filled with wlen bytes*)
+    O.PrepareBuffer(d); (*prepare the buffer for next send*)
+    IF d.length = 0 THEN (*this is the last call*)
+      M.ExitCircularMode(dev, d); fops(O.UserIf).PutNextData := PutNextDataNone
+    END
+  END PutNextObjectData;
+
+  PROCEDURE PutObject(dev: Def.Handle; d: Def.Buffer; oh: INTEGER): HALFWORD;
+    VAR ret: HALFWORD;
+  BEGIN ret := O.RESPONSE_OK; F := Files.OldByAdr(oh);
+    IF F = NIL THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE
+    ELSE O.UpdateContainerLength(d, O.CONT_HEADER_SIZE + Files.Length(F));
+      Files.Set(R, F, 0); M.EnterCircularMode(dev, d);
+      fops(O.UserIf).PutNextData := PutNextObjectData; PutNextObjectData(dev, d)
+    END
+    RETURN ret
+  END PutObject;
 
   PROCEDURE PutObjectPropValue(d: Def.Buffer; oh, opc: INTEGER);
     VAR fh: FileDir.FileHeader; ext: FileDir.FileName; date: ARRAY 16 OF CHAR;
@@ -485,7 +511,6 @@ MODULE USBDMTPOberon;
     (*todo: develop fops.* procedures*)
     u.Init := Init;
     u.DeInit := DeInit;
-    u.ReadData := NIL;
     u.Create_NewObject := NIL;
     u.GetIdx := NIL;
     u.GetParentObject := NIL;
@@ -496,11 +521,9 @@ MODULE USBDMTPOberon;
     u.GetMaxCapability := NIL;
     u.GetFreeSpaceInBytes := NIL;
     u.GetNewIndex := NIL;
-    u.WriteData := NIL;
-    u.GetContainerLength := NIL;
+(*    u.WriteData := NIL;*)
     u.DeleteObject := NIL;
     u.Cancel := Cancel;
-    u.CopyBuffer := NIL;
     u.PutVendorExtension := PutVendorExtension;
     u.PutDeviceOpsSupported := PutDeviceOpsSupported;
     u.PutDeviceEventsSupported := PutDeviceEventsSupported;
@@ -545,6 +568,7 @@ MODULE USBDMTPOberon;
     u.PutObjectPropGetSet := PutObjectPropGetSet;
     u.PutObjectPropList := PutObjectPropList;
     u.PutObjectPropValue := PutObjectPropValue;
+    u.PutObject := PutObject;
     u.PutDeviceFriendlyName := NIL;
     u.PutDevicePropValue := PutDevicePropValue;
     u.PutNextData := PutNextDataNone;
