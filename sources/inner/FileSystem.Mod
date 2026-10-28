@@ -4,7 +4,7 @@ MODULE FileSystem; (*CS 17.10.26*)
 
   CONST
     SectorSize*   = 2048;
-    mapsize = 10000H; (*64K sectors, 64* 1024*SectorSize bytes*)
+    NofSectors* = 10000H; (*64K sectors, 64* 1024*SectorSize bytes*)
     FnLength*    = 32;
     SecTabSize*   = 64;
     ExTabSize*   = 12;
@@ -16,7 +16,7 @@ MODULE FileSystem; (*CS 17.10.26*)
   (*filesystem*)
     StorageInfo = POINTER TO StorageInfoDesc;
     StorageInfoDesc = RECORD
-      map: ARRAY mapsize DIV 32 OF SET
+      map: ARRAY NofSectors DIV 32 OF SET
     END;
 
     FSHeaderPersistent* = RECORD
@@ -84,7 +84,7 @@ MODULE FileSystem; (*CS 17.10.26*)
   BEGIN NEW(fshd.sector); fshd.NofSectors := 0; i := 0;
     WHILE i < NofReservedSectors DIV 32 DO fshd.sector.map[i] := {0 .. 31}; INC(i) END;
     r := NofReservedSectors MOD 32; IF r > 0 THEN fshd.sector.map[i] := {0 .. r}; INC(i) END;
-    WHILE i < mapsize DIV 32 DO fshd.sector.map[i] := {}; INC(i) END
+    WHILE i < NofSectors DIV 32 DO fshd.sector.map[i] := {}; INC(i) END
   END InitSecMap;
 
   (*Exported procedures:  GetSector, FreeSector, AllocSector, PutSector*)
@@ -108,8 +108,7 @@ MODULE FileSystem; (*CS 17.10.26*)
     VAR hint, s: INTEGER;
   BEGIN (*find free sector, starting after hint*)
     hint := hint29 DIV 29; ASSERT(hint29 = hint*29); s := hint;
-    REPEAT INC(s);
-      IF s >= mapsize THEN s := 1 END ;
+    REPEAT INC(s); IF s >= NofSectors THEN s := 1 END
     UNTIL ~(s MOD 32 IN fshd.sector.map[s DIV 32]) OR (s = hint);
     ASSERT (~(s MOD 32 IN fshd.sector.map[s DIV 32]));
     INCL(fshd.sector.map[s DIV 32], s MOD 32); INC(fshd.NofSectors); sec29 := s * 29

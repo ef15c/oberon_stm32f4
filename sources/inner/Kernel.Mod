@@ -1,7 +1,7 @@
 MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
   IMPORT SYSTEM, BSP, SDCard, LongDiv;
   CONST
-    BootReservedSize* = 63488;
+    BootReservedSize* = 61440; (*30 2KB sectors*)
     CS = 2; (*Carry set Greater than, equal, or unordered*)
     CC = 3; (* Carry clear Less than*)
 

@@ -414,7 +414,7 @@ MODULE OM4L;  (*Oberon boot linker/loader for Cortex M4 STM32I-DISCO / AP 6.8.20
   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
     IF S.class = Texts.Name THEN
       Texts.WriteString(W, "  loading "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
-      IF (F # NIL) & (Files.Length(F) <= 63488) THEN Texts.WriteString(W, " onto boot area"); Texts.WriteInt(W, Files.Length(F), 7);
+      IF (F # NIL) & (Files.Length(F) <= Kernel.BootReservedSize) THEN Texts.WriteString(W, " onto boot area"); Texts.WriteInt(W, Files.Length(F), 7);
         secno := BootSec; i := 0; Files.Set(R, F, 0); Files.ReadByte(R, b); res := noerr;
         WHILE ~R.eof DO buf[i] := b; INC(i);
           IF i = FileSystem.SectorSize THEN FileSystem.PutSector(Files.fshd, secno*29, buf); INC(secno); i := 0 END ;

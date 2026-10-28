@@ -77,24 +77,22 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
     END
   END Check;
 
-  PROCEDURE Old*(name: ARRAY OF CHAR): File;
+  PROCEDURE OldByAdr*(header: DiskAdr): File;
     VAR i, k, res: INTEGER;
       f!: File;
-      header: DiskAdr;
       buf!: Buffer;
       F!: FileDir.FileHd;
       namebuf: FileDir.FileName;
       inxpg!: Index;
-  BEGIN f := NIL; Check(name, namebuf, res);
-    IF res = 0 THEN
-      FileDir.Search(fshd, namebuf, header);
-      IF header # 0 THEN
-        f := SYSTEM.VAL(File, root);
-        WHILE (f # NIL) & (f.sec[0] # header) DO f := SYSTEM.VAL(File, f.next) END ;
-        IF f = NIL THEN (*file not yet present*)
-          NEW(buf); buf.apos := 0; buf.next := buf; buf.mod := FALSE;
-          F := SYSTEM.VAL(FileDir.FileHd, SYSTEM.ADR(buf.data));
-          FileSystem.GetSector(fshd, header, buf.data); ASSERT(F.mark = FileDir.HeaderMark);
+  BEGIN f := NIL;
+    IF header # 0 THEN
+      f := SYSTEM.VAL(File, root);
+      WHILE (f # NIL) & (f.sec[0] # header) DO f := SYSTEM.VAL(File, f.next) END ;
+      IF f = NIL THEN (*file not yet present*)
+        NEW(buf); buf.apos := 0; buf.next := buf; buf.mod := FALSE;
+        FileSystem.GetSector(fshd, header, buf.data);
+        F := SYSTEM.VAL(FileDir.FileHd, SYSTEM.ADR(buf.data));
+        IF F.mark = FileDir.HeaderMark THEN
           NEW(f); f.aleng := F.aleng; f.bleng := F.bleng; f.date := F.date;
           IF f.aleng = 0 THEN buf.lim := f.bleng ELSE buf.lim := SS END ;
           f.firstbuf := buf; f.nofbufs := 1; f.name := namebuf; f.registered := TRUE;
@@ -108,7 +106,20 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
           f.sechint := header; f.modH := FALSE; f.next := root; root := SYSTEM.VAL(INTEGER, f)
         END
       END
-    END ;
+    END
+    RETURN f
+  END OldByAdr;
+
+  PROCEDURE Old*(name: ARRAY OF CHAR): File;
+    VAR res: INTEGER;
+      f!: File;
+      header: DiskAdr;
+      namebuf: FileDir.FileName;
+  BEGIN f := NIL; Check(name, namebuf, res);
+    IF res = 0 THEN
+      FileDir.Search(fshd, namebuf, header);
+      IF header # 0 THEN f := OldByAdr(header); ASSERT(f # NIL) END
+    END
     RETURN f
   END Old;
 

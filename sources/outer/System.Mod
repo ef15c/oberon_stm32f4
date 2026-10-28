@@ -1,5 +1,5 @@
 MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
-  IMPORT SYSTEM, BSP, SDCard, Kernel, FileDir, Files, Modules,
+  IMPORT SYSTEM, BSP, SDCard, Kernel, FileSystem, FileDir, Files, Modules,
     Input, Display, Viewers, Fonts, Texts, Oberon, MenuViewers, TextFrames;
 
   CONST
@@ -365,7 +365,7 @@ MODULE System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016 / CS 19/12/2023*)
     size := Kernel.heapLim - Kernel.heapOrg;
     Texts.WriteInt(W, (Kernel.allocated * 100 + size DIV 2) DIV size, 4); Texts.Write(W, "%"); EndLine;
     Texts.WriteString(W, "  Disk sectors "); Texts.WriteInt(W, Files.fshd.NofSectors, 4);
-    Texts.WriteInt(W, Files.fshd.NofSectors * 100 DIV 10000H, 4); Texts.WriteString(W, "%, read errors "); Texts.WriteInt(W, SDCard.hsd.readErrors, 1);
+    Texts.WriteInt(W, Files.fshd.NofSectors * 100 DIV FileSystem.NofSectors, 4); Texts.WriteString(W, "%, read errors "); Texts.WriteInt(W, SDCard.hsd.readErrors, 1);
     Texts.WriteString(W, ", write errors "); Texts.WriteInt(W, SDCard.hsd.writeErrors, 1); Texts.WriteString(W, ", unrecoverable ");
     Texts.WriteInt(W, SDCard.hsd.unrecoverableErrors, 1); EndLine;
     Texts.WriteString(W, "  Tasks"); Texts.WriteInt(W, Oberon.NofTasks, 4); EndLine;
