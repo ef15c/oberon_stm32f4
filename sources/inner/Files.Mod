@@ -12,6 +12,10 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
       STS       = FileDir.SecTabSize;
       XS        = FileDir.IndexSize;
 
+      AddFile* = 1;
+      DeleteFile* = 2;
+      RenameFile* = 3;
+
   TYPE  DiskAdr = FileDir.DiskAdr;
       File*    = POINTER TO FileDesc;
       Buffer  = POINTER TO BufferRecord;
@@ -56,8 +60,16 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
       0 <= apos <= aleng < PgTabSize
       (apos < aleng) & (lim = SS) OR (apos = aleng) *)
 
+    Callback = PROCEDURE(adr: INTEGER; event: BYTE);
+    Hook = POINTER TO HookDesc;
+    HookDesc = RECORD
+      cbk: Callback;
+      next: Hook
+    END;
+
   VAR root: INTEGER (*File*);  (*list of open files*)
     fshd*: FileSystem.FSHeader; (*pointer to filesystem instance*)
+    FileChangeCbk: Hook;
 
   PROCEDURE Check(s: ARRAY OF CHAR;
         VAR name: FileDir.FileName; VAR res: INTEGER);
@@ -241,12 +253,14 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
   END Unbuffer;
 
   PROCEDURE Register*(f: File);
+    VAR c!: Hook;
   BEGIN
     IF (f # NIL) & (f.name[0] # 0X) THEN
       Unbuffer(f);
       IF ~f.registered THEN
         FileDir.Insert(fshd, f.name, f.sec[0], f.date, f.aleng * SS + f.bleng - HS);
-        f.registered := TRUE; f.next := root; root := SYSTEM.VAL(INTEGER, f)
+        f.registered := TRUE; f.next := root; root := SYSTEM.VAL(INTEGER, f);
+        c := FileChangeCbk.next; WHILE c # NIL DO c.cbk(f.sec[0], AddFile); c := c.next END
       END
     END
   END Register;
@@ -275,18 +289,22 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
 
   PROCEDURE Delete*(name: ARRAY OF CHAR; VAR res: INTEGER);
     VAR adr: DiskAdr;
-        namebuf: FileDir.FileName;
+      namebuf: FileDir.FileName;
+      c!: Hook;
   BEGIN Check(name, namebuf, res);
     IF res = 0 THEN
       FileDir.Delete(fshd, namebuf, adr);
-      IF adr = 0 THEN res := 2 END
+      IF adr = 0 THEN res := 2
+      ELSE c := FileChangeCbk.next; WHILE c # NIL DO c.cbk(adr, DeleteFile); c := c.next END
+      END
     END
   END Delete;
 
   PROCEDURE Rename*(old, new: ARRAY OF CHAR; VAR res: INTEGER);
     VAR adr: DiskAdr;
-        oldbuf, newbuf: FileDir.FileName;
-        head: FileDir.FileHeader;
+      oldbuf, newbuf: FileDir.FileName;
+      head: FileDir.FileHeader;
+      c!: Hook;
   BEGIN Check(old, oldbuf, res);
     IF res = 0 THEN
       Check(new, newbuf, res);
@@ -294,7 +312,8 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
         FileDir.Delete(fshd, oldbuf, adr);
         IF adr # 0 THEN FileSystem.GetSector(fshd, adr, head); 
           FileDir.Insert(fshd, newbuf, adr, head.date, head.aleng * SS + head.bleng - HS);
-          head.name := newbuf; FileSystem.PutSector(fshd, adr, head)
+          head.name := newbuf; FileSystem.PutSector(fshd, adr, head);
+          c := FileChangeCbk.next; WHILE c # NIL DO c.cbk(adr, RenameFile); c := c.next END
         ELSE res := 2
         END
       END
@@ -552,7 +571,19 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
   BEGIN FileDir.Init(fshd, fssec)
   END Init;
 
-BEGIN root := 0
+  PROCEDURE AddFileChangeCallback*(c: Callback);
+    VAR h!: Hook;
+  BEGIN NEW(h); h.cbk := c; h.next := FileChangeCbk.next; FileChangeCbk.next := h
+  END AddFileChangeCallback;
+
+  PROCEDURE DelFileChangeCallback*(c: Callback);
+    VAR h!: Hook;
+  BEGIN h := FileChangeCbk; WHILE (h.next # NIL) & (h.next.cbk # c) DO h := h.next END;
+    IF h.next # NIL THEN h.next := h.next.next END
+  END DelFileChangeCallback;
+
+BEGIN root := 0;
+  NEW(FileChangeCbk)
 END Files.
 
 OM4Tool.DecObj Files.m4c
