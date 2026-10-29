@@ -147,6 +147,9 @@ MODULE USBDMTPOberon;
   BEGIN
     O.BeginArray(d, w);
     Def.PutHalfword(d, O.EVENT_OBJECTADDED);
+    Def.PutHalfword(d, O.EVENT_OBJECTREMOVED);
+    Def.PutHalfword(d, O.EVENT_OBJECTINFOCHANGED);
+    Def.PutHalfword(d, O.EVENT_OBJECTPROPCHANGED);
     O.EndArray(d, w, SYSTEM.SIZE(HALFWORD))
   END PutDeviceEventsSupported;
 

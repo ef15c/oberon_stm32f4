@@ -26,73 +26,18 @@ MODULE HALHCD;
       MsgPendQ: Q.Msg (*the deferred work message queue*)
     END;
 
-    (*!< USB OTG HCD Connect message *)
-    ConnectMsg* = POINTER TO ConnectMsgDesc;
-    ConnectMsgDesc* = RECORD(Q.MsgDesc) END;
-
-    (*!< USB OTG HCD Disonnect message *)
-    DisconnectMsg* = POINTER TO DisconnectMsgDesc;
-    DisconnectMsgDesc* = RECORD(Q.MsgDesc) END;
-
-    (*!< USB OTG HCD Port Enable message *)
-    PortEnabledMsg* = POINTER TO PortEnabledMsgDesc;
-    PortEnabledMsgDesc* = RECORD(Q.MsgDesc) END;
-
-    (*!< USB OTG HCD Port Disable message *)
-    PortDisabledMsg* = POINTER TO PortDisabledMsgDesc;
-    PortDisabledMsgDesc* = RECORD(Q.MsgDesc) END;
-
-    (*!< USB OTG HCD Host Channel Notify URB Change message *)
-    URBChangeMsg* = POINTER TO URBChangeMsgDesc;
-    URBChangeMsgDesc = RECORD(Q.MsgDesc) chnum*, urb_state*: BYTE END;
-
-    (*!< USB debug message *)
-    DebugMsg* = POINTER TO DebugMsgDesc;
-    DebugMsgDesc* = RECORD(Q.MsgDesc)
-      chnum*: BYTE; is_in*: BOOLEAN; gintsts*, grxstsp*, hcint*, hprt*: SET
+    Msg* = POINTER TO MsgDesc;
+    MsgDesc* = RECORD(Q.MsgDesc) chnum*, urb_state*: BYTE;
+      is_in*: BOOLEAN; gintsts*, grxstsp*, hcint*, hprt*: SET
     END;
 
-    PROCEDURE newConnectMsg(): Q.Msg;
-      VAR item!: ConnectMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newConnectMsg;
-
-    PROCEDURE newDisconnectMsg(): Q.Msg;
-      VAR item!: DisconnectMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newDisconnectMsg;
-
-    PROCEDURE newPortEnabledMsg(): Q.Msg;
-      VAR item!: PortEnabledMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newPortEnabledMsg;
-
-    PROCEDURE newPortDisabledMsg(): Q.Msg;
-      VAR item!: PortDisabledMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newPortDisabledMsg;
-
-    PROCEDURE newURBChangeMsg(): Q.Msg;
-      VAR item!: URBChangeMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newURBChangeMsg;
-
-    PROCEDURE newDebugMsg(): Q.Msg; (*create a debug message object*)
-      VAR item!: DebugMsg;
-    BEGIN NEW(item)
-
-      RETURN item
-    END newDebugMsg;
+  VAR
+    C: ARRAY 1+1 OF MsgDesc; (*!< USB OTG HCD Connect message *)
+    D: ARRAY 1+1 OF MsgDesc; (*!< USB OTG HCD Disonnect message *)
+    PE: ARRAY 1+1 OF MsgDesc; (*!< USB OTG HCD Port Enable message *)
+    PD: ARRAY 1+1 OF MsgDesc; (*!< USB OTG HCD Port Disable message *)
+    URBC: ARRAY 3+1 OF MsgDesc; (*!< USB OTG HCD Host Channel Notify URB Change message *)
+    DBG: ARRAY 100+1 OF MsgDesc; (*!< USB debug message *)
 
   (** @defgroup HCD_Exported_Functions_Group2 Input and Output operation functions
   *  @brief   HCD IO operation functions
@@ -190,7 +135,7 @@ MODULE HALHCD;
   * @param  hhcd HCD handle
   * @retval None
   *)
-  PROCEDURE Port_IRQHandler(hhcd: Handle; dbm: DebugMsg);
+  PROCEDURE Port_IRQHandler(hhcd: Handle; dbm: Msg);
   VAR res: BYTE; hprt0, hprt0_dup, fslspcs: SET; USBx_HOST!: ll.OTGHostMode;
     msg!: Q.Msg;
   BEGIN USBx_HOST := SYSTEM.VAL(ll.OTGHostMode, ORD(hhcd.Instance) + ll.HOST_BASE);
@@ -234,9 +179,9 @@ MODULE HALHCD;
   *         This parameter can be a value from 1 to 15
   * @retval none
   *)
-  PROCEDURE HC_IN_IRQHandler(hhcd: Handle; chnum: BYTE; dbm: DebugMsg);
+  PROCEDURE HC_IN_IRQHandler(hhcd: Handle; chnum: BYTE; dbm: Msg);
     VAR USBx_HCi!: ll.OTGHostChannel; flags: SET;
-      msg!: Q.Msg;
+      msg!: Q.Msg; dmsg!: Msg;
   BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
     IF dbm # NIL THEN dbm.hcint := flags; dbm.chnum := chnum; dbm.is_in := TRUE END;
@@ -268,10 +213,9 @@ MODULE HALHCD;
       ELSIF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_INTR, Def.EP_TYPE_ISOC} THEN
         INCL(USBx_HCi.HCCHAR, ll.HCCHAR_ODDFRM);
         hhcd.hc[chnum].urb_state := ll.URB_DONE;
-        msg := Q.Get(hhcd.URBChangeMP);
-        IF msg # NIL THEN
-          CASE msg OF URBChangeMsg: msg.chnum := chnum; msg.urb_state := hhcd.hc[chnum].urb_state END;
-          Q.Post(hhcd.MsgPendQ, msg)
+        msg := Q.Get(hhcd.URBChangeMP); dmsg := SYSTEM.VAL(Msg, msg);
+        IF dmsg # NIL THEN dmsg.chnum := chnum; dmsg.urb_state := hhcd.hc[chnum].urb_state;
+          Q.Post(hhcd.MsgPendQ, dmsg)
         END
       END;
       IF hhcd.Init.dma_enable THEN
@@ -336,9 +280,8 @@ MODULE HALHCD;
       ELSIF hhcd.hc[chnum].state = ll.HC_BBLERR THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         INC(hhcd.hc[chnum].ErrCnt); hhcd.hc[chnum].urb_state := ll.URB_ERROR
       ELSIF hhcd.hc[chnum].state # ll.HC_HALTED THEN
-        msg := Q.Get(hhcd.URBChangeMP);
-        IF msg # NIL THEN
-          CASE msg OF URBChangeMsg: msg.chnum := chnum; msg.urb_state := hhcd.hc[chnum].urb_state END;
+        msg := Q.Get(hhcd.URBChangeMP); dmsg := SYSTEM.VAL(Msg, msg);
+        IF dmsg # NIL THEN dmsg.chnum := chnum; dmsg.urb_state := hhcd.hc[chnum].urb_state;
           Q.Post(hhcd.MsgPendQ, msg)
         END
       END
@@ -370,9 +313,9 @@ MODULE HALHCD;
   *         This parameter can be a value from 1 to 15
   * @retval none
   *)
-  PROCEDURE HC_OUT_IRQHandler(hhcd: Handle; chnum: BYTE; dbm: DebugMsg);
+  PROCEDURE HC_OUT_IRQHandler(hhcd: Handle; chnum: BYTE; dbm: Msg);
     VAR USBx_HCi!: ll.OTGHostChannel; flags: SET; num_packets: INTEGER; purbs: BYTE;
-      msg!: Q.Msg;
+      msg!: Q.Msg; dmsg!: Msg;
   BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
     IF dbm # NIL THEN dbm.hcint := flags; dbm.chnum := chnum END;
@@ -418,9 +361,8 @@ MODULE HALHCD;
       ELSE INC(hhcd.hc[chnum].ErrCnt);
         IF hhcd.hc[chnum].ErrCnt > 2 THEN hhcd.hc[chnum].ErrCnt := 0;
           hhcd.hc[chnum].urb_state := ll.URB_ERROR;
-          msg := Q.Get(hhcd.URBChangeMP);
-          IF msg # NIL THEN
-            CASE msg OF URBChangeMsg: msg.chnum := chnum; msg.urb_state := hhcd.hc[chnum].urb_state END;
+          msg := Q.Get(hhcd.URBChangeMP); dmsg := SYSTEM.VAL(Msg, msg);
+          IF dmsg # NIL THEN dmsg.chnum := chnum; dmsg.urb_state := hhcd.hc[chnum].urb_state;
             Q.Post(hhcd.MsgPendQ, msg)
           END
         ELSE
@@ -463,9 +405,8 @@ MODULE HALHCD;
       END;
       (*in STM original code, hhcd.HC_NotifyURBChangeCallback in called only if one of the previous cases match*)
       IF hhcd.hc[chnum].urb_state # purbs THEN
-        msg := Q.Get(hhcd.URBChangeMP);
-        IF msg # NIL THEN
-          CASE msg OF URBChangeMsg: msg.chnum := chnum; msg.urb_state := hhcd.hc[chnum].urb_state END;
+        msg := Q.Get(hhcd.URBChangeMP); dmsg := SYSTEM.VAL(Msg, msg);
+        IF dmsg # NIL THEN dmsg.chnum := chnum; dmsg.urb_state := hhcd.hc[chnum].urb_state;
           Q.Post(hhcd.MsgPendQ, msg)
         END
       END
@@ -477,7 +418,7 @@ MODULE HALHCD;
   * @param  hhcd HCD handle
   * @retval none
   *)
-  PROCEDURE RXQLVL_IRQHandler(hhcd: Handle; dbm: DebugMsg);
+  PROCEDURE RXQLVL_IRQHandler(hhcd: Handle; dbm: Msg);
     VAR USBx_HCi!: ll.OTGHostChannel;
       GrxstspReg, pktsts: SET; bytecnt, xferSizePktCnt: INTEGER; chnum: BYTE;
   BEGIN (*WARNING: GRXSTSP must be read only once, because reading it pops one item from input FIFO*)
@@ -514,7 +455,7 @@ MODULE HALHCD;
   *)
   PROCEDURE IRQHandler*(hhcd: UC.Handle);
     VAR i: INTEGER; interrupt, flags, reg: SET; res: BYTE;
-      msg!: Q.Msg; dbm!: DebugMsg;
+      msg!: Q.Msg; dbm!: Msg;
   BEGIN BSP.ledsOnOff({4}, {});
     CASE hhcd OF
       Handle:
@@ -785,26 +726,25 @@ MODULE HALHCD;
   *)
   PROCEDURE InitPools*(hcdh: Handle);
   BEGIN
-    hcdh.ConnectMP := Q.CreatePool(1, newConnectMsg);
-    hcdh.DisconnectMP := Q.CreatePool(1, newDisconnectMsg);
-    hcdh.PortEnabledMP := Q.CreatePool(1, newPortEnabledMsg);
-    hcdh.PortDisabledMP := Q.CreatePool(1, newPortDisabledMsg);
-    hcdh.URBChangeMP := Q.CreatePool(3, newURBChangeMsg);
-    hcdh.DebugMP := Q.CreatePool(100, newDebugMsg)
+    hcdh.ConnectMP := Q.CreateSPool(1, SYSTEM.ADR(C), LEN(C), SYSTEM.SIZE(MsgDesc));
+    hcdh.DisconnectMP := Q.CreateSPool(2, SYSTEM.ADR(D), LEN(D), SYSTEM.SIZE(MsgDesc));
+    hcdh.PortEnabledMP := Q.CreateSPool(3, SYSTEM.ADR(PE), LEN(PE), SYSTEM.SIZE(MsgDesc));
+    hcdh.PortDisabledMP := Q.CreateSPool(4, SYSTEM.ADR(PD), LEN(PD), SYSTEM.SIZE(MsgDesc));
+    hcdh.URBChangeMP := Q.CreateSPool(5, SYSTEM.ADR(URBC), LEN(URBC), SYSTEM.SIZE(MsgDesc));
+    hcdh.DebugMP := Q.CreateSPool(6, SYSTEM.ADR(DBG), LEN(DBG), SYSTEM.SIZE(MsgDesc))
   END InitPools;
 
   PROCEDURE TakeMsg*(hcdh: Handle): Q.Msg;
     VAR msg!: Q.Msg;
   BEGIN msg := Q.ExhaustedPool();
     IF msg # NIL THEN Log.Error("Interrupt queue too small:");
-      CASE msg OF
-        ConnectMsg:  Log.ErrorString(" Connect")
-      | DisconnectMsg: Log.ErrorString(" Disconnect")
-      | PortEnabledMsg: Log.ErrorString(" PortEnabled")
-      | PortDisabledMsg: Log.ErrorString(" PortDisabled")
-      | URBChangeMsg: Log.ErrorString(" URBChange")
-      | DebugMsg: Log.ErrorString(" Debug")
-      | Q.Msg: Log.ErrorString(" Unknown message type")
+      IF msg.type = 1 THEN Log.ErrorString(" Connect")
+      ELSIF msg.type = 2 THEN Log.ErrorString(" Disconnect")
+      ELSIF msg.type = 3 THEN Log.ErrorString(" PortEnabled")
+      ELSIF msg.type = 4 THEN Log.ErrorString(" PortDisabled")
+      ELSIF msg.type = 5 THEN Log.ErrorString(" URBChange")
+      ELSIF msg.type = 6 THEN Log.ErrorString(" Debug")
+      ELSE Log.ErrorString(" Unknown message type")
       END; Log.ErrorLn; Log.Flush
     END;
     ll.DisableGlobalInt(hcdh.Instance);
@@ -816,14 +756,13 @@ MODULE HALHCD;
 
   PROCEDURE GiveMsg*(hcdh: Handle; msg: Q.Msg);
   BEGIN ll.DisableGlobalInt(hcdh.Instance);
-    CASE msg OF
-      ConnectMsg: Q.PostFirst(hcdh.ConnectMP, msg) (*return item to pool*)
-    | DisconnectMsg: Q.PostFirst(hcdh.DisconnectMP, msg)
-    | PortEnabledMsg: Q.PostFirst(hcdh.PortEnabledMP, msg)
-    | PortDisabledMsg: Q.PostFirst(hcdh.PortDisabledMP, msg)
-    | URBChangeMsg: Q.PostFirst(hcdh.URBChangeMP, msg)
-    | DebugMsg: Q.PostFirst(hcdh.DebugMP, msg)
-    | Q.Msg: ASSERT(FALSE) (*unsupported message type*)
+    IF msg.type = 1 THEN Q.PostFirst(hcdh.ConnectMP, msg) (*return item to pool*)
+    ELSIF msg.type = 2 THEN Q.PostFirst(hcdh.DisconnectMP, msg)
+    ELSIF msg.type = 3 THEN Q.PostFirst(hcdh.PortEnabledMP, msg)
+    ELSIF msg.type = 4 THEN Q.PostFirst(hcdh.PortDisabledMP, msg)
+    ELSIF msg.type = 5 THEN Q.PostFirst(hcdh.URBChangeMP, msg)
+    ELSIF msg.type =  6 THEN Q.PostFirst(hcdh.DebugMP, msg)
+    ELSE ASSERT(FALSE) (*unsupported message type*)
     END;
     ll.EnableGlobalInt(hcdh.Instance)
   END GiveMsg;

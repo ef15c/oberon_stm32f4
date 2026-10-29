@@ -57,7 +57,7 @@ MODULE HALPCD;
  
   VAR
     (*the message pools cannot be dynamically allocated because the garbage collector
-      can be corrupted if dynamic allocated objects are modified in an ISE while the
+      data can be corrupted if dynamic allocated objects are modified in an ISR while the
       Kernel.Mark procedure is running.
       Since it is not acceptable to disable interrupt during Kernel.Mark process, we must
       switch to static allocation of the messgage objects
@@ -75,7 +75,6 @@ MODULE HALPCD;
     C: ARRAY 1+1 OF MsgDesc;    (*!< USB OTG Connect message*)
     D: ARRAY 1+1 OF MsgDesc;    (*!< USB OTG Disconnect message*)
     DBG: ARRAY 100+1 OF MsgDesc;    (*!< USB debug message *)
-
 
   (**
   * @brief  process EP OUT transfer complete interrupt.
@@ -749,7 +748,7 @@ MODULE HALPCD;
       ELSIF  msg.type = 11 THEN Log.ErrorString(" Disconnect")
       ELSIF  msg.type = 22 THEN Log.ErrorString(" Debug")
       ELSE Log.ErrorString(" unknown message type")
-      END; Log.ErrorLn; Log.Flush; ASSERT(FALSE)
+      END; Log.ErrorLn; Log.Flush
     END;
     UH.DisableGlobalInt;
     IF hpcd.MsgPendQ # NIL THEN msg := Q.Get(hpcd.MsgPendQ) ELSE msg := NIL END;

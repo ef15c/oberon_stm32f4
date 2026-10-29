@@ -10,14 +10,6 @@ MODULE Queue;
 
   VAR exhausted: Msg;
 
-  PROCEDURE CreatePool*(size: INTEGER; new: PROCEDURE(): Msg): Msg;
-    VAR i: INTEGER; head!, item!: Msg;
-  BEGIN head := new(); head.guard := TRUE;
-    FOR i := 1 TO size DO item := new(); item.next := head; head := item END
-
-    RETURN head
-  END CreatePool;
-
   PROCEDURE CreateSPool*(type, adr, len, size: INTEGER): Msg;
     VAR i: INTEGER; head!, item!: Msg;
   BEGIN head := SYSTEM.VAL(Msg, adr); head.guard := TRUE; head.type := type;

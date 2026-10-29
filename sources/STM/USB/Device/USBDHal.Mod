@@ -301,7 +301,7 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   * @brief  Do the work offloaded by IRQs in the process loop.
   *)
  PROCEDURE ProcessDeferredIRQWork*(dev: Def.Handle);
-    VAR msg!: Q.Msg; hmsg!: PCD.Msg; tag: INTEGER;
+    VAR msg!: Q.Msg; hmsg!: PCD.Msg;
   BEGIN
     CASE dev OF
       PCD.Handle:
