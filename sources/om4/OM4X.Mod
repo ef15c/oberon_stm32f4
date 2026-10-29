@@ -1,5 +1,5 @@
-MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
-  IMPORT SYSTEM, Display, Files, FilesEx, Texts, Oberon, FLASH;
+MODULE OM4X;  (*Oberon boot converter and Flash loader / AP 13.6.20 / CS 11/12/2023*)
+  IMPORT SYSTEM, Kernel, Display, Files, FilesEx, Texts, Oberon, FLASH;
 
   CONST noerr = 0; badfile = 4;  (*copied from Modules for use as cross development tool*)
     fixup = 1; semicolonmissing = 2; nothexdigit = 3; checksumerror = 5; carriagereturnmissing = 6; eofrecmissing = 7; unknownrectype = 8;
@@ -341,6 +341,48 @@ MODULE OM4X;  (*Oberon boot converter for RISC / AP 13.6.20 / CS 11/12/2023*)
     Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
   END WritePreLinkedASM;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 boot converter CS 11/12/2023");
+  PROCEDURE LoadEF*;  (*load prelinked boot file M.efb onto the module area of the internal flash memory*)
+    VAR i, adr, d: INTEGER;
+      F!: Files.File; R!: Files.Rider;
+      S!: Texts.Scanner;
+      buf: ARRAY 32 OF INTEGER;
+  BEGIN
+    IF Kernel.bootParams DIV ORD({24}) # 08H THEN
+      Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S); res := -1;
+      IF S.class = Texts.Name THEN
+        Texts.WriteString(W, "  loading "); Texts.WriteString(W, S.s); F := Files.Old(S.s);
+        IF F # NIL THEN Files.Set(R, F, 8); Files.ReadInt(R, d);
+          IF d = 08004000H THEN Texts.WriteString(W, " onto module area"); Texts.WriteInt(W, Files.Length(F), 7);
+            FLASH.Open; adr := d; i := 0; Files.Set(R, F, 0); Files.ReadInt(R, d); res := noerr;
+            WHILE ~R.eof DO buf[i] := d; INC(i);
+              IF i = LEN(buf) THEN FLASH.Write(adr, buf, i); INC(adr, LEN(buf)*4); i := 0 END;
+              Files.ReadInt(R, d)
+            END ;
+            IF i > 0 THEN FLASH.Write(adr, buf, i) END;
+            FLASH.Close
+          ELSE Texts.WriteString(W, " bad format")
+          END
+        ELSE Texts.WriteString(W, " not found")
+        END
+      ELSE Texts.WriteString(W, "Usage: OM4L.LoadEF M.efb")
+      END
+    ELSE Texts.WriteString(W, "Reboot while pressing SW1 for entering flash update mode")
+    END;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END LoadEF;
+
+  PROCEDURE WipeEF*;
+    VAR adr: INTEGER; buf: ARRAY 32 OF INTEGER;
+  BEGIN
+    IF Kernel.bootParams DIV ORD({24}) # 08H THEN FOR adr := 0 TO LEN(buf) - 1 DO buf[adr] := 0FFFFFFFFH END;
+      adr := 08004000H; FLASH.Open;
+      WHILE adr < 08200000H DO FLASH.Write(adr, buf, LEN(buf)); INC(adr, LEN(buf)*4) END;
+      FLASH.Close
+    ELSE Texts.WriteString(W, "Reboot while pressing SW1 for entering flash update mode")
+    END;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+  END WipeEF;
+
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OM4 boot converter and Flash loader CS 29.10.26");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
 END OM4X.

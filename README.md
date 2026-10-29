@@ -51,7 +51,7 @@ There are a lot of advantages doing this:
 This will produce a .efb file that will be later placed in the embedded flash memory.
  * Reboot the station in legacy SDRAM mode by pressing the SW1 button on the base board and the reset button on the SMT429I-DISCO board.
   This is mandatory because it is not safe to modify the embedded flash memory while executing it.
- * Install the .efb file using the command **OM4L.LoadEF**. Example: `OM4L.LoadEF OM4P.efb`  
+ * Install the .efb file using the command **OM4X.LoadEF**. Example: `OM4X.LoadEF OM4P.efb`  
 The installation can be verified by comparing the .efb file and the content of the embedded flash,
  using the command **OM4L.CompareEF**. Example: `OM4L.CompareEF OM4P.efb`  
 The installation is successful if the output of this command ends with the word "same".

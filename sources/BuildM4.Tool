@@ -6,14 +6,16 @@ OM4X.Load BootLoad.hex
 (*no more used: OM4X.WriteASM BootLoad.m4c BootLoad.s ~*)
 
 Commands for generation of the boot file (inner core)
+System.DeleteFiles Kernel.sm4 FileSystem.sm4 FileDir.sm4 Files.sm4 Modules.sm4~
 Oberon.Batch
-  OM4P.Compile BSP.Mod/s SDCard.Mod/s LongDiv.Mod/s Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s ~
+  OM4P.Compile BSP.Mod/s SDCard.Mod/s LongDiv.Mod/s Kernel.Mod/s FileSystem.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s ~
   OM4L.Link Modules ~
   OM4L.Load Modules.bin ~
 ~
  ** or/and **
 OM4L.LinkEF Modules ~
-OM4L.LoadEF Modules.efb OM4L.CompareEF Modules.efb
+OM4X.LoadEF Modules.efb OM4L.CompareEF Modules.efb
+OM4Tool.DecBin Modules.efb ~
 
 Commands for generation of outer core
 OM4P.Compile PS2.Mod/s InputAzerty.Mod/s Display.Mod/s Viewers.Mod/s Fonts.Mod/s Texts.Mod/s
@@ -21,7 +23,8 @@ OM4P.Compile PS2.Mod/s InputAzerty.Mod/s Display.Mod/s Viewers.Mod/s Fonts.Mod/s
   CRC32.Mod/s SCC.Mod/s Net.Mod/s OnStartup.Mod/s ~
 ** optional **
 OM4L.LinkEF System ~
-OM4L.LoadEF System.efb OM4L.CompareEF System.efb
+OM4X.LoadEF System.efb OM4L.CompareEF System.efb
+OM4Tool.DecBin System.efb ~
 
 Commands for generation of UART
 OM4P.Compile RS232.Mod/s ~
@@ -33,9 +36,13 @@ Commands for generation of the compiler
 OM4P.Compile FLASH.Mod/s OM4S.Mod/s OM4B.Mod/s OM4A.Mod/s OM4G.Mod/s OM4P.Mod/s
   OM4X.Mod/s OM4L.Mod/s OM4D.Mod/s OM4Tool.Mod/s StackTrace.Mod/s ~
 ** optional **
-OM4L.LinkEF Modules System Edit OnStartup Image OM4P ~
-OM4L.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
+OM4L.LinkEF Modules System Edit OnStartup Image OM4L OM4P ~
+OM4X.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
 OM4Tool.DecBin OM4P.efb ~
+
+For OFS2
+OM4L.LinkEF Modules System Edit OnStartup Image OM4P testFS2~
+OM4L.LoadEF testFS2.efb OM4L.CompareEF testFS2.efb
 
 Commands for generation of graphic system
 OM4P.Compile Graphics.Mod/s GraphicFrames.Mod/s Draw.Mod/s Rectangles.Mod/s Curves.Mod/s
