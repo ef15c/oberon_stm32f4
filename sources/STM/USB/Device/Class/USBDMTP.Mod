@@ -12,7 +12,7 @@ MODULE USBDMTP;
   *           - Error management
   *
   ******************************************************************************)
-  IMPORT SYSTEM, Log := USBLog, Def := USBDef, DConf := USBDConf, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq,
+  IMPORT SYSTEM, Files, Log := USBLog, Def := USBDef, DConf := USBDConf, DDef := USBDDef, IoReq := USBDIoReq, CtlReq := USBDCtlReq,
     DH := USBDHal, Opt := USBDMTPOpt, MTPS := USBDMTPStorage;
 
   CONST
@@ -62,6 +62,33 @@ MODULE USBDMTP;
   VAR CLASS*: Def.Class;
     CfgDesc, DQDesc: Def.RawDescriptor;
 
+  PROCEDURE EmitEvent(dev: DDef.Handle; code: HALFWORD; params: ARRAY OF INTEGER);
+    VAR  hmtp!: Opt.Handle; type: SET; le!,event!: Opt.Event; i: INTEGER;
+  BEGIN NEW(event);
+    Log.Debug("Trigger sending of event, code: "); Log.DebugHexVLen(code, 4, FALSE);
+    Log.DebugString(", param 1: "); Log.DebugInt(params[0], 1); Log.DebugLn;
+    event.ev.CLen := Opt.CONT_HEADER_SIZE; event.ev.type := Opt.CONT_TYPE_EVENT;
+    event.ev.code := code; event.ev.trans_id := 0;
+    FOR i := 0 TO LEN(params) - 1 DO event.ev.Params[i] := params[i]; INC(event.ev.CLen, 4) END;
+    event.ev.length := event.ev.CLen;
+    hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
+    IF hmtp.Events = NIL THEN hmtp.Events := event; MTPS.SendEvent(dev) (*prime the event pump*)
+    ELSE le := hmtp.Events; WHILE le.next # NIL DO le := le.next END;
+      le.next := event (*add event at the end of the event list*)
+    END
+  END EmitEvent;
+
+  PROCEDURE FileChanged(adr: INTEGER; event: BYTE);
+    VAR dev!: DDef.Handle; params1: ARRAY 1 OF INTEGER;
+  BEGIN dev := CLASS(DDef.Class).dev;
+    IF dev.ClassDataCmsit[dev.classId](Opt.Handle).SessionState = Opt.SESSION_OPEN THEN
+      IF event = Files.AddFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTADDED, params1)
+      ELSIF event = Files.DeleteFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTREMOVED, params1)
+      ELSIF event = Files.RenameFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTINFOCHANGED, params1)
+      END
+    END
+  END FileChanged;
+
   (**
   * @brief  USBD_MTP_Init
   *         Initialize the MTP interface
@@ -77,6 +104,7 @@ MODULE USBDMTP;
     ELSE (* Setup the pClassData pointer *)
       dev.ClassDataCmsit[dev.classId] := hmtp;
       dev.ClassData := hmtp;
+      CLASS(DDef.Class).dev := dev; (*for MTP events*)
 (*
 #ifdef USE_USBD_COMPOSITE
   /* Get the Endpoints addresses allocated for this class instance */
@@ -84,14 +112,6 @@ MODULE USBDMTP;
   MTPOutEpAdd = USBD_CoreGetEPAdd(pdev, USBD_EP_OUT, USBD_EP_TYPE_BULK, (uint8_t)pdev->classId);
   MTPCmdEpAdd = USBD_CoreGetEPAdd(pdev, USBD_EP_IN, USBD_EP_TYPE_INTR, (uint8_t)pdev->classId);
 #endif /* USE_USBD_COMPOSITE */
-*)
-(*
-      (* Setup the max packet size according to selected speed *)
-      IF dev.speed = Def.SPEED_HIGH THEN
-        ASSERT(Opt.GetRxBuffSize() >= DATA_MAX_HS_PACKET_SIZE); hmtp.rx_buff.size := DATA_MAX_HS_PACKET_SIZE
-      ELSE 
-        ASSERT(Opt.GetRxBuffSize() >= DATA_MAX_FS_PACKET_SIZE); hmtp.rx_buff.size := DATA_MAX_FS_PACKET_SIZE
-      END;
 *)
       IF dev.speed = Def.SPEED_HIGH THEN mps := DATA_MAX_HS_PACKET_SIZE
       ELSE mps := DATA_MAX_FS_PACKET_SIZE
@@ -107,7 +127,8 @@ MODULE USBDMTP;
       dev.ep_in[MTPS.CmdEpAdd MOD 10H].is_used := TRUE;
       (* Init the MTP  layer *)
        MTPS.Init(dev);
-      ret := Def.OK
+      ret := Def.OK;
+      Files.AddFileChangeCallback(FileChanged)
     END
 
     RETURN ret
@@ -120,7 +141,7 @@ MODULE USBDMTP;
   * @param  cfgidx: Configuration index
   * @retval status
   *)
-  PROCEDURE DeInit*(dev: DDef.Handle; cfgidx: BYTE);
+  PROCEDURE DeInit(dev: DDef.Handle; cfgidx: BYTE);
   BEGIN
 (*
 #ifdef USE_USBD_COMPOSITE
@@ -145,7 +166,8 @@ MODULE USBDMTP;
       MTPS.DeInit(dev);
       dev.ClassDataCmsit[dev.classId] := NIL;
       dev.ClassData := NIL
-    END
+    END;
+    Files.DelFileChangeCallback(FileChanged)
   END DeInit;
 
   (**
@@ -231,14 +253,17 @@ MODULE USBDMTP;
         hmtp.TransactionPhase := Opt.PHASE_IDLE
       ELSIF hmtp.TransactionPhase = Opt.DATA_IN_PHASE THEN
         MTPS.ReadData(dev); MTPS.SendContainer(dev);
-(*
-        (* prepare to receive next operation *)
-        dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
-*)
       ELSIF hmtp.TransactionPhase = Opt.PHASE_IDLE THEN
         (* prepare to receive next operation *)
         dev.PrepareReceive(dev, MTPS.OutEpAdd, hmtp.rx_buff^)
       END
+    ELSIF epnum = MTPS.CmdEpAdd MOD 80H THEN
+      Log.Debug("Event sent. Code: "); Log.DebugHexVLen(hmtp.Events.ev.code, 4, FALSE);
+      Log.DebugString(", param1: "); Log.DebugInt(hmtp.Events.ev.Params[0], 1);
+      Log.DebugLn;
+      hmtp.Events := hmtp.Events.next;
+      IF hmtp.Events # NIL THEN MTPS.SendEvent(dev) (*send next event*) END
+    ELSE Log.Error("Bad epnum: "); Log.ErrorInt(epnum, 1); Log.ErrorLn
     END
   END DataIn;
 
@@ -354,6 +379,38 @@ MODULE USBDMTP;
     | Def.Buffer: ASSERT(FALSE)
     END
   END ExitCircularMode;
+
+  PROCEDURE SwitchBuffer*(d: Def.Buffer);
+  BEGIN (*wlen contains the amount of excess data fetched at previous call*)
+    CASE d OF
+      Opt.Buffer: INC(d.offset, d.size DIV 2); IF d.offset >= d.size THEN d.offset := 0 END; (*switch buffer*)
+        d.length := d.wlen + d.offset (*set writing position*)
+    | Def.Buffer: ASSERT(FALSE)
+    END
+  END SwitchBuffer;
+
+  PROCEDURE Overflow*(d: Def.Buffer): BOOLEAN;
+    VAR o: BOOLEAN;
+  BEGIN
+    CASE d OF
+      Opt.Buffer: d.wlen := d.length - d.offset; IF d.wlen < 0 THEN INC(d.wlen, d.size) END;
+      o := d.wlen > d.size DIV 2
+    | Def.Buffer: ASSERT(FALSE)
+    END
+    RETURN o
+  END Overflow;
+
+  PROCEDURE PrepareBuffer*(dev: Def.Handle; d: Def.Buffer);
+    (*prepare the buffer for next send*)
+  BEGIN
+    CASE d OF
+      Opt.Buffer: d.length := d.wlen; IF d.length >  d.size DIV 2 THEN d.length := d.size DIV 2 END;
+        DEC(d.wlen, d.length); (*wlen contains the amount of excess data to be sent at next call*)
+        (*be sure to send a ZLP if necessary for the last packet*)
+        IF d.wlen = 0 THEN (*last packet*) DH.SetEPAutoZLP(dev(DDef.Handle), MTPS.InEpAdd, TRUE) END;
+    | Def.Buffer: ASSERT(FALSE)
+    END
+  END PrepareBuffer;
 
   PROCEDURE initCLASS;
     VAR c!: DDef.Class;

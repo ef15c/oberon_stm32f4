@@ -49,6 +49,29 @@ MODULE USBDMTPStorage;
   END SendData;
 
   (**
+  * @brief  SendEvent
+  *         Send the event on interrupt EP
+  * @param  pdev: device instance
+  * @param  buf: pointer to data buffer
+  *)
+  PROCEDURE SendEvent*(dev: DDef.Handle);
+
+    PROCEDURE Send(dev: DDef.Handle; buf: Def.BufferDesc);
+    BEGIN DH.Transmit(dev, CmdEpAdd, buf, buf.length)
+    END Send;
+
+  BEGIN
+(*
+#ifdef USE_USBD_COMPOSITE
+  /* Get the Endpoints addresses allocated for this class instance */
+  MTPInEpAdd = USBD_CoreGetEPAdd(pdev, USBD_EP_CMD, USBD_EP_TYPE_INTERRUPT, (uint8_t)pdev->classId);
+#endif /* USE_USBD_COMPOSITE */
+*)
+    Send(dev, dev(DDef.Handle).ClassDataCmsit[dev.classId](Opt.Handle).Events.ev)
+  END SendEvent;
+
+
+  (**
   * @brief  USBD_MTP_STORAGE_ReceiveContainer
   *         Receive the Data from USB BulkOut Buffer to Pointer
   * @param  pdev: device instance

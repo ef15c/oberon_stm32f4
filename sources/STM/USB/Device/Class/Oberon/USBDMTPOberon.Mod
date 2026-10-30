@@ -34,7 +34,7 @@ MODULE USBDMTPOberon;
   END WritePair;
 
   (*convert an Oberon date to an ISO 8601 date in the format "YYYYMMDDThhmmss"*)
-  PROCEDURE DateToString*(od: INTEGER; VAR iso: ARRAY OF CHAR);
+  PROCEDURE DateToString(od: INTEGER; VAR iso: ARRAY OF CHAR);
     VAR l: INTEGER;
   BEGIN l := 0;
     iso[l] := "2"; INC(l); iso[l] := "0"; INC(l);
@@ -149,7 +149,6 @@ MODULE USBDMTPOberon;
     Def.PutHalfword(d, O.EVENT_OBJECTADDED);
     Def.PutHalfword(d, O.EVENT_OBJECTREMOVED);
     Def.PutHalfword(d, O.EVENT_OBJECTINFOCHANGED);
-    Def.PutHalfword(d, O.EVENT_OBJECTPROPCHANGED);
     O.EndArray(d, w, SYSTEM.SIZE(HALFWORD))
   END PutDeviceEventsSupported;
 
@@ -332,10 +331,10 @@ MODULE USBDMTPOberon;
 
   PROCEDURE PutNextOHData(dev: Def.Handle; d: Def.Buffer);
     VAR adr: INTEGER; addvalid: BOOLEAN;
-  BEGIN O.SwitchBuffer(d);
+  BEGIN M.SwitchBuffer(d);
     REPEAT addvalid :=  getNext(adr); IF addvalid THEN Def.PutInteger(d, adr) END;
-    UNTIL O.Overflow(d) OR ~addvalid; (*the buffer is now filled with wlen bytes*)
-    O.PrepareBuffer(d); (*prepare the buffer for next send*)
+    UNTIL M.Overflow(d) OR ~addvalid; (*the buffer is now filled with wlen bytes*)
+    M.PrepareBuffer(dev, d); (*prepare the buffer for next send*)
     IF d.length = 0 THEN (*this is the last call*)
       M.ExitCircularMode(dev, d); fops(O.UserIf).PutNextData := PutNextDataNone
     END
@@ -438,15 +437,15 @@ MODULE USBDMTPOberon;
 
   PROCEDURE PutNextPLData(dev: Def.Handle; d: Def.Buffer);
     VAR adr, len: INTEGER; addvalid: BOOLEAN;
-  BEGIN O.SwitchBuffer(d);
+  BEGIN M.SwitchBuffer(d);
     REPEAT addvalid :=  getNext(adr);
       IF addvalid THEN PutOPL(d, adr);
         IF nbo # 0 THEN (*fix array size*) len := d.length; d.length := O.CONT_HEADER_SIZE;
           Def.PutInteger(d, nbo*count); d.length := len; nbo := 0
         END
       END
-    UNTIL O.Overflow(d) OR ~addvalid; (*the buffer is now filled with wlen bytes*)
-    O.PrepareBuffer(d); (*prepare the buffer for next send*)
+    UNTIL M.Overflow(d) OR ~addvalid; (*the buffer is now filled with wlen bytes*)
+    M.PrepareBuffer(dev, d); (*prepare the buffer for next send*)
     IF d.length = 0 THEN (*this is the last call*)
       M.ExitCircularMode(dev, d); fops(O.UserIf).PutNextData := PutNextDataNone
     END
@@ -475,10 +474,11 @@ MODULE USBDMTPOberon;
 
   PROCEDURE PutNextObjectData(dev: Def.Handle; d: Def.Buffer);
     VAR b: BYTE;
-  BEGIN O.SwitchBuffer(d);
+  BEGIN M.SwitchBuffer(d);
     REPEAT Files.ReadByte(R, b); IF ~R.eof THEN Def.PutByte(d, b) END
-    UNTIL O.Overflow(d) OR R.eof; (*the buffer is now filled with wlen bytes*)
-    O.PrepareBuffer(d); (*prepare the buffer for next send*)
+    UNTIL M.Overflow(d) OR R.eof; (*the buffer is now filled with wlen bytes*)
+    M.PrepareBuffer(dev, d); (*prepare the buffer for next send*)
+    Log.Debug("length: "); Log.DebugInt(d.length, 1); Log.DebugLn;
     IF d.length = 0 THEN (*this is the last call*)
       M.ExitCircularMode(dev, d); fops(O.UserIf).PutNextData := PutNextDataNone
     END

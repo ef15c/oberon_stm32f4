@@ -441,15 +441,6 @@ MODULE USBDMTPOpt;
     VEND_EXT_ID = 6;
     VEND_EXT_VERSION = 100;
 
-(*
-  (*receive state machine states*)
-    RECEIVE_IDLE_STATE* = 0;
-    RECEIVE_COMMAND_DATA* = 1;
-    RECEIVE_FIRST_DATA* = 2;
-    RECEIVE_REST_OF_DATA* = 3;
-    SEND_RESPONSE* = 4;
-*)
-
   TYPE
     BufferDesc* = RECORD(Def.BufferDesc) data*: ARRAY 2*MEDIA_PACKET OF BYTE END;
     CircularBuffer* = RECORD(BufferDesc) circular*: BOOLEAN; wlen*: INTEGER END;
@@ -462,8 +453,11 @@ MODULE USBDMTPOpt;
     END;
 
     ParamContainer* = RECORD(ContainerHeader)
-      Param1*, Param2*, Param3*, Param4*, Param5*: INTEGER
+      Params*: ARRAY 5 OF INTEGER
     END;
+
+    Event* = POINTER TO EventDesc;
+    EventDesc* = RECORD next*: Event; ev*: ParamContainer END;
 
     Handle* = POINTER TO HandleDesc;
     HandleDesc* = RECORD(Def.ClassHandleDesc)
@@ -472,6 +466,7 @@ MODULE USBDMTPOpt;
       rx_buff*, tx_buff*: Buffer; (* must be 32-bit aligned *)
       TransactionPhase*, SessionState*(*, RECEIVE_DATA_STATUS**): BYTE;
       ReqOp*, Response*: ParamContainer;
+      Events*: Event;
       cur_len*, readbytes*: INTEGER;
       obj_format*: HALFWORD;
       session_id, storage_id, objhandle: INTEGER
@@ -523,36 +518,6 @@ MODULE USBDMTPOpt;
       PutNextData*: PROCEDURE(dev: Def.Handle; b: Def.Buffer);
 (*      ScratchBuff*: Generic*)
     END;
-
-  PROCEDURE SwitchBuffer*(d: Def.Buffer);
-  BEGIN (*wlen contains the amount of excess data fetched at previous call*)
-    CASE d OF
-      Buffer: INC(d.offset, d.size DIV 2); IF d.offset >= d.size THEN d.offset := 0 END; (*switch buffer*)
-        d.length := d.wlen + d.offset (*set writing position*)
-    | Def.Buffer: ASSERT(FALSE)
-    END
-  END SwitchBuffer;
-
-  PROCEDURE Overflow*(d: Def.Buffer): BOOLEAN;
-    VAR o: BOOLEAN;
-  BEGIN
-    CASE d OF
-      Buffer: d.wlen := d.length - d.offset; IF d.wlen < 0 THEN INC(d.wlen, d.size) END;
-      o := d.wlen >= d.size DIV 2
-    | Def.Buffer: ASSERT(FALSE)
-    END
-    RETURN o
-  END Overflow;
-
-  PROCEDURE PrepareBuffer*(d: Def.Buffer);
-    (*prepare the buffer for next send*)
-  BEGIN
-    CASE d OF
-      Buffer: d.length := d.wlen; IF d.length >  d.size DIV 2 THEN d.length := d.size DIV 2 END;
-        DEC(d.wlen, d.length); (*wlen contains the amount of excess data to be sent at next call*)
-    | Def.Buffer: ASSERT(FALSE)
-    END
-  END PrepareBuffer;
 
   PROCEDURE BeginArray*(d: Def.Buffer; VAR beg: INTEGER);
   BEGIN Def.PutInteger(d, 0); (*placeholder for the number of elements of the array*)
@@ -641,13 +606,13 @@ MODULE USBDMTPOpt;
   BEGIN
     hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     (* Param1 == Session ID*)
-    IF hmtp.ReqOp.Param1 = 0 THEN hmtp.Response.code := RESPONSE_INVALID_PARAMETER
+    IF hmtp.ReqOp.Params[0] = 0 THEN hmtp.Response.code := RESPONSE_INVALID_PARAMETER
     ELSIF hmtp.SessionState = SESSION_OPEN THEN (* driver supports single session *)
-      hmtp.Response.code := RESPONSE_SESSION_ALREADY_OPEN; hmtp.Response.Param1 := hmtp.session_id;
+      hmtp.Response.code := RESPONSE_SESSION_ALREADY_OPEN; hmtp.Response.Params[0] := hmtp.session_id;
       hmtp.Response.CLen := CONT_HEADER_SIZE + 4;
-    ELSE hmtp.Response.code := RESPONSE_OK; hmtp.SessionState := SESSION_OPEN; hmtp.session_id := hmtp.ReqOp.Param1
-    END;
-    Log.User("MTP session open")
+    ELSE hmtp.Response.code := RESPONSE_OK; hmtp.SessionState := SESSION_OPEN; hmtp.session_id := hmtp.ReqOp.Params[0];
+      Log.User("MTP session open")
+    END
   END OpenSession;
 
   (**
@@ -661,9 +626,9 @@ MODULE USBDMTPOpt;
   BEGIN
     hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     IF hmtp.SessionState = SESSION_NOT_OPEN THEN hmtp.Response.code := RESPONSE_SESSION_NOT_OPEN
-    ELSE hmtp.Response.code := RESPONSE_OK; hmtp.SessionState := SESSION_NOT_OPEN
-    END;
-    Log.User("MTP session closed")
+    ELSE hmtp.Response.code := RESPONSE_OK; hmtp.SessionState := SESSION_NOT_OPEN;
+      Log.User("MTP session closed")
+    END
   END CloseSession;
 
   (**
@@ -726,8 +691,8 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectHandles(dev: Def.Handle; uif: UserIf; hmtp: Handle): HALFWORD;
-    RETURN uif.PutObjectHandles(dev, hmtp.tx_buff, hmtp.ReqOp.Param1,
-      hmtp.ReqOp.Param2, hmtp.ReqOp.Param3)
+    RETURN uif.PutObjectHandles(dev, hmtp.tx_buff, hmtp.ReqOp.Params[0],
+      hmtp.ReqOp.Params[1], hmtp.ReqOp.Params[2])
   END Get_ObjectHandles;
 
   (**
@@ -737,7 +702,7 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropsSupp(uif: UserIf; hmtp: Handle);
-  BEGIN uif.PutObjectPropsSupported(hmtp.tx_buff, hmtp.ReqOp.Param1)
+  BEGIN uif.PutObjectPropsSupported(hmtp.tx_buff, hmtp.ReqOp.Params[0])
   END Get_ObjectPropsSupp;
 
   PROCEDURE Get_ObjectPropDatatype*(opc: HALFWORD): HALFWORD;
@@ -770,7 +735,7 @@ MODULE USBDMTPOpt;
   PROCEDURE Get_ObjectPropDesc(uif: UserIf; hmtp: Handle): HALFWORD;
     VAR ret: HALFWORD; opc, of, dt: INTEGER; d!: Buffer;
   BEGIN ret := RESPONSE_OK;
-    opc := hmtp.ReqOp.Param1; of := hmtp.ReqOp.Param2;
+    opc := hmtp.ReqOp.Params[0]; of := hmtp.ReqOp.Params[1];
     dt := Get_ObjectPropDatatype(opc);
     IF dt # 0 THEN
       d := hmtp.tx_buff;
@@ -792,7 +757,7 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropValue(uif: UserIf; hmtp: Handle);
-  BEGIN uif.PutObjectPropValue(hmtp.tx_buff, hmtp.ReqOp.Param1, hmtp.ReqOp.Param2)
+  BEGIN uif.PutObjectPropValue(hmtp.tx_buff, hmtp.ReqOp.Params[0], hmtp.ReqOp.Params[1])
   END Get_ObjectPropValue;
 
   (**
@@ -802,8 +767,8 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropList(dev: Def.Handle; uif: UserIf; hmtp: Handle): HALFWORD;
-    RETURN uif.PutObjectPropList(dev, hmtp.tx_buff, hmtp.ReqOp.Param1,
-      hmtp.ReqOp.Param2, hmtp.ReqOp.Param3, hmtp.ReqOp.Param4, hmtp.ReqOp.Param5)
+    RETURN uif.PutObjectPropList(dev, hmtp.tx_buff, hmtp.ReqOp.Params[0],
+      hmtp.ReqOp.Params[1], hmtp.ReqOp.Params[2], hmtp.ReqOp.Params[3], hmtp.ReqOp.Params[4])
   END Get_ObjectPropList;
 
   (**
@@ -815,7 +780,7 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_Object(dev: Def.Handle; uif: UserIf; hmtp: Handle): HALFWORD;
-    RETURN uif.PutObject(dev, hmtp.tx_buff, hmtp.ReqOp.Param1)
+    RETURN uif.PutObject(dev, hmtp.tx_buff, hmtp.ReqOp.Params[0])
   END Get_Object;
 
   (**
@@ -837,7 +802,7 @@ MODULE USBDMTPOpt;
   PROCEDURE Get_ObjectInfo(uif: UserIf; hmtp: Handle);
     VAR oh: INTEGER; d!: Buffer;
   BEGIN 
-    oh := hmtp.ReqOp.Param1; d := hmtp.tx_buff;
+    oh := hmtp.ReqOp.Params[0]; d := hmtp.tx_buff;
     uif.PutObjectStorageId(d, oh);
     uif.PutObjectFormat(d, oh);
     uif.PutProtectionStatus(d, oh);
@@ -903,7 +868,7 @@ MODULE USBDMTPOpt;
       Def.PutInteger(d, hmtp.storage_id);
       Def.PutInteger(d, hmtp.objhandle);
       Def.PutInteger(d, n_idx)*)
-    ELSIF op = OP_GET_DEVICE_PROP_VALUE THEN uif.PutDevicePropValue(d, hmtp.ReqOp.Param1)
+    ELSIF op = OP_GET_DEVICE_PROP_VALUE THEN uif.PutDevicePropValue(d, hmtp.ReqOp.Params[0])
     ELSE hmtp.Response.code := RESPONSE_OPERATION_NOT_SUPPORTED;
       Log.Error("Unhandled op: "); Log.ErrorHexVLen(op, 8, FALSE); Log.ErrorLn; Log.Flush
     END;
@@ -934,7 +899,7 @@ MODULE USBDMTPOpt;
     IF hmtp.SessionState = SESSION_NOT_OPEN THEN (* no session opened *)
       (* if GetDevice Info called outside a session then SessionID and Transaction_ID shall be 0x00000000*)
       (* Param1 == session ID*)
-      IF (hmtp.ReqOp.Param1 = 0) & (hmtp.ReqOp.trans_id = 0) THEN
+      IF (hmtp.ReqOp.Params[0] = 0) & (hmtp.ReqOp.trans_id = 0) THEN
         hmtp.Response.code := RESPONSE_OK
       ELSE hmtp.Response.code := RESPONSE_INVALID_PARAMETER
       END
