@@ -48,7 +48,6 @@ MODULE USBDMTPOberon;
     iso[l] := 0X
   END DateToString;
 
-(*
   PROCEDURE GetExt(name: FileDir.FileName; VAR ext: FileDir.FileName);
     VAR i, l, dp: INTEGER;
   BEGIN l := 0;
@@ -62,6 +61,7 @@ MODULE USBDMTPOberon;
     ext[i - dp] := 0X;
   END GetExt;
 
+(*
   PROCEDURE OFByExt(ext: FileDir.FileName): HALFWORD;
     VAR ofc: HALFWORD;
   BEGIN
@@ -93,6 +93,10 @@ MODULE USBDMTPOberon;
   PROCEDURE DeInit;
   BEGIN ohl := NIL; F := NIL; Files.Set(R, NIL, 0)
   END DeInit;
+
+  PROCEDURE EventReceived(event: O.ParamContainer);
+  BEGIN ohl := NIL; lohl := NIL; idx := 0; (*clear object handles cache*)
+  END EventReceived;
 
   (**
   * @brief  USBD_MTP_Itf_Cancel
@@ -354,9 +358,8 @@ MODULE USBDMTPOberon;
     IF (sid # 00010001H) & (sid # 0FFFFFFFFH) THEN ret := O.RESPONSE_STORE_NOT_AVAILABLE
     ELSIF (ofh # 0) & (ofh # 0FFFFFFFFH) THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE
     ELSIF ofc # 0 THEN ret := O.RESPONSE_SPECIFICATION_BY_FORMAT_NOT_SUPPORTED
-    ELSE
-      NEW(ohl); lohl := ohl;
-      FileDir.Enumerate(Files.fshd, "", storeFileHandle); (*enumerate all files addresses and store them in oh*)
+    ELSE NEW(ohl); lohl := ohl;
+      FileDir.Enumerate(Files.fshd, "", storeFileHandle); (*enumerate all files addresses and store them in ohl*)
       lohl := ohl; nbf := 0; REPEAT INC(nbf, lohl.nofh); lohl := lohl.next UNTIL lohl = NIL;
       O.UpdateContainerLength(d, O.CONT_HEADER_SIZE + (nbf+1)*4); (*fix container size*)
       Def.PutInteger(d, nbf); (*array len*)
@@ -365,6 +368,34 @@ MODULE USBDMTPOberon;
     END
     RETURN ret
   END PutObjectHandles;
+
+  PROCEDURE GetNumObjects(sid, ofc, oha: INTEGER; VAR nb: INTEGER): HALFWORD;
+    VAR ret: HALFWORD;
+  BEGIN ret := O.RESPONSE_OK;
+    IF (sid # 00010001H) & (sid # 0FFFFFFFFH) THEN ret := O.RESPONSE_STORE_NOT_AVAILABLE
+    ELSIF ofc # 0 THEN ret := O.RESPONSE_SPECIFICATION_BY_FORMAT_NOT_SUPPORTED
+    ELSIF oha # 0 THEN ret := O.RESPONSE_PARAMETER_NOT_SUPPORTED
+    ELSE
+      IF ohl = NIL THEN NEW(ohl); lohl := ohl; FileDir.Enumerate(Files.fshd, "", storeFileHandle) END;
+      lohl := ohl; nb := 0; REPEAT INC(nb, lohl.nofh); lohl := lohl.next UNTIL lohl = NIL;
+    END
+    RETURN ret
+  END GetNumObjects;
+
+  PROCEDURE DeleteObject(oh, ofc: INTEGER): HALFWORD;
+    VAR ret: HALFWORD; fh: FileDir.FileHeader; ext: FileDir.FileName;
+      res: INTEGER;
+  BEGIN ret := O.RESPONSE_OK;
+    IF (oh = 0) OR (oh = 0FFFFFFFFH) THEN ret := O.RESPONSE_PARAMETER_NOT_SUPPORTED
+    ELSIF ofc # 0 THEN ret := O.RESPONSE_SPECIFICATION_BY_FORMAT_NOT_SUPPORTED
+    ELSE FileSystem.GetSector(Files.fshd, oh, fh); GetExt(fh.name, ext);
+      IF (ext = "Mod") OR (ext = "m4c") THEN ret := O.RESPONSE_OBJECT_WRITEPROTECTED
+      ELSE Files.Delete(fh.name, res);
+        IF res # 0 THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE END
+      END
+    END
+    RETURN ret
+  END DeleteObject;
 
   PROCEDURE PutObjectStorageId(d: Def.Buffer; oh: INTEGER);
   BEGIN Def.PutInteger(d, STORAGE_ID)
@@ -514,6 +545,8 @@ MODULE USBDMTPOberon;
     (*todo: develop fops.* procedures*)
     u.Init := Init;
     u.DeInit := DeInit;
+    u.EventReceived := EventReceived;
+    u.GetNumObjects := GetNumObjects;
     u.Create_NewObject := NIL;
     u.GetIdx := NIL;
     u.GetParentObject := NIL;
@@ -525,7 +558,7 @@ MODULE USBDMTPOberon;
     u.GetFreeSpaceInBytes := NIL;
     u.GetNewIndex := NIL;
 (*    u.WriteData := NIL;*)
-    u.DeleteObject := NIL;
+    u.DeleteObject := DeleteObject;
     u.Cancel := Cancel;
     u.PutVendorExtension := PutVendorExtension;
     u.PutDeviceOpsSupported := PutDeviceOpsSupported;

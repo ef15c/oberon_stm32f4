@@ -402,6 +402,7 @@ MODULE USBDMTPOpt;
     RESPONSE_INVALID_OBJECT_HANDLE* = 2009H;
     RESPONSE_DEVICEPROP_NOT_SUPPORTED* = 200AH;
     RESPONSE_STORE_FULL* = 200CH;
+    RESPONSE_OBJECT_WRITEPROTECTED* = 200DH;
     RESPONSE_ACCESS_DENIED* = 200FH;
     RESPONSE_STORE_NOT_AVAILABLE* = 2013H;
     RESPONSE_SPECIFICATION_BY_FORMAT_NOT_SUPPORTED* = 2014H;
@@ -479,6 +480,8 @@ MODULE USBDMTPOpt;
     UserIf* = POINTER TO UserIfDesc;
     UserIfDesc* = RECORD(DDef.UserDataDesc)
       Init*, DeInit*: PROCEDURE;
+      EventReceived*: PROCEDURE(event: ParamContainer);
+      GetNumObjects*: PROCEDURE(sid, ofc, oha: INTEGER; VAR nbo: INTEGER): HALFWORD;
       Create_NewObject*: PROCEDURE(objInfo: BufferDesc; objhandle: INTEGER): HALFWORD;
       GetIdx*: PROCEDURE(Param3, objhandle: INTEGER): INTEGER;
       GetParentObject*: PROCEDURE(Param: INTEGER): INTEGER;
@@ -492,7 +495,7 @@ MODULE USBDMTPOpt;
 (*      WriteData*: PROCEDURE(buff: BufferDesc);
       GetContainerLength*: PROCEDURE(Param1: INTEGER): INTEGER;
 *)
-      DeleteObject*: PROCEDURE(Param1: INTEGER): HALFWORD;
+      DeleteObject*: PROCEDURE(oh, ofc: INTEGER): HALFWORD;
       Cancel*: PROCEDURE(Phase: INTEGER);
 (*      CopyBuffer*: PROCEDURE(s, d: Def.Buffer; idx: INTEGER);*)
       PutVendorExtension*, PutDeviceOpsSupported*, PutDeviceEventsSupported*,
@@ -595,6 +598,13 @@ MODULE USBDMTPOpt;
     RETURN SYSTEM.SIZE(BufferDesc) - SYSTEM.SIZE(Def.BufferDesc)
   END GetRxBuffSize;
 
+  PROCEDURE DispatchEvent*(dev: DDef.Handle; event: ParamContainer);
+    VAR hmtp!: Handle; uif!: UserIf;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle);
+    uif := dev.UserData[dev.classId](UserIf);
+    uif.EventReceived(event)
+  END DispatchEvent;
+
   (**
   * @brief  USBD_MTP_OPT_OpenSession
   *         Open a new session
@@ -603,13 +613,12 @@ MODULE USBDMTPOpt;
   *)
   PROCEDURE OpenSession*(dev: DDef.Handle);
     VAR hmtp!: Handle;
-  BEGIN
-    hmtp := dev.ClassDataCmsit[dev.classId](Handle);
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     (* Param1 == Session ID*)
     IF hmtp.ReqOp.Params[0] = 0 THEN hmtp.Response.code := RESPONSE_INVALID_PARAMETER
     ELSIF hmtp.SessionState = SESSION_OPEN THEN (* driver supports single session *)
       hmtp.Response.code := RESPONSE_SESSION_ALREADY_OPEN; hmtp.Response.Params[0] := hmtp.session_id;
-      hmtp.Response.CLen := CONT_HEADER_SIZE + 4;
+      hmtp.Response.CLen := CONT_HEADER_SIZE + 4
     ELSE hmtp.Response.code := RESPONSE_OK; hmtp.SessionState := SESSION_OPEN; hmtp.session_id := hmtp.ReqOp.Params[0];
       Log.User("MTP session open")
     END
@@ -623,13 +632,29 @@ MODULE USBDMTPOpt;
   *)
   PROCEDURE CloseSession*(dev: DDef.Handle);
     VAR hmtp!: Handle;
-  BEGIN
-    hmtp := dev.ClassDataCmsit[dev.classId](Handle);
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     IF hmtp.SessionState = SESSION_NOT_OPEN THEN hmtp.Response.code := RESPONSE_SESSION_NOT_OPEN
     ELSE hmtp.Response.code := RESPONSE_OK; hmtp.SessionState := SESSION_NOT_OPEN;
       Log.User("MTP session closed")
     END
   END CloseSession;
+
+  (**
+  * @brief  GetNumObject
+  *         Count objects in storages
+  * @param  pdev: device instance
+  * @retval None
+  *)
+  PROCEDURE GetNumObjects*(dev: DDef.Handle);
+    VAR hmtp!: Handle; nb: INTEGER; uif!: UserIf;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle);
+    uif := dev.UserData[dev.classId](UserIf);
+    hmtp.Response.code := uif.GetNumObjects(hmtp.ReqOp.Params[0],
+      hmtp.ReqOp.Params[1], hmtp.ReqOp.Params[2], nb);
+    IF hmtp.Response.code = RESPONSE_OK THEN hmtp.Response.Params[0] := nb;
+      hmtp.Response.CLen := CONT_HEADER_SIZE + 4
+    END
+  END GetNumObjects;
 
   (**
   * @brief  MTP_Get_DeviceInfo
@@ -870,7 +895,7 @@ MODULE USBDMTPOpt;
       Def.PutInteger(d, n_idx)*)
     ELSIF op = OP_GET_DEVICE_PROP_VALUE THEN uif.PutDevicePropValue(d, hmtp.ReqOp.Params[0])
     ELSE hmtp.Response.code := RESPONSE_OPERATION_NOT_SUPPORTED;
-      Log.Error("Unhandled op: "); Log.ErrorHexVLen(op, 8, FALSE); Log.ErrorLn; Log.Flush
+      Log.Error("Unhandled op: "); Log.ErrorHexVLen(op, 4, FALSE); Log.ErrorLn; Log.Flush
     END;
     IF GetContainerLength(d) = -2 THEN (*the getter does not set the size, assumed to be d.length*)
       UpdateContainerLength(d, d.length)
@@ -1034,16 +1059,9 @@ MODULE USBDMTPOpt;
   *)
   PROCEDURE DeleteObject*(dev: DDef.Handle);
     VAR hmtp!: Handle; uif!: UserIf;
-  BEGIN
-(*TODO
-    hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.GenericContainer.length := 0;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Handle);
     uif := dev.UserData[dev.classId](UserIf);
-    hmtp.GenericContainer.trans_id := hmtp.OperationsContainer.trans_id;
-    hmtp.GenericContainer.type := CONT_TYPE_RESPONSE;
-    hmtp.GenericContainer.CLen :=  CONT_HEADER_SIZE + hmtp.GenericContainer.length;
-    hmtp.GenericContainer.length := hmtp.GenericContainer.CLen;
-    hmtp.ResponseCode := uif.DeleteObject(hmtp.OperationsContainer.Param1)
-*)
+    hmtp.Response.code := uif.DeleteObject(hmtp.ReqOp.Params[0], hmtp.ReqOp.Params[1])
   END DeleteObject;
 
 END USBDMTPOpt.

@@ -187,7 +187,7 @@ MODULE USBDMTPStorage;
     IF op = Opt.OP_GET_DEVICE_INFO THEN Opt.GetDeviceInfo(dev)
     ELSIF op = Opt.OP_OPEN_SESSION THEN Opt.OpenSession(dev)
     ELSIF op = Opt.OP_CLOSE_SESSION THEN Opt.CloseSession(dev)
-(*    ELSIF op = Opt.OP_GET_OBJECT THEN Opt.GetObject(dev); hmtp.TransactionPhase := Opt.DATA_IN_PHASE*)
+    ELSIF op = Opt.OP_GET_NUM_OBJECTS THEN Opt.GetNumObjects(dev)
     ELSIF op = Opt.OP_SEND_OBJECT_INFO THEN Opt.SendObjectInfo(dev, hmtp.rx_buff); hmtp.TransactionPhase := Opt.DATA_OUT_PHASE
     ELSIF op = Opt.OP_SEND_OBJECT THEN Opt.SendObject(dev, hmtp.rx_buff); hmtp.TransactionPhase := Opt.DATA_OUT_PHASE
     ELSIF op = Opt.OP_DELETE_OBJECT THEN Opt.DeleteObject(dev)

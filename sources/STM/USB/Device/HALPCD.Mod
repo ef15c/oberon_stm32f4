@@ -63,8 +63,8 @@ MODULE HALPCD;
       switch to static allocation of the messgage objects
       *)
 
-    DOS: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Data Out stage message*)
-    DIS: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Data In stage message*)
+    DOS: ARRAY 5+1 OF MsgDesc;    (*!< USB OTG PCD Data Out stage message*)
+    DIS: ARRAY 5+1 OF MsgDesc;    (*!< USB OTG PCD Data In stage message*)
     SS: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Setup stage message*)
     IOUTI: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Isochronous Out incomplete message*)
     IINI: ARRAY 2+1 OF MsgDesc;    (*!< USB OTG PCD Isochronous In incomplete message*)

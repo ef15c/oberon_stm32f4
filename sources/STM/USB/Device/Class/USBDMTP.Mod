@@ -65,27 +65,26 @@ MODULE USBDMTP;
   PROCEDURE EmitEvent(dev: DDef.Handle; code: HALFWORD; params: ARRAY OF INTEGER);
     VAR  hmtp!: Opt.Handle; type: SET; le!,event!: Opt.Event; i: INTEGER;
   BEGIN NEW(event);
-    Log.Debug("Trigger sending of event, code: "); Log.DebugHexVLen(code, 4, FALSE);
-    Log.DebugString(", param 1: "); Log.DebugInt(params[0], 1); Log.DebugLn;
     event.ev.CLen := Opt.CONT_HEADER_SIZE; event.ev.type := Opt.CONT_TYPE_EVENT;
     event.ev.code := code; event.ev.trans_id := 0;
     FOR i := 0 TO LEN(params) - 1 DO event.ev.Params[i] := params[i]; INC(event.ev.CLen, 4) END;
     event.ev.length := event.ev.CLen;
     hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
-    IF hmtp.Events = NIL THEN hmtp.Events := event; MTPS.SendEvent(dev) (*prime the event pump*)
-    ELSE le := hmtp.Events; WHILE le.next # NIL DO le := le.next END;
-      le.next := event (*add event at the end of the event list*)
-    END
+    IF hmtp.SessionState = Opt.SESSION_OPEN THEN
+      IF hmtp.Events = NIL THEN hmtp.Events := event; MTPS.SendEvent(dev) (*prime the event pump*)
+      ELSE le := hmtp.Events; WHILE le.next # NIL DO le := le.next END;
+        le.next := event (*add event at the end of the event list*)
+      END
+    END;
+    Opt.DispatchEvent(dev, event.ev) (*Inform backend*)
   END EmitEvent;
 
   PROCEDURE FileChanged(adr: INTEGER; event: BYTE);
     VAR dev!: DDef.Handle; params1: ARRAY 1 OF INTEGER;
   BEGIN dev := CLASS(DDef.Class).dev;
-    IF dev.ClassDataCmsit[dev.classId](Opt.Handle).SessionState = Opt.SESSION_OPEN THEN
-      IF event = Files.AddFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTADDED, params1)
-      ELSIF event = Files.DeleteFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTREMOVED, params1)
-      ELSIF event = Files.RenameFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTINFOCHANGED, params1)
-      END
+    IF event = Files.AddFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTADDED, params1)
+    ELSIF event = Files.DeleteFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTREMOVED, params1)
+    ELSIF event = Files.RenameFile THEN params1[0] := adr; EmitEvent(dev, Opt.EVENT_OBJECTINFOCHANGED, params1)
     END
   END FileChanged;
 
