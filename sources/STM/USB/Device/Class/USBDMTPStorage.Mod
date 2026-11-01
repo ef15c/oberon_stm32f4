@@ -9,7 +9,7 @@ MODULE USBDMTPStorage;
   ******************************************************************************
   *)
   IMPORT SYSTEM, Log := USBLog, Def := USBDef, DDef := USBDDef, IoReq := USBDIoReq, DH := USBDHal,
-    Opt := USBDMTPOpt;
+    O := USBDMTPOpt;
 
   CONST
     IN_EP* = 81H; (* EP1 for data IN *)
@@ -26,6 +26,8 @@ MODULE USBDMTPStorage;
     DATA_TYPE* = 0;
     REP_TYPE* = 1;
 *)
+
+  TYPE RawContainer = ARRAY SYSTEM.SIZE(O.ParamContainer) OF BYTE;
 
   VAR InEpAdd*, OutEpAdd*, CmdEpAdd*: BYTE;
 
@@ -67,22 +69,21 @@ MODULE USBDMTPStorage;
   MTPInEpAdd = USBD_CoreGetEPAdd(pdev, USBD_EP_CMD, USBD_EP_TYPE_INTERRUPT, (uint8_t)pdev->classId);
 #endif /* USE_USBD_COMPOSITE */
 *)
-    Send(dev, dev(DDef.Handle).ClassDataCmsit[dev.classId](Opt.Handle).Events.ev)
+    Send(dev, dev(DDef.Handle).ClassDataCmsit[dev.classId](O.Handle).Events.ev)
   END SendEvent;
 
 
   (**
   * @brief  USBD_MTP_STORAGE_ReceiveContainer
-  *         Receive the Data from USB BulkOut Buffer to Pointer
+  *         Receive the Data from USB BulkOut Buffer to a param container
   * @param  pdev: device instance
-  * @param  pDst: destination address to copy the buffer
-  * @param  len: length of data to copy
+  * @param  pDst: destination to copy the buffer
   * @retval status value
   *)
-  PROCEDURE ReceiveContainer(dev: DDef.Handle; VAR Dst: Opt.ParamContainer);
-    VAR hmtp!: Opt.Handle;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
-    SYSTEM.COPY(ORD(hmtp.rx_buff), SYSTEM.ADR(Dst), SYSTEM.SIZE(Opt.ParamContainer) DIV 4)
+  PROCEDURE ReceiveContainer(dev: DDef.Handle; VAR Dst: O.ParamContainer);
+    VAR hmtp!: O.Handle;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle);
+    SYSTEM.COPY(ORD(hmtp.rx_buff), SYSTEM.ADR(Dst), SYSTEM.SIZE(O.ParamContainer) DIV 4)
   END ReceiveContainer;
 
  (**
@@ -93,11 +94,11 @@ MODULE USBDMTPStorage;
   * @retval None
   *)
   PROCEDURE Cancel*(dev: DDef.Handle; ResponsePhase: BYTE);
-    VAR hmtp!: Opt.Handle;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
-    hmtp.TransactionPhase := Opt.PHASE_IDLE;
-    IF ResponsePhase = Opt.DATA_IN_PHASE THEN dev.UserData[dev.classId](Opt.UserIf).Cancel(1)
-    ELSE dev.UserData[dev.classId](Opt.UserIf).Cancel(0)
+    VAR hmtp!: O.Handle;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle);
+    hmtp.TransactionPhase := O.PHASE_IDLE;
+    IF ResponsePhase = O.DATA_IN_PHASE THEN dev.UserData[dev.classId](O.UserIf).Cancel(1)
+    ELSE dev.UserData[dev.classId](O.UserIf).Cancel(0)
     END
   END Cancel;
 
@@ -108,8 +109,8 @@ MODULE USBDMTPStorage;
   * @retval status value
   *)
   PROCEDURE Init*(dev: DDef.Handle);
-    VAR hmtp!: Opt.Handle;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
+    VAR hmtp!: O.Handle;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle);
 (*
 #ifdef USE_USBD_COMPOSITE
   /* Get the Endpoints addresses allocated for this class instance */
@@ -117,7 +118,7 @@ MODULE USBDMTPStorage;
 #endif /* USE_USBD_COMPOSITE */
 *)
     (* Initialize the HW layyer of the file system *)
-    dev.UserData[dev.classId](Opt.UserIf).Init;
+    dev.UserData[dev.classId](O.UserIf).Init;
     (* Prepare EP to Receive First Operation *)
     hmtp.rx_buff.length := hmtp.rx_buff.size; dev.PrepareReceive(dev, OutEpAdd, hmtp.rx_buff^)
   END Init;
@@ -129,14 +130,14 @@ MODULE USBDMTPStorage;
   * @retval status value
   *)
   PROCEDURE DeInit*(dev: DDef.Handle);
-    VAR hmtp!: Opt.Handle;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
+    VAR hmtp!: O.Handle;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle);
     (* DeInit  physical Interface components *)
-    hmtp.SessionState := Opt.SESSION_NOT_OPEN;
+    hmtp.SessionState := O.SESSION_NOT_OPEN;
     (* Stop low layer file system operations if any *)
-    Cancel(dev, Opt.PHASE_IDLE);
+    Cancel(dev, O.PHASE_IDLE);
     (* Free low layer file system resources *)
-    dev.UserData[dev.classId](Opt.UserIf).DeInit
+    dev.UserData[dev.classId](O.UserIf).DeInit
   END DeInit;
 
   (**
@@ -146,14 +147,18 @@ MODULE USBDMTPStorage;
   * @retval status value
   *)
   PROCEDURE ReadData*(dev: DDef.Handle);
-    VAR data_buff!: Def.Buffer; hmtp!: Opt.Handle; ops!: Opt.UserIf;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
-    ops := dev.UserData[dev.classId](Opt.UserIf);
-    ops.PutNextData(dev, hmtp.tx_buff);
+    VAR data_buff!: Def.Buffer; hmtp!: O.Handle; uif!: O.UserIf;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle);
+    uif := dev.UserData[dev.classId](O.UserIf);
+    uif.PutNextData(dev, hmtp.tx_buff);
     IF hmtp.tx_buff.length = 0 THEN (*DATA phase complete*)
-      hmtp.TransactionPhase := Opt.RESPONSE_PHASE
+      hmtp.TransactionPhase := O.RESPONSE_PHASE
     END
   END ReadData;
+
+  PROCEDURE DebugContainer(prefix: ARRAY OF CHAR; c: RawContainer; len: INTEGER);
+  BEGIN Log.Debug(prefix); Log.DebugBuf(c, len, SYSTEM.SIZE(Def.BufferDesc)); Log.DebugLn
+  END DebugContainer;
 
   (**
   * @brief  USBD_MTP_STORAGE_SendContainer
@@ -162,11 +167,12 @@ MODULE USBDMTPStorage;
   * @retval status value
   *)
   PROCEDURE SendContainer*(dev: DDef.Handle);
-    VAR hmtp!: Opt.Handle;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
-    IF hmtp.TransactionPhase = Opt.RESPONSE_PHASE THEN (*build response container*)
-      hmtp.TransactionPhase := Opt.PHASE_IDLE;
-      SendData(dev, hmtp.Response);
+    VAR hmtp!: O.Handle;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle);
+    IF hmtp.TransactionPhase = O.RESPONSE_PHASE THEN (*build response container*)
+      hmtp.TransactionPhase := O.PHASE_IDLE;
+      hmtp.Response.length := hmtp.Response.CLen; SendData(dev, hmtp.Response);
+(*      DebugContainer("Send response: ", hmtp.Response, hmtp.Response.length)*)
     ELSE SendData(dev, hmtp.tx_buff^);
     END;
   END SendContainer;
@@ -179,21 +185,21 @@ MODULE USBDMTPStorage;
   * @retval status value
   *)
   PROCEDURE DecodeOperations(dev: DDef.Handle);
-    VAR hmtp!: Opt.Handle; op: INTEGER;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
+    VAR hmtp!: O.Handle; op: INTEGER;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle);
     op := hmtp.ReqOp.code;
-    hmtp.Response.CLen := Opt.CONT_HEADER_SIZE; hmtp.Response.trans_id := hmtp.ReqOp.trans_id;
-    hmtp.TransactionPhase := Opt.RESPONSE_PHASE;
-    IF op = Opt.OP_GET_DEVICE_INFO THEN Opt.GetDeviceInfo(dev)
-    ELSIF op = Opt.OP_OPEN_SESSION THEN Opt.OpenSession(dev)
-    ELSIF op = Opt.OP_CLOSE_SESSION THEN Opt.CloseSession(dev)
-    ELSIF op = Opt.OP_GET_NUM_OBJECTS THEN Opt.GetNumObjects(dev)
-    ELSIF op = Opt.OP_SEND_OBJECT_INFO THEN Opt.SendObjectInfo(dev, hmtp.rx_buff); hmtp.TransactionPhase := Opt.DATA_OUT_PHASE
-    ELSIF op = Opt.OP_SEND_OBJECT THEN Opt.SendObject(dev, hmtp.rx_buff); hmtp.TransactionPhase := Opt.DATA_OUT_PHASE
-    ELSIF op = Opt.OP_DELETE_OBJECT THEN Opt.DeleteObject(dev)
-    ELSE Opt.ProcessOp(dev)
-    END;
-    hmtp.Response.length := hmtp.Response.CLen
+(*    Log.Debug("decode op: "); Log.DebugHexVLen(op, 4, FALSE); Log.DebugLn;*)
+    hmtp.Response.CLen := O.CONT_HEADER_SIZE; hmtp.Response.trans_id := hmtp.ReqOp.trans_id;
+    hmtp.TransactionPhase := O.RESPONSE_PHASE;
+    IF op = O.OP_GET_DEVICE_INFO THEN O.GetDeviceInfo(dev)
+    ELSIF op = O.OP_OPEN_SESSION THEN O.OpenSession(dev)
+    ELSIF op = O.OP_CLOSE_SESSION THEN O.CloseSession(dev)
+    ELSIF op = O.OP_GET_NUM_OBJECTS THEN O.GetNumObjects(dev)
+    ELSIF op = O.OP_SEND_OBJECT_INFO THEN O.SendObjectInfo(dev); hmtp.TransactionPhase := O.DATA_OUT_PHASE
+    ELSIF op = O.OP_SEND_OBJECT THEN O.SendObject(dev); hmtp.TransactionPhase := O.DATA_OUT_PHASE
+    ELSIF op = O.OP_DELETE_OBJECT THEN O.DeleteObject(dev)
+    ELSE O.ProcessOp(dev)
+    END
   END DecodeOperations;
 
   (**
@@ -203,8 +209,8 @@ MODULE USBDMTPStorage;
   * @retval status value
   *)
   PROCEDURE ReceiveOpt*(dev: DDef.Handle);
-    VAR hmtp!: Opt.Handle;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle); ASSERT(hmtp.TransactionPhase = Opt.OPERATION_REQUEST_PHASE);
+    VAR hmtp!: O.Handle;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle); ASSERT(hmtp.TransactionPhase = O.OPERATION_REQUEST_PHASE);
     hmtp.ReqOp.length := IoReq.GetRxCount(dev, OutEpAdd);
 (*
 #ifdef USE_USBD_COMPOSITE
@@ -212,20 +218,9 @@ MODULE USBDMTPStorage;
   MTPOutEpAdd = USBD_CoreGetEPAdd(pdev, USBD_EP_OUT, USBD_EP_TYPE_BULK, (uint8_t)pdev->classId);
 #endif /* USE_USBD_COMPOSITE */
 *)
-(* TODO replace the following:
-    IF hmtp.RECEIVE_DATA_STATUS = Opt.RECEIVE_REST_OF_DATA THEN
-      (* we don't need to do anything here because we receive only data without container header*)
-    ELSIF hmtp.RECEIVE_DATA_STATUS = Opt.RECEIVE_FIRST_DATA THEN (* Expected Data Length Packet Received *)
-      (* Fill hmtp->OperationsContainer Data Buffer from USB Buffer *)
-      ReceiveContainer(dev, hmtp.OperationsContainer)
-    ELSE (* Expected operation container *)
-*)
-      (* Fill hmtp->OperationsContainer Data Buffer from USB Buffer *)
-      ReceiveContainer(dev, hmtp.ReqOp);
-      DecodeOperations(dev)
-(*
-    END
-*)
+    (* Fill hmtp->OperationsContainer Data Buffer from USB Buffer *)
+    ReceiveContainer(dev, hmtp.ReqOp);
+    DecodeOperations(dev)
   END ReceiveOpt;
 
   (**
@@ -235,25 +230,15 @@ MODULE USBDMTPStorage;
   * @retval status value
   *)
   PROCEDURE ReceiveData*(dev: DDef.Handle);
-    VAR hmtp!: Opt.Handle;
-(* TODO replace the following:
-    PROCEDURE nextReceive(dev: DDef.Handle; hmtp: Opt.Handle);
-    BEGIN DecodeOperations(dev);
-      IF hmtp.cur_len >= hmtp.rx_buff.CLen - Opt.CONT_HEADER_SIZE THEN
-        (* we received all data, we don't need to go to next state *)
-        hmtp.RECEIVE_DATA_STATUS := Opt.SEND_RESPONSE; DecodeOperations(dev);
-        (* send response header after receiving all data successfully *)
-        SendContainer(dev, DATA_TYPE) (*Confirm DATA_TYPE or REP_TYPE?*)
-      END
-    END nextReceive;
-  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](Opt.Handle);
-    IF hmtp.RECEIVE_DATA_STATUS = Opt.RECEIVE_COMMAND_DATA THEN
-      IF hmtp.OperationsContainer.type = Opt.CONT_TYPE_COMMAND THEN DecodeOperations(dev) END
-    ELSIF hmtp.RECEIVE_DATA_STATUS = Opt.RECEIVE_FIRST_DATA THEN
-      IF hmtp.OperationsContainer.type = Opt.CONT_TYPE_DATA THEN nextReceive(dev, hmtp) END
-    ELSIF hmtp.RECEIVE_DATA_STATUS = Opt.RECEIVE_REST_OF_DATA THEN nextReceive(dev, hmtp)
+    VAR hmtp!: O.Handle; uif!: O.UserIf;
+  BEGIN hmtp := dev.ClassDataCmsit[dev.classId](O.Handle);
+    hmtp.rx_buff.length := IoReq.GetRxCount(dev, OutEpAdd);
+    uif := dev.UserData[dev.classId](O.UserIf);
+    (*hmtp.rx_buff contains the fresh packet of data sent by the host*)
+    uif.ReceiveNextData(hmtp.rx_buff, hmtp.ReqOp.trans_id, hmtp.Response);
+    IF hmtp.rx_buff.length < hmtp.rx_buff.size THEN (*DATA phase complete*)
+      hmtp.TransactionPhase := O.RESPONSE_PHASE
     END
-*)
   END ReceiveData;
 
 BEGIN InEpAdd := IN_EP; OutEpAdd := OUT_EP; CmdEpAdd := CMD_EP

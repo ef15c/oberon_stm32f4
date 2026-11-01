@@ -22,11 +22,15 @@ MODULE USBDMTPOberon;
     count: INTEGER; oPc, opGc, nbo: INTEGER; (*working variables for Get Object Prop List procedures*)
     ohl: HandleList; (*the list of the address of all files in the Oberon filesystem*)
     lohl: HandleList; idx: INTEGER; (*working variables for the file addresses list procedure*)
-    F: Files.File; R: Files.Rider; (*for retrieving or storing object content*)
+    FR, FW: Files.File; RR, RW: Files.Rider; (*for retrieving or storing object content*)
 
   PROCEDURE PutNextDataNone(dev: Def.Handle; d: Def.Buffer);
   BEGIN d.length := 0
   END PutNextDataNone;
+
+  PROCEDURE ReceiveNextDataUndefined(d: Def.Buffer; tid: INTEGER; VAR rsp: O.ParamContainer);
+  BEGIN ASSERT(FALSE)
+  END ReceiveNextDataUndefined;
 
   PROCEDURE WritePair(VAR d: ARRAY OF CHAR; VAR p: INTEGER; x: INTEGER);
   BEGIN d[p] := CHR(x DIV 10 + ORD("0")); INC(p);
@@ -91,8 +95,17 @@ MODULE USBDMTPOberon;
   * @param  None
   *)
   PROCEDURE DeInit;
-  BEGIN ohl := NIL; F := NIL; Files.Set(R, NIL, 0)
+  BEGIN ohl := NIL; FR := NIL; FW := NIL; Files.Set(RR, NIL, 0); Files.Set(RW, NIL, 0)
   END DeInit;
+
+  (**
+  * @brief  CloseSession
+  *         Release write file
+  * @param  None
+  *)
+  PROCEDURE CloseSession;
+  BEGIN FW := NIL; Files.Set(RW, NIL, 0)
+  END CloseSession;
 
   PROCEDURE EventReceived(event: O.ParamContainer);
   BEGIN ohl := NIL; lohl := NIL; idx := 0; (*clear object handles cache*)
@@ -105,7 +118,7 @@ MODULE USBDMTPOberon;
   * @retval None
   *)
   PROCEDURE Cancel(Phase: INTEGER);
-  BEGIN F := NIL; Files.Set(R, NIL, 0) (* release file *)
+  BEGIN FR := NIL; Files.Set(RR, NIL, 0) (* release file *)
   END Cancel;
 
   PROCEDURE Put0W1p(d: Def.Buffer; p1: INTEGER); (*generic procedure when putting 0W is required*)
@@ -220,8 +233,12 @@ MODULE USBDMTPOberon;
   BEGIN Def.PutInteger(d, MAX_CAPACITY); Def.PutInteger(d, 0)
   END PutMaxCapacity;
 
+  PROCEDURE FreeSpaceInBytes(): INTEGER;
+    RETURN (MAX_SECTORS - Files.fshd.NofSectors)*FileSystem.SectorSize
+  END FreeSpaceInBytes;
+
   PROCEDURE PutFreeSpaceInBytes(d: Def.Buffer);
-  BEGIN Def.PutInteger(d, (MAX_SECTORS - Files.fshd.NofSectors)*FileSystem.SectorSize); Def.PutInteger(d, 0)
+  BEGIN Def.PutInteger(d, FreeSpaceInBytes()); Def.PutInteger(d, 0)
   END PutFreeSpaceInBytes;
 
   PROCEDURE PutFreeSpaceInObjects(d: Def.Buffer);
@@ -382,6 +399,94 @@ MODULE USBDMTPOberon;
     RETURN ret
   END GetNumObjects;
 
+  PROCEDURE NewFile(name: ARRAY OF CHAR): Files.File;
+  BEGIN FW := Files.New(name)
+    RETURN FW
+  END  NewFile;
+
+  PROCEDURE ReceiveObjectInfoData(d: Def.Buffer; tid: INTEGER; VAR rsp: O.ParamContainer);
+    VAR ocs: INTEGER; fn: FileDir.FileName; fh: FileDir.FileHeader;
+  BEGIN
+(*
+    Log.Debug("object info container, length: "); Log.DebugInt(d.length, 1);
+    Log.DebugString(", size: "); Log.DebugInt(d.size, 1);
+    Log.DebugLn;
+*)
+    IF rsp.code = O.RESPONSE_OK THEN ASSERT(d.length < d.size); (*expect that object info fits in one packet*)
+      d.index := 4;
+      IF Def.GetHalfword(d) # O.CONT_TYPE_DATA THEN rsp.code := O.RESPONSE_INVALID_DATASET
+      ELSIF Def.GetHalfword(d) # O.OP_SEND_OBJECT_INFO THEN rsp.code := O.RESPONSE_INVALID_DATASET
+      ELSIF Def.GetInteger(d) # tid THEN rsp.code := O.RESPONSE_INVALID_TRANSACTION_ID
+      ELSE d.index := O.CONT_HEADER_SIZE + 8; (*go to object compressed size*) 
+        ocs := Def.GetInteger(d); d.index := O.CONT_HEADER_SIZE + 52; (*go to filename*)
+        IF (ocs < 0) OR (ocs > FreeSpaceInBytes()) THEN rsp.code := O.RESPONSE_STORE_FULL
+        ELSIF ~O.GetString(d, fn) OR (NewFile(fn) = NIL) THEN rsp.code := O.RESPONSE_INVALID_PARAMETER
+        ELSE (*We have successfully created a new file*)
+          rsp.Params[0] := STORAGE_ID; rsp.Params[1] := 0; Files.Close(FW); (*create file header page on SD Card*)
+          rsp.Params[2] := Files.Adr(FW); INC(rsp.CLen, 12)
+(*
+          Log.Debug("object info container, CLen: ");  Log.DebugInt(rsp.CLen , 1);
+          Log.DebugString(", Param1: "); Log.DebugHexVLen(rsp.Params[0] , 8, FALSE);
+          Log.DebugString(", Param2: "); Log.DebugInt(rsp.Params[1] , 1);
+          Log.DebugString(", Param3: "); Log.DebugInt(rsp.Params[2] , 1);
+          Log.DebugLn
+*)
+        END
+      END
+    END;
+    fops(O.UserIf).ReceiveNextData := ReceiveNextDataUndefined (*no more data*)
+  END ReceiveObjectInfoData;
+
+  PROCEDURE ProcessSendObjectInfoCommand(sid, poh: INTEGER): HALFWORD;
+    VAR ret: HALFWORD;
+  BEGIN ret := O.RESPONSE_OK;
+(*    Log.Debug("SendObjectInfo, poh: "); Log.DebugInt(poh, 1); Log.DebugLn;*)
+    IF (sid # 0) & (sid # STORAGE_ID) THEN ret := O.RESPONSE_STORE_NOT_AVAILABLE
+    ELSIF (poh # 0) & (poh # 0FFFFFFFFH) THEN ret := O.RESPONSE_SPECIFICATION_OF_DESTINATION_UNSUPPORTED
+    END;
+    fops(O.UserIf).ReceiveNextData := ReceiveObjectInfoData
+    RETURN ret
+  END ProcessSendObjectInfoCommand;
+
+  PROCEDURE ReceiveObjectDataNext(d: Def.Buffer; tid: INTEGER; VAR rsp: O.ParamContainer);
+    VAR l: INTEGER;
+  BEGIN (*any packets but first*)
+    IF rsp.code = O.RESPONSE_OK THEN
+      l := d.length; d.index := 0;
+      WHILE l >= 4 DO Files.WriteInt(RW, Def.GetInteger(d)); DEC(l, 4) END;
+      WHILE l > 0 DO Files.WriteByte(RW, Def.GetByte(d)); DEC(l) END;
+      IF d.length < d.size THEN (*this is the last packet*) Files.Register(FW) END
+    END;
+    IF d.length < d.size THEN  fops(O.UserIf).ReceiveNextData := ReceiveNextDataUndefined END
+  END ReceiveObjectDataNext;
+
+  PROCEDURE ReceiveObjectDataFirst(d: Def.Buffer; tid: INTEGER; VAR rsp: O.ParamContainer);
+    VAR l: INTEGER;
+  BEGIN (*first packet of the container*)
+    IF rsp.code = O.RESPONSE_OK THEN
+      d.index := 4;
+      IF Def.GetHalfword(d) # O.CONT_TYPE_DATA THEN rsp.code := O.RESPONSE_INVALID_DATASET
+      ELSIF Def.GetHalfword(d) # O.OP_SEND_OBJECT THEN rsp.code := O.RESPONSE_INVALID_DATASET
+      ELSIF Def.GetInteger(d) # tid THEN rsp.code := O.RESPONSE_INVALID_TRANSACTION_ID
+      ELSE (*container is valid*) l := d.length - O.CONT_HEADER_SIZE; Files.Set(RW, FW, 0);
+        WHILE l >= 4 DO Files.WriteInt(RW, Def.GetInteger(d)); DEC(l, 4) END;
+        WHILE l > 0 DO Files.WriteByte(RW, Def.GetByte(d)); DEC(l) END;
+      END
+    END;
+    IF d.length < d.size THEN (*this is the last packet*) Files.Register(FW);
+      fops(O.UserIf).ReceiveNextData := ReceiveNextDataUndefined
+    ELSE fops(O.UserIf).ReceiveNextData := ReceiveObjectDataNext
+    END
+  END ReceiveObjectDataFirst;
+
+  PROCEDURE ProcessSendObjectCommand(): HALFWORD;
+    VAR ret: HALFWORD;
+  BEGIN ret := O.RESPONSE_OK;
+    IF FW = NIL THEN ret := O.RESPONSE_NO_VALID_OBJECT_INFO END;
+    fops(O.UserIf).ReceiveNextData := ReceiveObjectDataFirst;
+    RETURN ret
+  END ProcessSendObjectCommand;
+
   PROCEDURE DeleteObject(oh, ofc: INTEGER): HALFWORD;
     VAR ret: HALFWORD; fh: FileDir.FileHeader; ext: FileDir.FileName;
       res: INTEGER;
@@ -506,10 +611,10 @@ MODULE USBDMTPOberon;
   PROCEDURE PutNextObjectData(dev: Def.Handle; d: Def.Buffer);
     VAR b: BYTE;
   BEGIN M.SwitchBuffer(d);
-    REPEAT Files.ReadByte(R, b); IF ~R.eof THEN Def.PutByte(d, b) END
-    UNTIL M.Overflow(d) OR R.eof; (*the buffer is now filled with wlen bytes*)
+    REPEAT Files.ReadByte(RR, b); IF ~RR.eof THEN Def.PutByte(d, b) END
+    UNTIL M.Overflow(d) OR RR.eof; (*the buffer is now filled with wlen bytes*)
     M.PrepareBuffer(dev, d); (*prepare the buffer for next send*)
-    Log.Debug("length: "); Log.DebugInt(d.length, 1); Log.DebugLn;
+(*    Log.Debug("length: "); Log.DebugInt(d.length, 1); Log.DebugLn;*)
     IF d.length = 0 THEN (*this is the last call*)
       M.ExitCircularMode(dev, d); fops(O.UserIf).PutNextData := PutNextDataNone
     END
@@ -517,10 +622,10 @@ MODULE USBDMTPOberon;
 
   PROCEDURE PutObject(dev: Def.Handle; d: Def.Buffer; oh: INTEGER): HALFWORD;
     VAR ret: HALFWORD;
-  BEGIN ret := O.RESPONSE_OK; F := Files.OldByAdr(oh);
-    IF F = NIL THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE
-    ELSE O.UpdateContainerLength(d, O.CONT_HEADER_SIZE + Files.Length(F));
-      Files.Set(R, F, 0); M.EnterCircularMode(dev, d);
+  BEGIN ret := O.RESPONSE_OK; FR := Files.OldByAdr(oh);
+    IF FR = NIL THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE
+    ELSE O.UpdateContainerLength(d, O.CONT_HEADER_SIZE + Files.Length(FR));
+      Files.Set(RR, FR, 0); M.EnterCircularMode(dev, d);
       fops(O.UserIf).PutNextData := PutNextObjectData; PutNextObjectData(dev, d)
     END
     RETURN ret
@@ -545,19 +650,11 @@ MODULE USBDMTPOberon;
     (*todo: develop fops.* procedures*)
     u.Init := Init;
     u.DeInit := DeInit;
+    u.CloseSession := CloseSession;
     u.EventReceived := EventReceived;
     u.GetNumObjects := GetNumObjects;
-    u.Create_NewObject := NIL;
-    u.GetIdx := NIL;
-    u.GetParentObject := NIL;
-    u.GetObjectFormat := NIL;
-    u.GetObjectName_len := NIL;
-    u.GetObjectName := NIL;
-    u.GetObjectSize := NIL;
-    u.GetMaxCapability := NIL;
-    u.GetFreeSpaceInBytes := NIL;
-    u.GetNewIndex := NIL;
-(*    u.WriteData := NIL;*)
+    u.ProcessSendObjectInfoCommand := ProcessSendObjectInfoCommand;
+    u.ProcessSendObjectCommand := ProcessSendObjectCommand;
     u.DeleteObject := DeleteObject;
     u.Cancel := Cancel;
     u.PutVendorExtension := PutVendorExtension;
@@ -608,6 +705,7 @@ MODULE USBDMTPOberon;
     u.PutDeviceFriendlyName := NIL;
     u.PutDevicePropValue := PutDevicePropValue;
     u.PutNextData := PutNextDataNone;
+    u.ReceiveNextData := ReceiveNextDataUndefined;
 
     RETURN u
   END initFops;

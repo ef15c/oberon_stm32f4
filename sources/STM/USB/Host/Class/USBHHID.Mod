@@ -68,7 +68,7 @@ DEBUG: configuration descriptor: (34)
   09  21  10  01  00  01  22  44  00  HID descriptor: release 1.10, country 0, 1 HID class descriptor to follow, report descriptor type 22h, desc length 68 bytes
   07  05  81  03  04  00  0A         Endpoint descriptor: endpoint IN address 1, interrupt, max packet size 4 bytes, polling interval 10 frames
 *)
-    Log.Debug("configuration descriptor: "); Log.DebugBuf(rd.buf, rd.length); Log.DebugLn; Log.Flush;
+    Log.Debug("configuration descriptor: "); Log.DebugBuf(rd.buf, rd.length, 0); Log.DebugLn; Log.Flush;
     WHILE ~done & Def.HasMoreHeaders(rd) DO Def.GoNextHeader(rd);
       IF Def.HeaderType(rd) = Def.DESC_TYPE_HID THEN
         desc.bLength := Def.ReadByte(rd); desc.bDescriptorType := Def.ReadByte(rd);

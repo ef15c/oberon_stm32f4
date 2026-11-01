@@ -12,7 +12,7 @@ MODULE USBLog;
     IntCallback = PROCEDURE^5(val, len: INTEGER);
     HexVLenCallback = PROCEDURE^5(x, n: INTEGER; lz: BOOLEAN);
     SetCallback = PROCEDURE^5(s: SET);
-    BufCallback = PROCEDURE^5(buf: ARRAY OF BYTE; len: INTEGER);
+    BufCallback = PROCEDURE^5(buf: ARRAY OF BYTE; len, offset: INTEGER);
     LnCallback = PROCEDURE^5;
 
   VAR W: Texts.Writer; wrnum, rdnum: BYTE;
@@ -53,10 +53,10 @@ MODULE USBLog;
     Texts.Write(W, "}"); INC(wrnum)
   END DefaultSet;
 
- PROCEDURE DefaultBuf*(buf: ARRAY OF BYTE; len: INTEGER);
+ PROCEDURE DefaultBuf*(buf: ARRAY OF BYTE; len, offset: INTEGER);
     VAR i: INTEGER;
   BEGIN Texts.Write(W, "("); Texts.WriteInt(W, len, 1); Texts.Write(W, ")");
-    FOR i := 0 TO len - 1 DO Texts.Write(W, " "); Texts.WriteHexVLen(W, buf[i], 2, FALSE);
+    FOR i := offset TO offset + len - 1 DO Texts.Write(W, " "); Texts.WriteHexVLen(W, buf[i], 2, FALSE);
       IF i MOD 16 = 15 THEN Texts.WriteLn(W) END
     END;
     INC(wrnum)
@@ -138,8 +138,8 @@ MODULE USBLog;
   BEGIN IF DebugSetCbk # NIL THEN DebugSetCbk(s) END
   END DebugSet;
 
-  PROCEDURE DebugBuf*(buf: ARRAY OF BYTE; len: INTEGER);
-  BEGIN IF DebugBufCbk # NIL THEN DebugBufCbk(buf, len) END
+  PROCEDURE DebugBuf*(buf: ARRAY OF BYTE; len, offset: INTEGER);
+  BEGIN IF DebugBufCbk # NIL THEN DebugBufCbk(buf, len, offset) END
   END DebugBuf;
 
   PROCEDURE DebugLn*;

@@ -328,6 +328,10 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
   BEGIN RETURN f.date
   END Date;
 
+  PROCEDURE Adr*(f: File): INTEGER;
+  BEGIN RETURN f.sec[0]
+  END Adr;
+
   (*---------------------------Read---------------------------*)
 
   PROCEDURE Set*(VAR r: Rider; f: File; pos: INTEGER);
