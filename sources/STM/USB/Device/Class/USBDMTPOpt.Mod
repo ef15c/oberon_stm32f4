@@ -446,7 +446,9 @@ MODULE USBDMTPOpt;
     VEND_EXT_VERSION = 100;
 
   TYPE
-    BufferDesc* = RECORD(Def.BufferDesc) data*: ARRAY 2*MEDIA_PACKET OF BYTE END;
+    StringDesc = RECORD(Def.BufferDesc) data: ARRAY 255 OF HALFWORD END;
+    String* = POINTER TO StringDesc; 
+    BufferDesc = RECORD(Def.BufferDesc) data: ARRAY 2*MEDIA_PACKET OF BYTE END;
     CircularBuffer* = RECORD(BufferDesc) circular*: BOOLEAN; wlen*: INTEGER END;
     Buffer* = POINTER TO CircularBuffer;
 
@@ -477,9 +479,6 @@ MODULE USBDMTPOpt;
 (*      objectInfo: Buffer*)
     END;
 
-    String = ARRAY 256 OF CHAR;
-    DateTimeString = ARRAY 20 OF CHAR;
-
     UserIf* = POINTER TO UserIfDesc;
     UserIfDesc* = RECORD(DDef.UserDataDesc)
       Init*, DeInit*, CloseSession*: PROCEDURE;
@@ -496,22 +495,25 @@ MODULE USBDMTPOpt;
       PutFreeSpaceInBytes*, PutFreeSpaceInObjects*, PutStorageDescription*,
       PutVolumeIdentifier*: PROCEDURE(b: Def.Buffer); (*StorageInfo callbacks*)
       PutObjectHandles*: PROCEDURE(dev: Def.Handle; b: Def.Buffer; sid, ofc, f: INTEGER): HALFWORD;
-      PutObjectStorageId*, PutObjectFormat*, PutProtectionStatus*, PutObjectCompressedSize*,
+      PutObjectStorageId*, PutObjectFormat*, PutProtectionStatus*: PROCEDURE(b: Def.Buffer; oh: INTEGER);
+      GetFileInfo*: PROCEDURE(oh: INTEGER; VAR fn, dm: String; VAR cs: INTEGER): HALFWORD;
       PutThumbFormat*, PutThumbCompressedSize*, PutThumbPixWidth*, PutThumbPixHeight*,
       PutImageInfo*, PutParentObject*,
-      PutAssociationType*, PutAssociationDesc*, PutSequenceNumber*, PutFilename*,
-      PutDateCreated*, PutDateModified*, PutKeywords*: PROCEDURE(b: Def.Buffer; oh: INTEGER); (*ObjectInfo callbacks*)
+      PutAssociationType*, PutAssociationDesc*, PutSequenceNumber*,
+      PutDateCreated*, PutKeywords*: PROCEDURE(b: Def.Buffer; oh: INTEGER); (*ObjectInfo callbacks*)
       PutObjectPropsSupported*: PROCEDURE(b: Def.Buffer; ofc: INTEGER);
       PutObjectPropDefValue*, PutObjectPropGroupCode*, PutObjectPropFormFlag*,
       PutObjectPropGetSet*: PROCEDURE(b: Def.Buffer; opc, of, dt: INTEGER); (*ObjectPropDesc callbacks*)
       PutObjectPropList*: PROCEDURE(dev: Def.Handle; b: Def.Buffer; oh, ofc, opc, opgc, depth: INTEGER): HALFWORD;
-      PutObjectPropValue*: PROCEDURE(b: Def.Buffer; oh, opc: INTEGER);
+      PutObjectPropValue*: PROCEDURE(b: Def.Buffer; oh, opc: INTEGER): HALFWORD;
       PutObject*: PROCEDURE(dev: Def.Handle; b: Def.Buffer; oh: INTEGER): HALFWORD;
       PutDeviceFriendlyName*: PROCEDURE(b: Def.Buffer);
       PutDevicePropValue*: PROCEDURE(b: Def.Buffer; dpc: INTEGER);
       PutNextData*: PROCEDURE(dev: Def.Handle; b: Def.Buffer);
       ReceiveNextData*: PROCEDURE(b: Def.Buffer; tid: INTEGER; VAR rsp: ParamContainer);
     END;
+
+  VAR fn, dm: String;
 
   PROCEDURE BeginArray*(d: Def.Buffer; VAR beg: INTEGER);
   BEGIN Def.PutInteger(d, 0); (*placeholder for the number of elements of the array*)
@@ -529,6 +531,7 @@ MODULE USBDMTPOpt;
   BEGIN
     CASE b OF
       Buffer: r := b.data[b.index]; INC(b.index)
+    | String: r := b.data[b.index]; INC(b.index)
     | Def.Buffer: ASSERT(FALSE)
     END
 
@@ -540,6 +543,7 @@ MODULE USBDMTPOpt;
     CASE b OF
       Buffer: b.data[b.length] := v; INC(b.length);
         IF b.circular & (b.length >= b.size) THEN (*circular mode buffer*) b.length := 0 END
+    | String: b.data[b.length] := v; INC(b.length);
     | Def.Buffer: ASSERT(FALSE)
     END
   END WriteByte;
@@ -550,6 +554,13 @@ MODULE USBDMTPOpt;
     b.ReadByte := ReadByte; b.WriteByte := WriteByte
     RETURN b
   END NewBuffer;
+
+  PROCEDURE NewString*(): String;
+    VAR b!: String;
+  BEGIN NEW(b); b.size := SYSTEM.SIZE(StringDesc) - SYSTEM.SIZE(Def.BufferDesc);
+    b.ReadByte := ReadByte; b.WriteByte := WriteByte
+    RETURN b
+  END NewString;
 
   PROCEDURE NewHandle*(): Handle;
     VAR h!: Handle;
@@ -574,13 +585,30 @@ MODULE USBDMTPOpt;
     RETURN isOK
   END GetString;
 
-  PROCEDURE PutString*(d: Def.Buffer; s: ARRAY OF CHAR);
+  PROCEDURE Put1bString*(d: Def.Buffer; s: ARRAY OF CHAR);
     VAR i, l: INTEGER;
   BEGIN l := 0; WHILE s[l] # 0X DO INC(l) END;
-    ASSERT(l <= 255);
-    IF l = 0 THEN Def.PutByte(d, l)
+    ASSERT(l < 255);
+    IF l = 0 THEN Def.PutByte(d, 0)
     ELSE Def.PutByte(d, l+1); i := 0;
       REPEAT ASSERT(ORD(s[i]) < 80H); Def.PutHalfword(d, ORD(s[i])); INC(i) UNTIL i > l
+    END
+  END Put1bString;
+
+  PROCEDURE StringToUnicode*(s: ARRAY OF CHAR; u: String);
+    VAR i, l: INTEGER;
+  BEGIN l := 0; WHILE s[l] # 0X DO INC(l) END;
+    ASSERT(l < 255);
+    u.length := 0; i := 0;
+    REPEAT ASSERT(ORD(s[i]) < 80H); Def.PutHalfword(u, ORD(s[i])); INC(i) UNTIL i > l
+  END StringToUnicode;
+
+  PROCEDURE PutString*(d: Def.Buffer; s: String);
+    VAR i: INTEGER; c: HALFWORD;
+  BEGIN ASSERT(s.length < 255*2);
+    IF s.length = 0 THEN Def.PutByte(d, 0)
+    ELSE Def.PutByte(d, s.length DIV 2 + 1); s.index := 0; i := 0;
+      REPEAT c := Def.GetHalfword(s); Def.PutHalfword(d, c); INC(i, 2) UNTIL i > s.length
     END
   END PutString;
 
@@ -719,8 +747,9 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_ObjectHandles(dev: Def.Handle; uif: UserIf; hmtp: Handle): HALFWORD;
-    RETURN uif.PutObjectHandles(dev, hmtp.tx_buff, hmtp.ReqOp.Params[0],
+  PROCEDURE Get_ObjectHandles(dev: Def.Handle; uif: UserIf; hmtp: Handle);
+  BEGIN
+    hmtp.Response.code :=  uif.PutObjectHandles(dev, hmtp.tx_buff, hmtp.ReqOp.Params[0],
       hmtp.ReqOp.Params[1], hmtp.ReqOp.Params[2])
   END Get_ObjectHandles;
 
@@ -761,10 +790,9 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_ObjectPropDesc(uif: UserIf; hmtp: Handle): HALFWORD;
-    VAR ret: HALFWORD; opc, of, dt: INTEGER; d!: Buffer;
-  BEGIN ret := RESPONSE_OK;
-    opc := hmtp.ReqOp.Params[0]; of := hmtp.ReqOp.Params[1];
+  PROCEDURE Get_ObjectPropDesc(uif: UserIf; hmtp: Handle);
+    VAR opc, of, dt: INTEGER; d!: Buffer;
+  BEGIN opc := hmtp.ReqOp.Params[0]; of := hmtp.ReqOp.Params[1];
     dt := Get_ObjectPropDatatype(opc);
     IF dt # 0 THEN
       d := hmtp.tx_buff;
@@ -774,9 +802,8 @@ MODULE USBDMTPOpt;
       uif.PutObjectPropDefValue(d, opc, of, dt);
       uif.PutObjectPropGroupCode(d, opc, of, dt);
       uif.PutObjectPropFormFlag(d, opc, of, dt)
-    ELSE ret := RESPONSE_OBJECT_PROP_NOT_SUPPORTED (*todo: implement this in backend callback*)
+    ELSE hmtp.Response.code := RESPONSE_OBJECT_PROP_NOT_SUPPORTED (*todo: implement this in backend callback*)
     END
-    RETURN ret
   END Get_ObjectPropDesc;
 
   (**
@@ -786,7 +813,7 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectPropValue(uif: UserIf; hmtp: Handle);
-  BEGIN uif.PutObjectPropValue(hmtp.tx_buff, hmtp.ReqOp.Params[0], hmtp.ReqOp.Params[1])
+  BEGIN hmtp.Response.code := uif.PutObjectPropValue(hmtp.tx_buff, hmtp.ReqOp.Params[0], hmtp.ReqOp.Params[1])
   END Get_ObjectPropValue;
 
   (**
@@ -795,8 +822,8 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_ObjectPropList(dev: Def.Handle; uif: UserIf; hmtp: Handle): HALFWORD;
-    RETURN uif.PutObjectPropList(dev, hmtp.tx_buff, hmtp.ReqOp.Params[0],
+  PROCEDURE Get_ObjectPropList(dev: Def.Handle; uif: UserIf; hmtp: Handle);
+  BEGIN hmtp.Response.code :=  uif.PutObjectPropList(dev, hmtp.tx_buff, hmtp.ReqOp.Params[0],
       hmtp.ReqOp.Params[1], hmtp.ReqOp.Params[2], hmtp.ReqOp.Params[3], hmtp.ReqOp.Params[4])
   END Get_ObjectPropList;
 
@@ -818,8 +845,13 @@ MODULE USBDMTPOpt;
   * @param  pdev: device instance
   * @retval None
   *)
-  PROCEDURE Get_DevicePropDesc(uif: UserIf; d: Buffer);
-  BEGIN uif.PutDeviceFriendlyName(d)
+  PROCEDURE Get_DevicePropDesc(uif: UserIf; hmtp: Handle);
+    VAR dpc: HALFWORD; d!: Buffer;
+  BEGIN dpc := hmtp.ReqOp.Params[0];
+    IF dpc # DEV_PROP_DEVICE_FRIENDLY_NAME THEN hmtp.Response.code := RESPONSE_DEVICEPROP_NOT_SUPPORTED
+    ELSE Def.PutHalfword(d, dpc); Def.PutHalfword(d, DATATYPE_STR); Def.PutByte(d, PROP_GET);
+      uif.PutDeviceFriendlyName(d); uif.PutDeviceFriendlyName(d); Def.PutByte(d, FORM_NONE)
+    END
   END  Get_DevicePropDesc;
 
   (**
@@ -829,13 +861,14 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_ObjectInfo(uif: UserIf; hmtp: Handle);
-    VAR oh: INTEGER; d!: Buffer;
-  BEGIN 
+    VAR oh: INTEGER; d!: Buffer; cs: INTEGER;
+  BEGIN
     oh := hmtp.ReqOp.Params[0]; d := hmtp.tx_buff;
+    hmtp.Response.code := uif.GetFileInfo(oh, fn, dm, cs);
     uif.PutObjectStorageId(d, oh);
     uif.PutObjectFormat(d, oh);
     uif.PutProtectionStatus(d, oh);
-    uif.PutObjectCompressedSize(d, oh);
+    Def.PutInteger(d, cs);
     uif.PutThumbFormat(d, oh);
     uif.PutThumbCompressedSize(d, oh);
     uif.PutThumbPixWidth(d, oh);
@@ -845,10 +878,10 @@ MODULE USBDMTPOpt;
     uif.PutAssociationType(d, oh);
     uif.PutAssociationDesc(d, oh);
     uif.PutSequenceNumber(d, oh);
-    uif.PutFilename(d, oh);
+    PutString(d, fn);
     uif.PutDateCreated(d, oh);
-    uif.PutDateModified(d, oh);
-    uif.PutKeywords(d, oh);
+    PutString(d, dm);
+    uif.PutKeywords(d, oh)
   END Get_ObjectInfo;
 
   PROCEDURE GetContainerLength*(c: Def.Buffer): INTEGER;
@@ -871,7 +904,7 @@ MODULE USBDMTPOpt;
   * @retval None
   *)
   PROCEDURE Get_PayloadContent(dev: DDef.Handle);
-    VAR hmtp!: Handle; uif!: UserIf; op(*, n_idx*): INTEGER; d!: Buffer;
+    VAR hmtp!: Handle; uif!: UserIf; op: INTEGER; d!: Buffer;
   BEGIN
     hmtp := dev.ClassDataCmsit[dev.classId](Handle); hmtp.Response.code := RESPONSE_OK;
     uif := dev.UserData[dev.classId](UserIf);
@@ -881,22 +914,17 @@ MODULE USBDMTPOpt;
     Def.PutHalfword(d, CONT_TYPE_DATA); Def.PutHalfword(d, op); Def.PutInteger(d, hmtp.ReqOp.trans_id);    
     hmtp.TransactionPhase := DATA_IN_PHASE;
     IF op = OP_GET_DEVICE_INFO THEN Get_DeviceInfo(uif, d)
-    ELSIF op = OP_GET_DEVICE_PROP_DESC THEN Get_DevicePropDesc(uif, d)
+    ELSIF op = OP_GET_DEVICE_PROP_DESC THEN Get_DevicePropDesc(uif, hmtp)
     ELSIF op = OP_GET_STORAGE_IDS THEN Get_StorageIDs(uif, d)
     ELSIF op = OP_GET_STORAGE_INFO THEN Get_StorageInfo(uif, d)
-    ELSIF op = OP_GET_OBJECT_HANDLES THEN hmtp.Response.code := Get_ObjectHandles(dev, uif, hmtp)
+    ELSIF op = OP_GET_OBJECT_HANDLES THEN Get_ObjectHandles(dev, uif, hmtp)
     ELSIF op = OP_GET_OBJECT_INFO THEN Get_ObjectInfo(uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROPS_SUPPORTED THEN Get_ObjectPropsSupp(uif, hmtp)
-    ELSIF op = OP_GET_OBJECT_PROP_DESC THEN hmtp.Response.code := Get_ObjectPropDesc(uif, hmtp)
-    ELSIF op = OP_GET_OBJECT_PROPLIST THEN hmtp.Response.code := Get_ObjectPropList(dev, uif, hmtp)
+    ELSIF op = OP_GET_OBJECT_PROP_DESC THEN Get_ObjectPropDesc(uif, hmtp)
+    ELSIF op = OP_GET_OBJECT_PROPLIST THEN Get_ObjectPropList(dev, uif, hmtp)
     ELSIF op = OP_GET_OBJECT_PROP_VALUE THEN Get_ObjectPropValue(uif, hmtp)
     ELSIF op = OP_GET_OBJECT THEN hmtp.Response.code := Get_Object(dev, uif, hmtp)
     ELSIF op = OP_SEND_OBJECT_INFO THEN hmtp.TransactionPhase := DATA_OUT_PHASE
-(*TODO: Move the following statements in the response phase
-      n_idx := uif.GetNewIndex(hmtp.obj_format);
-      Def.PutInteger(d, hmtp.storage_id);
-      Def.PutInteger(d, hmtp.objhandle);
-      Def.PutInteger(d, n_idx)*)
     ELSIF op = OP_GET_DEVICE_PROP_VALUE THEN uif.PutDevicePropValue(d, hmtp.ReqOp.Params[0])
     ELSE hmtp.Response.code := RESPONSE_OPERATION_NOT_SUPPORTED;
       Log.Error("Unhandled op: "); Log.ErrorHexVLen(op, 4, FALSE); Log.ErrorLn; Log.Flush
@@ -978,4 +1006,5 @@ MODULE USBDMTPOpt;
     hmtp.Response.code := uif.DeleteObject(hmtp.ReqOp.Params[0], hmtp.ReqOp.Params[1])
   END DeleteObject;
 
+BEGIN fn := NewString(); dm := NewString();
 END USBDMTPOpt.

@@ -134,7 +134,7 @@ MODULE USBDMTPOberon;
   END Put0S1p;
 
   PROCEDURE PutVendorExtension(d: Def.Buffer);
-  BEGIN O.PutString(d, "microsoft.com: 1.0; ")
+  BEGIN O.Put1bString(d, "microsoft.com: 1.0; ")
   END PutVendorExtension;
 
   PROCEDURE PutDeviceOpsSupported(d: Def.Buffer);
@@ -191,15 +191,15 @@ MODULE USBDMTPOberon;
   END PutDeviceFormatsSupported;
 
   PROCEDURE PutManufacturer(d: Def.Buffer);
-  BEGIN O.PutString(d, "Christian Schoffit")
+  BEGIN O.Put1bString(d, "Christian Schoffit")
   END PutManufacturer;
 
   PROCEDURE PutModel(d: Def.Buffer);
-  BEGIN O.PutString(d, "Oberon Station STM32F4")
+  BEGIN O.Put1bString(d, "Oberon Station STM32F4")
   END PutModel;
 
   PROCEDURE PutDeviceVersion(d: Def.Buffer);
-  BEGIN O.PutString(d, "1.0")
+  BEGIN O.Put1bString(d, "1.0")
   END PutDeviceVersion;
 
   PROCEDURE PutSerialNumber(d: Def.Buffer);
@@ -246,11 +246,11 @@ MODULE USBDMTPOberon;
   END PutFreeSpaceInObjects;
 
   PROCEDURE PutStorageDescription(d: Def.Buffer);
-  BEGIN O.PutString(d, "Oberon Station")
+  BEGIN O.Put1bString(d, "Oberon Station")
   END PutStorageDescription;
 
   PROCEDURE PutVolumeIdentifier(d: Def.Buffer);
-  BEGIN O.PutString(d, "OFS2 at block 100000H")
+  BEGIN O.Put1bString(d, "OFS2 at block 100000H")
   END PutVolumeIdentifier;
 
   PROCEDURE PutObjectPropsSupported(d: Def.Buffer; ofc: INTEGER);
@@ -271,7 +271,7 @@ MODULE USBDMTPOberon;
 
   PROCEDURE PutObjectPropDefValue(d: Def.Buffer; opc, of, dt: INTEGER);
   BEGIN
-    IF opc = O.OB_PROP_OBJ_FILE_NAME THEN O.PutString(d, "NewFile")
+    IF opc = O.OB_PROP_OBJ_FILE_NAME THEN O.Put1bString(d, "NewFile")
     ELSE
       IF dt = O.DATATYPE_UINT16 THEN Def.PutHalfword(d, 0)
       ELSIF dt = O.DATATYPE_UINT32 THEN Def.PutInteger(d, 0)
@@ -313,7 +313,7 @@ MODULE USBDMTPOberon;
       Def.PutInteger(d, 8); (*minimum value*); Def.PutInteger(d, 8); (*maximum value*)
       Def.PutInteger(d, 1); (*step size = 1*)
     ELSIF opc = O.OB_PROP_OBJ_FILE_NAME THEN Def.PutByte(d, O.FORM_REGULAR_EXPRESSION);
-      O.PutString(d, "[a-zA-Z][_0-9a-zA-Z\.]{0,29}")
+      O.Put1bString(d, "[a-zA-Z][_0-9a-zA-Z\.]{0,29}")
     ELSIF opc = O.OB_PROP_DATE_MODIFIED THEN Def.PutByte(d, O.FORM_DATETIME);
     ELSE Def.PutByte(d, O.FORM_NONE)
     END
@@ -326,10 +326,13 @@ MODULE USBDMTPOberon;
     END
   END PutObjectPropGetSet;
 
+  PROCEDURE PutDeviceFriendlyName(d: Def.Buffer);
+  BEGIN O.Put1bString(d, "The fabulous Oberon Station powered by the STM32F429I-DISCx board")
+  END PutDeviceFriendlyName;
+
   PROCEDURE PutDevicePropValue(d: Def.Buffer; dpc: INTEGER);
   BEGIN
-    IF dpc = O.DEV_PROP_DEVICE_FRIENDLY_NAME THEN
-      O.PutString(d, "The fabulous Oberon Station powered by the STM32F429I-DISCx board")
+    IF dpc = O.DEV_PROP_DEVICE_FRIENDLY_NAME THEN PutDeviceFriendlyName(d)
     ELSE Def.PutByte(d, 0);
       Log.Error("PutDevicePropValue dpc: "); Log.ErrorHexVLen(dpc, 8, FALSE);
       Log.ErrorString(" not handled"); Log.ErrorLn; Log.Flush
@@ -487,16 +490,28 @@ MODULE USBDMTPOberon;
     RETURN ret
   END ProcessSendObjectCommand;
 
+  PROCEDURE GetFileHeader(oh: INTEGER; VAR fh: FileDir.FileHeader): HALFWORD;
+    VAR ret: HALFWORD;
+  BEGIN ret := O.RESPONSE_OK;
+    IF oh DIV 29*29 # oh THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE
+    ELSE FileSystem.GetSector(Files.fshd, oh, fh);
+      IF fh.mark # FileDir.HeaderMark THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE END
+    END
+    RETURN ret
+  END GetFileHeader;
+
   PROCEDURE DeleteObject(oh, ofc: INTEGER): HALFWORD;
     VAR ret: HALFWORD; fh: FileDir.FileHeader; ext: FileDir.FileName;
       res: INTEGER;
-  BEGIN ret := O.RESPONSE_OK;
+  BEGIN
     IF (oh = 0) OR (oh = 0FFFFFFFFH) THEN ret := O.RESPONSE_PARAMETER_NOT_SUPPORTED
     ELSIF ofc # 0 THEN ret := O.RESPONSE_SPECIFICATION_BY_FORMAT_NOT_SUPPORTED
-    ELSE FileSystem.GetSector(Files.fshd, oh, fh); GetExt(fh.name, ext);
-      IF (ext = "Mod") OR (ext = "m4c") THEN ret := O.RESPONSE_OBJECT_WRITEPROTECTED
-      ELSE Files.Delete(fh.name, res);
-        IF res # 0 THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE END
+    ELSE ret := GetFileHeader(oh, fh);
+      IF ret = O.RESPONSE_OK THEN GetExt(fh.name, ext);
+        IF (ext = "Mod") OR (ext = "m4c") THEN ret := O.RESPONSE_OBJECT_WRITEPROTECTED
+        ELSE Files.Delete(fh.name, res);
+          IF res # 0 THEN ret := O.RESPONSE_INVALID_OBJECT_HANDLE END
+        END
       END
     END
     RETURN ret
@@ -507,33 +522,26 @@ MODULE USBDMTPOberon;
   END PutObjectStorageId;
 
   PROCEDURE PutObjectFormat(d: Def.Buffer; oh: INTEGER);
-    VAR ext: FileDir.FileName; fh: FileDir.FileHeader;
-  BEGIN FileSystem.GetSector(Files.fshd, oh, fh); Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED)
+  BEGIN Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED)
   END PutObjectFormat;
 
   PROCEDURE FileSize(fh: FileDir.FileHeader): INTEGER;
     RETURN fh.aleng*FileDir.SectorSize + fh.bleng - FileDir.HeaderSize
   END FileSize;
 
-  PROCEDURE PutObjectCompressedSize(d: Def.Buffer; oh: INTEGER);
-    VAR fh: FileDir.FileHeader;
-  BEGIN FileSystem.GetSector(Files.fshd, oh, fh);
-    Def.PutInteger(d, FileSize(fh))
-  END PutObjectCompressedSize;
+  PROCEDURE GetFileInfo(oh: INTEGER; VAR fn, dm: O.String; VAR cs: INTEGER): HALFWORD;
+    VAR ret: HALFWORD; fh: FileDir.FileHeader; iso: ARRAY 16 OF CHAR;
+  BEGIN ret := GetFileHeader(oh, fh);
+    IF ret = O.RESPONSE_OK THEN O.StringToUnicode(fh.name, fn);
+      DateToString(fh.date, iso); O.StringToUnicode(iso, dm);
+      cs := FileSize(fh)
+    END
+    RETURN ret
+  END GetFileInfo;
 
   PROCEDURE PutThumbFormat(d: Def.Buffer; oh: INTEGER);
   BEGIN Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED)
   END PutThumbFormat;
-
-  PROCEDURE PutFilename(d: Def.Buffer; oh: INTEGER);
-    VAR fh: FileDir.FileHeader;
-  BEGIN FileSystem.GetSector(Files.fshd, oh, fh); O.PutString(d, fh.name)
-  END PutFilename;
-
-  PROCEDURE PutDateModified(d: Def.Buffer; oh: INTEGER);
-    VAR fh: FileDir.FileHeader; iso: ARRAY 16 OF CHAR;
-  BEGIN FileSystem.GetSector(Files.fshd, oh, fh); DateToString(fh.date, iso); O.PutString(d, iso)
-  END PutDateModified;
 
   PROCEDURE PutFilePropListFirst3Elts(d: Def.Buffer; oh: INTEGER; opc: HALFWORD);
   BEGIN INC(count);
@@ -541,41 +549,44 @@ MODULE USBDMTPOberon;
     Def.PutHalfword(d, O.Get_ObjectPropDatatype(opc))
   END PutFilePropListFirst3Elts;
 
-  PROCEDURE PutOPL(d: Def.Buffer; adr: INTEGER);
-    VAR iso: ARRAY 16 OF CHAR;  fh: FileDir.FileHeader;
-  BEGIN FileSystem.GetSector(Files.fshd, adr, fh);
-    IF oPc = 0FFFFFFFFH THEN (*all properties except those with group code = 0FFFFFFFFH*)
-      PutFilePropListFirst3Elts(d, adr, O.OB_PROP_STORAGE_ID); Def.PutInteger(d, STORAGE_ID);
-      PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_FORMAT); Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED);
-      PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_SIZE); Def.PutInteger(d, FileSize(fh)); Def.PutInteger(d, 0);
-      PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJ_FILE_NAME); O.PutString(d, fh.name);
-      PutFilePropListFirst3Elts(d, adr, O.OB_PROP_DATE_MODIFIED); DateToString(fh.date, iso); O.PutString(d, iso)
-    ELSIF oPc = 0 THEN (*filter properties by group code*)
-      IF opGc = GROUP_FILE THEN (*file group*)
+  PROCEDURE PutOPL(d: Def.Buffer; adr: INTEGER): HALFWORD;
+    VAR ret: HALFWORD; iso: ARRAY 16 OF CHAR;  fh: FileDir.FileHeader;
+  BEGIN ret := GetFileHeader(adr, fh);
+    IF ret = O.RESPONSE_OK THEN
+      IF oPc = 0FFFFFFFFH THEN (*all properties except those with group code = 0FFFFFFFFH*)
         PutFilePropListFirst3Elts(d, adr, O.OB_PROP_STORAGE_ID); Def.PutInteger(d, STORAGE_ID);
         PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_FORMAT); Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED);
         PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_SIZE); Def.PutInteger(d, FileSize(fh)); Def.PutInteger(d, 0);
-        PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJ_FILE_NAME); O.PutString(d, fh.name);
-        PutFilePropListFirst3Elts(d, adr, O.OB_PROP_DATE_MODIFIED); DateToString(fh.date, iso); O.PutString(d, iso)
+        PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJ_FILE_NAME); O.Put1bString(d, fh.name);
+        PutFilePropListFirst3Elts(d, adr, O.OB_PROP_DATE_MODIFIED); DateToString(fh.date, iso); O.Put1bString(d, iso)
+      ELSIF oPc = 0 THEN (*filter properties by group code*)
+        IF opGc = GROUP_FILE THEN (*file group*)
+          PutFilePropListFirst3Elts(d, adr, O.OB_PROP_STORAGE_ID); Def.PutInteger(d, STORAGE_ID);
+          PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_FORMAT); Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED);
+          PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_SIZE); Def.PutInteger(d, FileSize(fh)); Def.PutInteger(d, 0);
+          PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJ_FILE_NAME); O.Put1bString(d, fh.name);
+          PutFilePropListFirst3Elts(d, adr, O.OB_PROP_DATE_MODIFIED); DateToString(fh.date, iso); O.Put1bString(d, iso)
+        END
+      ELSIF oPc = O.OB_PROP_STORAGE_ID THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_STORAGE_ID);
+        Def.PutInteger(d, STORAGE_ID)
+      ELSIF oPc = O.OB_PROP_OBJECT_FORMAT THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_FORMAT);
+        Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED)
+      ELSIF oPc = O.OB_PROP_OBJECT_SIZE THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_SIZE);
+        Def.PutInteger(d, FileSize(fh)); Def.PutInteger(d, 0)
+      ELSIF oPc = O.OB_PROP_OBJ_FILE_NAME THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJ_FILE_NAME);
+        O.Put1bString(d, fh.name)
+      ELSIF oPc = O.OB_PROP_DATE_MODIFIED THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_DATE_MODIFIED);
+        DateToString(fh.date, iso); O.Put1bString(d, iso)
       END
-    ELSIF oPc = O.OB_PROP_STORAGE_ID THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_STORAGE_ID);
-      Def.PutInteger(d, STORAGE_ID)
-    ELSIF oPc = O.OB_PROP_OBJECT_FORMAT THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_FORMAT);
-      Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED)
-    ELSIF oPc = O.OB_PROP_OBJECT_SIZE THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJECT_SIZE);
-      Def.PutInteger(d, FileSize(fh)); Def.PutInteger(d, 0)
-    ELSIF oPc = O.OB_PROP_OBJ_FILE_NAME THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_OBJ_FILE_NAME);
-      O.PutString(d, fh.name)
-    ELSIF oPc = O.OB_PROP_DATE_MODIFIED THEN PutFilePropListFirst3Elts(d, adr, O.OB_PROP_DATE_MODIFIED);
-      DateToString(fh.date, iso); O.PutString(d, iso)
     END
+    RETURN ret
   END PutOPL;
 
   PROCEDURE PutNextPLData(dev: Def.Handle; d: Def.Buffer);
-    VAR adr, len: INTEGER; addvalid: BOOLEAN;
+    VAR ret: HALFWORD; adr, len: INTEGER; addvalid: BOOLEAN;
   BEGIN M.SwitchBuffer(d);
     REPEAT addvalid :=  getNext(adr);
-      IF addvalid THEN PutOPL(d, adr);
+      IF addvalid THEN ret := PutOPL(d, adr);
         IF nbo # 0 THEN (*fix array size*) len := d.length; d.length := O.CONT_HEADER_SIZE;
           Def.PutInteger(d, nbo*count); d.length := len; nbo := 0
         END
@@ -601,7 +612,7 @@ MODULE USBDMTPOberon;
         nbo := nbf; (*working information used by PutNextPLData to compute actual length of the array*)
         lohl := ohl; idx := 0; M.EnterCircularMode(dev, d);
         fops(O.UserIf).PutNextData := PutNextPLData; PutNextPLData(dev, d)
-      ELSE  PutOPL(d, oh);
+      ELSE ret := PutOPL(d, oh);
         len := d.length; d.length := lenpos; Def.PutInteger(d, count); d.length := len
       END; d := NIL
     END
@@ -631,23 +642,25 @@ MODULE USBDMTPOberon;
     RETURN ret
   END PutObject;
 
-  PROCEDURE PutObjectPropValue(d: Def.Buffer; oh, opc: INTEGER);
-    VAR fh: FileDir.FileHeader; ext: FileDir.FileName; date: ARRAY 16 OF CHAR;
+  PROCEDURE PutObjectPropValue(d: Def.Buffer; oh, opc: INTEGER): HALFWORD;
+    VAR ret: HALFWORD; fh: FileDir.FileHeader; ext: FileDir.FileName; date: ARRAY 16 OF CHAR;
   BEGIN
     IF opc = O.OB_PROP_STORAGE_ID THEN Def.PutInteger(d, STORAGE_ID)
-    ELSE FileSystem.GetSector(Files.fshd, oh, fh);
-      IF opc = O.OB_PROP_OBJECT_FORMAT THEN Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED)
-      ELSIF opc = O.OB_PROP_OBJECT_SIZE THEN Def.PutInteger(d, FileSize(fh)); Def.PutInteger(d, 0)
-    ELSIF opc = O.OB_PROP_OBJ_FILE_NAME THEN O.PutString(d, fh.name)
-      ELSIF opc = O.OB_PROP_DATE_MODIFIED THEN DateToString(fh.date, date); O.PutString(d, date)
+    ELSIF opc = O.OB_PROP_OBJECT_FORMAT THEN Def.PutHalfword(d, O.OBJ_FORMAT_UNDEFINED)
+    ELSE ret := GetFileHeader(oh, fh);
+      IF ret = O.RESPONSE_OK THEN
+        IF opc = O.OB_PROP_OBJECT_SIZE THEN Def.PutInteger(d, FileSize(fh)); Def.PutInteger(d, 0)
+        ELSIF opc = O.OB_PROP_OBJ_FILE_NAME THEN O.Put1bString(d, fh.name)
+        ELSIF opc = O.OB_PROP_DATE_MODIFIED THEN DateToString(fh.date, date); O.Put1bString(d, date)
+        END
       END
     END
+    RETURN ret
   END PutObjectPropValue;
 
   PROCEDURE initFops(): Def.UserData;
     VAR u!: O.UserIf;
   BEGIN NEW(u);
-    (*todo: develop fops.* procedures*)
     u.Init := Init;
     u.DeInit := DeInit;
     u.CloseSession := CloseSession;
@@ -680,8 +693,8 @@ MODULE USBDMTPOberon;
     u.PutObjectStorageId := PutObjectStorageId;
     u.PutObjectFormat := PutObjectFormat;
     u.PutProtectionStatus := Put0W1p;
-    u.PutObjectCompressedSize := PutObjectCompressedSize;
     u.PutThumbFormat := PutThumbFormat;
+    u.GetFileInfo := GetFileInfo;
     u.PutThumbCompressedSize := Put0I1p;
     u.PutThumbPixWidth := Put0I1p;
     u.PutThumbPixHeight := Put0I1p;
@@ -690,9 +703,7 @@ MODULE USBDMTPOberon;
     u.PutAssociationType := Put0W1p;
     u.PutAssociationDesc := Put0I1p;
     u.PutSequenceNumber := Put0I1p;
-    u.PutFilename := PutFilename;
     u.PutDateCreated := Put0S1p;
-    u.PutDateModified := PutDateModified;
     u.PutKeywords := Put0S1p;
     u.PutObjectPropsSupported := PutObjectPropsSupported;
     u.PutObjectPropDefValue := PutObjectPropDefValue;
@@ -702,7 +713,7 @@ MODULE USBDMTPOberon;
     u.PutObjectPropList := PutObjectPropList;
     u.PutObjectPropValue := PutObjectPropValue;
     u.PutObject := PutObject;
-    u.PutDeviceFriendlyName := NIL;
+    u.PutDeviceFriendlyName := PutDeviceFriendlyName;
     u.PutDevicePropValue := PutDevicePropValue;
     u.PutNextData := PutNextDataNone;
     u.ReceiveNextData := ReceiveNextDataUndefined;

@@ -136,11 +136,11 @@ MODULE HALHCD;
   * @retval None
   *)
   PROCEDURE Port_IRQHandler(hhcd: Handle; dbm: Msg);
-  VAR res: BYTE; hprt0, hprt0_dup, fslspcs: SET; USBx_HOST!: ll.OTGHostMode;
+  VAR res: BYTE; hprt0, hprt0_dup, fslspcs: SET; USBx!: ll.OTGCore;
     msg!: Q.Msg;
-  BEGIN USBx_HOST := SYSTEM.VAL(ll.OTGHostMode, ORD(hhcd.Instance) + ll.HOST_BASE);
+  BEGIN USBx := hhcd.Instance;
     (* Handle Host Port Interrupts *)
-    SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, hprt0);
+    hprt0 := USBx.HPRT;
     IF dbm # NIL THEN dbm.hprt := hprt0 END;
     hprt0_dup := hprt0 - {ll.HPRT_PENA, ll.HPRT_PCDET, ll.HPRT_PENCHNG, ll.HPRT_POCCHNG};
     (* Check whether Port Connect detected *)
@@ -159,17 +159,17 @@ MODULE HALHCD;
             fslspcs := ll.HCFG_6_MHZ
           ELSE fslspcs := ll.HCFG_48_MHZ
           END;
-          res := ll.InitFSLSPClkSel(hhcd.Instance, fslspcs)
-        ELSIF hhcd.Init.speed = SPEED_FULL THEN USBx_HOST.HFIR := ll.HFIR_60_MHZ
+          res := ll.InitFSLSPClkSel(USBx, fslspcs)
+        ELSIF hhcd.Init.speed = SPEED_FULL THEN USBx.HFIR := ll.HFIR_60_MHZ
         END;
-        ll.SetXFSIZ(hhcd.Instance); (*workaround channel hang with CHDIS and CHENA set*)
+        ll.SetXFSIZ(USBx); (*workaround channel hang with CHDIS and CHENA set*)
         msg := Q.Get(hhcd.PortEnabledMP); IF msg # NIL THEN Q.Post(hhcd.MsgPendQ, msg) END
       ELSE msg := Q.Get(hhcd.PortDisabledMP); IF msg # NIL THEN Q.Post(hhcd.MsgPendQ, msg) END
       END
     END;
     (* Check for an overcurrent *)
     IF ll.HPRT_POCCHNG IN hprt0 THEN INCL(hprt0_dup, ll.HPRT_POCCHNG) END;
-    SYSTEM.PUT(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, hprt0_dup) (* Clear Port Interrupts *)
+    USBx.HPRT := hprt0_dup; (* Clear Port Interrupts *)
   END Port_IRQHandler;
 
   (**
@@ -180,38 +180,38 @@ MODULE HALHCD;
   * @retval none
   *)
   PROCEDURE HC_IN_IRQHandler(hhcd: Handle; chnum: BYTE; dbm: Msg);
-    VAR USBx_HCi!: ll.OTGHostChannel; flags: SET;
+    VAR USBx!: ll.OTGCore; flags: SET;
       msg!: Q.Msg; dmsg!: Msg;
-  BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
-    flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
+  BEGIN USBx := hhcd.Instance;
+    flags := ll.ReadChInterrupts(USBx, chnum);
     IF dbm # NIL THEN dbm.hcint := flags; dbm.chnum := chnum; dbm.is_in := TRUE END;
-    IF ll.HCINT_AHBERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_AHBERR};
-      hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_BBERR IN flags THEN USBx_HCi.HCINT := {ll. HCINT_BBERR};
-      hhcd.hc[chnum].state := ll.HC_BBLERR; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_STALL IN flags THEN USBx_HCi.HCINT := {ll.HCINT_STALL};
-      hhcd.hc[chnum].state := ll.HC_STALL; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_DTERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_DTERR};
-      hhcd.hc[chnum].state := ll.HC_DATATGLERR; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_TXERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_TXERR};
-      hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
+    IF ll.HCINT_AHBERR IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_AHBERR};
+      hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(USBx, chnum)
+    ELSIF ll.HCINT_BBERR IN flags THEN USBx.HC[chnum].HCINT := {ll. HCINT_BBERR};
+      hhcd.hc[chnum].state := ll.HC_BBLERR; ll.HC_Halt(USBx, chnum)
+    ELSIF ll.HCINT_STALL IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_STALL};
+      hhcd.hc[chnum].state := ll.HC_STALL; ll.HC_Halt(USBx, chnum)
+    ELSIF ll.HCINT_DTERR IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_DTERR};
+      hhcd.hc[chnum].state := ll.HC_DATATGLERR; ll.HC_Halt(USBx, chnum)
+    ELSIF ll.HCINT_TXERR IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_TXERR};
+      hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(USBx, chnum)
     END;
-    IF ll. HCINT_FRMOR IN flags THEN  ll.HC_Halt(hhcd.Instance, chnum);
-      USBx_HCi.HCINT := {ll.HCINT_FRMOR};
+    IF ll. HCINT_FRMOR IN flags THEN  ll.HC_Halt(USBx, chnum);
+      USBx.HC[chnum].HCINT := {ll.HCINT_FRMOR};
     ELSIF ll.HCINT_XFRC IN flags THEN
-      USBx_HCi.HCINT := {ll.HCINT_ACK}; (* Clear any pending ACK IT *)
+      USBx.HC[chnum].HCINT := {ll.HCINT_ACK}; (* Clear any pending ACK IT *)
       IF hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].do_csplit := FALSE;
-        EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_SPLITEN)
+        EXCL(USBx.HC[chnum].HCSPLT, ll.HCSPLT_SPLITEN)
       END;
       IF hhcd.Init.dma_enable THEN
-        hhcd.hc[chnum].xfer_count := hhcd.hc[chnum].XferSize - ORD(USBx_HCi.HCTSIZ*ll.HCTSIZ_XFRSIZ_Msk)
+        hhcd.hc[chnum].xfer_count := hhcd.hc[chnum].XferSize - ORD(USBx.HC[chnum].HCTSIZ*ll.HCTSIZ_XFRSIZ_Msk)
       END;
       hhcd.hc[chnum].state := ll.HC_XFRC; hhcd.hc[chnum].ErrCnt := 0;
-      USBx_HCi.HCINT := {ll.HCINT_XFRC};
-      IF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_CTRL, Def.EP_TYPE_BULK} THEN ll.HC_Halt(hhcd.Instance, chnum);
-        USBx_HCi.HCINT := {ll.HCINT_NAK}
+      USBx.HC[chnum].HCINT := {ll.HCINT_XFRC};
+      IF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_CTRL, Def.EP_TYPE_BULK} THEN ll.HC_Halt(USBx, chnum);
+        USBx.HC[chnum].HCINT := {ll.HCINT_NAK}
       ELSIF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_INTR, Def.EP_TYPE_ISOC} THEN
-        INCL(USBx_HCi.HCCHAR, ll.HCCHAR_ODDFRM);
+        INCL(USBx.HC[chnum].HCCHAR, ll.HCCHAR_ODDFRM);
         hhcd.hc[chnum].urb_state := ll.URB_DONE;
         msg := Q.Get(hhcd.URBChangeMP); dmsg := SYSTEM.VAL(Msg, msg);
         IF dmsg # NIL THEN dmsg.chnum := chnum; dmsg.urb_state := hhcd.hc[chnum].urb_state;
@@ -224,11 +224,11 @@ MODULE HALHCD;
         END
       ELSE hhcd.hc[chnum].toggle_in := ~hhcd.hc[chnum].toggle_in
       END
-    ELSIF ll.HCINT_ACK IN flags THEN USBx_HCi.HCINT := {ll.HCINT_ACK};
+    ELSIF ll.HCINT_ACK IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_ACK};
       IF hhcd.hc[chnum].do_ssplit THEN hhcd.hc[chnum].do_csplit := TRUE;
-        hhcd.hc[chnum].state := ll.HC_ACK; ll.HC_Halt(hhcd.Instance, chnum)
+        hhcd.hc[chnum].state := ll.HC_ACK; ll.HC_Halt(USBx, chnum)
       END
-    ELSIF ll.HCINT_CHH IN flags THEN USBx_HCi.HCINT := {ll.HCINT_CHH};
+    ELSIF ll.HCINT_CHH IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_CHH};
       IF hhcd.hc[chnum].state = ll.HC_XFRC THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         hhcd.hc[chnum].urb_state := ll.URB_DONE
       ELSIF hhcd.hc[chnum].state = ll.HC_STALL THEN hhcd.hc[chnum].state := ll.HC_HALTED;
@@ -238,12 +238,12 @@ MODULE HALHCD;
         INC(hhcd.hc[chnum].ErrCnt);
         IF hhcd.hc[chnum].ErrCnt > 2 THEN hhcd.hc[chnum].ErrCnt := 0;
           IF hhcd.hc[chnum].do_ssplit THEN hhcd.hc[chnum].do_csplit := FALSE;
-            hhcd.hc[chnum].ep_ss_schedule := FALSE; EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_COMPLSPLT)
+            hhcd.hc[chnum].ep_ss_schedule := FALSE; EXCL(USBx.HC[chnum].HCSPLT, ll.HCSPLT_COMPLSPLT)
           END;
           hhcd.hc[chnum].urb_state := ll.URB_ERROR
         ELSE hhcd.hc[chnum].urb_state := ll.URB_NOTREADY;
           IF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_CTRL, Def.EP_TYPE_BULK} THEN
-            USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
+            USBx.HC[chnum].HCCHAR := USBx.HC[chnum].HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
           END
         END
       ELSIF hhcd.hc[chnum].state = ll.HC_NYET THEN hhcd.hc[chnum].state := ll.HC_HALTED;
@@ -252,30 +252,30 @@ MODULE HALHCD;
             IF hhcd.hc[chnum].NyetErrCnt > 2 THEN hhcd.hc[chnum].NyetErrCnt := 0;
               hhcd.hc[chnum].do_csplit := FALSE;
               IF hhcd.hc[chnum].ErrCnt < 3 THEN hhcd.hc[chnum].ep_ss_schedule := TRUE END;
-              EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_COMPLSPLT);
+              EXCL(USBx.HC[chnum].HCSPLT, ll.HCSPLT_COMPLSPLT);
               hhcd.hc[chnum].urb_state := ll.URB_ERROR
             ELSE hhcd.hc[chnum].urb_state := ll.URB_NOTREADY
             END
           ELSE hhcd.hc[chnum].urb_state := ll.URB_NOTREADY
           END;
           IF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_CTRL, Def.EP_TYPE_BULK} THEN
-            USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
+            USBx.HC[chnum].HCCHAR := USBx.HC[chnum].HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
           END
         END
       ELSIF hhcd.hc[chnum].state = ll.HC_ACK THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         IF hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].urb_state := ll.URB_NOTREADY;
           (* Set Complete split and re-activate the channel *)
-          INCL(USBx_HCi.HCSPLT, ll.HCSPLT_COMPLSPLT);
-          INCL(USBx_HCi.HCINTMSK, ll.HCINTMSK_NYET);
-          EXCL(USBx_HCi.HCINTMSK, ll.HCINT_ACK);
+          INCL(USBx.HC[chnum].HCSPLT, ll.HCSPLT_COMPLSPLT);
+          INCL(USBx.HC[chnum].HCINTMSK, ll.HCINTMSK_NYET);
+          EXCL(USBx.HC[chnum].HCINTMSK, ll.HCINT_ACK);
           IF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_CTRL, Def.EP_TYPE_BULK} THEN
-            USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
+            USBx.HC[chnum].HCCHAR := USBx.HC[chnum].HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
           END
         END
       ELSIF hhcd.hc[chnum].state = ll.HC_NAK THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         hhcd.hc[chnum].urb_state := ll.URB_NOTREADY;
         IF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_CTRL, Def.EP_TYPE_BULK} THEN
-          USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
+          USBx.HC[chnum].HCCHAR := USBx.HC[chnum].HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
         END
       ELSIF hhcd.hc[chnum].state = ll.HC_BBLERR THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         INC(hhcd.hc[chnum].ErrCnt); hhcd.hc[chnum].urb_state := ll.URB_ERROR
@@ -285,24 +285,24 @@ MODULE HALHCD;
           Q.Post(hhcd.MsgPendQ, msg)
         END
       END
-    ELSIF ll.HCINT_NYET IN flags THEN USBx_HCi.HCINT := {ll.HCINT_NYET};
+    ELSIF ll.HCINT_NYET IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_NYET};
       hhcd.hc[chnum].state := ll.HC_NYET;
       IF ~hhcd.hc[chnum].do_ssplit THEN hhcd.hc[chnum].ErrCnt := 0 END;
-      ll.HC_Halt(hhcd.Instance, chnum)
+      ll.HC_Halt(USBx, chnum)
     ELSIF ll.HCINT_NAK IN flags THEN
       IF hhcd.hc[chnum].ep_type = Def.EP_TYPE_INTR THEN
         hhcd.hc[chnum].ErrCnt := 0; hhcd.hc[chnum].state := ll.HC_NAK;
-        ll.HC_Halt(hhcd.Instance, chnum)
+        ll.HC_Halt(USBx, chnum)
       ELSIF hhcd.hc[chnum].ep_type IN {Def.EP_TYPE_CTRL, Def.EP_TYPE_BULK} THEN
         hhcd.hc[chnum].ErrCnt := 0;
         IF ~ hhcd.Init.dma_enable OR hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].state := ll.HC_NAK;
-          ll.HC_Halt(hhcd.Instance, chnum)
+          ll.HC_Halt(USBx, chnum)
         END
       END;
       IF hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].do_csplit := FALSE;
-        EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_COMPLSPLT); INCL(USBx_HCi.HCINTMSK, ll.HCINTMSK_ACKM);
+        EXCL(USBx.HC[chnum].HCSPLT, ll.HCSPLT_COMPLSPLT); INCL(USBx.HC[chnum].HCINTMSK, ll.HCINTMSK_ACKM);
       END;
-      USBx_HCi.HCINT := {ll.HCINT_NAK};
+      USBx.HC[chnum].HCINT := {ll.HCINT_NAK};
     END
   END HC_IN_IRQHandler;
 
@@ -314,50 +314,50 @@ MODULE HALHCD;
   * @retval none
   *)
   PROCEDURE HC_OUT_IRQHandler(hhcd: Handle; chnum: BYTE; dbm: Msg);
-    VAR USBx_HCi!: ll.OTGHostChannel; flags: SET; num_packets: INTEGER; purbs: BYTE;
+    VAR USBx!: ll.OTGCore; flags: SET; num_packets: INTEGER; purbs: BYTE;
       msg!: Q.Msg; dmsg!: Msg;
-  BEGIN USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
-    flags := ll.ReadChInterrupts(hhcd.Instance, chnum);
+  BEGIN USBx := hhcd.Instance;
+    flags := ll.ReadChInterrupts(USBx, chnum);
     IF dbm # NIL THEN dbm.hcint := flags; dbm.chnum := chnum END;
-    IF ll.HCINT_AHBERR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_AHBERR};
-      hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(hhcd.Instance, chnum)
-    ELSIF ll.HCINT_ACK IN flags THEN USBx_HCi.HCINT := {ll.HCINT_ACK};
+    IF ll.HCINT_AHBERR IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_AHBERR};
+      hhcd.hc[chnum].state := ll.HC_XACTERR; ll.HC_Halt(USBx, chnum)
+    ELSIF ll.HCINT_ACK IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_ACK};
       IF hhcd.hc[chnum].do_ping THEN hhcd.hc[chnum].do_ping := FALSE;
         hhcd.hc[chnum].urb_state := ll.URB_NOTREADY; hhcd.hc[chnum].state := ll.HC_ACK;
-        ll.HC_Halt(hhcd.Instance, chnum)
+        ll.HC_Halt(USBx, chnum)
       END;
       IF hhcd.hc[chnum].do_ssplit & ~hhcd.hc[chnum].do_csplit THEN
         IF hhcd.hc[chnum].ep_type # Def.EP_TYPE_ISOC THEN hhcd.hc[chnum].do_csplit := TRUE END;
-        hhcd.hc[chnum].state := ll.HC_ACK; ll.HC_Halt(hhcd.Instance, chnum);
+        hhcd.hc[chnum].state := ll.HC_ACK; ll.HC_Halt(USBx, chnum);
         hhcd.hc[chnum].ErrCnt := 0; (* reset error_count *)
       END
-    ELSIF ll.HCINT_FRMOR IN flags THEN USBx_HCi.HCINT := {ll.HCINT_FRMOR};
-      ll.HC_Halt(hhcd.Instance, chnum)
+    ELSIF ll.HCINT_FRMOR IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_FRMOR};
+      ll.HC_Halt(USBx, chnum)
     ELSIF ll.HCINT_XFRC IN flags THEN hhcd.hc[chnum].ErrCnt := 0;
       (* transaction completed with NYET state, update do ping state *)
       IF ll.HCINT_NYET IN flags THEN hhcd.hc[chnum].do_ping := TRUE;
-        USBx_HCi.HCINT := {ll.HCINT_NYET}
+        USBx.HC[chnum].HCINT := {ll.HCINT_NYET}
       END;
       IF hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].do_csplit := FALSE;
-        EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_COMPLSPLT)
+        EXCL(USBx.HC[chnum].HCSPLT, ll.HCSPLT_COMPLSPLT)
       END;
-      USBx_HCi.HCINT := {ll.HCINT_XFRC}; hhcd.hc[chnum].state := ll.HC_XFRC;
-      ll.HC_Halt(hhcd.Instance, chnum);
+      USBx.HC[chnum].HCINT := {ll.HCINT_XFRC}; hhcd.hc[chnum].state := ll.HC_XFRC;
+      ll.HC_Halt(USBx, chnum);
     ELSIF ll.HCINT_NYET IN flags THEN hhcd.hc[chnum].state := ll.HC_NYET;
       IF ~hhcd.hc[chnum].do_ssplit THEN hhcd.hc[chnum].do_ping := TRUE END;
-      hhcd.hc[chnum].ErrCnt := 0; ll.HC_Halt(hhcd.Instance, chnum);
-      USBx_HCi.HCINT := {ll.HCINT_NYET}
-    ELSIF ll.HCINT_STALL IN flags THEN USBx_HCi.HCINT := {ll.HCINT_STALL};
-      hhcd.hc[chnum].state := ll.HC_STALL; ll.HC_Halt(hhcd.Instance, chnum);
+      hhcd.hc[chnum].ErrCnt := 0; ll.HC_Halt(USBx, chnum);
+      USBx.HC[chnum].HCINT := {ll.HCINT_NYET}
+    ELSIF ll.HCINT_STALL IN flags THEN USBx.HC[chnum].HCINT := {ll.HCINT_STALL};
+      hhcd.hc[chnum].state := ll.HC_STALL; ll.HC_Halt(USBx, chnum);
     ELSIF ll.HCINT_NAK IN flags THEN hhcd.hc[chnum].ErrCnt := 0;
       hhcd.hc[chnum].state := ll.HC_NAK;
       IF ~hhcd.hc[chnum].do_ping & (hhcd.hc[chnum].speed = Def.SPEED_HIGH) THEN
         hhcd.hc[chnum].do_ping := TRUE
       END;
-      ll.HC_Halt(hhcd.Instance, chnum); USBx_HCi.HCINT := {ll.HCINT_NAK};
+      ll.HC_Halt(USBx, chnum); USBx.HC[chnum].HCINT := {ll.HCINT_NAK};
     ELSIF ll.HCINT_TXERR IN flags THEN
       IF ~hhcd.Init.dma_enable THEN hhcd.hc[chnum].state := ll.HC_XACTERR;
-        ll.HC_Halt(hhcd.Instance, chnum)
+        ll.HC_Halt(USBx, chnum)
       ELSE INC(hhcd.hc[chnum].ErrCnt);
         IF hhcd.hc[chnum].ErrCnt > 2 THEN hhcd.hc[chnum].ErrCnt := 0;
           hhcd.hc[chnum].urb_state := ll.URB_ERROR;
@@ -367,13 +367,13 @@ MODULE HALHCD;
           END
         ELSE
           hhcd.hc[chnum].urb_state := ll.URB_NOTREADY;
-          USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
+          USBx.HC[chnum].HCCHAR := USBx.HC[chnum].HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
         END
       END;
-      USBx_HCi.HCINT := {ll.HCINT_TXERR}
+      USBx.HC[chnum].HCINT := {ll.HCINT_TXERR}
     ELSIF ll.HCINT_DTERR IN flags THEN hhcd.hc[chnum].state := ll.HC_DATATGLERR;
-      ll.HC_Halt(hhcd.Instance, chnum); USBx_HCi.HCINT := {ll.HCINT_DTERR}
-    ELSIF ll.HCINT_CHH IN flags THEN  USBx_HCi.HCINT := {ll.HCINT_CHH};
+      ll.HC_Halt(USBx, chnum); USBx.HC[chnum].HCINT := {ll.HCINT_DTERR}
+    ELSIF ll.HCINT_CHH IN flags THEN  USBx.HC[chnum].HCINT := {ll.HCINT_CHH};
       purbs := hhcd.hc[chnum].urb_state;
       IF hhcd.hc[chnum].state = ll.HC_XFRC THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         hhcd.hc[chnum].urb_state := ll.URB_DONE;
@@ -389,7 +389,7 @@ MODULE HALHCD;
       ELSIF hhcd.hc[chnum].state = ll.HC_NAK THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         hhcd.hc[chnum].urb_state := ll.URB_NOTREADY;
         IF hhcd.hc[chnum].do_csplit THEN hhcd.hc[chnum].do_csplit := FALSE;
-          EXCL(USBx_HCi.HCSPLT, ll.HCSPLT_COMPLSPLT)
+          EXCL(USBx.HC[chnum].HCSPLT, ll.HCSPLT_COMPLSPLT)
         END
       ELSIF hhcd.hc[chnum].state = ll.HC_NYET THEN hhcd.hc[chnum].state := ll.HC_HALTED;
         hhcd.hc[chnum].urb_state  := ll.URB_NOTREADY
@@ -400,7 +400,7 @@ MODULE HALHCD;
         IF hhcd.hc[chnum].ErrCnt > 2 THEN hhcd.hc[chnum].ErrCnt := 0;
           hhcd.hc[chnum].urb_state := ll.URB_ERROR
         ELSE hhcd.hc[chnum].urb_state := ll.URB_NOTREADY;
-          USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
+          USBx.HC[chnum].HCCHAR := USBx.HC[chnum].HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA} (* re-activate the channel *)
         END
       END;
       (*in STM original code, hhcd.HC_NotifyURBChangeCallback in called only if one of the previous cases match*)
@@ -419,27 +419,27 @@ MODULE HALHCD;
   * @retval none
   *)
   PROCEDURE RXQLVL_IRQHandler(hhcd: Handle; dbm: Msg);
-    VAR USBx_HCi!: ll.OTGHostChannel;
+    VAR USBx!: ll.OTGCore;
       GrxstspReg, pktsts: SET; bytecnt, xferSizePktCnt: INTEGER; chnum: BYTE;
   BEGIN (*WARNING: GRXSTSP must be read only once, because reading it pops one item from input FIFO*)
-    GrxstspReg := hhcd.Instance.GRXSTSP;
+    USBx := hhcd.Instance;
+    GrxstspReg := USBx.GRXSTSP;
     IF dbm # NIL THEN dbm.grxstsp := GrxstspReg END;
     chnum := ORD(GrxstspReg*ll.GRXSTS_EPNUM_Msk);
     pktsts := GrxstspReg*ll.GRXSTS_PKTSTS_Msk;
     bytecnt := LSR(ORD(GrxstspReg*ll.GRXSTS_BCNT_Msk), ll.GRXSTS_BCNT_Pos);
-    USBx_HCi := SYSTEM.VAL(ll.OTGHostChannel, ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + chnum*ll.HOST_CHANNEL_SIZE);
     IF pktsts = ll.GRXSTS_PKTSTS_PKTRCV THEN
       (* Read the data into the host buffer. *)
       IF (bytecnt > 0) & (hhcd.hc[chnum].xfer_buff # 0) THEN
         IF hhcd.hc[chnum].xfer_count + bytecnt <= hhcd.hc[chnum].xfer_len THEN
-          ll.ReadPacket(hhcd.Instance, hhcd.hc[chnum].xfer_buff, bytecnt);
+          ll.ReadPacket(USBx, hhcd.hc[chnum].xfer_buff, bytecnt);
           (* manage multiple Xfer *)
           INC(hhcd.hc[chnum].xfer_buff, bytecnt); INC(hhcd.hc[chnum].xfer_count, bytecnt);
           (* get transfer size packet count *)
-          xferSizePktCnt := LSR(ORD(USBx_HCi.HCTSIZ*ll.HCTSIZ_PKTCNT_Msk), 19);
+          xferSizePktCnt := LSR(ORD(USBx.HC[chnum].HCTSIZ*ll.HCTSIZ_PKTCNT_Msk), 19);
           IF (hhcd.hc[chnum].max_packet = bytecnt) & (xferSizePktCnt > 0) THEN
             (* re-activate the channel when more packets are expected *)
-            USBx_HCi.HCCHAR := USBx_HCi.HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA};
+            USBx.HC[chnum].HCCHAR := USBx.HC[chnum].HCCHAR - {ll.HCCHAR_CHDIS} + {ll.HCCHAR_CHENA};
             hhcd.hc[chnum].toggle_in := ~hhcd.hc[chnum].toggle_in;
           END
         ELSE hhcd.hc[chnum].urb_state := ll.URB_ERROR
@@ -454,12 +454,12 @@ MODULE HALHCD;
   * @retval None
   *)
   PROCEDURE IRQHandler*(hhcd: UC.Handle);
-    VAR i: INTEGER; interrupt, flags, reg: SET; res: BYTE;
-      msg!: Q.Msg; dbm!: Msg;
+    VAR i: INTEGER; interrupt, flags: SET; res: BYTE;
+      msg!: Q.Msg; dbm!: Msg; USBx!: ll.OTGCore;
   BEGIN BSP.ledsOnOff({4}, {});
     CASE hhcd OF
-      Handle:
-        flags := ll.ReadInterrupts(hhcd.Instance); dbm := NIL;
+      Handle: USBx := hhcd.Instance;
+        flags := ll.ReadInterrupts(USBx); dbm := NIL;
 (*
         IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(hhcd.DebugMP);
           IF msg # NIL THEN dbm := msg(DebugMsg); CLEAR(dbm^); dbm.chnum := 0FFH;
@@ -468,24 +468,23 @@ MODULE HALHCD;
         END;
 *)
         (* Ensure that we are in host mode *)
-        IF ll.IsHost(hhcd.Instance) & (flags # {}) (* Avoid spurious interrupt *) THEN
+        IF ll.IsHost(USBx) & (flags # {}) (* Avoid spurious interrupt *) THEN
           IF ll.GINTSTS_PXFR_INCOMPISOOUT IN flags THEN (* Incomplete periodic transfer, acknowledge the interrupt *)
-            hhcd.Instance.GINTSTS := {ll.GINTSTS_PXFR_INCOMPISOOUT}
+            USBx.GINTSTS := {ll.GINTSTS_PXFR_INCOMPISOOUT}
           END;
           IF ll.GINTSTS_IISOIXFR IN flags THEN (* Incomplete isochronous IN transfer acknowledge the interrupt *)
-            hhcd.Instance.GINTSTS := {ll.GINTSTS_IISOIXFR}
+            USBx.GINTSTS := {ll.GINTSTS_IISOIXFR}
           END;
           IF ll.GINTSTS_PTXFE IN flags THEN (* Periodic TxFIFO empty, acknowledge the interrupt *)
-            hhcd.Instance.GINTSTS := {ll.GINTSTS_PTXFE}
+            USBx.GINTSTS := {ll.GINTSTS_PTXFE}
           END;
           (* Handle Host Disconnect Interrupts *)
           IF ll.GINTSTS_DISCINT IN flags THEN
-            hhcd.Instance.GINTSTS := {ll.GINTSTS_DISCINT};
-            SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_PORT_BASE, reg);
-            IF ~(ll.HPRT_PCSTS IN reg) THEN
-              res := ll.FlushTxFifo(hhcd.Instance, ll.ALL_FIFOs); res := ll.FlushRxFifo(hhcd.Instance); (* Flush USB Fifo *)
+            USBx.GINTSTS := {ll.GINTSTS_DISCINT};
+            IF ~(ll.HPRT_PCSTS IN USBx.HPRT) THEN
+              res := ll.FlushTxFifo(USBx, ll.ALL_FIFOs); res := ll.FlushRxFifo(USBx); (* Flush USB Fifo *)
               IF hhcd.Init.phy_itface = ll.EMBEDDED_PHY THEN
-                res := ll.InitFSLSPClkSel(hhcd.Instance, ll.HCFG_48_MHZ) (* Restore FS Clock *)
+                res := ll.InitFSLSPClkSel(USBx, ll.HCFG_48_MHZ) (* Restore FS Clock *)
               END;
               msg := Q.Get(hhcd.DisconnectMP); (* Handle Host Port Disconnect Interrupt *)
               IF msg # NIL THEN Q.Post(hhcd.MsgPendQ, msg) END
@@ -493,21 +492,20 @@ MODULE HALHCD;
           END;
           IF ll.GINTSTS_HPRTINT IN flags THEN Port_IRQHandler(hhcd, dbm) END; (* Handle Host Port Interrupts *)
           (* Handle Host SOF Interrupt *)
-          IF ll.GINTSTS_SOF IN flags THEN hhcd.SOFCallback(hhcd); hhcd.Instance.GINTSTS := {ll.GINTSTS_SOF} END;
+          IF ll.GINTSTS_SOF IN flags THEN hhcd.SOFCallback(hhcd); USBx.GINTSTS := {ll.GINTSTS_SOF} END;
           (* Handle Host channel Interrupt *)
-          IF ll.GINTSTS_HCINT IN flags THEN interrupt := ll.HC_ReadInterrupt(hhcd.Instance);
+          IF ll.GINTSTS_HCINT IN flags THEN interrupt := ll.HC_ReadInterrupt(USBx);
             ASSERT(hhcd.Init.Host_channels <= 12);
             FOR i := 0 TO hhcd.Init.Host_channels - 1 DO
               IF i MOD 10H IN interrupt THEN
-                SYSTEM.GET(ORD(hhcd.Instance) + ll.HOST_CHANNEL_BASE + i*ll.HOST_CHANNEL_SIZE, reg);
-                IF ll.HCCHAR_EPDIR IN reg THEN HC_IN_IRQHandler(hhcd, i, dbm) ELSE HC_OUT_IRQHandler(hhcd, i, dbm) END
+                IF ll.HCCHAR_EPDIR IN USBx.HC[i].HCCHAR THEN HC_IN_IRQHandler(hhcd, i, dbm) ELSE HC_OUT_IRQHandler(hhcd, i, dbm) END
               END
             END;
-            hhcd.Instance.GINTSTS := {ll.GINTSTS_HCINT};
+            USBx.GINTSTS := {ll.GINTSTS_HCINT};
           END;
           (* Handle Rx Queue Level Interrupts *)
-          IF ll.GINTSTS_RXFLVL IN flags THEN EXCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL);
-            RXQLVL_IRQHandler(hhcd, dbm); INCL(hhcd.Instance.GINTMSK, ll.GINTSTS_RXFLVL)
+          IF ll.GINTSTS_RXFLVL IN flags THEN EXCL(USBx.GINTMSK, ll.GINTSTS_RXFLVL);
+            RXQLVL_IRQHandler(hhcd, dbm); INCL(USBx.GINTMSK, ll.GINTSTS_RXFLVL)
           END
         END;
         IF dbm # NIL THEN Q.Post(hhcd.MsgPendQ, dbm) END
@@ -575,15 +573,15 @@ MODULE HALHCD;
   * @retval HAL status
   *)
   PROCEDURE HC_Init*(hhcd: Handle; ch_num, epnum, dev_address, speed, ep_type: BYTE; mps: HALFWORD): BYTE;
-    VAR HostCoreSpeed: SET; HCcharMps: HALFWORD;
-  BEGIN HCcharMps := mps;
+    VAR HostCoreSpeed: SET; HCcharMps: HALFWORD; USBx!: ll.OTGCore;
+  BEGIN HCcharMps := mps; USBx := hhcd.Instance;
 (*  __HAL_LOCK(hhcd);*)
     hhcd.hc[ch_num].do_ping := FALSE; hhcd.hc[ch_num].dev_addr := dev_address;
     hhcd.hc[ch_num].ch_num := ch_num; hhcd.hc[ch_num].ep_type := ep_type;
     hhcd.hc[ch_num].ep_num := epnum MOD 80H;
     HC_ClearHubInfo(hhcd, ch_num);
     IF 7 IN TOSET(epnum) THEN hhcd.hc[ch_num].ep_is_in := TRUE ELSE hhcd.hc[ch_num].ep_is_in := FALSE END;
-    HostCoreSpeed := ll.GetHostSpeed(hhcd.Instance);
+    HostCoreSpeed := ll.GetHostSpeed(USBx);
     IF (ep_type = Def.EP_TYPE_ISOC) &
       (speed = Def.SPEED_FULL) & (HostCoreSpeed = ll.HPRT_HIGH_SPEED) & (* FS device plugged to HS HUB *)
       (HCcharMps > ll.ISO_SPLT_MPS) THEN (* ISO Max Packet Size for Split mode *) HCcharMps := ll.ISO_SPLT_MPS
@@ -591,7 +589,7 @@ MODULE HALHCD;
     hhcd.hc[ch_num].speed := speed;
     hhcd.hc[ch_num].max_packet := HCcharMps;
   
-    RETURN ll.HC_Init(hhcd.Instance, ch_num, epnum, dev_address, speed, ep_type, HCcharMps)
+    RETURN ll.HC_Init(USBx, ch_num, epnum, dev_address, speed, ep_type, HCcharMps)
 (*  __HAL_UNLOCK(hhcd);*)
   END  HC_Init;
 
@@ -735,8 +733,8 @@ MODULE HALHCD;
   END InitPools;
 
   PROCEDURE TakeMsg*(hcdh: Handle): Q.Msg;
-    VAR msg!: Q.Msg;
-  BEGIN msg := Q.ExhaustedPool();
+    VAR msg!: Q.Msg; USBx!: ll.OTGCore;
+  BEGIN msg := Q.ExhaustedPool(); USBx := hcdh.Instance;
     IF msg # NIL THEN Log.Error("Interrupt queue too small:");
       IF msg.type = 1 THEN Log.ErrorString(" Connect")
       ELSIF msg.type = 2 THEN Log.ErrorString(" Disconnect")
@@ -747,15 +745,17 @@ MODULE HALHCD;
       ELSE Log.ErrorString(" Unknown message type")
       END; Log.ErrorLn; Log.Flush
     END;
-    ll.DisableGlobalInt(hcdh.Instance);
+    ll.DisableGlobalInt(USBx);
     IF hcdh.MsgPendQ # NIL THEN msg := Q.Get(hcdh.MsgPendQ) ELSE msg := NIL END;
-    ll.EnableGlobalInt(hcdh.Instance)
+    ll.EnableGlobalInt(USBx)
 
     RETURN msg
   END TakeMsg;
 
   PROCEDURE GiveMsg*(hcdh: Handle; msg: Q.Msg);
-  BEGIN ll.DisableGlobalInt(hcdh.Instance);
+    VAR USBx!: ll.OTGCore;
+  BEGIN USBx := hcdh.Instance;
+    ll.DisableGlobalInt(USBx);
     IF msg.type = 1 THEN Q.PostFirst(hcdh.ConnectMP, msg) (*return item to pool*)
     ELSIF msg.type = 2 THEN Q.PostFirst(hcdh.DisconnectMP, msg)
     ELSIF msg.type = 3 THEN Q.PostFirst(hcdh.PortEnabledMP, msg)
@@ -764,7 +764,7 @@ MODULE HALHCD;
     ELSIF msg.type =  6 THEN Q.PostFirst(hcdh.DebugMP, msg)
     ELSE ASSERT(FALSE) (*unsupported message type*)
     END;
-    ll.EnableGlobalInt(hcdh.Instance)
+    ll.EnableGlobalInt(USBx)
   END GiveMsg;
 
   PROCEDURE New*(): Handle;
