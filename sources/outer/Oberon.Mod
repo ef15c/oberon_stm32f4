@@ -302,15 +302,15 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
   BEGIN
     IF (ActCnt <= 0) OR (Kernel.allocated >= Kernel.heapLim - Kernel.heapOrg - 10000H) THEN
       Kernel.DisableAbortHandler;
-      mod := Modules.root; LED(21H);
+      mod := Modules.root; BSP.ledsOnOff({1}, {});
       WHILE mod # NIL DO
         IF mod.name[0] # 0X THEN Kernel.Mark(mod.ptr) END ;
         mod := mod.next
       END ;
-      LED(23H);
-      Files.RestoreList; LED(27H);
-      c := PostMaskCbk.next; WHILE c # NIL DO c.cbk; c := c.next END;
-      Kernel.Scan; LED(20H);
+      BSP.ledsOnOff({2}, {1});
+      Files.RestoreList; BSP.ledsOnOff({3}, {2});
+      c := PostMaskCbk.next; WHILE c # NIL DO c.cbk; c := c.next END; BSP.ledsOnOff({4}, {3});
+      Kernel.Scan; BSP.ledsOnOff({5}, {4});
       ActCnt := BasicCycle;
       Kernel.EnableAbortHandler
     END
@@ -418,7 +418,7 @@ MODULE Oberon; (*JG 6.9.90 / 23.9.93 / 13.8.94 / NW 14.4.2013 / 22.12.2015
         t0 := CurTask;
         REPEAT
           t := Kernel.Time();
-          IF t >= CurTask.nextTime THEN
+          IF t - CurTask.nextTime >= 0 THEN BSP.ledsOnOff({6}, {});
             CurTask.nextTime := t + CurTask.period; CurTask.state := active; CurTask.handle; CurTask.state := idle
           END;
           CurTask := CurTask.next

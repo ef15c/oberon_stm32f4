@@ -77,7 +77,8 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
    PROCEDURE New(ptr: INTEGER; tag: INTEGER);
     (*called by NEW via Trap 0; ptr and tag are pointers*)
     VAR p, size, lim: INTEGER;
-  BEGIN SYSTEM.GET(tag, size);
+  BEGIN BSP.ledsOnOff({}, {5});
+    SYSTEM.GET(tag, size);
     IF size = 32 THEN GetBlock32(p)
     ELSIF size = 64 THEN GetBlock64(p)
     ELSIF size = 128 THEN GetBlock128(p)
