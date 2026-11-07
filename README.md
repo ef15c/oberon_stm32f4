@@ -1,6 +1,23 @@
 # Oberon STM32F4
 Portage of Oberon system to stm32f429i-disco board<br><br>
 
+**Version 15:**
+## Oberon System
+**Improvements:**  
+
+* Divison by zero is now done by hardwire.
+* USB Host and Device support added. HID Host and MTP Responder Device are available.
+* 16bit integer added to the OM4 compiler (HALFWORD). HALSET and BYTESET types added.
+* CLEAR standard procedure is added to set RECORD and ARRAY varaibles to zero.
+* CPU register protection improved in interrupt handlers.
+* Code disassembly tools improved
+* The mouse pointer is now managed by hardware. Is is no more frozen when system is busy.
+* Mira program "chaos esthétique" has been added for testing implementation of REAL type in OM4 compiler.
+* Tuning of VESA timings
+* Oberon.Batch command has been added for execution of several commands by one mouse click.
+* OFS2, a new version of the Oberon File System has been added, with a record size of 2KB. 
+The file size limit is now 12MB instead of 3MB.
+
 **Version 14 released!**
 ## Oberon System
 **Improvements:**  
