@@ -38,7 +38,7 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
 
   (*Exported procedures: Search, Insert, Delete, Enumerate, Init*)
 
-   PROCEDURE Search*(fshd: FileSystem.FSHeader; name: FileName; VAR A: DiskAdr);
+  PROCEDURE Search*(fshd: FileSystem.FSHeader; name: FileName; VAR A: DiskAdr);
     VAR i, L, R: INTEGER; dadr: DiskAdr;
       a: DirPage;
   BEGIN dadr := DirRootAdr; A := 0;
@@ -293,7 +293,7 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
         fhd: FileHeader;
         B: IndexSector;
 
-      PROCEDURE sift(VAR fshd: FileSystem.FSHeader; VAR A: ARRAY OF DiskAdr; L, R: INTEGER);
+      PROCEDURE sift(VAR A: ARRAY OF DiskAdr; L, R: INTEGER);
         VAR i, j: INTEGER; x: DiskAdr;
       BEGIN j := L; x := A[j];
         REPEAT i := j; j := 2*j + 1;
@@ -304,9 +304,9 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
       END sift;
 
     BEGIN L := k DIV 2; R := k; (*heapsort*)
-      WHILE L > 0 DO DEC(L); sift(fshd, A, L, R) END ;
+      WHILE L > 0 DO DEC(L); sift(A, L, R) END ;
       WHILE R > 0 DO
-        DEC(R); x := A[0]; A[0] := A[R]; A[R] := x; sift(fshd, A, L, R)
+        DEC(R); x := A[0]; A[0] := A[R]; A[R] := x; sift(A, L, R)
       END ;
       WHILE L < k DO
         FileSystem.GetSector(fshd, A[L], fhd); ASSERT(fhd.mark = HeaderMark);
@@ -339,11 +339,11 @@ MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013 CS 17.03.24 / 17.10.26*)
         WHILE i < a.m DO TraverseDir(fshd, A, k, a.e[i].p); INC(i) END
       END
     END TraverseDir;
-  BEGIN SDCard.Read(fssec, SYSTEM.ADR(fshdp), SectorSize DIV SDCard.BLOCKSIZE);
-    ASSERT(fshdp.mark = FSMark); ASSERT(fshdp.version = 2);
-    CLEAR(fshd); SYSTEM.COPY(SYSTEM.ADR(fshdp), SYSTEM.ADR(fshd), SYSTEM.SIZE(FileSystem.FSHeaderPersistent) DIV 4);
-    FileSystem.InitSecMap(fshd);
-    k := 0; TraverseDir(fshd, A, k, DirRootAdr); MarkSectors(fshd, A, k)
+  BEGIN SDCard.Read(fssec, SYSTEM.ADR(fshdp), SectorSize DIV SDCard.BLOCKSIZE); LED(1*2);
+    ASSERT(fshdp.mark = FSMark); ASSERT(fshdp.version = 2); LED(2*2);
+    CLEAR(fshd); SYSTEM.COPY(SYSTEM.ADR(fshdp), SYSTEM.ADR(fshd), SYSTEM.SIZE(FileSystem.FSHeaderPersistent) DIV 4); LED(3*2);
+    fshd.FS_OFFSET := fssec; FileSystem.InitSecMap(fshd); LED(4*2);
+    k := 0; TraverseDir(fshd, A, k, DirRootAdr); MarkSectors(fshd, A, k); LED(5*2)
   END Init; 
 
 END FileDir.

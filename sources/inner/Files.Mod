@@ -68,7 +68,7 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
     END;
 
   VAR root: INTEGER (*File*);  (*list of open files*)
-    fshd*: FileSystem.FSHeader; (*pointer to filesystem instance*)
+    fshd*: FileSystem.FSHeader; (*filesystem instance*)
     FileChangeCbk: Hook;
 
   PROCEDURE Check(s: ARRAY OF CHAR;
@@ -90,11 +90,10 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
   END Check;
 
   PROCEDURE OldByAdr*(header: DiskAdr): File;
-    VAR i, k, res: INTEGER;
+    VAR i, k: INTEGER;
       f!: File;
       buf!: Buffer;
       F!: FileDir.FileHd;
-      namebuf: FileDir.FileName;
       inxpg!: Index;
   BEGIN f := NIL;
     IF header # 0 THEN
@@ -105,9 +104,9 @@ MODULE Files;  (*NW 11.1.86 / 22.9.93 / 25.5.95 / 25.12.95 / 15.8.2013, CS 17.10
         FileSystem.GetSector(fshd, header, buf.data);
         F := SYSTEM.VAL(FileDir.FileHd, SYSTEM.ADR(buf.data));
         IF F.mark = FileDir.HeaderMark THEN
-          NEW(f); f.aleng := F.aleng; f.bleng := F.bleng; f.date := F.date;
+          NEW(f); f.name := F.name; f.aleng := F.aleng; f.bleng := F.bleng; f.date := F.date;
           IF f.aleng = 0 THEN buf.lim := f.bleng ELSE buf.lim := SS END ;
-          f.firstbuf := buf; f.nofbufs := 1; f.name := namebuf; f.registered := TRUE;
+          f.firstbuf := buf; f.nofbufs := 1; f.registered := TRUE;
           f.sec := F.sec;
           k := (f.aleng + (XS-STS)) DIV XS; i := 0;
           WHILE i < k DO

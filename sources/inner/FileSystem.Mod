@@ -21,11 +21,12 @@ MODULE FileSystem; (*CS 17.10.26*)
 
     FSHeaderPersistent* = RECORD
       mark*: INTEGER;
-      FS_OFFSET*: INTEGER;
+      dummy: INTEGER;
       version*: BYTE
     END;
 
     FSHeader* = RECORD(FSHeaderPersistent)
+      FS_OFFSET*: INTEGER;
       sector: StorageInfo;
       NofSectors*: INTEGER;
     END;
@@ -70,9 +71,10 @@ MODULE FileSystem; (*CS 17.10.26*)
       e*:  ARRAY (SectorSize - SYSTEM.SIZE(DirPageHeader)) DIV  SYSTEM.SIZE(DirEntry) DIV 4*4 OF DirEntry
     END;
 
+
 (* ---------- Disk storage management ----------*)
 
-  PROCEDURE MarkSector*(VAR fshd: FSHeader; sec29: INTEGER);
+  PROCEDURE MarkSector*(VAR fshd: FSHeader; sec29: DiskAdr);
     VAR sec: INTEGER;
   BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
     INCL(fshd.sector.map[sec DIV 32], sec MOD 32); INC(fshd.NofSectors);
@@ -83,28 +85,24 @@ MODULE FileSystem; (*CS 17.10.26*)
     VAR i, r: INTEGER;
   BEGIN NEW(fshd.sector); fshd.NofSectors := 0; i := 0;
     WHILE i < NofReservedSectors DIV 32 DO fshd.sector.map[i] := {0 .. 31}; INC(i) END;
-    r := NofReservedSectors MOD 32; IF r > 0 THEN fshd.sector.map[i] := {0 .. r}; INC(i) END;
+    r := NofReservedSectors MOD 32; IF r > 0 THEN fshd.sector.map[i] := {0 .. r-1}; INC(i) END;
     WHILE i < NofSectors DIV 32 DO fshd.sector.map[i] := {}; INC(i) END
   END InitSecMap;
 
-  (*Exported procedures:  GetSector, FreeSector, AllocSector, PutSector*)
-
-(* ----- initialization ----- *)
-
-  PROCEDURE GetSector*(fshd: FSHeader; src29: INTEGER; VAR dst: Sector);
-    VAR src: INTEGER;
-  BEGIN src := src29 DIV 29; ASSERT(src29 = src*29);
-    src := src * (SectorSize DIV SDCard.BLOCKSIZE) + fshd.FS_OFFSET;
-    SDCard.Read(src, SYSTEM.ADR(dst), SectorSize DIV SDCard.BLOCKSIZE)
+  PROCEDURE GetSector*(fshd: FSHeader; sec29: DiskAdr; VAR dst: Sector);
+    VAR sec: INTEGER;
+  BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
+    sec := sec * (SectorSize DIV SDCard.BLOCKSIZE) + fshd.FS_OFFSET;
+    SDCard.Read(sec, SYSTEM.ADR(dst), SectorSize DIV SDCard.BLOCKSIZE)
   END GetSector;
 
-  PROCEDURE FreeSector*(VAR fshd: FSHeader; sec29: INTEGER);
+  PROCEDURE FreeSector*(VAR fshd: FSHeader; sec29: DiskAdr);
     VAR sec: INTEGER;
   BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
     EXCL(fshd.sector.map[sec DIV 32], sec MOD 32); DEC(fshd.NofSectors)
   END FreeSector;
 
-  PROCEDURE AllocSector*(VAR fshd: FSHeader; hint29: INTEGER; VAR sec29: INTEGER);
+  PROCEDURE AllocSector*(VAR fshd: FSHeader; hint29: DiskAdr; VAR sec29: DiskAdr);
     VAR hint, s: INTEGER;
   BEGIN (*find free sector, starting after hint*)
     hint := hint29 DIV 29; ASSERT(hint29 = hint*29); s := hint;
@@ -114,11 +112,11 @@ MODULE FileSystem; (*CS 17.10.26*)
     INCL(fshd.sector.map[s DIV 32], s MOD 32); INC(fshd.NofSectors); sec29 := s * 29
   END AllocSector;
 
-  PROCEDURE PutSector*(fshd: FSHeader; dst29: INTEGER; VAR src: Sector);
-    VAR dst: INTEGER;
-  BEGIN dst := dst29 DIV 29; ASSERT(dst29 = dst*29);
-    dst := dst * (SectorSize DIV SDCard.BLOCKSIZE) + fshd.FS_OFFSET;
-    SDCard.Write(dst, SYSTEM.ADR(src), SectorSize DIV SDCard.BLOCKSIZE);
+  PROCEDURE PutSector*(fshd: FSHeader; sec29: DiskAdr; VAR src: Sector);
+    VAR sec: INTEGER;
+  BEGIN sec := sec29 DIV 29; ASSERT(sec29 = sec*29);
+    sec := sec * (SectorSize DIV SDCard.BLOCKSIZE) + fshd.FS_OFFSET;
+    SDCard.Write(sec, SYSTEM.ADR(src), SectorSize DIV SDCard.BLOCKSIZE);
   END PutSector;
 
 END FileSystem.
