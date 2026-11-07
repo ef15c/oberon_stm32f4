@@ -1,5 +1,5 @@
 MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
-  IMPORT SYSTEM, Kernel, BSP, Log := USBLog, Def := USBDef, ll := LLUSB, UC := HALUC;
+  IMPORT SYSTEM, Kernel, BSP, Q := Queue, Log := USBLog, Def := USBDef, ll := LLUSB, UC := HALUC;
 
   CONST
     (*private constants*)
@@ -27,12 +27,13 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
     (* On STM32F429I-DISCO, USB OTG HS Core will operate in Full speed mode.
         GPIOB and GPIOC are already clocked in BSP *)
     (* EMBEDDED Physical interface and  VBUS Pin *)
+    (*WARNING: STM32F429I-DISC1 has no external pullup on PB12*)
     BSP.configureGPIO(BSP.GPIOB, {12, 13, 14, 15},
       LSL(BSP.MASK2, 12*2) + LSL(BSP.MASK2, 13*2) + LSL(BSP.MASK2, 14*2) + LSL(BSP.MASK2, 15*2),
       {}, LSL(BSP.MASK4, 12 MOD 8*4) + LSL(BSP.MASK4, 13 MOD 8*4) + LSL(BSP.MASK4, 14 MOD 8*4) + LSL(BSP.MASK4, 15 MOD 8*4),
       LSL(BSP.AF_MODE, 12*2) +LSL(BSP.INPUT_MODE, 13*2) + LSL(BSP.AF_MODE, 14*2) + LSL(BSP.AF_MODE, 15*2), (*PB13 as input and PB12, PB14, PB15 as AF*)
       LSL(BSP.VERY_HIGH_SPEED, 14*2) + LSL(BSP.VERY_HIGH_SPEED, 15*2), (*PB14 and PB15 very high speed*)
-      {} (*push pull*), {} (*no pull up nor pul down*), {},
+      {} (*push pull*), LSL(BSP.PULL_UP, 12*2) (*PB12 pulled up*), {},
       LSL(TOSET(12), 12 MOD 8*4) + LSL(TOSET(12), 14 MOD 8*4) + LSL(TOSET(12), 15 MOD 8*4) (* PB12, PB14 and PB15 ad alternate function OTG HS *)
     );
     SYSTEM.PUT(BSP.othsEn, TRUE); SYSTEM.GET(BSP.othsEn, en) (*delay*); (* Enable USB HS Clocks *)
@@ -57,6 +58,28 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
   BEGIN SYSTEM.PUT(BSP.othsEn, FALSE); (* Disable USB HS Clocks *)
     Kernel.Install(SYSTEM.ADR(OldHandler), BSP.VecTabBase + BSP.OTGHS_IRQNum*4);
   END MspDeInit;
+
+  (**
+  * @brief  Enable OTG global interrupt via NVIC_ISER
+  * @retval None
+  *)
+  PROCEDURE EnableGlobalInt*;
+    VAR irqNum: INTEGER;
+  BEGIN
+    irqNum := BSP.OTGHS_IRQNum - 16;
+    SYSTEM.PUT(BSP.NVIC_ISER + irqNum DIV 32*4, {irqNum MOD 32})
+  END EnableGlobalInt;
+
+  (**
+  * @brief  Disable OTG global interrupt via NVIC_ICER
+  * @retval None
+  *)
+  PROCEDURE DisableGlobalInt*;
+    VAR irqNum: INTEGER;
+  BEGIN
+    irqNum := BSP.OTGHS_IRQNum - 16;
+    SYSTEM.PUT(BSP.NVIC_ICER + irqNum DIV 32*4, {irqNum MOD 32})
+  END DisableGlobalInt;
 
   (**
   * @brief  Initializes the USB Core.
@@ -132,5 +155,31 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
     RETURN ll.IsHost(core.Instance)
   END IsHost;
 
+  PROCEDURE IRQLog(msg: UC.Msg);
+  BEGIN
+    Log.DebugString("IRQ gintsts: ");  Log.DebugSet(msg.gintsts);
+    Log.DebugLn
+  END IRQLog;
+
+  (**
+  * @brief  Do the work offloaded by IRQs in the process loop.
+  *)
+ PROCEDURE ProcessDeferredIRQWork*(core: Def.Handle);
+    VAR msg!: Q.Msg; hmsg!: UC.Msg;
+  BEGIN
+    CASE core OF
+      UC.Handle:
+        msg := UC.TakeMsg(core);
+        WHILE msg # NIL DO (*Process the message*)
+          hmsg := SYSTEM.VAL(UC.Msg, msg);
+          IF hmsg.type = 20 THEN IRQLog(hmsg)
+          ELSE ASSERT(FALSE) (*unknown message*)
+          END; 
+          UC.GiveMsg(core, msg);
+          msg := UC.TakeMsg(core)
+        END
+      | Def.Handle: ASSERT(FALSE)
+    END
+  END ProcessDeferredIRQWork;
 BEGIN hsid := 0FFH
 END USBHal.

@@ -48,9 +48,12 @@ MODULE Queue;
     END
   END Post;
 
-  PROCEDURE ExhaustedPool*(): Msg;
+  PROCEDURE ExhaustedPool*(MsgSet: SET): Msg;
     VAR msg!: Msg;
-  BEGIN msg := exhausted; exhausted := NIL
+  BEGIN msg := NIL;
+    IF (exhausted # NIL) & (exhausted.type IN MsgSet) THEN
+      msg := exhausted; exhausted := NIL
+    END
     RETURN msg
   END ExhaustedPool;
 

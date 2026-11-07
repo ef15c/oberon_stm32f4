@@ -22,7 +22,7 @@ MODULE HALHCD;
       ErrorCode*: INTEGER;  (*!< HCD Error code           *)
       SOFCallback*: Callback; (*!< USB OTG HCD SOF callback                *)
       ConnectMP, DisconnectMP, PortEnabledMP, PortDisabledMP,
-      URBChangeMP, DebugMP*: Q.Msg; (*the pools of available IRQ messages*)
+      URBChangeMP, DebugMP: Q.Msg; (*the pools of available IRQ messages*)
       MsgPendQ: Q.Msg (*the deferred work message queue*)
     END;
 
@@ -734,7 +734,7 @@ MODULE HALHCD;
 
   PROCEDURE TakeMsg*(hcdh: Handle): Q.Msg;
     VAR msg!: Q.Msg; USBx!: ll.OTGCore;
-  BEGIN msg := Q.ExhaustedPool(); USBx := hcdh.Instance;
+  BEGIN msg := Q.ExhaustedPool({1..6}); USBx := hcdh.Instance;
     IF msg # NIL THEN Log.Error("Interrupt queue too small:");
       IF msg.type = 1 THEN Log.ErrorString(" Connect")
       ELSIF msg.type = 2 THEN Log.ErrorString(" Disconnect")

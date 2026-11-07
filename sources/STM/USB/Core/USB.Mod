@@ -56,7 +56,7 @@ MODULE USB; (*USB OTG library. C. Schoffit 29.06.26*)
   BEGIN ctrl := core;
     CASE core OF
       UC.Handle:
-        (*H.ProcessDeferredIRQWork(core); (*do the deferred job triggered by interrupts*);*)
+        H.ProcessDeferredIRQWork(core); (*do the deferred job triggered by interrupts*);
         IF (core.cState = Def.IDLE) & (Kernel.Time() - core.Timer > MODE_STABILIZATION_TIME) THEN core.cState := UC.STATE_CMOD_STABLE
         ELSIF core.cState = UC.STATE_CMOD_STABLE THEN (*Initialize the host or device controller*)
           ctrl := InitController(core, id)

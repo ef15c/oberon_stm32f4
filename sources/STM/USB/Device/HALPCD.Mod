@@ -733,7 +733,7 @@ MODULE HALPCD;
 
   PROCEDURE TakeMsg*(hpcd: Handle): Q.Msg;
     VAR msg!: Q.Msg;
-  BEGIN msg := Q.ExhaustedPool();
+  BEGIN msg := Q.ExhaustedPool({1..12});
     IF msg # NIL THEN Log.Error("Interrupt queue too small:");
       IF msg.type = 1 THEN Log.ErrorString(" DataOutStage")
       ELSIF  msg.type = 2 THEN Log.ErrorString(" DataInStage")
@@ -746,7 +746,7 @@ MODULE HALPCD;
       ELSIF  msg.type = 9 THEN Log.ErrorString(" Reset")
       ELSIF  msg.type = 10 THEN Log.ErrorString(" Connect")
       ELSIF  msg.type = 11 THEN Log.ErrorString(" Disconnect")
-      ELSIF  msg.type = 22 THEN Log.ErrorString(" Debug")
+      ELSIF  msg.type = 12 THEN Log.ErrorString(" Debug")
       ELSE Log.ErrorString(" unknown message type")
       END; Log.ErrorLn; Log.Flush
     END;

@@ -40,9 +40,10 @@ OM4L.LinkEF Modules System Edit OnStartup Image OM4L OM4P ~
 OM4X.LoadEF OM4P.efb OM4L.CompareEF OM4P.efb
 OM4Tool.DecBin OM4P.efb ~
 
-For OFS2
-OM4L.LinkEF Modules System Edit OnStartup Image OM4P testFS2~
-OM4L.LoadEF testFS2.efb OM4L.CompareEF testFS2.efb
+USB
+OM4L.LinkEF Modules System Edit OnStartup Image OM4L OM4P USB USBDMTPOberon ~
+OM4X.LoadEF USBDMTPOberon.efb OM4L.CompareEF USBDMTPOberon.efb
+OM4Tool.DecBin USBDMTPOberon.efb ~
 
 Commands for generation of graphic system
 OM4P.Compile Graphics.Mod/s GraphicFrames.Mod/s Draw.Mod/s Rectangles.Mod/s Curves.Mod/s
