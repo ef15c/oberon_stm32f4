@@ -18,6 +18,10 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 * OFS2, a new version of the Oberon File System has been added, with a record size of 2KB. 
 The file size limit is now 12MB instead of 3MB.
 
+<img width="1366" height="768" alt="USBDevice-MTP" src="https://github.com/user-attachments/assets/117865d7-e36e-431c-9160-54541a8c495d" />
+
+<img width="1366" height="768" alt="mira" src="https://github.com/user-attachments/assets/8de1b680-29ec-442b-8990-d9309404a489" />
+
 **Version 14 released!**
 ## Oberon System
 **Improvements:**  
