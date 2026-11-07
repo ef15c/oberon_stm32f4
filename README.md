@@ -5,7 +5,7 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 ## Oberon System
 **Improvements:**  
 
-* Divison by zero check is now done by hardwire.
+* Divison by zero check is now done by hardware.
 * USB Host and Device support added. HID Host and MTP Responder Device are available.
 * 16bit integer added to the OM4 compiler (HALFWORD). HALSET and BYTESET types added.
 * CLEAR standard procedure is added for setting RECORD and ARRAY variables to zero.
