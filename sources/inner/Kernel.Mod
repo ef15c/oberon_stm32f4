@@ -38,7 +38,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
       ELSIF size = len THEN (*extract -> p*)
         done := TRUE; p := q1;
         IF q0 # 0 THEN SYSTEM.PUT(q0+8, q2) ELSE list0 := q2 END
-      ELSE (*reduce size*)
+      ELSE (*reduce size*) BSP.ledsOnOff({}, {5});
         done := TRUE; p := q1; q1 := q1 + len;
         SYSTEM.PUT(q1, size-len); SYSTEM.PUT(q1+4, -1); SYSTEM.PUT(q1+8, q2);
         IF q0 # 0 THEN SYSTEM.PUT(q0+8, q1) ELSE list0 := q1 END
@@ -77,8 +77,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / CS 13/12/2023*)
    PROCEDURE New(ptr: INTEGER; tag: INTEGER);
     (*called by NEW via Trap 0; ptr and tag are pointers*)
     VAR p, size, lim: INTEGER;
-  BEGIN BSP.ledsOnOff({}, {5});
-    SYSTEM.GET(tag, size);
+  BEGIN SYSTEM.GET(tag, size);
     IF size = 32 THEN GetBlock32(p)
     ELSIF size = 64 THEN GetBlock64(p)
     ELSIF size = 128 THEN GetBlock128(p)
