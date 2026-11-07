@@ -8,7 +8,7 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 * Divison by zero check is now done by hardwire.
 * USB Host and Device support added. HID Host and MTP Responder Device are available.
 * 16bit integer added to the OM4 compiler (HALFWORD). HALSET and BYTESET types added.
-* CLEAR standard procedure is added to set RECORD and ARRAY varaibles to zero.
+* CLEAR standard procedure is added for setting RECORD and ARRAY variables to zero.
 * CPU register protection improved in interrupt handlers.
 * Code disassembly tools improved
 * The mouse pointer is now managed by hardware. Is is no more frozen when system is busy.
