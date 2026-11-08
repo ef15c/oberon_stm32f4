@@ -11,7 +11,7 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 * CLEAR standard procedure is added for setting RECORD and ARRAY variables to zero.
 * CPU register protection improved in interrupt handlers.
 * Code disassembly tools improved
-* The mouse pointer is now managed by hardware. Is is no more frozen when system is busy.
+* The mouse pointer is now managed by hardware. It is no more frozen when system is busy.
 * Mira program "chaos esthétique" has been added for testing implementation of REAL type in OM4 compiler.
 * Tuning of VESA timings
 * Oberon.Batch command has been added for execution of several commands by one mouse click.
