@@ -15,8 +15,10 @@ Portage of Oberon system to stm32f429i-disco board<br><br>
 * Mira program "chaos esthétique" has been added for testing implementation of REAL type in OM4 compiler.
 * Tuning of VESA timings
 * Oberon.Batch command has been added for execution of several commands by one mouse click.
-* OFS2, a new version of the Oberon File System has been added, with a record size of 2KB. 
-The file size limit is now 12MB instead of 3MB.
+* OFS2 replaces the original Project Oberon File System:
+  * the sector size is now 2KB instead of 1KB
+  * the file size limit is now 12MB instead of 3MB.
+  * date and size data are duplicated in the directory entry. Reading the files header sector is no more required in `System.Directory *!` execution.
 
 <img width="1366" height="768" alt="USBDevice-MTP" src="https://github.com/user-attachments/assets/117865d7-e36e-431c-9160-54541a8c495d" />
 
