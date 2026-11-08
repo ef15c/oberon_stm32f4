@@ -70,6 +70,13 @@ MODULE AOCUtils;
     RETURN r
   END max;
 
+  PROCEDURE abs*(a: INTEGER): INTEGER;
+    VAR r: INTEGER;
+  BEGIN IF a > 0 THEN r := a ELSE r := -a END
+
+    RETURN r
+  END abs;
+
   PROCEDURE toIntOfs*(c: ARRAY OF CHAR; i: INTEGER): INTEGER;
     VAR r: INTEGER; ch: CHAR;
   BEGIN r := 0;
@@ -124,3 +131,8 @@ BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
   DIRECTION4[2].x := 0; DIRECTION4[2].y := 1;
   DIRECTION4[3].x := -1; DIRECTION4[3].y := 0;
 END AOCUtils.
+
+Oberon.Batch
+  OM4P.Compile AOCUtils.Mod/s~
+  System.Free AOCUtils~
+~
