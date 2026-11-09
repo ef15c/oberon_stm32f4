@@ -6,7 +6,7 @@ MODULE LLUSB;
   * @brief   HCD HAL module.
   ******************************************************************************
   *)
-  IMPORT SYSTEM, Kernel, Def := USBDef;
+  IMPORT SYSTEM, Kernel, Log := USBLog, Def := USBDef;
 
   CONST
   (*!< USB registers base address *)
@@ -1371,11 +1371,16 @@ MODULE LLUSB;
   * @retval HAL status
   *)
   PROCEDURE EPStartXfer*(USBx: OTGCore; VAR ep: EPDesc; dma: BOOLEAN);
-    VAR pktcnt: HALFWORD;
+    VAR pktcnt: HALFWORD; count: INTEGER;
   BEGIN
     IF ep.is_in THEN (* IN endpoint *) 
       (*ASSERT(~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL));*)
-      REPEAT UNTIL ~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL);
+      count := 0;
+      REPEAT INC(count); Kernel.Delayms(1)
+      UNTIL (count > 10) OR ~(DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL);
+      IF DIEPCTL_EPENA IN USBx.INEP[ep.num].DIEPCTL THEN Log.Error("EP "); Log.ErrorInt(ep.num, 1);
+        Log.ErrorString(" alreadey enabled"); Log.ErrorLn
+      END;
       IF ep.xfer_len = 0 THEN (* Zero Length Packet? *)
         USBx.INEP[ep.num].DIEPTSIZ := USBx.INEP[ep.num].DIEPTSIZ - (DIEPTSIZ_PKTCNT_Msk + DIEPTSIZ_XFRSIZ_Msk) +
           TOSET(LSL(1, DIEPTSIZ_PKTCNT_Pos))
@@ -1408,7 +1413,9 @@ MODULE LLUSB;
       ELSE (* EP enable, IN data in FIFO *)
         USBx.INEP[ep.num].DIEPCTL := USBx.INEP[ep.num].DIEPCTL + {DIEPCTL_CNAK, DIEPCTL_EPENA};
         IF ep.type # Def.EP_TYPE_ISOC THEN (* Enable the Tx FIFO Empty Interrupt for this EP *)
-          IF ep.xfer_len > 0 THEN INCL(USBx.DIEPEMPMSK, ep.num MOD 10H) END
+          IF ep.xfer_len > 0 THEN DisableGlobalInt(USBx); (*prevent race condition with IRQ handler*)
+            INCL(USBx.DIEPEMPMSK, ep.num MOD 10H); EnableGlobalInt(USBx)
+          END
         ELSE
           IF ~(DSTS_FNSOF_Pos IN USBx.DSTS) THEN INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_SODDFRM)
           ELSE INCL(USBx.INEP[ep.num].DIEPCTL, DIEPCTL_SD0PID_SEVNFRM)
