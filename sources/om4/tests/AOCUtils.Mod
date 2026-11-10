@@ -77,6 +77,18 @@ MODULE AOCUtils;
     RETURN r
   END abs;
 
+  PROCEDURE pgcd*(a, b: INTEGER): INTEGER;
+    VAR r: INTEGER;
+  BEGIN
+    WHILE b # 0 DO r := a MOD b; a := b; b := r END
+    RETURN a
+  END pgcd;
+
+  PROCEDURE ppcm*(a, b: INTEGER): INTEGER;
+  BEGIN
+    RETURN a DIV pgcd(a, b)*b
+  END ppcm;
+
   PROCEDURE toIntOfs*(c: ARRAY OF CHAR; i: INTEGER): INTEGER;
     VAR r: INTEGER; ch: CHAR;
   BEGIN r := 0;
@@ -130,6 +142,10 @@ MODULE AOCUtils;
   PROCEDURE Incl*(VAR m: ARRAY OF SET; e: INTEGER);
   BEGIN INCL(m[e DIV 32], e MOD 32)
   END Incl;
+
+  PROCEDURE Excl*(VAR m: ARRAY OF SET; e: INTEGER);
+  BEGIN EXCL(m[e DIV 32], e MOD 32)
+  END Excl;
 
   PROCEDURE In*(e: INTEGER; m: ARRAY OF SET): BOOLEAN;
     RETURN e MOD 32 IN m[e DIV 32]
