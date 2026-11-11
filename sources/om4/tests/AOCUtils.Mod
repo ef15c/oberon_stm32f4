@@ -112,6 +112,13 @@ MODULE AOCUtils;
     i := 0; j := l - 1; WHILE i < j DO c := s[i]; s[i] := s[j]; s[j] := c; INC(i); DEC(j) END; (*reverse digits*)
   END toString;
 
+  PROCEDURE AppendIntToString*(VAR s: ARRAY OF CHAR; n: INTEGER);
+    VAR l, l0, i, j: INTEGER; c: CHAR;
+  BEGIN l0 := 0; WHILE s[l0] # 0X DO INC(l0) END;
+    l := l0; REPEAT s[l] := CHR(ORD("0") + n MOD 10); n := n DIV 10; INC(l) UNTIL n = 0; s[l] := 0X;
+    i := l0; j := l - 1; WHILE i < j DO c := s[i]; s[i] := s[j]; s[j] := c; INC(i); DEC(j) END; (*reverse digits*)
+  END AppendIntToString;
+
   PROCEDURE dist32*(a, b: Vec3): LONGINT;
     VAR dx, dy, dz: LONGINT;
   BEGIN dx := a.x - b.x; dy := a.y - b.y; dz := a.z - b.z;
