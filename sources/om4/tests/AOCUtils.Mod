@@ -165,6 +165,24 @@ MODULE AOCUtils;
     RETURN c
   END Card;
 
+  PROCEDURE QNext(size, idx: INTEGER): INTEGER;
+    RETURN (idx + 1) MOD size
+  END QNext;
+
+  PROCEDURE QSend*(VAR Q: ARRAY OF LONGINT; VAR head: INTEGER; tail: INTEGER; val: LONGINT): BOOLEAN;
+    VAR status: BOOLEAN; n: INTEGER;
+  BEGIN status := FALSE; n := QNext(LEN(Q), head);
+    IF n # tail THEN status := TRUE; Q[head] := val; head := n END
+    RETURN status
+  END QSend;
+
+  PROCEDURE QReceive*(VAR Q: ARRAY OF LONGINT; head: INTEGER; VAR tail: INTEGER; VAR val: LONGINT): BOOLEAN;
+    VAR status: BOOLEAN;
+  BEGIN status := FALSE;
+    IF tail # head THEN status := TRUE; val := Q[tail]; tail := QNext(LEN(Q), tail) END
+    RETURN status
+  END QReceive;
+
 BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
   DIRECTION4[1].x := 1; DIRECTION4[1].y := 0;
   DIRECTION4[2].x := 0; DIRECTION4[2].y := 1;
@@ -177,29 +195,3 @@ Oberon.Batch
 ~
 
 OM4Tool.DecSym AOCUtils.sm4
-decode AOCUtils.sm4
-AOCUtils 277EEE4C  2
-   1 LONG_MAX [^14]-301989889
-   1 BYTE_MAX [^4]     256
-   5 Vector [18  form = 13 [^9]  exno = 1  extlev = 0  size = 8 { y [^4]   4 x [^4]   0}]()
-   5 Vec3 [19  form = 13 [^9]  exno = 2  extlev = 0  size = 12 { z [^4]   8 y [^4]   4 x [^4]   0}]()
-   5 List [20  form = 7 [21  form = 13 [^9]  exno = 3  extlev = 0  size = 12 { next [^20]   8 n [^14]   0}]]()
-   5 ListDesc [^21]( ->  20)
-   2 DIRECTION4 [0  form = 12 [^18]  len = 4  size = 32]     4
-   1 ilog10 [0  form = 10 [^4] ur = 4 ( class = 2 [^14])]       5
-   1 strlen [0  form = 10 [^4] ur = 4 ( class = 3# [0  form = 12 [^3]  len = -1  size = 8])]       6
-   1 strncmp [0  form = 10 [^4] ur = 4 ( class = 2 [^4] class = 3# [0  form = 12 [^3]  len = -1  size = 8] class = 3# [0  form = 12 [^3]  len = -1  size = 8])]       7
-   1 CopyString [0  form = 10 [^9] ur = 4 ( class = 2 [^4] class = 3# [0  form = 12 [^3]  len = -1  size = 8] class = 3 [0  form = 12 [^3]  len = -1  size = 8])]       8
-   1 manhattan [0  form = 10 [^4] ur = 4 ( class = 3# [^18] class = 3# [^18])]       9
-   1 printVector [0  form = 10 [^9] ur = 5 ( class = 3# [^18] class = 3 [22  form = 13 [^9]  exno = 0  extlev = 0  size = 40 { --  36 --  24 voff [^4]  12 col [^4]   8 fnt [23  form = 7 [24  form = 13 [^9]  exno = 0  extlev = 0  size = 21560 { next [^23]  52 maxY [^4]  48 minY [^4]  44 maxX [^4]  40 minX [^4]  36 height [^4]  32 name [0  form = 12 [^3]  len = 32  size = 32]   0} Fonts.FontDesc 3D79EC98] Fonts.Font 3D79EC98]   4 buf [25  form = 7 [26  form = 13 [^9]  exno = 0  extlev = 0  size = 12 { --   8 --   4 len [^4]   0} Texts.BufDesc DADDC136] Texts.Buffer DADDC136]   0} Texts.Writer DADDC136])]      10
-   1 min [0  form = 10 [^4] ur = 4 ( class = 2 [^4] class = 2 [^4])]      11
-   1 max [0  form = 10 [^4] ur = 4 ( class = 2 [^4] class = 2 [^4])]      12
-   1 abs [0  form = 10 [^4] ur = 4 ( class = 2 [^4])]      13
-   1 toIntOfs [0  form = 10 [^4] ur = 4 ( class = 2 [^4] class = 3# [0  form = 12 [^3]  len = -1  size = 8])]      14
-   1 toInt [0  form = 10 [^4] ur = 4 ( class = 3# [0  form = 12 [^3]  len = -1  size = 8])]      15
-   1 toString [0  form = 10 [^9] ur = 4 ( class = 3 [0  form = 12 [^3]  len = -1  size = 8] class = 2 [^14])]      16
-   1 dist32 [0  form = 10 [^14] ur = 8 ( class = 3# [^19] class = 3# [^19])]      17
-   1 sort [0  form = 10 [^9] ur = 4 ( class = 3 [^20])]      18
-   1 rotQ [0  form = 10 [^9] ur = 4 ( class = 3 [^4] class = 3 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4] class = 2 [^4])]      19
-   1 Incl [0  form = 10 [^9] ur = 4 ( class = 2 [^4] class = 3 [0  form = 12 [^6]  len = -1  size = 8])]      20
-
