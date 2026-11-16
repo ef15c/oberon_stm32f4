@@ -427,6 +427,8 @@ BEGIN
   enter("TOSET", SFunc, setType, 241);
   enter("CLZ", SFunc, intType, 251);
   enter("XOR", SFunc, intType, 262);
+  enter("LDREX", SFunc, noType, 271);
+  enter("STREX", SFunc, boolType, 282);
   enter("INC", SProc, noType, 1);  (*procedures*)
   enter("DEC", SProc, noType, 11);
   enter("INCL", SProc, noType, 22);

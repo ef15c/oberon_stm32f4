@@ -31,18 +31,18 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     VAR res, i: INTEGER;
       b4: BYTE;
   BEGIN
-    b4 := ORD(op) MOD A.C8;
+    b4 := ORD(op) MOD ORD({8});
     IF op*iimm3Msk = f1 THEN (*0000x: 00000000 00000000 00000000 abcdefgh*)
       res := b4
     ELSIF op*iimm3Msk=f2 THEN (*0001x: 00000000 abcdefgh 00000000 abcdefgh (note b)*)
       ASSERT(b4 # 0);
-      res := b4*A.C16 + b4
+      res := LSL(b4, 16) + b4
     ELSIF op*iimm3Msk=f3 THEN (*0010x: abcdefgh 00000000 abcdefgh 00000000 (note b)*)
       ASSERT(b4 # 0);
-      res := b4*A.C24 + b4*A.C8
+      res := LSL(b4, 24) + LSL(b4, 8)
     ELSIF op*iimm3Msk=f4 THEN (*0011x: abcdefgh abcdefgh abcdefgh abcdefgh (note b)*)
       ASSERT(b4 # 0);
-      res := b4*A.C24 + b4*A.C16 + b4*A.C8 + b4
+      res := LSL(b4, 24) + LSL(b4, 16) + LSL(b4, 8) + b4
     ELSE (*01000: 1bcdefgh 00000000 00000000 00000000
            01001: 01bcdefg h0000000 00000000 00000000
            01010: 001bcdef gh000000 00000000 00000000
@@ -54,10 +54,10 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
            11110: 00000000 00000000 0000001b cdefgh00
            11111: 00000000 00000000 00000001 bcdefgh0*)
       b4 := b4 MOD A.C7 + A.C7; 
-      i := ORD(op) DIV A.C26 MOD A.C1*A.C4 + ORD(op) DIV A.C12 MOD A.C3*A.C1 +
+      i := ORD(op) DIV A.C26 MOD A.C1*ORD({4}) + ORD(op) DIV A.C12 MOD ORD({3})*A.C1 +
            ORD(op) DIV A.C7 MOD A.C1 - 8;
       ASSERT((i >= 0) & (i < 24));
-      res := b4*A.C24;
+      res := LSL(b4, 24);
       WHILE i > 0 DO res := ASR(res, 1); IF res < 0 THEN INC(res, A.C31) END; DEC(i)
       END
     END;
@@ -74,7 +74,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     j2 := 11 IN op;
     IF ~(j1 # s) THEN INC(res, A.C22) END;
     IF ~(j2 # s) THEN INC(res, A.C21) END;
-    INC(res, ORD(op) DIV A.C16 MOD A.C10*A.C11);
+    INC(res, LSR(ORD(op), 16) MOD ORD({10})*A.C11);
     INC(res, ORD(op) MOD A.C11);
     res := LSL(res, 1);
     IF s THEN (* Negative offset*) INC(res, LSL(-1, 24)) END;
@@ -86,7 +86,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
   BEGIN res := 0;
     IF 11 IN op THEN INC(res, A.C18) END;
     IF 13 IN op THEN INC(res, A.C17) END;
-    INC(res, ORD(op) DIV A.C16 MOD A.C6*A.C11);
+    INC(res, LSR(ORD(op), 16) MOD ORD({6})*A.C11);
     INC(res, ORD(op) MOD A.C11);
     res := LSL(res, 1);
     IF 26 IN op THEN (* Negative offset*) INC(res, LSL(-1, 20)) END;
@@ -94,19 +94,19 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
   END SignExtendEven21;
   
   PROCEDURE SignExtendEven8(imm: INTEGER): INTEGER;
-  BEGIN IF imm > A.C7 THEN DEC(imm, A.C8) END;
+  BEGIN IF imm > A.C7 THEN DEC(imm, ORD({8})) END;
     RETURN imm*A.C1
   END SignExtendEven8;
   
   PROCEDURE SignExtendEven11(imm: INTEGER): INTEGER;
-  BEGIN IF imm > A.C10 THEN DEC(imm, A.C11) END;
+  BEGIN IF imm > ORD({10}) THEN DEC(imm, A.C11) END;
     RETURN imm*A.C1
   END SignExtendEven11;
 
   PROCEDURE imm16(b1, b2, b3, b4: BYTE): INTEGER;
   BEGIN
-    RETURN 0 + b2 MOD A.C4*A.C12 + b1 DIV A.C2 MOD A.C1*A.C11 +
-              b3 DIV A.C4 MOD A.C3*A.C8 + b4
+    RETURN 0 + b2 MOD ORD({4})*A.C12 + b1 DIV ORD({2}) MOD A.C1*A.C11 +
+              b3 DIV ORD({4}) MOD ORD({3})*ORD({8}) + b4
   END imm16;
   
   PROCEDURE WriteOp*(VAR W: Texts.Writer; op: SET; mnemo: ARRAY OF CHAR; setFlagsOutsideITB, bit20SetsFlag: BOOLEAN);
@@ -124,7 +124,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
     CONST TypeMSK = {4..5};
     VAR imm5: INTEGER;
   BEGIN
-    imm5 := ORD(op) DIV A.C12 MOD A.C3*A.C2 + ORD(op) DIV A.C6 MOD A.C2;
+    imm5 := ORD(op) DIV A.C12 MOD ORD({3})*ORD({2}) + ORD(op) DIV ORD({6}) MOD ORD({2});
     IF op*TypeMSK = {} THEN (*LSL*) Texts.WriteString(W, " LSL #"); Texts.WriteInt(W, imm5, 1)
     ELSIF op*TypeMSK = {4} THEN (*LSR*) Texts.WriteString(W, " LSR #");
       IF imm5 > 0 THEN Texts.WriteInt(W, imm5, 1) ELSE Texts.WriteInt(W, imm5, 32) END
@@ -172,6 +172,23 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       StoreRegisterDual12 = {21};
       (*T32MSK13 = 1x x0 xxxx Store Register Dual on page A7-257*)
       StoreRegisterDual13 = {24};
+
+      T32MSK14 = {23..24, 20..21};
+
+      (*T32MSK14 = 00 01 xxxx Load Register Exclusive on page A7-261*)
+      LoadRegisterExclusive = {20};
+      (*T32MSK14 = 00 00 xxxx Store Register Exclusive on page A7-394*)
+      StoreRegisterExclusive = {};
+
+      T32MSK15 = {23..24, 20..21, 4..7};
+      (*T32MSK15 = 01 01 0100 Load Register Exclusive Byte on page A7-262*)
+      LoadRegisterExclusiveByte = {23, 20, 6};
+      (*T32MSK15 = 01 00 0100 Store Register Exclusive Byte on page A7-395*)
+      StoreRegisterExclusiveByte = {23, 6};
+      (*T32MSK15 = 01 01 0101 Load Register Exclusive Halfword on page A7-263*)
+      LoadRegisterExclusiveHalfword = {23, 20, 6, 4};
+      (*T32MSK15 = 01 00 0101 Store Register Exclusive Halfword on page A7-396*)
+      StoreRegisterExclusiveHalfword = {23, 6, 4};
 
       (*T32MSK2 01 01xxxxx x Data processing (shifted register) on page A5-150*)
       DataProcShiftedReg = {27, 25};
@@ -551,14 +568,14 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       op: SET;
   BEGIN
     b1 := c[i+1]; b2 := c[i]; INC(i, 2);
-    t := b1 DIV A.C3; 
+    t := b1 DIV ORD({3}); 
     IF t >= 01DH THEN (*32-bit instruction*)
       b3 := c[i+1]; b4 := c[i]; INC(i, 2);
       op := SYSTEM.VAL(SET, 0+b4+100H*(b3+100H*(b2+100H*b1)));
       Texts.WriteHex(W, ORD(op)); Texts.Write(W, 9X);
       IF op*T32MSK4 = DataProcModImm THEN
         (* T32MSK4 10 x0xxxxx 0: Data processing (modified immediate) on page A5-138*)
-        Rn := b2 MOD A.C4; Rd := b3 MOD A.C4;
+        Rn := b2 MOD ORD({4}); Rd := b3 MOD ORD({4});
         IF op*T32MSK41 = SubCmpModImm THEN
           IF Rd = 15 THEN WriteOp(W, op, "CMP", FALSE, FALSE)
           ELSE WriteOp(W, op, "SUB", FALSE, TRUE); WriteReg(W, Rd)
@@ -631,8 +648,8 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK4 = DataProcPlainBinImm THEN
         (*T32MSK4 10 x1xxxxx 0: Data processing (plain binary immediate) on page A5-141*)
-        Rn := b2 MOD A.C4;
-        Rd := b3 MOD A.C4;
+        Rn := b2 MOD ORD({4});
+        Rd := b3 MOD ORD({4});
         IF op*T32MSK42 = MW16Bit THEN
           (*T32MSK42 00100 -: Move Wide, 16-bit MOV (immediate) on page A7-291*)
           WriteOp(W, op, "MOV", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " #");
@@ -645,38 +662,38 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*T32MSK42 00000 Rn not 1111 Add Wide, 12-bit ADD (immediate) on page A7-190*)
           (*ADDW<c> <Rd>,<Rn>,#<imm12> Encoding T4*)
           WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, 0 + b1 DIV A.C2 MOD A.C1*A.C11 +
-            b3 DIV A.C4 MOD A.C3*A.C8 + b4, 1)
+          Texts.WriteInt(W, 0 + b1 DIV ORD({2}) MOD A.C1*A.C11 +
+            b3 DIV ORD({4}) MOD ORD({3})*ORD({8}) + b4, 1)
         ELSIF op*T32MSK42 = SubWide12BitOrAdr THEN
           IF Rn = 15 THEN
             (*T32MSK42 01010 - Rn = 1111: Form PC-relative Address, ADR on page A7-198
               ADC<c>.W <Rd>,<Label>*)
               WriteOp(W, op, "ADR", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " L");
-              Texts.WriteHex(W, (i + base) DIV 4 * 4 - (b1 DIV A.C2 MOD A.C1*A.C11 + b3 DIV A.C4 MOD A.C3*A.C8 + b4))
+              Texts.WriteHex(W, (i + base) DIV 4 * 4 - (b1 DIV ORD({2}) MOD A.C1*A.C11 + b3 DIV ORD({4}) MOD ORD({3})*ORD({8}) + b4))
           ELSE
             (*T32MSK42 01010 Rn not 1111 Subtract Wide, 12-bit SUB (immediate) on page A7-402*)
             (*SUBW<c> <Rd>,<Rn>,#<imm12>*)
             WriteOp(W, op, "SUB", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); Texts.WriteString(W, " #");
-            Texts.WriteInt(W, 0 + b1 DIV A.C2 MOD A.C1*A.C11 +
-              b3 DIV A.C4 MOD A.C3*A.C8 + b4, 1)
+            Texts.WriteInt(W, 0 + b1 DIV ORD({2}) MOD A.C1*A.C11 +
+              b3 DIV ORD({4}) MOD ORD({3})*ORD({8}) + b4, 1)
           END
         ELSIF (op*T32MSK42 = BitField) & (Rn = 15) THEN
           (*T32MSK42 10110 Rn = 1111 Bit Field Clear BFC on page A7-207*)
           (*BFC<c><q>  <Rd>,#<lsb>,#<witdth>*)
-          t := b3 DIV A.C4 MOD A.C3*A.C2 + b4 DIV A.C6 MOD A.C2;
+          t := b3 DIV ORD({4}) MOD ORD({3})*ORD({2}) + b4 DIV ORD({6}) MOD ORD({2});
           WriteOp(W, op, "BFC", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " #"); Texts.WriteInt(W, t, 1);
-          Texts.WriteString(W, " #"); Texts.WriteInt(W, b4 MOD A.C5 - t + 1, 1)
+          Texts.WriteString(W, " #"); Texts.WriteInt(W, b4 MOD ORD({5}) - t + 1, 1)
         ELSIF op*T32MSK42 = SBFX THEN
           (*T32MSK42 10100 - Signed Bit Field Extract SBFX on page A7-349
             SBFX<c> <Rd>,<Rn>,#<lsb>,#<width>*)
           WriteOp(W, op, "SBFX", FALSE, FALSE); WriteReg(W, Rd);  WriteReg(W, Rn); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, b3 DIV A.C4 MOD A.C3*A.C2 + b4 DIV A.C6, 1);
-          Texts.WriteString(W, " #"); Texts.WriteInt(W, b4 MOD A.C5 + 1, 1)
+          Texts.WriteInt(W, b3 DIV ORD({4}) MOD ORD({3})*ORD({2}) + b4 DIV ORD({6}), 1);
+          Texts.WriteString(W, " #"); Texts.WriteInt(W, b4 MOD ORD({5}) + 1, 1)
         ELSE Texts.WriteString(W, "TODO: other DataProcPlainBinImm on page A5-141")
         END
       ELSIF op*T32MSK6 = StrSingleDataItem THEN
         (*T32MSK6 11 000xxx0 x: Store single data item on page A5-149*)
-        Rn := b2 MOD A.C4; Rt := b3 DIV A.C4;
+        Rn := b2 MOD ORD({4}); Rt := b3 DIV ORD({4});
         IF op*T32MSK61 = StrRegImmT3 THEN
           (*T32MSK61 110 xxxxxx: Store Register STR (immediate) on page A7-386*)
           (*STR<c>.W <Rt>,[<Rn>,#<imm12>]*)
@@ -708,7 +725,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK7 = LdrWord THEN
         (*T32MSK7 11 00xx101 x Load word on page A5-146*)
-        Rn := b2 MOD A.C4; Rt := b3 DIV A.C4;
+        Rn := b2 MOD ORD({4}); Rt := b3 DIV ORD({4});
         IF (op*T32MSK71 = LdrRegImmOrLit) & (Rn # 15) THEN
           (*T32MSK71 01 xxxxxx: Rn # 1111: Load Register LDR (immediate) on page A7-246*)
           (*LDR<c>.W <Rt>,[<Rn>{,#<imm12>}] T3*)
@@ -746,7 +763,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           (*BL<c> <label> Outside or last in IT block*)
           WriteOp(W, op, "BL", FALSE, FALSE); WritePCOffset(W, i + base, SignExtendEven25(op))
         ELSIF op*T32MSK51 = BMCNotUDFOrBOrBL THEN
-          t := b1 MOD A.C2*A.C2 + b2 DIV A.C6;
+          t := b1 MOD ORD({2})*ORD({2}) + b2 DIV ORD({6});
           IF t < 14 THEN
             (*T32MSK51 0x1 xxxxxxx Branch B on page A7-205*)
             (*B<c>.W <label>*)
@@ -755,7 +772,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           ELSIF op*T32MSK52 = MovFrSpReg THEN
             (*T32MSK52 0x0 011111x: Move from Special Register MRS on page A7-300*)
             (*MRS<c> <Rd>,<spec_reg>*)
-            Rd := b3 MOD A.C4;
+            Rd := b3 MOD ORD({4});
             WriteOp(W, op, "MRS", FALSE, FALSE); WriteReg(W, Rd);
             IF b4 = 8 THEN Texts.WriteString(W, " MSP")
             ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
@@ -764,7 +781,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           ELSIF op*T32MSK52 = MovToSpReg THEN
             (*T32MSK52 0x0 011100x: Move to Special Register MSR on page A7-301*)
             (*MSR<c><spec_reg>,Rn*)
-            Rn := b2 MOD A.C4;
+            Rn := b2 MOD ORD({4});
             WriteOp(W, op, "MSR", FALSE, FALSE);
             IF b4 = 8 THEN Texts.WriteString(W, " MSP")
             ELSIF b4 = 9 THEN Texts.WriteString(W, " PSP")
@@ -781,7 +798,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             END
           ELSIF op*T32MSK52A = MiscCtrlInst THEN
             (*T32MSK52A 0x0 0111011 - Miscellaneous control instructions on page A5-143*)
-            t := b4 DIV A.C4;
+            t := b4 DIV ORD({4});
             IF t = 4 THEN WriteOp(W, op, "DSB", FALSE, FALSE)
             ELSIF t = 5 THEN WriteOp(W, op, "DMB", FALSE, FALSE)
             ELSIF t = 6 THEN WriteOp(W, op, "ISB", FALSE, FALSE)
@@ -801,18 +818,18 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T32MSK31 = Trap THEN
           (*T32MSK31 0: Oberon implementation for Trap*)
           (*111x/11xx/xxxx/xxxx/xxxx/0xxx/xxxx/xxxx*)
-          WriteOp(W, op, "Trap", FALSE, FALSE); Texts.Write(W, " "); Texts.WriteInt(W, b4 MOD A.C4, 1);
+          WriteOp(W, op, "Trap", FALSE, FALSE); Texts.Write(W, " "); Texts.WriteInt(W, b4 MOD ORD({4}), 1);
           Texts.WriteString(W, " at pos "); 
-          Texts.WriteInt(W, 0+b1 MOD A.C1*A.C19 + b2*A.C11 + b3 DIV A.C4*A.C7 +
-            b3 MOD A.C3*A.C4 + b4 DIV A.C4, 1);
+          Texts.WriteInt(W, 0+b1 MOD A.C1*A.C19 + b2*A.C11 + b3 DIV ORD({4})*A.C7 +
+            b3 MOD ORD({3})*ORD({4}) + b4 DIV ORD({4}), 1);
         ELSIF op*T32MSK32 = FPSingle THEN
           (*T32MSK32 1010: Single-precision floating point coprocessor*)
           (*111x/11xx/xxxx/xxxx/xxxx/1010/xxxx/xxxx*)
-          Sn := b2 MOD A.C4*A.C1 + b4 DIV A.C7;
-          Rt := b3 DIV A.C4;
-          Rn := b2 MOD A.C4;
-          Sd := b3 DIV A.C4*A.C1 + b2 DIV A.C6 MOD A.C1;
-          Sm := b4 MOD A.C4*A.C1 + b4 DIV A.C5 MOD A.C1;
+          Sn := b2 MOD ORD({4})*A.C1 + b4 DIV A.C7;
+          Rt := b3 DIV ORD({4});
+          Rn := b2 MOD ORD({4});
+          Sd := b3 DIV ORD({4})*A.C1 + b2 DIV ORD({6}) MOD A.C1;
+          Sm := b4 MOD ORD({4})*A.C1 + b4 DIV ORD({5}) MOD A.C1;
           IF op*T32MSK320 = FPDataProc THEN
             (*T32MSK320 |111T/1110/opc1/opc2/xxxx/1010/o3x0/opc4|
               Floating-point data-processing instructions on page A6.4-165*)
@@ -887,14 +904,14 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
               WriteOp(W, op, "VSTR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " ["); WriteReg(W, Rn);
               IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - ") END;
-              Texts.WriteInt(W, b4*A.C2, 1); Texts.WriteString(W, " ]")
+              Texts.WriteInt(W, b4*ORD({2}), 1); Texts.WriteString(W, " ]")
             ELSIF op*T32MSK3212 = VLDR THEN
               (*T32MSK3212 1xx01 - FP Load Register VLDR on page A7-473*)
               (*VLDR<c> <Sd>, [<Rn>{, #+/-<imm>}]*)
               WriteOp(W, op, "VLDR", FALSE, FALSE); Texts.WriteString(W, " S"); Texts.WriteInt(W, Sd, 1);
               Texts.WriteString(W, " ["); WriteReg(W, Rn);
               IF 23 IN op THEN Texts.WriteString(W, " + ") ELSE  Texts.WriteString(W, " - " ) END;
-              Texts.WriteInt(W, b4*A.C2, 1); Texts.WriteString(W, " ]")
+              Texts.WriteInt(W, b4*ORD({2}), 1); Texts.WriteString(W, " ]")
             ELSIF op*T32MSK3213 = VPUSH THEN
               (*T32MSK3213 10x10 1101 FP Push Registers VPUSH on page A7-492*)
               (*VPUSH<c> <list> Encoding T2*)
@@ -934,7 +951,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK7 = LdrByteOrMemHints THEN
         (*T32MSK7 11 00xx001 x Load byte, memory hints on page A5-148*)
-        Rn := b2 MOD A.C4; Rt := b3 DIV A.C4;
+        Rn := b2 MOD ORD({4}); Rt := b3 DIV ORD({4});
         IF (op*T32MSK71 = LdrRegByteT2) & (Rn # 15) & (Rt # 15)  THEN
           (*T32MSK71 01 xxxxxx Rn not 1111 and Rt not 1111 Load Register Byte LDRB (immediate) on page A7-252*)
           (*LDRB<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
@@ -956,7 +973,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK7 = LdrHalfwordOrMemHints THEN
         (*T32MSK7 11 00xx011 x Load halfword, memory hints on page A5-147*)
-        Rn := b2 MOD A.C4; Rt := b3 DIV A.C4;
+        Rn := b2 MOD ORD({4}); Rt := b3 DIV ORD({4});
         IF (op*T32MSK71 = LdrRegHalfwordT2) & (Rn # 15) & (Rt # 15)  THEN
           (*T32MSK71 01 xxxxxx Rn not 1111 and Rt not 1111 Load Register Halfword LDRH (immediate) on page A7-264*)
           (*LDRH<c>.W <Rt>,[<Rn>{,#<imm12>}]*)
@@ -978,9 +995,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK2 = DataProcShiftedReg THEN
         (*T32MSK2 01 01xxxxx x Data processing (shifted register) on page A5-150*)
-        Rd := b3 MOD A.C4; Rn := b2 MOD A.C4;
+        Rd := b3 MOD ORD({4}); Rn := b2 MOD ORD({4});
         IF op*T32MSK21 = AddShiftedReg THEN
-          Rm := b4 MOD A.C4;
+          Rm := b4 MOD ORD({4});
           IF Rd = 15 THEN
             IF 20 IN op THEN
               (*T32MSK21 1000 - Rd = 1111 1 Compare Negative CMN (register) on page A7-222*)
@@ -1006,18 +1023,18 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           ELSE
             (*T32MSK21 0000 - Rd not 1111 x Bitwise AND AND (register) on page A7-201*)
             (*AND{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
-            Rm := b4 MOD A.C4;
+            Rm := b4 MOD ORD({4});
             WriteOp(W, op, "AND", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
           END
         ELSIF op*T32MSK21 = OrrRegT2 THEN
           IF Rn = 15 THEN
             (*T32MSK21 0010 Rn = 1111 - - - Move register and immediate shifts*)
-            t := b3 DIV A.C4 MOD A.C3*A.C2 + b4 DIV A.C6;
+            t := b3 DIV ORD({4}) MOD ORD({3})*ORD({2}) + b4 DIV ORD({6});
             IF op*T32MSK211 = RorOrRrxImm THEN
               (*T32MSK211 11 00000 Rotate Right with Extend RRX on page A7-340
                 or not 00000 Rotate Right ROR (immediate) on page A7-338*)
-              Rm := b4 MOD A.C4;
+              Rm := b4 MOD ORD({4});
               IF t=0 THEN
                 (*11 00000 Rotate Right with Extend RRX on page A7-340*)
                 (*RRX{S}<c> <Rd>,<Rm>*)
@@ -1033,12 +1050,12 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           ELSE
             (*T32MSK21 0010 Rn not 1111 - - Bitwise OR ORR (register) on page A7-310*)
             (*ORR{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
-            Rm := b4 MOD A.C4;
+            Rm := b4 MOD ORD({4});
             WriteOp(W, op, "ORR", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
           END
         ELSIF op*T32MSK21 = SubOrCmp THEN
-          Rm := b4 MOD A.C4;
+          Rm := b4 MOD ORD({4});
           IF Rd = 15 THEN
             IF 20 IN op THEN
               (*T32MSK21 1101 - Rd = 1111 1 Compare CMP (register) on page A7-224*)
@@ -1053,13 +1070,13 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteShift(W, op)
           END
         ELSIF op*T32MSK21 = BitwClear THEN
-          Rm := b4 MOD A.C4;
+          Rm := b4 MOD ORD({4});
           (*T32MSK21 0001 - - - Bitwise Bit Clear BIC (register) on page A7-210*)
           (*BIC{S}<c>.W <Rd>,<Rn>,<Rm>{,<shift>}*)
             WriteOp(W, op, "BIC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
         ELSIF op*T32MSK21 = EorOrTeq THEN
-          Rm := b4 MOD A.C4;
+          Rm := b4 MOD ORD({4});
           IF Rd = 15 THEN
             IF 20 IN op THEN
               (*T32MSK21 0100 - Rd = 1111 1 Test Equivalence TEQ (register) on page A7-418*) 
@@ -1072,19 +1089,19 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             WriteShift(W, op)
           END
         ELSIF op*T32MSK21 = AdcRegT2 THEN
-          Rm := b4 MOD A.C4;
+          Rm := b4 MOD ORD({4});
           (*T32MSK21 1010 - - - Add with Carry ADC (register) on page A7-188
             ADC{S}<c>.W <Rd>,<Rn>,<Rm> {,<shift>}*)
             WriteOp(W, op, "ADC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
         ELSIF op*T32MSK21 = SbcRegT2 THEN
-          Rm := b4 MOD A.C4;
+          Rm := b4 MOD ORD({4});
           (*T32MSK21 1011 - - - Subtract with Carry SBC (register) on page A7-347
             SBC{S}<c>.W <Rd>,<Rn>,<Rm> {,<shift>}*)
             WriteOp(W, op, "SBC", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
             WriteShift(W, op)
         ELSIF op*T32MSK21 = RsbRegT1 THEN
-          Rm := b4 MOD A.C4;
+          Rm := b4 MOD ORD({4});
           (*T32MSK21 1110 - - - Reverse Subtract RSB (register) on page A7-342
             RSB{S}<c> <Rd>,<Rn>,<Rm> {,<shift>}*)
             WriteOp(W, op, "RSB", FALSE, TRUE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
@@ -1093,11 +1110,11 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK8 = MulAccDiff THEN
         (*T32MSK8 11 0110xxx Multiply, multiply accumulate and absolute difference on page A5-156*)
-        Ra := b3 DIV A.C4;
+        Ra := b3 DIV ORD({4});
         IF (op*T32MSK82 = MulT2) & (Ra = 15) THEN
           (*T32MSK82 000 00 Ra = 1111 Multiply on page A7-302*)
           (*MUL<c> <Rd>,<Rn><Rm>*)
-          Rd := b3 MOD A.C4; Rn := b2 MOD A.C4; Rm := b4 MOD A.C4;
+          Rd := b3 MOD ORD({4}); Rn := b2 MOD ORD({4}); Rm := b4 MOD ORD({4});
           WriteOp(W, op, "MUL", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
         ELSE Texts.WriteString(W, "TODO other Multiply, multiply accumulate and absolute difference on page A5-156")
         END
@@ -1106,23 +1123,23 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T32MSK81 = UnsDiv THEN
           (*T32MSK81 011 1111 Unsigned Divide UDIV on page A7-426*)
           (*UDIV<c> <Rd>,<Rn>,<Rm>*)
-          Rd := b3 MOD A.C4; Rn := b2 MOD A.C4; Rm := b4 MOD A.C4;
+          Rd := b3 MOD ORD({4}); Rn := b2 MOD ORD({4}); Rm := b4 MOD ORD({4});
           WriteOp(W, op, "UDIV", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
         ELSIF op*T32MSK81 = SignDiv THEN
           (*T32MSK81 001 1111 Signed Divide SDIV on page A7-350*)
           (*SDIV<c> <Rd>,<Rn>,<Rm>*)
-          Rd := b3 MOD A.C4; Rn := b2 MOD A.C4; Rm := b4 MOD A.C4;
+          Rd := b3 MOD ORD({4}); Rn := b2 MOD ORD({4}); Rm := b4 MOD ORD({4});
           WriteOp(W, op, "SDIV", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm);
         ELSIF op*T32MSK81 = UnsLongMUL THEN
           (*T32MSK81 010 0000 Unsigned Multiply Long UMULL on page A7-435*)
           (*UMULL<c> <RdLo>,<RdHi>,<Rn>,<Rm>*)
-          RdLo := b3 DIV A.C4; RdHi := b3 MOD A.C4; Rn := b2 MOD A.C4; Rm := b4 MOD A.C4;
+          RdLo := b3 DIV ORD({4}); RdHi := b3 MOD ORD({4}); Rn := b2 MOD ORD({4}); Rm := b4 MOD ORD({4});
           WriteOp(W, op, "UMULL", FALSE, FALSE); WriteReg(W, RdLo); WriteReg(W, RdHi); WriteReg(W, Rn); WriteReg(W, Rm);
         ELSE Texts.WriteString(W, "TODO other LongMulAccDiv on page A5-156")
         END
       ELSIF op*T32MSK9 = DataProcReg THEN
         (*T32MSK9 11 010xxxx x Data processing (register) on page A5-152*)
-        Rd := b3 MOD A.C4; Rn := b2 MOD A.C4; Rm := b4 MOD A.C4;
+        Rd := b3 MOD ORD({4}); Rn := b2 MOD ORD({4}); Rm := b4 MOD ORD({4});
         IF op*T32MSK91 = LslReg THEN
           (*T32MSK91 000x 0000 Logical Shift Left LSL (register) on page A7-283*)
           (*LSL{S}<c>.W <Rd>,<Rn>,<Rm>*)
@@ -1149,7 +1166,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK1 = LoadMultStoreMult THEN
         (*T32MSK1 01 00xx0xx x Load Multiple and Store Multiple on page A5-144*)
-        Rn := b2 MOD A.C4;
+        Rn := b2 MOD ORD({4});
         IF (op*T32MSK11 = PushMultRegsT2) & (op*{21} = {21}) & (Rn = 13) THEN
           (*T32MSK11 10 0 11101 Push Multiple Registers to the stack on page A7-322*)
           (*PUSH<c>,W <registers>*)
@@ -1160,9 +1177,9 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         END
       ELSIF op*T32MSK1 = LoadDualExclTabBranch THEN
         (*T32MSK1 01 00xx1xx x Load/store dual or exclusive, table branch on page A5-145*)
-        Rn := b2 MOD A.C4;
+        Rn := b2 MOD ORD({4});
         IF (op*T32MSK12 = LoadRegisterDual12) OR (op*T32MSK13 = LoadRegisterDual13) THEN
-          Rt := b3 DIV A.C4; Rt2 := b3 MOD A.C4;
+          Rt := b3 DIV ORD({4}); Rt2 := b3 MOD ORD({4});
           (*T32MSK12 = 0x 11 xxxx Load Register Dual on page A7-257*)
           (*T32MSK13 = 1x x1 xxxx Load Register Dual on page A7-257*)
           (*LDRD<c> <Rt>, <Rt2>, [<Rn>{, #+/-<imm8>}]
@@ -1177,7 +1194,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
             IF 21 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
         ELSIF (op*T32MSK12 = StoreRegisterDual12) OR (op*T32MSK13 = StoreRegisterDual13) THEN
-          Rt := b3 DIV A.C4; Rt2 := b3 MOD A.C4;
+          Rt := LSR(b3, 4); Rt2 := b3 MOD ORD({4});
           (*T32MSK12 = 0x 10 xxxx Store Register Dual on page A7-257*)
           (*T32MSK13 = 1x x0 xxxx Store Register Dual on page A7-257*)
           (*STRD<c> <Rt>, <Rt2>, [<Rn>{, #+/-<imm8>}]
@@ -1191,6 +1208,44 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           IF 24 IN op THEN (*pre-indexed*) Texts.WriteString(W, " ]");
             IF 21 IN op THEN (*write-back*) Texts.Write(W, "!") END
           END
+        ELSIF op*T32MSK14 = LoadRegisterExclusive THEN
+          Rt := LSR(b3, 4);
+          (*T32MSK14 = 00 01 xxxx Load Register Exclusive on page A7-261*)
+          (*LDREX<c> <Rt>,[<Rn>{,#<imm8>}]*)
+          WriteOp(W, op, "LDREX", FALSE, FALSE); WriteReg(W, Rt);
+          Texts.WriteString(W, " ["); WriteReg(W, Rn);
+          Texts.WriteString(W, " + "); Texts.WriteInt(W, b4, 1); Texts.WriteString(W, " ]")
+        ELSIF op*T32MSK14 = StoreRegisterExclusive THEN
+          Rt := LSR(b3, 4); Rd := b3 MOD ORD({4});
+          (*T32MSK14 = 00 00 xxxx Store Register Exclusive on page A7-394*)
+          (*STREX<c> <Rd>,<Rt>,[<Rn>{,#<imm8>}]*)
+          WriteOp(W, op, "STREX", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rt);
+          Texts.WriteString(W, " ["); WriteReg(W, Rn);
+          Texts.WriteString(W, " + "); Texts.WriteInt(W, b4, 1); Texts.WriteString(W, " ]")
+        ELSIF op*T32MSK15 = LoadRegisterExclusiveByte THEN
+          Rt := LSR(b3, 4);
+          (*T32MSK15 = 01 01 0100 Load Register Exclusive Byte on page A7-262*)
+          (*LDREXB<c> <Rt>,[<Rn>]*)
+          WriteOp(W, op, "LDREXB", FALSE, FALSE); WriteReg(W, Rt);
+          Texts.WriteString(W, " ["); WriteReg(W, Rn); Texts.WriteString(W, " ]")
+        ELSIF op*T32MSK15 = StoreRegisterExclusiveByte THEN
+          Rt := LSR(b3, 4); Rd := b4 MOD ORD({4});
+          (*T32MSK15 = 01 00 0100 Store Register Exclusive Byte on page A7-395*)
+          (*STREXB<c> <Rd>, <Rt>,[<Rn>]*)
+          WriteOp(W, op, "STREXB", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rt);
+          Texts.WriteString(W, " ["); WriteReg(W, Rn); Texts.WriteString(W, " ]")
+        ELSIF op*T32MSK15 = LoadRegisterExclusiveHalfword THEN
+          Rt := LSR(b3, 4);
+          (*T32MSK15 = 01 01 0101 Load Register Exclusive Halfword on page A7-263*)
+          (*LDREXH<c> <Rt>,[<Rn>]*)
+          WriteOp(W, op, "LDREXH", FALSE, FALSE); WriteReg(W, Rt);
+          Texts.WriteString(W, " ["); WriteReg(W, Rn); Texts.WriteString(W, " ]")
+        ELSIF op*T32MSK15 = StoreRegisterExclusiveHalfword THEN
+          Rt := LSR(b3, 4); Rd := b4 MOD ORD({4});
+          (*T32MSK15 = 01 00 0101 Store Register Exclusive Halfword on page A7-396*)
+          (*STREXH<c> <Rd>, <Rt>,[<Rn>]*)
+          WriteOp(W, op, "STREXH", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rt);
+          Texts.WriteString(W, " ["); WriteReg(W, Rn); Texts.WriteString(W, " ]")
         ELSE Texts.WriteString(W, "TODO: other Load/store dual or exclusive, table branch on page A5-145")
         END
       ELSE Texts.WriteString(W, "TODO other 32-bit thumb instruction")
@@ -1199,7 +1254,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
       Texts.WriteString(W, "    "); Texts.WriteHexVLen(W, ORD(op), 4, FALSE); Texts.Write(W, 9X);
       IF op*T16MSK2 = SpecDataBrEx THEN
         (*T16MSK2 010001: Special data instructions and branch and exchange on page A5-132*)
-        Rm := b2 DIV A.C3 MOD A.C4;
+        Rm := b2 DIV ORD({3}) MOD ORD({4});
         IF op*T16MSK23 = BrEx THEN
           (*T16MSK23 110x: Branch and Exchange BX on page A7-215*)
           WriteOp(W, op, "BX", FALSE, FALSE); WriteReg(W, Rm)
@@ -1208,7 +1263,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
           WriteOp(W, op, "BLX", FALSE, FALSE); WriteReg(W, Rm)
         ELSIF op*T16MSK21 = AddRegT2 THEN
           (*T16MSK21 00xx Add registers ADD (register) on page A7-192*)
-          Rdn := b2 DIV A.C7*A.C3 + b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C4;
+          Rdn := b2 DIV A.C7*ORD({3}) + b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({4});
           IF Rm = 13 THEN (*ADD (SP plus register) encoding T1*)
             WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rdn); WriteReg(W, 13); WriteReg(W, Rdn)
           ELSE WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rdn); WriteReg(W, Rdn); WriteReg(W, Rm)
@@ -1216,7 +1271,7 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         ELSIF op*T16MSK21 = MovT1 THEN
           (*T16MSK21 10xx Move Registers MOV (register) on page A7-293*)
           (*MOV<c> <Rd>,<Rm> If <Rd> is the PC, must be outside or last in IT block*)
-          Rd := b2 DIV A.C7*A.C3 + b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C4;
+          Rd := b2 DIV A.C7*ORD({3}) + b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({4});
           WriteOp(W, op, "MOV", FALSE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSE Texts.WriteString(W, "TODO: other SpecDataBrEx on page A5-132")
         END
@@ -1225,80 +1280,80 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T16MSK22 = CmpReg THEN
           (*T16MSK22 1010 Compare Registers CMP (register) on page A7-224*)
           (*CMP<c> <Rn>,<Rm>*)
-          Rn := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rn := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "CMP", FALSE, FALSE); WriteReg(W, Rn); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = RevSub THEN
           (*T16MSK22 1001 Reverse Subtract from 0 RSB (immediate) on page A7-341*)
           (*RSBS <Rd>,<Rn>,#0 Outside IT block.
             RSB<c> <Rd>,<Rn>,#0 Inside IT block.*)
-          Rd := b2 MOD A.C3; Rn := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rn := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "RSB", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn);
           Texts.WriteString(W, " #0")
         ELSIF op*T16MSK22 = MulT1 THEN
           (*T16MSK22 1101 Multiply Two Registers MUL on page A7-302*)
           (*MULS <Rdm>,<Rn>,<Rdm> Outside IT block.
             MUL<c> <Rdm>,<Rn>,<Rdm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rn := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rn := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "MUL", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rd)
         ELSIF op*T16MSK22 = BicReg THEN
           (*T16MSK22 1110 Bit Clear BIC (register) on page A7-210*)
           (*BICS <Rdn>,<Rm> Outside IT block.
             BIC<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "BIC", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = AndRegT1 THEN
           (*T16MSK22 0000 Bitwise AND AND (register) on page A7-201*)
           (*ANDS <Rdn>,<Rm> Outside IT block.
             AND<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "AND", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = OrrRegT1 THEN
           (*T16MSK22 1100 Logical OR ORR (register) on page A7-310*)
           (*ORRS <Rdn>,<Rm> Outside IT block.
             ORR<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "ORR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = EorRegT1 THEN
           (*T16MSK22 0001 Exclusive OR EOR (register) on page A7-233*)
           (*EORS <Rdn>,<Rm> Outside IT block.
             EOR<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "EOR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = RorRegT1 THEN
           (*T16MSK22 0111 Rotate Right ROR (register) on page A7-339*)
           (*RORS <Rdn>,<Rm> Outside IT block.
             ROR<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "ROR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = AdcT1 THEN
           (*T16MSK22 0101 Add with Carry ADC (register) on page A7-188*)
           (*ADCS <Rdn>,<Rm> Outside IT block.
             ADC<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "ADC", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = SbcRegT1 THEN
           (*T16MSK22 0110 Subtract with Carry SBC (register) on page A7-347*)
           (*SBCS <Rdn>,<Rm> Outside IT block.
             SBC<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "SBC", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = LslT1 THEN
           (*T16MSK22 0010 Logical Shift Left LSL (register) on page A7-283*)
           (*LSLS <Rdn>,<Rm> Outside IT block.
             LSL<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "LSL", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = LsrT1 THEN
           (*T16MSK22 0011 Logical Shift Right LSR (register) on page A7-285
             LSRS <Rdn>,<Rm> Outside IT block.
             LSR<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "LSR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSIF op*T16MSK22 = AsrT1 THEN
           (*T16MSK22 0100 Arithmetic Shift Right ASR (register) on page A7-204*)
           (*ASRS <Rdn>,<Rm> Outside IT block.
             ASR<c> <Rdn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "ASR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); WriteReg(W, Rm)
         ELSE Texts.WriteString(W, "TODO: other DataProc on page A5-131")
         END
@@ -1307,17 +1362,17 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T16MSK42 = AddSPT2 THEN
           (*T16MSK42 00000xx Add immediate to SP on page A7-194
             ADD<c> SP,SP,#<imm7>*)
-          WriteOp(W, op, "ADD", FALSE, FALSE); Texts.WriteString(W, " SP SP #"); Texts.WriteInt(W, b2 MOD A.C7*A.C2, 1)
+          WriteOp(W, op, "ADD", FALSE, FALSE); Texts.WriteString(W, " SP SP #"); Texts.WriteInt(W, b2 MOD A.C7*ORD({2}), 1)
         ELSIF op*T16MSK42 = SubSPT1 THEN
           (*T16MSK42 00001xx Subtract immediate from SP on page A7-406
             SUB<c> SP,SP,#<imm7>*)
-          WriteOp(W, op, "SUB", FALSE, FALSE); Texts.WriteString(W, " SP SP #"); Texts.WriteInt(W, b2 MOD A.C7*A.C2, 1)
+          WriteOp(W, op, "SUB", FALSE, FALSE); Texts.WriteString(W, " SP SP #"); Texts.WriteInt(W, b2 MOD A.C7*ORD({2}), 1)
         ELSIF op*T16MSK43 = IfThenHints THEN
           (*T16MSK43 1111xxx: If-Then, and hints on page A5-135*)
-          IF b2 MOD A.C4 # 0 THEN
+          IF b2 MOD ORD({4}) # 0 THEN
             (*xxxx not 0000 If-Then IT on page A7-236*)
             Texts.WriteString(W, "IT");
-            b3 := b2 DIV A.C4; (*condition*)
+            b3 := b2 DIV ORD({4}); (*condition*)
             t := 3; WHILE ~ODD(b2) DO b2 := ASR(b2, 1); DEC(t) END;
             itB.cond := b3; itB.pos := 0; itB.nofinst := 1; itB.mask[0] := "T";
             FOR b4 := t TO 1 BY -1 DO 
@@ -1356,90 +1411,90 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T16MSK11 = CmpImm THEN
           (*T16MSK11 101xx: Compare CMP (immediate) on page A7-223*)
           (*CMP<c> <Rn>,#<imm8>*)
-          Rn := b1 MOD A.C3;
+          Rn := b1 MOD ORD({3});
           WriteOp(W, op, "CMP", FALSE, FALSE); WriteReg(W, Rn); Texts.WriteString(W, " #");
           Texts.WriteInt(W, b2, 1)
         ELSIF op*T16MSK11 = Move THEN
           (*T16MSK11 100xx: Move MOV (immediate) on page A7-291*)
           (*MOVS <Rd>,#<imm8>   Outside IT block.
             MOV<c> <Rd>,#<imm8> Inside IT block.*)
-          Rn := b1 MOD A.C3;
+          Rn := b1 MOD ORD({3});
           WriteOp(W, op, "MOV", TRUE, FALSE); WriteReg(W, Rn); Texts.WriteString(W, " #");
           Texts.WriteInt(W, b2, 1)
         ELSIF op*T16MSK11 = AddImm8 THEN
           (*T16MSK11 110xx: Add 8-bit immediate ADD (immediate) on page A7-190*)
           (*ADDS <Rdn>,#<imm8> Outside IT block.
             ADD<c> <Rdn>,#<imm8> Inside IT block.*)
-          Rdn := b1 MOD A.C3;
+          Rdn := b1 MOD ORD({3});
           WriteOp(W, op, "ADD", TRUE, FALSE); WriteReg(W, Rdn); WriteReg(W, Rdn); Texts.WriteString(W, " #");
           Texts.WriteInt(W, b2, 1)
         ELSIF op*T16MSK12 = AddImm3 THEN
           (*T16MSK12 01110 Add 3-bit immediate ADD (immediate) on page A7-190*)
           (*ADDS <Rd>,<Rn>,#<imm3> Outside IT block.
             ADD<c> <Rd>,<Rn>,#<imm3> Inside IT block.*)
-          Rn := b2 DIV A.C3 MOD A.C3; Rd := b2 MOD A.C3;
+          Rn := b2 DIV ORD({3}) MOD ORD({3}); Rd := b2 MOD ORD({3});
           WriteOp(W, op, "ADD", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, b1 MOD A.C1*A.C2 + b2 DIV A.C6, 1)
+          Texts.WriteInt(W, b1 MOD A.C1*ORD({2}) + b2 DIV ORD({6}), 1)
         ELSIF op*T16MSK11 = ASRImmT1 THEN
           (*T16MSK11 010xx Arithmetic Shift Right ASR (immediate) on page A7-203*)
           (*ASRS <Rd>,<Rm>,#<imm5> Outside IT block.
             ASR<c> <Rd>,<Rm>,#<imm5> Inside IT block.*)
-          Rm := b2 DIV A.C3 MOD A.C3; Rd := b2 MOD A.C3;            
+          Rm := b2 DIV ORD({3}) MOD ORD({3}); Rd := b2 MOD ORD({3});            
           WriteOp(W, op, "ASR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, b1 MOD A.C3*A.C2 + b2 DIV A.C6, 1)
+          Texts.WriteInt(W, b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}), 1)
         ELSIF op*T16MSK12 = AddRegT1 THEN
           (*T16MSK12 01100 Add register ADD (register) on page A7-192*)
           (*ADDS <Rd>,<Rn>,<Rm> Outside IT block.
             ADD<c> <Rd>,<Rn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rn := b2 DIV A.C3 MOD A.C3; Rm := b1 MOD A.C1*A.C2 + b2 DIV A.C6;
+          Rd := b2 MOD ORD({3}); Rn := b2 DIV ORD({3}) MOD ORD({3}); Rm := b1 MOD A.C1*ORD({2}) + b2 DIV ORD({6});
           WriteOp(W, op, "ADD", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm)
         ELSIF op*T16MSK12 = SubRegT1 THEN
           (*T16MSK12 01101 Subtract register SUB (register) on page A7-404*)
           (*SUBS <Rd>,<Rn>,<Rm> Outside IT block.
             SUB<c> <Rd>,<Rn>,<Rm> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rn := b2 DIV A.C3 MOD A.C3; Rm := b1 MOD A.C1*A.C2 + b2 DIV A.C6;
+          Rd := b2 MOD ORD({3}); Rn := b2 DIV ORD({3}) MOD ORD({3}); Rm := b1 MOD A.C1*ORD({2}) + b2 DIV ORD({6});
           WriteOp(W, op, "SUB", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); WriteReg(W, Rm)
         ELSIF op*T16MSK12 = SubImmT1 THEN
           (*T16MSK12 01111 Subtract 3-bit immediate SUB (immediate) on page A7-402*)
           (*SUBS <Rd>,<Rn>,#<imm3> Outside IT block.
             SUB<c> <Rd>,<Rn>,#<imm3> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rn := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rn := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "SUB", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rn); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, b1 MOD A.C1*A.C2 + b2 DIV A.C6, 1)
+          Texts.WriteInt(W, b1 MOD A.C1*ORD({2}) + b2 DIV ORD({6}), 1)
         ELSIF op*T16MSK11 = LslImmT1 THEN
           (*T16MSK11 000xx Logical Shift Left(a) LSL (immediate) on page A7-282
             (a) When opcode is 0b00000, and bits[8:6] are 0b000, this encoding is MOV
                 (register), see MOV (register) on page A7-293.*)
           (*LSLS <Rd>,<Rm>,#<imm5> Outside IT block.
             LSL<c> <Rd>,<Rm>,#<imm5> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "LSL", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, b1 MOD A.C3*A.C2 + b2 DIV A.C6, 1)
+          Texts.WriteInt(W, b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}), 1)
         ELSIF op*T16MSK11 = SubImmT2 THEN
           (*T16MSK11 111xx Subtract 8-bit immediate SUB (immediate) on page A7-402*)
           (*SUBS <Rdn>,#<imm8> Outside IT block.
             SUB<c> <Rdn>,#<imm8> Inside IT block.*)
-          Rd := b1 MOD A.C3;
+          Rd := b1 MOD ORD({3});
           WriteOp(W, op, "SUB", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rd); Texts.WriteString(W, " #");
           Texts.WriteInt(W, b2, 1)
         ELSIF op*T16MSK11 = LsrImmT1 THEN
           (*T16MSK11 001xx Logical Shift Right LSR (immediate) on page A7-284*)
           (*LSRS <Rd>,<Rm>,#<imm5> Outside IT block.
             LSR<c> <Rd>,<Rm>,#<imm5> Inside IT block.*)
-          Rd := b2 MOD A.C3; Rm := b2 DIV A.C3 MOD A.C3;
+          Rd := b2 MOD ORD({3}); Rm := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "LSR", TRUE, FALSE); WriteReg(W, Rd); WriteReg(W, Rm); Texts.WriteString(W, " #");
-          Texts.WriteInt(W, b1 MOD A.C3*A.C2 + b2 DIV A.C6, 1)
+          Texts.WriteInt(W, b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}), 1)
         ELSE Texts.WriteString(W, "TODO: other ShAdSuMoCm on page A5-130")
         END
       ELSIF op*T16MSK4 = CondBrAndSVC THEN
         (*T16MSK4 1101xx Conditional branch, and Supervisor Call on page A5-136*)
-        IF b1 MOD A.C4 = 0EH THEN Texts.WriteString(W, "TODO UDF on page A7-425")
-        ELSIF b1 MOD A.C4 = 0FH THEN
+        IF b1 MOD ORD({4}) = 0EH THEN Texts.WriteString(W, "TODO UDF on page A7-425")
+        ELSIF b1 MOD ORD({4}) = 0FH THEN
           (*SVC<c> #<imm8>*)
           WriteOp(W, op, "SVC", FALSE, FALSE); Texts.WriteString(W, " #"); Texts.WriteInt(W, b2, 1)
         ELSE
           (*B<c> <label> Not permitted in IT block.*)
-          WriteOp(W, op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[b1 MOD A.C4]);
+          WriteOp(W, op, "B", FALSE, FALSE); Texts.WriteString(W, mnemo1[b1 MOD ORD({4})]);
           WritePCOffset(W, i+2 + base, SignExtendEven8(b2))
         END
       ELSIF op*T16MSK5 = LdStSingleT2 THEN
@@ -1447,80 +1502,80 @@ MODULE OM4D;  (*CortexM4 Disassembler C. Schoffit 12/11/2023*)
         IF op*T16MSK52 = StRegSP THEN
           (*T16MSK52 1001 0xx Store Register SP relative STR (immediate) on page A7-386*)
           (*STR<c> <Rt>,[SP,#<imm8>] T2*)
-          Rt := b1 MOD A.C3;
+          Rt := b1 MOD ORD({3});
           WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ SP + ");
-          Texts.WriteInt(W, b2*A.C2, 1); Texts.WriteString(W, " ]")
+          Texts.WriteInt(W, b2*ORD({2}), 1); Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = LdRegSP THEN
           (*T16MSK52 1001 1xx Load Register SP relative LDR (immediate) on page A7-246*)
           (*LDR<c> <Rt>,[SP{,#<imm8>}] T2*)
-          Rt := b1 MOD A.C3;
+          Rt := b1 MOD ORD({3});
           WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [ SP + ");
-          Texts.WriteInt(W, b2*A.C2, 1); Texts.WriteString(W, " ]")
+          Texts.WriteInt(W, b2*ORD({2}), 1); Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = StRegHalfword THEN
           (*T16MSK52 1000 1xx Load Register Halfword LDRH(immediate) on page A7-264*)
           (*LDRH<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
-          Rt := b2 MOD A.C3; Rn := LSR(b2, 3) MOD A.C3;
+          Rt := b2 MOD ORD({3}); Rn := LSR(b2, 3) MOD ORD({3});
           WriteOp(W, op, "STRH", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
-          Texts.WriteInt(W, (b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2)*A.C1, 1);
+          Texts.WriteInt(W, (b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}) MOD ORD({2}))*A.C1, 1);
           Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = LdRegHalfword THEN
           (*T16MSK52 1000 0xx Store Register Halfword STRH(immediate) on page A7-397*)
           (*STRH<c> <Rt>,[<Rn>{,#<imm5>}] T1*)
-          Rt := b2 MOD A.C3; Rn := b2 DIV A.C3 MOD A.C3;
+          Rt := b2 MOD ORD({3}); Rn := b2 DIV ORD({3}) MOD ORD({3});
           WriteOp(W, op, "LDRH", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
-          Texts.WriteInt(W, (b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2)*A.C1, 1);
+          Texts.WriteInt(W, (b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}) MOD ORD({2}))*A.C1, 1);
           Texts.WriteString(W, " ]")
         ELSE Texts.WriteString(W, "TODO: other Load/store single data item on page A5-133")
         END
       ELSIF op*T16MSK5 = LdStSingleT1 THEN
         (*T16MSK5 011xxx Load/store single data item on page A5-133*)
-        Rt := b2 MOD A.C3; Rn := b2 DIV A.C3 MOD A.C3; 
+        Rt := b2 MOD ORD({3}); Rn := b2 DIV ORD({3}) MOD ORD({3}); 
         IF op*T16MSK52 = StRegImm5 THEN
           (*T16MSK52 0110 0xx Store Register STR (immediate) on page A7-386*)
           (*STR<c> <Rt>, [<Rn>{,#<imm5>}]*)
           WriteOp(W, op, "STR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
-          Texts.WriteInt(W, (b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2)*A.C2, 1);
+          Texts.WriteInt(W, (b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}) MOD ORD({2}))*ORD({2}), 1);
           Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = LdRegImm5 THEN
           (*T16MSK52 0110 1xx Load Register LDR (immediate) on page A7-246*)
           (*LDR<c> <Rt>, [<Rn>{,#<imm5>}]*)
           WriteOp(W, op, "LDR", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
-          Texts.WriteInt(W, (b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2)*A.C2, 1);
+          Texts.WriteInt(W, (b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}) MOD ORD({2}))*ORD({2}), 1);
           Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = StRegByteImm5 THEN
           (*T16MSK52 0111 0xx Store Register Byte STRB (immediate) on page A7-389*)
           (*STRB<c> <Rt>,[<Rn>,#<imm5>]*)
           WriteOp(W, op, "STRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
-          Texts.WriteInt(W, b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2, 1);
+          Texts.WriteInt(W, b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}) MOD ORD({2}), 1);
           Texts.WriteString(W, " ]")
         ELSIF op*T16MSK52 = LdRegByteImm5 THEN
           (*T16MSK52 0111 1xx Load Register Byte LDRB (immediate) on page A7-252*)
           (*LDRB<c> <Rt>,[<Rn>{,#<imm5>}]*)
           WriteOp(W, op, "LDRB", FALSE, FALSE); WriteReg(W, Rt); Texts.WriteString(W, " [");
           WriteReg(W, Rn); Texts.WriteString(W, " + ");
-          Texts.WriteInt(W, b1 MOD A.C3*A.C2 + b2 DIV A.C6 MOD A.C2, 1);
+          Texts.WriteInt(W, b1 MOD ORD({3})*ORD({2}) + b2 DIV ORD({6}) MOD ORD({2}), 1);
           Texts.WriteString(W, " ]")
         ELSE Texts.WriteString(W, "TODO other LdStSingleT1 on page A5-133")
         END
       ELSIF op*T16MSK3 = PCRelAdd THEN
         (*T16MSK3 1010 0x: Generate PC-relative address, see ADR on page A7-198
           ADD<c><q> <Rd> PC #<const>*)
-        Rd := b1 MOD A.C3;
+        Rd := b1 MOD ORD({3});
         WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " PC #"); Texts.WriteInt(W, b2*4, 1)
       ELSIF op*T16MSK3 = SPRelAdd THEN
         (*T16MSK3 1010 1x: Generate SP-relative address, see ADD (SP plus immediate) on page A7-194
           ADD<c><q> <Rd> SP #<const>*)
-        Rd := b1 MOD A.C3;
+        Rd := b1 MOD ORD({3});
         WriteOp(W, op, "ADD", FALSE, FALSE); WriteReg(W, Rd); Texts.WriteString(W, " SP #"); Texts.WriteInt(W, b2*4, 1)
       ELSIF op*T16MSK3 = UncBr THEN
         (*T16MSK3 1110 0x Unconditional Branch, see B on page A7-205*)
         (*B<c> <label>*)
-        WriteOp(W, op, "B", FALSE, FALSE); WritePCOffset(W, i+2 + base, SignExtendEven11(b1 MOD A.C3*A.C8 + b2))
+        WriteOp(W, op, "B", FALSE, FALSE); WritePCOffset(W, i+2 + base, SignExtendEven11(b1 MOD ORD({3})*ORD({8}) + b2))
       ELSE Texts.WriteString(W, "TODO 16-bit thumb instruction")
       END
     END

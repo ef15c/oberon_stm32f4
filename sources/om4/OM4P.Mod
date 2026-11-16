@@ -58,6 +58,11 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
     IF x.type.form # B.Real THEN S.Mark("not Real"); x.type := B.realType END
   END CheckReal;
 
+  PROCEDURE CheckExclusive(VAR x: G.Item);
+  BEGIN
+    IF x.type.form IN {B.Real, B.LongInt} THEN S.Mark("bad type"); x.type := B.realType END
+  END CheckExclusive;
+
   PROCEDURE CheckSet(VAR x: G.Item);
   BEGIN
     IF x.type.form # B.Set THEN S.Mark("not Set"); x.type := B.setType END 
@@ -253,6 +258,8 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
         END
       ELSIF fct = 25 THEN (*count leading zeros*) CheckInt(x); G.Clz(x)
       ELSIF fct = 26 THEN (*exclusive OR*); G.XOR(x, y); restyp := x.type
+      ELSIF fct = 27 THEN (*non blocking load exclusive*); CheckExclusive(x); restyp := x.type; G.LoadEx(x)
+      ELSIF fct = 28 THEN (*store exclusive*); CheckExclusive(x); G.StoreEx(x, y)
       END ;
       x.type := restyp
     ELSE S.Mark("wrong nof params")
