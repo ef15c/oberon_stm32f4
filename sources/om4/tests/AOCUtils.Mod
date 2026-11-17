@@ -2,6 +2,7 @@ MODULE AOCUtils;
   IMPORT Texts;
 
   CONST LONG_MAX* = LSL(1L, 63) - 1; BYTE_MAX* = LSL(1, 8);
+    NORTH* = 0; EAST* = 1; SOUTH* = 2; WEST* = 3;
 
   TYPE Vector* = RECORD x*, y*: INTEGER END;
     Vec3* = RECORD x*, y*, z*: INTEGER END;
@@ -183,10 +184,10 @@ MODULE AOCUtils;
     RETURN status
   END QReceive;
 
-BEGIN DIRECTION4[0].x := 0; DIRECTION4[0].y := -1;
-  DIRECTION4[1].x := 1; DIRECTION4[1].y := 0;
-  DIRECTION4[2].x := 0; DIRECTION4[2].y := 1;
-  DIRECTION4[3].x := -1; DIRECTION4[3].y := 0;
+BEGIN DIRECTION4[NORTH].x := 0; DIRECTION4[NORTH].y := -1;
+  DIRECTION4[EAST].x := 1; DIRECTION4[EAST].y := 0;
+  DIRECTION4[SOUTH].x := 0; DIRECTION4[SOUTH].y := 1;
+  DIRECTION4[WEST].x := -1; DIRECTION4[WEST].y := 0;
 END AOCUtils.
 
 Oberon.Batch
