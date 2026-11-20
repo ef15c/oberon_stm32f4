@@ -300,7 +300,7 @@ MODULE OM4P; (*N. Wirth 1.7.97 / 8.3.2020,
       ELSIF ~varpar & (par.type.form = B.Set) & (x.type.form = B.Set) THEN G.ValueParam(x, par.type)  (*BYTESET, HALFSET*)
       ELSIF (x.type.form = B.String) & (x.b = 2) & (par.class = B.Var) & (par.type.form = B.Char) THEN
         G.StrToChar(x); G.ValueParam(x, par.type)
-      ELSIF (par.type.form = B.Array) & (par.type.base = B.byteType) & 
+      ELSIF (par.type.form = B.Array) & (par.type.base.form = B.Int) &
           (par.type.len >= 0) & (par.type.size = x.type.size) THEN
         G.VarParam(x, par.type)
       ELSE S.Mark("incompatible parameters")
