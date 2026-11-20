@@ -732,8 +732,8 @@ MODULE HALPCD;
   END InitPools;
 
   PROCEDURE TakeMsg*(hpcd: Handle): Q.Msg;
-    VAR msg!: Q.Msg;
-  BEGIN msg := Q.ExhaustedPool({1..12});
+    VAR msg!: Q.Msg; USBx!: ll.OTGCore;
+  BEGIN msg := Q.ExhaustedPool({1..12}); USBx := hpcd.Instance;
     IF msg # NIL THEN Log.Error("Interrupt queue too small:");
       IF msg.type = 1 THEN Log.ErrorString(" DataOutStage")
       ELSIF  msg.type = 2 THEN Log.ErrorString(" DataInStage")
@@ -750,15 +750,17 @@ MODULE HALPCD;
       ELSE Log.ErrorString(" unknown message type")
       END; Log.ErrorLn; Log.Flush
     END;
-    UH.DisableGlobalInt;
+    ll.DisableGlobalInt(USBx);
     IF hpcd.MsgPendQ # NIL THEN msg := Q.Get(hpcd.MsgPendQ) ELSE msg := NIL END;
-    UH.EnableGlobalInt
+    ll.EnableGlobalInt(USBx)
 
     RETURN msg
   END TakeMsg;
 
   PROCEDURE GiveMsg*(hpcd: Handle; msg: Q.Msg);
-  BEGIN UH.DisableGlobalInt;
+    VAR USBx!: ll.OTGCore;
+  BEGIN USBx := hpcd.Instance;
+    ll.DisableGlobalInt(USBx);
     (*return item to pool*)
     IF msg.type = 1 THEN Q.PostFirst(hpcd.DataOutStageMP, msg)
     ELSIF msg.type = 2 THEN Q.PostFirst(hpcd.DataInStageMP, msg)
@@ -774,7 +776,7 @@ MODULE HALPCD;
     ELSIF msg.type = 12 THEN Q.PostFirst(hpcd.DebugMP, msg)
     ELSE ASSERT(FALSE) (*unsupported message type*)
     END;
-    UH.EnableGlobalInt
+    ll.EnableGlobalInt(USBx)
   END GiveMsg;
 
   PROCEDURE New*(): Handle;

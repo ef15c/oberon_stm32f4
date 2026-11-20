@@ -12,7 +12,8 @@ MODULE Queue;
 
   PROCEDURE CreateSPool*(type, adr, len, size: INTEGER): Msg;
     VAR i: INTEGER; head!, item!: Msg;
-  BEGIN head := SYSTEM.VAL(Msg, adr); head.guard := TRUE; head.type := type;
+  BEGIN ASSERT(len > 1);
+    head := SYSTEM.VAL(Msg, adr); head.guard := TRUE; head.type := type;
     FOR i := 1 TO len - 1 DO INC(adr, size); item := SYSTEM.VAL(Msg, adr);
       item.type := type; item.next := head; head := item
     END

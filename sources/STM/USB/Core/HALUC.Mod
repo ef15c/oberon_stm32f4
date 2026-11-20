@@ -126,7 +126,8 @@ MODULE HALUC; (*The USB Core driver*)
 
   PROCEDURE TakeMsg*(core: Handle): Q.Msg;
     VAR msg!: Q.Msg; USBx!: ll.OTGCore;
-  BEGIN USBx := core.Instance; msg := Q.ExhaustedPool({20});
+  BEGIN USBx := core.Instance;
+    msg := Q.ExhaustedPool({20});
     IF msg # NIL THEN Log.Error("Interrupt queue too small:");
       IF msg.type = 20 THEN Log.ErrorString(" Debug")
       ELSE Log.ErrorString(" unknown message type")
