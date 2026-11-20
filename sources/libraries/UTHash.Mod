@@ -170,6 +170,13 @@ MODULE UTHash;
     RETURN CRC32.read()
   END HASH_STRING;
 
+  PROCEDURE HASH_INTEGER_ARRAY*(a: ARRAY OF INTEGER): INTEGER;
+    VAR i: INTEGER;
+  BEGIN CRC32.reset;
+    FOR i := 0 TO LEN(a) - 1 DO CRC32.write(a[i]) END
+    RETURN CRC32.read()
+  END HASH_INTEGER_ARRAY;
+
   PROCEDURE getIntHash*(key: Hash): INTEGER;
   BEGIN CRC32.reset;
     CASE key OF
@@ -422,5 +429,30 @@ MODULE UTHash;
 BEGIN NEW(ki); NEW(kli)
 END UTHash.
 
-OM4P2.Compile UTHash.Mod/s ~
+OM4P.Compile UTHash.Mod/s ~
+OM4Tool.DecSym UTHash.sm4
+decode UTHash.sm4
+UTHash D80B8B7B  2
+   5 Hash [18  form = 7 [19  form = 13 [^9]  exno = 1  extlev = 0  size = 28 { --  16 --  12 --   8 --   4 --   0}]]()
+   5 HashDesc [^19]( ->  18)
+   5 HashProc [20  form = 10 [^4] ur = 13 ( class = 2 [^18])]()
+   5 EqualProc [21  form = 10 [^2] ur = 13 ( class = 2 [^18] class = 2 [^18])]()
+   5 IntHashDesc [22  form = 13 [^19]  exno = 2  extlev = 1  size = 32 { key [^4]  28}]()
+   5 IntHash [23  form = 7 [^22]]()
+   5 LongintHashDesc [24  form = 13 [^19]  exno = 3  extlev = 1  size = 36 { key [^14]  28}]()
+   5 LongintHash [25  form = 7 [^24]]()
+   1 FIND [0  form = 10 [^18] ur = 13 ( class = 2 [^21] class = 2 [^20] class = 2 [^18] class = 2 [^18])]       4
+   1 NEXT [0  form = 10 [^18] ur = 4 ( class = 2 [^18])]       5
+   1 FREE [0  form = 10 [^18] ur = 4 ( class = 2 [^18] class = 2 [^18])]       6
+   1 HASH_STRING [0  form = 10 [^4] ur = 4 ( class = 3# [0  form = 12 [^3]  len = -1  size = 8])]       7
+   1 getIntHash [0  form = 10 [^4] ur = 4 ( class = 2 [^18])]       8
+   1 FIND_INT [0  form = 10 [^23] ur = 13 ( class = 2 [^4] class = 2 [^23])]       9
+   1 getLongintHash [0  form = 10 [^4] ur = 4 ( class = 2 [^18])]      10
+   1 FIND_LONGINT [0  form = 10 [^25] ur = 13 ( class = 2 [^14] class = 2 [^25])]      11
+   1 ADD [0  form = 10 [^18] ur = 13 ( class = 2 [^20] class = 2 [^18] class = 2 [^18])]      12
+   1 DELETE [0  form = 10 [^18] ur = 4 ( class = 2 [^18] class = 2 [^18])]      13
+   1 ADD_INT [0  form = 10 [^23] ur = 13 ( class = 2 [^23] class = 2 [^23])]      14
+   1 ADD_LONGINT [0  form = 10 [^25] ur = 13 ( class = 2 [^25] class = 2 [^25])]      15
+
+
 OM4Tool.DecObj UTHash.m4c

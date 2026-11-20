@@ -53,6 +53,11 @@ MODULE AOCUtils;
     RETURN ABS(p1.x - p2.x) + ABS(p1.y - p2.y)
   END manhattan;
 
+  PROCEDURE manhattan3*(p1, p2: Vec3): INTEGER;
+  (*Calculer la distance de manhattan entre deux points*)
+    RETURN ABS(p1.x - p2.x) + ABS(p1.y - p2.y) + ABS(p1.z - p2.z)
+  END manhattan3;
+
   PROCEDURE printVector*(VAR W: Texts.Writer; p: Vector);
   BEGIN Texts.Write(W, "("); Texts.WriteInt(W, p.x, 1); Texts.Write(W, ","); Texts.WriteInt(W, p.y, 1);Texts.Write(W, ")")
   END printVector;
