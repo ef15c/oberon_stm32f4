@@ -238,7 +238,7 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   BEGIN
     CASE core OF
       PCD.Handle: dev := core
-    | UC.Handle: dev := PCD.New(); PCD.InitPools(dev); tmp := dev; tmp^ := core^; Def.Update(dev, id)
+    | UC.Handle: dev := PCD.New(); PCD.InitQueue(dev); tmp := dev; tmp^ := core^; Def.Update(dev, id)
     | Def.Handle: ASSERT(FALSE)
     END;
     dev.SOFCallback := SOFCallback;
@@ -301,28 +301,26 @@ MODULE USBDHal; (*The BSP part of USB Device Controller configuration, C. Schoff
   * @brief  Do the work offloaded by IRQs in the process loop.
   *)
  PROCEDURE ProcessDeferredIRQWork*(dev: Def.Handle);
-    VAR msg!: Q.Msg; hmsg!: PCD.Msg;
+    VAR msg!: PCD.Msg;
   BEGIN
     CASE dev OF
       PCD.Handle:
         msg := PCD.TakeMsg(dev);
         WHILE msg # NIL DO (*Process the message*)
-          hmsg := SYSTEM.VAL(PCD.Msg, msg);
-          IF hmsg.type = 1 THEN DCore.DataOutStage(dev, hmsg.epnum)
-          ELSIF hmsg.type = 2 THEN DCore.DataInStage(dev, hmsg.epnum, hmsg.zlpRequired)
-          ELSIF hmsg.type = 3 THEN SetupStageCallback(dev)
-          ELSIF hmsg.type = 4 THEN ASSERT(FALSE)
-          ELSIF hmsg.type = 5 THEN ASSERT(FALSE)
-          ELSIF hmsg.type = 6 THEN ASSERT(FALSE)
-          ELSIF hmsg.type = 7 THEN Log.Debug("Resume"); Log.DebugLn; DCore.Resume(dev)
-          ELSIF hmsg.type = 8 THEN Log.Debug("Suspend"); Log.DebugLn; DCore.Suspend(dev)
-          ELSIF hmsg.type = 9 THEN Log.Debug("Reset"); Log.DebugLn; ResetCallback(dev)
-          ELSIF hmsg.type = 10 THEN Log.Debug("Connect"); Log.DebugLn; DCore.DevConnected(dev)
-          ELSIF hmsg.type = 11 THEN ASSERT(FALSE)
-          ELSIF hmsg.type = 12 THEN IRQLog(hmsg)
+          IF msg.type = 1 THEN DCore.DataOutStage(dev, msg.epnum)
+          ELSIF msg.type = 2 THEN DCore.DataInStage(dev, msg.epnum, msg.zlpRequired)
+          ELSIF msg.type = 3 THEN SetupStageCallback(dev)
+          ELSIF msg.type = 4 THEN ASSERT(FALSE)
+          ELSIF msg.type = 5 THEN ASSERT(FALSE)
+          ELSIF msg.type = 6 THEN ASSERT(FALSE)
+          ELSIF msg.type = 7 THEN Log.Debug("Resume"); Log.DebugLn; DCore.Resume(dev)
+          ELSIF msg.type = 8 THEN Log.Debug("Suspend"); Log.DebugLn; DCore.Suspend(dev)
+          ELSIF msg.type = 9 THEN Log.Debug("Reset"); Log.DebugLn; ResetCallback(dev)
+          ELSIF msg.type = 10 THEN Log.Debug("Connect"); Log.DebugLn; DCore.DevConnected(dev)
+          ELSIF msg.type = 11 THEN ASSERT(FALSE)
+          ELSIF msg.type = 12 THEN IRQLog(msg)
           ELSE ASSERT(FALSE) (*unknown message*)
           END; 
-          PCD.GiveMsg(dev, msg);
           msg := PCD.TakeMsg(dev)
         END
       | Def.Handle: ASSERT(FALSE)
