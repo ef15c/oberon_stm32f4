@@ -1,7 +1,10 @@
 MODULE HALUC; (*The USB Core driver*)
-  IMPORT SYSTEM, BSP, Kernel, Q := Queue, Log := USBLog, Def := USBDef, ll := LLUSB;
+  IMPORT SYSTEM, BSP, Kernel, LFQ, Log := USBLog, Def := USBDef, ll := LLUSB;
 
   CONST
+    (*Message types*)
+    DEBUG* = 1;
+
   (** @defgroup HCD_Exported_Types_Group1 HCD State Structure definition
   * @{
   *)
@@ -19,12 +22,11 @@ MODULE HALUC; (*The USB Core driver*)
       cState*: BYTE;                (*!< CD initialization state  *)
       Timer*: INTEGER;         (*!< CD timer for OTG mode stabilization*)
       ControllerIRQHandler*: IRQHandlerProc;
-      DebugMP, (*the interrupt trace message pool*)
-      MsgPendQ: Q.Msg (*the deferred work message queue*)
+      MsgQ: LFQ.Queue (*the deferred work message queue*)
     END;
 
     Msg* = POINTER TO MsgDesc;
-    MsgDesc* = RECORD(Q.MsgDesc) gintsts*: SET
+    MsgDesc* = RECORD(LFQ.MsgDesc) gintsts*: SET
     END;
 
   VAR
@@ -32,10 +34,10 @@ MODULE HALUC; (*The USB Core driver*)
       data can be corrupted if dynamic allocated objects are modified in an ISR while the
       Kernel.Mark procedure is running.
       Since it is not acceptable to disable interrupt during Kernel.Mark process, we must
-      switch to static allocation of the messgage objects
+      switch to static allocation of the message objects
       *)
 
-    DBG: ARRAY 10+1 OF MsgDesc;    (*!< USB debug message *)
+    MP: ARRAY 10+1 OF MsgDesc;    (*!< HALUC message pool*)
 
 (*todo: implement host negociation and session request
   (**
@@ -57,14 +59,11 @@ MODULE HALUC; (*The USB Core driver*)
   *)
   PROCEDURE IRQHandler*(core: Handle);
     VAR flags: SET; USBx!: ll.OTGCore;
-      msg!: Q.Msg; dbm!: Msg;
-  BEGIN dbm := NIL; BSP.ledsOnOff({3}, {}); USBx := core.Instance;
+      dbm!: MsgDesc;
+  BEGIN CLEAR(dbm); BSP.ledsOnOff({3}, {}); USBx := core.Instance;
     IF core # NIL THEN flags := ll.ReadInterrupts(USBx);
 (*
-      IF flags # {ll.GINTSTS_SOF} THEN msg := Q.Get(core.DebugMP); dbm := SYSTEM.VAL(Msg, msg);
-        IF dbm # NIL THEN CLEAR(dbm^); dbm.gintsts := flags
-        END
-      END;
+      IF flags # {ll.GINTSTS_SOF} THEN dbm.gintsts := flags END;
 *)
       IF ll.GINTSTS_MMIS IN flags THEN (* Mode mismatch, acknowledge the interrupt *)
         USBx.GINTSTS := {ll.GINTSTS_MMIS}
@@ -83,7 +82,7 @@ MODULE HALUC; (*The USB Core driver*)
       END
     END;
     BSP.ledsOnOff({}, {3});
-    IF dbm # NIL THEN Q.Post(core.MsgPendQ, dbm) END
+    IF dbm.type # 0 THEN LFQ.Offer(core.MsgQ, dbm, DEBUG) END
   END  IRQHandler;
 
   (**
@@ -119,35 +118,17 @@ MODULE HALUC; (*The USB Core driver*)
   * @brief  Initialize the pool of messages for each type of deferred work.
   * @param  hhcd HCD handle
   *)
-  PROCEDURE InitPools*(core: Handle);
-  BEGIN
-    core.DebugMP := Q.CreateSPool(20, SYSTEM.ADR(DBG), LEN(DBG), SYSTEM.SIZE(MsgDesc));
-  END InitPools;
+  PROCEDURE InitQueue*(core: Handle);
+  BEGIN LFQ.InitQueue(core.MsgQ, SYSTEM.ADR(MP), LEN(MP), SYSTEM.SIZE(MsgDesc))
+  END InitQueue;
 
-  PROCEDURE TakeMsg*(core: Handle): Q.Msg;
-    VAR msg!: Q.Msg; USBx!: ll.OTGCore;
-  BEGIN USBx := core.Instance;
-    msg := Q.ExhaustedPool({20});
-    IF msg # NIL THEN Log.Error("Interrupt queue too small:");
-      IF msg.type = 20 THEN Log.ErrorString(" Debug")
-      ELSE Log.ErrorString(" unknown message type")
-      END; Log.ErrorLn; Log.Flush
-    END;
-    ll.DisableGlobalInt(USBx);
-    IF core.MsgPendQ # NIL THEN msg := Q.Get(core.MsgPendQ) ELSE msg := NIL END;
-    ll.EnableGlobalInt(USBx)
-    RETURN msg
+  PROCEDURE TakeMsg*(core: Handle): Msg;
+    VAR msg!: LFQ.Msg; cmsg!: Msg;
+  BEGIN 
+    IF LFQ.ExhaustedQueue(core.MsgQ) THEN Log.Error("HALUC Interrupt queue too small") END;
+    msg := LFQ.Poll(core.MsgQ); cmsg :=SYSTEM.VAL(Msg, msg)
+    RETURN cmsg
   END TakeMsg;
-
-  PROCEDURE GiveMsg*(core: Handle; msg: Q.Msg);
-    VAR USBx!: ll.OTGCore;
-  BEGIN USBx := core.Instance; ll.DisableGlobalInt(USBx);
-    (*return item to pool*)
-    IF msg.type = 20 THEN Q.PostFirst(core.DebugMP, msg)
-    ELSE ASSERT(FALSE) (*unsupported message type*)
-    END;
-    ll.EnableGlobalInt(USBx)
-  END GiveMsg;
 
 END HALUC.
 

@@ -69,10 +69,10 @@ MODULE HALPCD;
       data can be corrupted if dynamic allocated objects are modified in an ISR while the
       Kernel.Mark procedure is running.
       Since it is not acceptable to disable interrupt during Kernel.Mark process, we must
-      switch to static allocation of the messgage objects
+      switch to static allocation of the message objects
       *)
 
-    MP: ARRAY 100+1 OF MsgDesc;    (*!< HALPCD message pool*)
+    MP: ARRAY 10+1 OF MsgDesc;    (*!< HALPCD message pool*)
 
   (**
   * @brief  process EP OUT transfer complete interrupt.
@@ -702,11 +702,11 @@ MODULE HALPCD;
   END InitQueue;
 
   PROCEDURE TakeMsg*(hpcd: Handle): Msg;
-    VAR msg!: LFQ.Msg; hmsg!: Msg;
-  BEGIN hmsg := NIL;
+    VAR msg!: LFQ.Msg; pmsg!: Msg;
+  BEGIN pmsg := NIL;
     IF LFQ.ExhaustedQueue(hpcd.MsgQ) THEN Log.Error("HALPCD Interrupt queue too small:") END;
-    msg := LFQ.Poll(hpcd.MsgQ); hmsg := SYSTEM.VAL(Msg, msg)
-    RETURN hmsg
+    msg := LFQ.Poll(hpcd.MsgQ); pmsg := SYSTEM.VAL(Msg, msg)
+    RETURN pmsg
   END TakeMsg;
 
   PROCEDURE New*(): Handle;

@@ -11,7 +11,7 @@ MODULE LFQ;
   PROCEDURE InitQueue*(VAR queue: Queue; adr, len, size: INTEGER);
     VAR i: INTEGER; t!, item!: Msg;
   BEGIN ASSERT(len > 1); t := SYSTEM.VAL(Msg, adr); t.type := -1;
-    queue.head :=  t; queue.tail := t; queue.sizePL := (size - SYSTEM.SIZE(MsgDesc)) DIV 4;
+    CLEAR(queue); queue.head :=  t; queue.tail := t; queue.sizePL := (size - SYSTEM.SIZE(MsgDesc)) DIV 4;
     FOR i := 1 TO len - 1 DO INC(adr, size); item := SYSTEM.VAL(Msg, adr);
       item.type := -1; t.next := item; t := item
     END;

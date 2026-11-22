@@ -16,7 +16,7 @@ MODULE USBHHal; (*The BSP part of USB Host Controller configuration, C. Schoffit
   ******************************************************************************
   *)
 
-  IMPORT SYSTEM, BSP, Kernel, Log := USBLog, Def := USBDef, ll := LLUSB, Q := Queue, UC := HALUC, HDef := USBHDef,
+  IMPORT SYSTEM, BSP, Kernel, Log := USBLog, Def := USBDef, ll := LLUSB, UC := HALUC, HDef := USBHDef,
     HCore := USBHCore, HCD := HALHCD;
 
   VAR OldHandler: UC.IRQHandlerProc;
@@ -227,7 +227,7 @@ MODULE USBHHal; (*The BSP part of USB Host Controller configuration, C. Schoffit
   BEGIN
     CASE core OF
       HCD.Handle: host := core
-    | UC.Handle: host := HCD.New(); HCD.InitPools(host); tmp := host; tmp^ := core^; Def.Update(host, id)
+    | UC.Handle: host := HCD.New(); HCD.InitQueue(host); tmp := host; tmp^ := core^; Def.Update(host, id)
     | Def.Handle: ASSERT(FALSE)
     END;
 
@@ -295,21 +295,21 @@ MODULE USBHHal; (*The BSP part of USB Host Controller configuration, C. Schoffit
   * @brief  Do the work offloaded by IRQs in the process loop.
   *)
  PROCEDURE ProcessDeferredIRQWork*(host: Def.Handle);
-    VAR msg!: Q.Msg; dmsg!: HCD.Msg;
+    VAR msg!: HCD.Msg;
   BEGIN
     CASE host OF
       HCD.Handle:
         msg := HCD.TakeMsg(host);
         WHILE msg # NIL DO (*Process the message*)
-          dmsg := SYSTEM.VAL(HCD.Msg, msg);
-          IF dmsg.type = 1 THEN Connect_Callback(host)
-          ELSIF dmsg.type = 2 THEN Disconnect_Callback(host)
-          ELSIF dmsg.type = 3 THEN PortEnabled_Callback(host)
-          ELSIF dmsg.type = 4 THEN PortDisabled_Callback(host)
-          ELSIF dmsg.type = 5 THEN HC_NotifyURBChange_Callback(host, dmsg.chnum, dmsg.urb_state)
-          ELSIF dmsg.type = 6 THEN IRQLog(dmsg)
+          msg := SYSTEM.VAL(HCD.Msg, msg);
+          IF msg.type = HCD.CONNECT THEN Connect_Callback(host)
+          ELSIF msg.type = HCD.DISCONNECT THEN Disconnect_Callback(host)
+          ELSIF msg.type = HCD.PORT_ENABLED THEN PortEnabled_Callback(host)
+          ELSIF msg.type = HCD.PORT_DISABLED THEN PortDisabled_Callback(host)
+          ELSIF msg.type = HCD.URB_CHANGE THEN HC_NotifyURBChange_Callback(host, msg.chnum, msg.urb_state)
+          ELSIF msg.type = HCD.DEBUG THEN IRQLog(msg)
           ELSE ASSERT(FALSE) (*unknown message*)
-          END; HCD.GiveMsg(host, msg);
+          END;
           msg := HCD.TakeMsg(host)
         END
       | Def.Handle: ASSERT(FALSE)

@@ -1,5 +1,5 @@
 MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
-  IMPORT SYSTEM, Kernel, BSP, Q := Queue, Log := USBLog, Def := USBDef, ll := LLUSB, UC := HALUC;
+  IMPORT SYSTEM, Kernel, BSP, Log := USBLog, Def := USBDef, ll := LLUSB, UC := HALUC;
 
   CONST
     (*private constants*)
@@ -88,7 +88,7 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
   PROCEDURE Init*(UserFunc: Def.UserCallback; id: BYTE): UC.Handle;
     VAR core!: UC.Handle;
   BEGIN ASSERT(id < Def.NB_OTG_CORES);
-    IF Def.usbCores[id] = NIL THEN NEW(core); (*UC.InitPools(core);*)
+    IF Def.usbCores[id] = NIL THEN NEW(core); UC.InitQueue(core);
     ELSE core := Def.usbCores[id](UC.Handle)
     END;
     IF hsid = 0FFH THEN MspInit END; (* Init the low level hardware : GPIO, CLOCK, NVIC... *)
@@ -165,21 +165,20 @@ MODULE USBHal; (*The BSP part of USB Core configuration, C. Schoffit 01.07.26*)
   * @brief  Do the work offloaded by IRQs in the process loop.
   *)
  PROCEDURE ProcessDeferredIRQWork*(core: Def.Handle);
-    VAR msg!: Q.Msg; hmsg!: UC.Msg;
+    VAR msg!: UC.Msg;
   BEGIN
     CASE core OF
       UC.Handle:
         msg := UC.TakeMsg(core);
         WHILE msg # NIL DO (*Process the message*)
-          hmsg := SYSTEM.VAL(UC.Msg, msg);
-          IF hmsg.type = 20 THEN IRQLog(hmsg)
+          IF msg.type = UC.DEBUG THEN IRQLog(msg)
           ELSE ASSERT(FALSE) (*unknown message*)
           END; 
-          UC.GiveMsg(core, msg);
           msg := UC.TakeMsg(core)
         END
       | Def.Handle: ASSERT(FALSE)
     END
   END ProcessDeferredIRQWork;
+
 BEGIN hsid := 0FFH
 END USBHal.
